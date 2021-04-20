@@ -147,6 +147,78 @@ static struct usb_ehci_pdata ehci_platform_defaults = {
 	.power_off =		ehci_platform_power_off,
 };
 
+static ssize_t show_ehci_testmode(struct device *dev,
+                    struct device_attribute *attr,
+                    char *buf)
+{
+	struct usb_hcd  *hcd = dev_get_drvdata(dev);
+	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
+    u32 reg;
+
+    if (ehci == NULL)
+    {
+        pr_err("%s: ehci is null\n", __func__);
+		return 0;
+    }
+
+    reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
+    reg &= EHCI_PORTPMSC_TESTMODE_MASK;
+    reg >>= 16;
+
+    switch (reg) {
+        case 0:
+            pr_info("no test\n");
+            break;
+        case TEST_J:
+            pr_info("test_j\n");
+            break;
+        case TEST_K:
+            pr_info("test_k\n");
+            break;
+        case TEST_SE0_NAK:
+            pr_info("test_se0_nak\n");
+            break;
+        case TEST_PACKET:
+            pr_info("test_packet\n");
+            break;
+        case TEST_FORCE_EN:
+            pr_info("test_force_enable\n");
+            break;
+        default:
+            pr_info("UNKNOWN test mode\n");
+    }
+
+    return 0;
+}
+
+static ssize_t store_ehci_testmode(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct usb_hcd  *hcd = dev_get_drvdata(dev);
+	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
+	u32 testmode = 0;
+
+	if (!strncmp(buf, "test_j", 6))
+		testmode = TEST_J;
+	else if (!strncmp(buf, "test_k", 6))
+		testmode = TEST_K;
+	else if (!strncmp(buf, "test_se0_nak", 12))
+		testmode = TEST_SE0_NAK;
+	else if (!strncmp(buf, "test_packet", 11))
+		testmode = TEST_PACKET;
+	else if (!strncmp(buf, "test_force_enable", 17))
+		testmode = TEST_FORCE_EN;
+	else
+		testmode = 0;
+	pr_info("[INFO][USB] %s:%s\n", __func__, buf);
+	ehci_set_test_mode(ehci, testmode);
+
+	return (ssize_t)count;
+}
+
+static DEVICE_ATTR(testmode, 0644, show_ehci_testmode, store_ehci_testmode);
+
 static int ehci_platform_probe(struct platform_device *dev)
 {
 	struct usb_hcd *hcd;
@@ -313,6 +385,10 @@ static int ehci_platform_probe(struct platform_device *dev)
 	device_wakeup_enable(hcd->self.controller);
 	device_enable_async_suspend(hcd->self.controller);
 	platform_set_drvdata(dev, hcd);
+
+	err = device_create_file(&dev->dev, &dev_attr_testmode);
+	if (err)
+		goto err_power;
 
 	return err;
 

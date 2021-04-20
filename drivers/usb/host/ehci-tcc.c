@@ -404,6 +404,81 @@ static ssize_t ehci_tpl_support_store(struct device *dev,
 DEVICE_ATTR(ehci_tpl_support, 0644,
 		ehci_tpl_support_show, ehci_tpl_support_store);
 
+static ssize_t show_ehci_testmode(struct device *dev,
+                    struct device_attribute *attr,
+                    char *buf)
+{
+	struct tcc_ehci_hcd *tcc_ehci =	dev_get_drvdata(dev);
+    struct ehci_hcd     *ehci;
+    u32 reg;
+
+    ehci = tcc_ehci->ehci;
+    if (ehci == NULL)
+    {
+        pr_err("%s: ehci is null\n", __func__);
+		return 0;
+    }
+
+    reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
+    reg &= EHCI_PORTPMSC_TESTMODE_MASK;
+    reg >>= 16;
+
+    switch (reg) {
+        case 0:
+            pr_info("no test\n");
+            break;
+        case TEST_J:
+            pr_info("test_j\n");
+            break;
+        case TEST_K:
+            pr_info("test_k\n");
+            break;
+        case TEST_SE0_NAK:
+            pr_info("test_se0_nak\n");
+            break;
+        case TEST_PACKET:
+            pr_info("test_packet\n");
+            break;
+        case TEST_FORCE_EN:
+            pr_info("test_force_enable\n");
+            break;
+        default:
+            pr_info("UNKNOWN test mode\n");
+    }
+
+    return 0;
+}
+
+static ssize_t store_ehci_testmode(struct device *dev,
+                    struct device_attribute *attr,
+                    const char *buf, size_t count)
+{
+	struct tcc_ehci_hcd *tcc_ehci =	dev_get_drvdata(dev);
+    struct ehci_hcd     *ehci;
+    u32 testmode = 0;
+
+    ehci = tcc_ehci->ehci;
+
+    if (!strncmp(buf, "test_j", 6))
+        testmode = TEST_J;
+    else if (!strncmp(buf, "test_k", 6))
+        testmode = TEST_K;
+    else if (!strncmp(buf, "test_se0_nak", 12))
+        testmode = TEST_SE0_NAK;
+    else if (!strncmp(buf, "test_packet", 11))
+        testmode = TEST_PACKET;
+    else if (!strncmp(buf, "test_force_enable", 17))
+        testmode = TEST_FORCE_EN;
+    else
+        testmode = 0;
+    pr_info("[INFO][USB] %s:%s\n", __func__, buf);
+    ehci_set_test_mode(ehci, testmode);
+
+    return (ssize_t)count;
+}
+
+static DEVICE_ATTR(testmode, 0644, show_ehci_testmode, store_ehci_testmode);
+
 /*
  * tcc ehci phy configruation set function.
  */
@@ -686,6 +761,13 @@ static int32_t ehci_tcc_drv_probe(struct platform_device *pdev)
 		goto fail_add_hcd;
 	}
 
+	retval = device_create_file(&pdev->dev, &dev_attr_testmode);
+	if (retval < 0) {
+		pr_err("[ERROR][USB] Cannot register USB TPL Support attributes: %d\n",
+				retval);
+		goto fail_add_hcd;
+	}
+
 	return retval;
 
 fail_add_hcd:
@@ -707,6 +789,7 @@ static int32_t __exit ehci_tcc_drv_remove(struct platform_device *pdev)
 	sysfs_remove_group(&pdev->dev.kobj, &usb_sq_attr_group);
 
 	device_remove_file(&pdev->dev, &dev_attr_ehci_tpl_support);
+	device_remove_file(&pdev->dev, &dev_attr_testmode);
 
 	ehci_shutdown(hcd);
 	usb_remove_hcd(hcd);
