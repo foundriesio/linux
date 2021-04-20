@@ -1089,7 +1089,7 @@ static int deintl_viqe_setup(struct tcc_vout_device *vout, enum deintl_type dein
 		viqe_deintl_base[3] = viqe_deintl_base[2] + img_size;
 
 		if ((viqe_deintl_base[3] + img_size) > (pmap_viqe.base + pmap_viqe.size)) {
-			pr_err("[ERR][VOUT] pmap_viqe no space\n");
+			pr_warn("[VOUT] pmap_viqe no space\n");
 			//return -ENOBUFS;
 		}
 	} else if (deinterlace == VOUT_DEINTL_VIQE_2D) {
