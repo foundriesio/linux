@@ -11,7 +11,7 @@
 	/* Describe here after remove this statement if you have something to be override. */
 	lcd_drm_dummy {
 		status = "okay";
-		base_display = <&drm_tm123xdhp90>;
+		base_display = <&drm_dpv14_0>;
 	};
 
 	drm_dpv14_0 {
@@ -26,6 +26,13 @@
 		pinctrl-5 = <&lcd_port_reset_on1 &lcd_port_power_off1>;
 		/* binding external backlight driver */
 		backlight = <&lcd_port1_bl>;
+
+		port@0 {
+			reg = <0>;
+			dpv14_0_input_0: endpoint {
+				remote-endpoint = <&lcd_display_out>;
+			};
+		};
 	};
 
 	drm_dpv14_1 {
@@ -40,6 +47,13 @@
 		pinctrl-5 = <&lcd_port_reset_on2 &lcd_port_power_off2>;
 		/* binding external backlight driver */
 		backlight = <&lcd_port2_bl>;
+
+		port@1 {
+			reg = <1>;
+			dpv14_1_input_1: endpoint {
+				remote-endpoint = <&ext_display_out>;
+			};
+		};
 	};
 
 	drm_tm123xdhp90 {
