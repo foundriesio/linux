@@ -277,6 +277,43 @@ out:
 	return result;
 }
 
+int32_t tcc_hsm_sp_cmd_run_cmac(
+	uint32_t device_id, uint32_t keyIndex, uint32_t flag, uint8_t *srcAddr,
+	uint32_t srcSize, uint8_t *macAddr, uint32_t *macSize)
+{
+	int32_t mbox_data[20] = {0};
+	int32_t mbox_result[12] = {0};
+	int32_t mbox_result_size = 0;
+	int32_t result = 0;
+
+	mbox_data[0] = keyIndex;
+	mbox_data[1] = flag;
+	mbox_data[2] = srcSize;
+
+	memcpy(&mbox_data[3], srcAddr, srcSize);
+
+	mbox_result_size = sec_sendrecv_cmd(
+		device_id, TCCHSM_CMD_RUN_CMAC, mbox_data, sizeof(mbox_data),
+		mbox_result, sizeof(mbox_result));
+	if (mbox_result_size < 0) {
+		ELOG("sec_sendrecv_cmd error(%d)\n", mbox_result_size);
+		result = -EBADR;
+		goto out;
+	}
+
+	result = mbox_result[0];
+	if (result != 0) {
+		ELOG("SP returned an error: %d\n", result);
+		goto out;
+	}
+
+	*macSize = mbox_result[1];
+	memcpy((void *)macAddr, (const void *)&mbox_result[2], *macSize);
+
+out:
+	return result;
+}
+
 int32_t tcc_hsm_sp_cmd_write_otp(uint32_t device_id, uint32_t otpAddr,
 				 uint8_t *otpBuf, uint32_t otpSize)
 {

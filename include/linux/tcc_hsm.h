@@ -28,6 +28,7 @@ enum tcc_hsm_ioctl_cmd {
 	TCCHSM_IOCTL_SET_KLDATA,
 	TCCHSM_IOCTL_RUN_CIPHER,
 	TCCHSM_IOCTL_RUN_CIPHER_BY_DMA,
+	TCCHSM_IOCTL_RUN_CMAC,
 	TCCHSM_IOCTL_WRITE_OTP,
 	TCCHSM_IOCTL_GET_RNG,
 	TCCHSM_IOCTL_MAX
@@ -129,6 +130,14 @@ struct tcc_hsm_ioctl_run_cipher_param {
 	uint32_t cwSel;
 	uint32_t klIndex;
 	uint32_t keyMode;
+};
+struct tcc_hsm_ioctl_run_cmac_param {
+	uint32_t keyIndex;
+	uint32_t flag;
+	uint8_t *srcAddr;
+	uint32_t srcSize;
+	uint8_t *macAddr;
+	uint32_t mac_size;
 };
 
 struct tcc_hsm_ioctl_otp_param {

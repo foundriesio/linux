@@ -283,6 +283,32 @@ static long tcc_hsm_ioctl_run_cipher_by_dma(unsigned long arg)
 	return ret;
 }
 
+static long tcc_hsm_ioctl_run_cmac(unsigned long arg)
+{
+	struct tcc_hsm_ioctl_run_cmac_param param;
+	long ret = -EFAULT;
+
+	if (copy_from_user(
+		    &param, (const struct tcc_hsm_ioctl_run_cmac_param *)arg,
+		    sizeof(param))) {
+		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
+	ret = tcc_hsm_sp_cmd_run_cmac(
+		MBOX_DEV_M4, param.keyIndex, param.flag, param.srcAddr,
+		param.srcSize, dma_buf->dstVir, &param.mac_size);
+
+	if (copy_to_user(
+		    param.macAddr, (const uint8_t *)dma_buf->dstVir,
+		    param.mac_size)) {
+		ELOG("copy_to_user failed\n");
+		return ret;
+	}
+
+	return ret;
+}
+
 static long tcc_hsm_ioctl_write_otp(unsigned long arg)
 {
 	struct tcc_hsm_ioctl_otp_param param;
@@ -370,6 +396,10 @@ tcc_hsm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	case TCCHSM_IOCTL_RUN_CIPHER_BY_DMA:
 		ret = tcc_hsm_ioctl_run_cipher_by_dma(arg);
+		break;
+
+	case TCCHSM_IOCTL_RUN_CMAC:
+		ret = tcc_hsm_ioctl_run_cmac(arg);
 		break;
 
 	case TCCHSM_IOCTL_WRITE_OTP:

@@ -29,6 +29,7 @@
 #define TCCHSM_CMD_SET_KLDATA           SP_CMD(MAGIC_NUM, 0x017)
 #define TCCHSM_CMD_RUN_CIPHER           SP_CMD(MAGIC_NUM, 0x018)
 #define TCCHSM_CMD_RUN_CIPHER_BY_DMA    SP_CMD(MAGIC_NUM, 0x019)
+#define TCCHSM_CMD_RUN_CMAC             SP_CMD(MAGIC_NUM, 0x021)
 #define TCCHSM_CMD_WRITE_OTP            SP_CMD(MAGIC_NUM, 0x032)
 #define TCCHSM_CMD_GET_RNG              SP_CMD(MAGIC_NUM, 0x041)
 // clang-format on
@@ -57,6 +58,9 @@ int32_t tcc_hsm_sp_cmd_run_cipher_by_dma(
 	uint32_t device_id, uint32_t keyIndex, uint32_t srcAddr,
 	uint32_t dstAddr, uint32_t srcSize, uint32_t enc, uint32_t swSel,
 	uint32_t klIndex, uint32_t keyMode);
+int32_t tcc_hsm_sp_cmd_run_cmac(
+	uint32_t device_id, uint32_t keyIndex, uint32_t flag, uint8_t *srcAddr,
+	uint32_t srcSize, uint8_t *macAddr, uint32_t *macSize);
 int32_t tcc_hsm_sp_cmd_write_otp(
 	uint32_t device_id, uint32_t otpAddr, uint8_t *otpBuf,
 	uint32_t otpSize);
