@@ -65,6 +65,11 @@
 #define MAX_TEMP                (12500)
 #define MIN_TEMP_CODE           ((int32_t)0x248)
 #define MAX_TEMP_CODE           ((int32_t)0xC7C)
+#define CAPTURE_IRQ             (0x111111UL)
+#define HIGH_TEMP_IRQ           (0x222222UL)
+#define LOW_TEMP_IRQ            (0x444444UL)
+#define CA53_IRQ_EN             (0x6UL)
+#define CA72_IRQ_EN             (0x60UL)
 #else
 #define MIN_TEMP                (15)
 #define MAX_TEMP                (125)
@@ -842,47 +847,49 @@ static void tcc_temp_irq_freq_set (struct tcc_thermal_data *dev,
 
 static irqreturn_t tcc_thermal_irq (int32_t irq, void *dev)
 {
-/* For print irq message for test.
- * If need to change CPU frequency depending on CPU temperature,
- * modify this function
- */
-	return IRQ_WAKE_THREAD;
-}
-
-static irqreturn_t tcc_thermal_irq_thread (int32_t irq, void *dev)
-{
+	/* For print irq message for test.
+	 * If need to change CPU frequency depending on CPU temperature,
+	 * modify this function
+	 */
 	struct tcc_thermal_data *data = dev;
 	int32_t temp = 0;
-	int32_t i;
-/* For print irq message for test.
- * If need to change CPU frequency depending on CPU temperature,
- * modify this function
- */
+	int32_t i = 0;
+	uint32_t checker = 0;
+
 	mutex_lock(&data->lock);
 	writel(0, data->interrupt_enable); // Default interrupt disable
-	writel(0x777777, data->interrupt_mask); // clear irq
-	temp = data->pdata->thermal_temp;
-	temp = (temp/100);
-	for (i = 0; i < (data->pdata->freq_tab_count - 1); i++) {
-		if ((temp >= data->pdata->freq_tab[i].temp_level) &&
+	checker = readl_relaxed(data->interrupt_status);
+	writel((CAPTURE_IRQ|LOW_TEMP_IRQ|HIGH_TEMP_IRQ),
+			data->interrupt_mask);
+
+	if (((data->pdata->core == 0) && ((checker & CA72_IRQ_EN) != 0)) ||
+	((data->pdata->core == 1) && ((checker & CA53_IRQ_EN) != 0))) {
+		temp = data->pdata->thermal_temp;
+		temp = (temp/100);
+		for (i = 0; i < (data->pdata->freq_tab_count - 1); i++) {
+			if ((temp >= data->pdata->freq_tab[i].temp_level) &&
 			(temp < data->pdata->freq_tab[i+1].temp_level)) {
-			data->pdata->cur_trip = i;
-			data->pdata->dest_trip = i+1;
-		} else {
-			/**/
+				data->pdata->cur_trip = i;
+				data->pdata->dest_trip = i+1;
+			} else {
+				/**/
+			}
 		}
+		tcc_temp_irq_reg_set(data);
+		tcc_temp_irq_freq_set(data, data->pdata->core,
+						data->pdata->cur_trip);
 	}
-	tcc_temp_irq_reg_set(data);
-	tcc_temp_irq_freq_set(data, data->pdata->core, data->pdata->cur_trip);
-	writel(0x777777, data->interrupt_clear); // clear irq
-	writel(0x777700, data->interrupt_mask); // clear irq
-	writel(0x666666, data->interrupt_enable); // Default interrupt disable
+	writel((CAPTURE_IRQ|LOW_TEMP_IRQ|HIGH_TEMP_IRQ),
+			data->interrupt_clear);
+	writel(((~(CA53_IRQ_EN | CA72_IRQ_EN)) &
+				(LOW_TEMP_IRQ | HIGH_TEMP_IRQ |
+				 CAPTURE_IRQ)),
+			data->interrupt_mask);
+	writel((CA53_IRQ_EN | CA72_IRQ_EN), data->interrupt_enable);
 
 	mutex_unlock(&data->lock);
-
 	return IRQ_HANDLED;
 }
-
 #endif
 #endif
 static int32_t tcc_thermal_init(struct tcc_thermal_data *data)
@@ -970,29 +977,34 @@ static int32_t tcc_thermal_init(struct tcc_thermal_data *data)
 	writel(threshold_low_temp[5], data->threshold_down_data5);
 
 	(void)pr_info("%s.thermal threshold high temp: %d\n",
-		__func__, threshold_high_temp[0]);
+			__func__, threshold_high_temp[0]);
 	(void)pr_info("%s.thermal threshold low temp: %d\n",
-		__func__, threshold_low_temp[0]);
+			__func__, threshold_low_temp[0]);
 
 	writel(0, data->interrupt_enable); // Default interrupt disable
 
 	writel(data->pdata->interval_time, data->time_interval_reg);
 	(void)pr_info("[TSENSOR] interval_time - %d\n",
-						data->pdata->interval_time);
+			data->pdata->interval_time);
 
-	writel(0x777777, data->interrupt_clear); // All interrupt clear
+	writel((CAPTURE_IRQ | HIGH_TEMP_IRQ | LOW_TEMP_IRQ),
+			data->interrupt_clear);
 #ifndef CONFIG_TCC_THERMAL_IRQ
-	writel(0x777777, data->interrupt_mask); // interrupt masking
+	writel((CAPTURE_IRQ | HIGH_TEMP_IRQ | LOW_TEMP_IRQ),
+			data->interrupt_mask);
 #else
-	writel(0x777700, data->interrupt_mask); // interrupt masking
+	writel(((~(CA53_IRQ_EN | CA72_IRQ_EN)) &
+				(LOW_TEMP_IRQ | HIGH_TEMP_IRQ)),
+			data->interrupt_mask);
 #endif
+	v_temp = 0;
+	// High/Low Threshold interrupt Enable
+	writel((CAPTURE_IRQ | HIGH_TEMP_IRQ | LOW_TEMP_IRQ),
+			data->interrupt_enable);
 	v_temp = readl_relaxed(data->interrupt_mask);
 	(void)pr_info("[TSENSOR] IRQ Masking - 0x%x\n", v_temp);
-
-	v_temp = 0;
-
-	// High/Low Threshold interrupt Enable
-	writel(0x666666, data->interrupt_enable);
+	v_temp = readl_relaxed(data->interrupt_enable);
+	(void)pr_info("[TSENSOR] IRQ enable - 0x%x\n", v_temp);
 
 	v_temp = readl_relaxed(data->control);
 
@@ -2829,8 +2841,7 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	if (data->irq <= 0)
 		dev_err(&pdev->dev, "no irq resource\n");
 	else {
-		ret = request_threaded_irq(data->irq, tcc_thermal_irq,
-				tcc_thermal_irq_thread,
+		ret = request_irq(data->irq, tcc_thermal_irq,
 				IRQF_SHARED, "tcc_thermal", data);
 		if (ret) {
 			dev_err(&pdev->dev,
