@@ -164,24 +164,29 @@ static void zero_buffer(struct tty_struct *tty, u8 *buffer, int size)
 		memset(buffer, 0x00, size);
 }
 
-static void tty_copy(struct tty_struct *tty, void *to, size_t tail, size_t n)
+static int tty_copy_to_user(struct tty_struct *tty, void __user *to,
+			    size_t tail, size_t n)
 {
 	struct n_tty_data *ldata = tty->disc_data;
 	size_t size = N_TTY_BUF_SIZE - tail;
 	void *from = read_buf_addr(ldata, tail);
+	int uncopied;
 
 	if (n > size) {
 		tty_audit_add_data(tty, from, size);
-		memcpy(to, from, size);
-		zero_buffer(tty, from, size);
+		uncopied = copy_to_user(to, from, size);
+		zero_buffer(tty, from, size - uncopied);
+		if (uncopied)
+			return uncopied;
 		to += size;
 		n -= size;
 		from = ldata->read_buf;
 	}
 
 	tty_audit_add_data(tty, from, n);
-	memcpy(to, from, n);
-	zero_buffer(tty, from, n);
+	uncopied = copy_to_user(to, from, n);
+	zero_buffer(tty, from, n - uncopied);
+	return uncopied;
 }
 
 /**
@@ -1937,16 +1942,15 @@ static inline int input_available_p(struct tty_struct *tty, int poll)
 /**
  *	copy_from_read_buf	-	copy read data directly
  *	@tty: terminal device
- *	@kbp: data
+ *	@b: user data
  *	@nr: size of data
  *
  *	Helper function to speed up n_tty_read.  It is only called when
- *	ICANON is off; it copies characters straight from the tty queue.
- *
- *	It can be profitably called twice; once to drain the space from
- *	the tail pointer to the (physical) end of the buffer, and once
- *	to drain the space from the (physical) beginning of the buffer
- *	to head pointer.
+ *	ICANON is off; it copies characters straight from the tty queue to
+ *	user space directly.  It can be profitably called twice; once to
+ *	drain the space from the tail pointer to the (physical) end of the
+ *	buffer, and once to drain the space from the (physical) beginning of
+ *	the buffer to head pointer.
  *
  *	Called under the ldata->atomic_read_lock sem
  *
@@ -1956,7 +1960,7 @@ static inline int input_available_p(struct tty_struct *tty, int poll)
  */
 
 static int copy_from_read_buf(struct tty_struct *tty,
-				      unsigned char **kbp,
+				      unsigned char __user **b,
 				      size_t *nr)
 
 {
@@ -1972,7 +1976,8 @@ static int copy_from_read_buf(struct tty_struct *tty,
 	n = min(*nr, n);
 	if (n) {
 		unsigned char *from = read_buf_addr(ldata, tail);
-		memcpy(*kbp, from, n);
+		retval = copy_to_user(*b, from, n);
+		n -= retval;
 		is_eof = n == 1 && *from == EOF_CHAR(tty);
 		tty_audit_add_data(tty, from, n);
 		zero_buffer(tty, from, n);
@@ -1981,7 +1986,7 @@ static int copy_from_read_buf(struct tty_struct *tty,
 		if (L_EXTPROC(tty) && ldata->icanon && is_eof &&
 		    (head == ldata->read_tail))
 			n = 0;
-		*kbp += n;
+		*b += n;
 		*nr -= n;
 	}
 	return retval;
@@ -1990,12 +1995,12 @@ static int copy_from_read_buf(struct tty_struct *tty,
 /**
  *	canon_copy_from_read_buf	-	copy read data in canonical mode
  *	@tty: terminal device
- *	@kbp: data
+ *	@b: user data
  *	@nr: size of data
  *
  *	Helper function for n_tty_read.  It is only called when ICANON is on;
  *	it copies one line of input up to and including the line-delimiting
- *	character into the result buffer.
+ *	character into the user-space buffer.
  *
  *	NB: When termios is changed from non-canonical to canonical mode and
  *	the read buffer contains data, n_tty_set_termios() simulates an EOF
@@ -2011,14 +2016,14 @@ static int copy_from_read_buf(struct tty_struct *tty,
  */
 
 static int canon_copy_from_read_buf(struct tty_struct *tty,
-				    unsigned char **kbp,
+				    unsigned char __user **b,
 				    size_t *nr)
 {
 	struct n_tty_data *ldata = tty->disc_data;
 	size_t n, size, more, c;
 	size_t eol;
 	size_t tail;
-	int found = 0;
+	int ret, found = 0;
 
 	/* N.B. avoid overrun if nr == 0 */
 	if (!*nr)
@@ -2054,8 +2059,10 @@ static int canon_copy_from_read_buf(struct tty_struct *tty,
 	n_tty_trace("%s: eol:%zu found:%d n:%zu c:%zu tail:%zu more:%zu\n",
 		    __func__, eol, found, n, c, tail, more);
 
-	tty_copy(tty, *kbp, tail, n);
-	*kbp += n;
+	ret = tty_copy_to_user(tty, *b, tail, n);
+	if (ret)
+		return -EFAULT;
+	*b += n;
 	*nr -= n;
 
 	if (found)
@@ -2120,11 +2127,10 @@ static int job_control(struct tty_struct *tty, struct file *file)
  */
 
 static ssize_t n_tty_read(struct tty_struct *tty, struct file *file,
-			  unsigned char *kbuf, size_t nr,
-			  void **cookie, unsigned long offset)
+			 unsigned char __user *buf, size_t nr)
 {
 	struct n_tty_data *ldata = tty->disc_data;
-	unsigned char *kb = kbuf;
+	unsigned char __user *b = buf;
 	DEFINE_WAIT_FUNC(wait, woken_wake_function);
 	int c;
 	int minimum, time;
@@ -2170,13 +2176,17 @@ static ssize_t n_tty_read(struct tty_struct *tty, struct file *file,
 		/* First test for status change. */
 		if (packet && tty->link->ctrl_status) {
 			unsigned char cs;
-			if (kb != kbuf)
+			if (b != buf)
 				break;
 			spin_lock_irq(&tty->link->ctrl_lock);
 			cs = tty->link->ctrl_status;
 			tty->link->ctrl_status = 0;
 			spin_unlock_irq(&tty->link->ctrl_lock);
-			*kb++ = cs;
+			if (put_user(cs, b)) {
+				retval = -EFAULT;
+				break;
+			}
+			b++;
 			nr--;
 			break;
 		}
@@ -2219,20 +2229,24 @@ static ssize_t n_tty_read(struct tty_struct *tty, struct file *file,
 		}
 
 		if (ldata->icanon && !L_EXTPROC(tty)) {
-			retval = canon_copy_from_read_buf(tty, &kb, &nr);
+			retval = canon_copy_from_read_buf(tty, &b, &nr);
 			if (retval)
 				break;
 		} else {
 			int uncopied;
 
 			/* Deal with packet mode. */
-			if (packet && kb == kbuf) {
-				*kb++ = TIOCPKT_DATA;
+			if (packet && b == buf) {
+				if (put_user(TIOCPKT_DATA, b)) {
+					retval = -EFAULT;
+					break;
+				}
+				b++;
 				nr--;
 			}
 
-			uncopied = copy_from_read_buf(tty, &kb, &nr);
-			uncopied += copy_from_read_buf(tty, &kb, &nr);
+			uncopied = copy_from_read_buf(tty, &b, &nr);
+			uncopied += copy_from_read_buf(tty, &b, &nr);
 			if (uncopied) {
 				retval = -EFAULT;
 				break;
@@ -2241,7 +2255,7 @@ static ssize_t n_tty_read(struct tty_struct *tty, struct file *file,
 
 		n_tty_check_unthrottle(tty);
 
-		if (kb - kbuf >= minimum)
+		if (b - buf >= minimum)
 			break;
 		if (time)
 			timeout = time;
@@ -2253,8 +2267,8 @@ static ssize_t n_tty_read(struct tty_struct *tty, struct file *file,
 	remove_wait_queue(&tty->read_wait, &wait);
 	mutex_unlock(&ldata->atomic_read_lock);
 
-	if (kb - kbuf)
-		retval = kb - kbuf;
+	if (b - buf)
+		retval = b - buf;
 
 	return retval;
 }

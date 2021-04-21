@@ -2561,8 +2561,7 @@ static void gsmld_write_wakeup(struct tty_struct *tty)
  */
 
 static ssize_t gsmld_read(struct tty_struct *tty, struct file *file,
-			  unsigned char *buf, size_t nr,
-			  void **cookie, unsigned long offset)
+			 unsigned char __user *buf, size_t nr)
 {
 	return -EOPNOTSUPP;
 }

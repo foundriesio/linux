@@ -118,9 +118,7 @@ static void n_tracerouter_close(struct tty_struct *tty)
  *	 -EINVAL
  */
 static ssize_t n_tracerouter_read(struct tty_struct *tty, struct file *file,
-				  unsigned char *buf, size_t nr,
-				  void **cookie, unsigned long offset)
-{
+				  unsigned char __user *buf, size_t nr) {
 	return -EINVAL;
 }
 
