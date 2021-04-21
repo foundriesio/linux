@@ -120,14 +120,15 @@ typedef enum {
  */
 #define PVRICOADDR_SHIFT (0)
 
-#define PVRICOADDR_MASK  (0xFFFFFFFF << PVRICOFFS_SHIFT)
+#define PVRICOADDR_MASK  (0xFFFFFFFF << PVRICOADDR_SHIFT)
 
 /*
  * PVRIC FBDC Idle status Register Information
  */
 #define PVRICIDLER_SHIFT (0)
 
-#define PVRICOADDR_MASK  (0x1 << PVRICOFFS_SHIFT)
+#define PVRICIDLER_MASK  (0x1 << PVRICIDLER_SHIFT)
+
 
 /*
  * PVRIC FBDC IREQ Status Register Information
