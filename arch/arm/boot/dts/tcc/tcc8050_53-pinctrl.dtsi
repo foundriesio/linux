@@ -2623,12 +2623,14 @@
 	gmac1_mdc: gmac1_mdc {
 		telechips,pins = "gpb-1";
 		telechips,pin-function = <1>;
+		telechips,drive-strength = <3>;
 	};
 
 	gmac1_mdio: gmac1_mdio {
 		telechips,pins = "gpb-2";
 		telechips,pin-function = <1>;
 		telechips,input_buffer_enable;
+		telechips,drive-strength = <3>;
 	};
 
 	gmac1_rxd0: gmac1_rxd0 {
@@ -2658,6 +2660,7 @@
 	gmac1_txen: gmac1_txen {
 		telechips,pins = "gpb-7";
 		telechips,pin-function = <1>;
+		telechips,drive-strength = <3>;
 	};
 
 	gmac1_rxdv: gmac1_rxdv {

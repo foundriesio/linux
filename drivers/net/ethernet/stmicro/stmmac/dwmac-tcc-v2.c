@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Adaptrum Anarion DWMAC glue layer
- *
- * Copyright (C) 2017, Adaptrum, Inc.
- * (Written by Alexandru Gagniuc <alex.g at adaptrum.com> for Adaptrum, Inc.)
- * Licensed under the GPLv2 or (at your option) any later version.
+ * Copyright (C) Telechips Inc.
  */
 
 #include <linux/io.h>
@@ -11,26 +8,30 @@
 #include <linux/of_net.h>
 #include <linux/stmmac.h>
 #include <linux/of_address.h>
+#include <linux/of_gpio.h>
 
 #include "stmmac.h"
 #include "stmmac_platform.h"
+#include "dwmac-tcc-v2.h"
 
 #define GMAC_RESET_CONTROL_REG		0
 // #define GMAC_SW_CONFIG_REG		4
 #define GMAC_SW_CONFIG_REG		(0x6C)
 // #define GMAC_SW_CONFIG_REG		(0x0)
 
-// 5.1A
-#if 0
-#define  GMAC_CONFIG_INTF_SEL_MASK	(0x7 << 0)
-#define  GMAC_CONFIG_INTF_RGMII		(0x1 << 0)
-#else
-// 3.70A
+
+#if defined(CONFIG_DWMAC_TCC_373A)
 #define  GMAC_CONFIG_INTF_SEL_MASK	(0x7 << 18)
 #define  GMAC_CONFIG_INTF_RGMII		(0x1 << 18)
 #define  GMAC_CONFIG_INTF_GMII		(0x0 << 18)
 #define  GMAC_CONFIG_INTF_RMII		(0x4 << 18)
 #define  GMAC_CONFIG_INTF_MII		(0x6 << 18)
+#else // default 510A setting
+#define  GMAC_CONFIG_INTF_SEL_MASK	(0x7 << 20)
+#define  GMAC_CONFIG_INTF_RGMII		(0x1 << 20)
+#define  GMAC_CONFIG_INTF_GMII		(0x0 << 20)
+#define  GMAC_CONFIG_INTF_RMII		(0x4 << 20)
+#define  GMAC_CONFIG_INTF_MII		(0x6 << 20)
 #endif
 
 #define GMACDLY0_OFFSET         ((0x2000))
@@ -41,59 +42,20 @@
 #define GMACDLY5_OFFSET         ((0x2014))
 #define GMACDLY6_OFFSET         ((0x2018))
 
-struct tcc_gmac {
-        int phy_mode;
-	uintptr_t hsio_block;
-        struct clk *hsio_clk;
-        struct clk *gmac_clk;
-        struct clk *ptp_clk;
-        struct clk *gmac_hclk;
-        unsigned phy_on;
-        unsigned phy_rst;
-        u32 txclk_i_dly;
-        u32 txclk_i_inv;
-        u32 txclk_o_dly;
-        u32 txclk_o_inv;
-        u32 txen_dly;
-        u32 txer_dly;
-        u32 txd0_dly;
-        u32 txd1_dly;
-        u32 txd2_dly;
-        u32 txd3_dly;
-        u32 txd4_dly;
-        u32 txd5_dly;
-        u32 txd6_dly;
-        u32 txd7_dly;
-        u32 rxclk_i_dly;
-        u32 rxclk_i_inv;
-        u32 rxdv_dly;
-        u32 rxer_dly;
-        u32 rxd0_dly;
-        u32 rxd1_dly;
-        u32 rxd2_dly;
-        u32 rxd3_dly;
-        u32 rxd4_dly;
-        u32 rxd5_dly;
-        u32 rxd6_dly;
-        u32 rxd7_dly;
-        u32 crs_dly;
-        u32 col_dly;
-};
-
-static void tcc_hsio_write_reg(struct tcc_gmac *gmac, uint32_t reg, uint32_t val)
+static void tcc_hsio_write_reg(struct tcc_dwmac *gmac, uint32_t reg, uint32_t val)
 {
 	writel(val, (void *)(gmac->hsio_block + reg));
 }
 
-static void stmmac_write_reg(struct stmmac_resources *stmmac_res, 
+static void stmmac_write_reg(struct tcc_dwmac *gmac,
 		uint32_t reg, uint32_t val)
 {
-	writel(val, (void *)(stmmac_res->addr + reg));
+	writel(val, (void *)(gmac->gmac_block + reg));
 }
 
-void tcc_gmac_clk_enable(void *priv)
+void tcc_dwmac_clk_enable(void *priv)
 {
-	struct tcc_gmac *gmac = priv;
+	struct tcc_dwmac *gmac = priv;
 
 	if (gmac->gmac_hclk){
 		clk_prepare_enable(gmac->gmac_hclk);
@@ -106,8 +68,9 @@ void tcc_gmac_clk_enable(void *priv)
 				clk_set_rate(gmac->gmac_clk, 125*1000*1000);
 				break;
 			case PHY_INTERFACE_MODE_RMII:		
-			case PHY_INTERFACE_MODE_MII:		
 				clk_set_rate(gmac->gmac_clk, 50*1000*1000);
+			case PHY_INTERFACE_MODE_MII:		
+				clk_set_rate(gmac->gmac_clk, 25*1000*1000);
 				break;
 			default:
 				pr_err("[ERROR][GMAC] Unknown phy interface\n");
@@ -120,64 +83,80 @@ void tcc_gmac_clk_enable(void *priv)
 		pr_err("[ERROR][GMAC] Unknown phy interface\n");
         }
 
+#if 1
         if (gmac->ptp_clk) {
                 clk_prepare_enable(gmac->ptp_clk);
                 clk_set_rate(gmac->ptp_clk, 50*1000*1000);
         }
+#endif
 }
 
-void tcc_gmac_tuning_timing(struct stmmac_resources *stmmac_res,
-		void *priv)
+void tcc_dwmac_tuning_timing(void *priv)
 {
-	struct tcc_gmac *gmac = priv;
+	struct tcc_dwmac *gmac = priv;
 
-
-	stmmac_write_reg( stmmac_res, GMACDLY0_OFFSET,
+#if 1
+	stmmac_write_reg( gmac, GMACDLY0_OFFSET,
 			((gmac->txclk_i_dly&0x1f)<<0) |
 			((gmac->txclk_i_inv&0x01)<<7) |
 			((gmac->txclk_o_dly&0x1f)<<8) |
 			((gmac->txclk_o_inv&0x01)<<15)|
 			((gmac->txen_dly&0x1f)<<16)   |
 			((gmac->txer_dly&0x1f)<<24));
-	stmmac_write_reg( stmmac_res, GMACDLY1_OFFSET,
+	stmmac_write_reg( gmac, GMACDLY1_OFFSET,
 			((gmac->txd0_dly & 0x1f)<<0) |
 			((gmac->txd1_dly & 0x1f)<<8) |
 			((gmac->txd2_dly & 0x1f)<<16)|
 			((gmac->txd3_dly & 0x1f)<<24));
-	stmmac_write_reg( stmmac_res, GMACDLY2_OFFSET,
+	stmmac_write_reg( gmac, GMACDLY2_OFFSET,
 			((gmac->txd4_dly & 0x1f)<<0) |
 			((gmac->txd5_dly & 0x1f)<<8) |
 			((gmac->txd6_dly & 0x1f)<<16)|
 			((gmac->txd7_dly & 0x1f)<<24));
-	stmmac_write_reg( stmmac_res, GMACDLY3_OFFSET,
+	stmmac_write_reg( gmac, GMACDLY3_OFFSET,
 			((gmac->rxclk_i_dly & 0x1f)<<0)|
 			((gmac->rxclk_i_inv & 0x01)<<7)|
 			((gmac->rxdv_dly & 0x1f)<<16)  |
 			((gmac->rxer_dly & 0x1f)<<24));
-	stmmac_write_reg( stmmac_res, GMACDLY4_OFFSET,
+	stmmac_write_reg( gmac, GMACDLY4_OFFSET,
 			((gmac->rxd0_dly & 0x1f)<<0) |
 			((gmac->rxd1_dly & 0x1f)<<8) |
 			((gmac->rxd2_dly & 0x1f)<<16)|
 			((gmac->rxd3_dly & 0x1f)<<24));
-	stmmac_write_reg( stmmac_res, GMACDLY5_OFFSET,
+	stmmac_write_reg( gmac, GMACDLY5_OFFSET,
 			((gmac->rxd4_dly & 0x1f)<<0) |
 			((gmac->rxd5_dly & 0x1f)<<8) |
 			((gmac->rxd6_dly & 0x1f)<<16)|
 			((gmac->rxd7_dly & 0x1f)<<24));
-	stmmac_write_reg( stmmac_res, GMACDLY6_OFFSET,
+	stmmac_write_reg( gmac, GMACDLY6_OFFSET,
 			((gmac->col_dly & 0x1f)<<0)|
 			((gmac->crs_dly & 0x1f)<<8));
+#endif
+}
+
+void tcc_dwmac_phy_reset(void *priv)
+{
+	struct tcc_dwmac *gmac = priv;
+	
+        if (gmac->phy_rst != 0) {
+                gpio_direction_output(gmac->phy_rst, 0);
+                msleep(10);
+                gpio_direction_output(gmac->phy_rst, 1);
+                msleep(150);
+        }
 }
 
 
-static int tcc_gmac_init(struct platform_device *pdev, void *priv)
+int tcc_dwmac_init(struct platform_device *pdev, void *priv)
 {
 	volatile uint32_t sw_config = 0;
 	char *phy_str;
-	struct tcc_gmac *gmac = priv;
+	struct tcc_dwmac *gmac = priv;
 	struct pinctrl *pin;
 
 	sw_config &= ~GMAC_CONFIG_INTF_SEL_MASK;
+
+	pr_info("%s.\n", __func__);
 
 	switch (gmac->phy_mode){
 		case PHY_INTERFACE_MODE_RGMII:		
@@ -209,16 +188,20 @@ static int tcc_gmac_init(struct platform_device *pdev, void *priv)
 	sw_config |= (1<<31);
 	tcc_hsio_write_reg(gmac, GMAC_SW_CONFIG_REG, sw_config);
 
+	tcc_dwmac_clk_enable(gmac);
+	tcc_dwmac_tuning_timing(gmac);
+	tcc_dwmac_phy_reset(gmac);
 
 	return 0;
 }
 
-static struct tcc_gmac *tcc_config_dt(struct platform_device *pdev)
+static struct tcc_dwmac *tcc_config_dt(struct platform_device *pdev)
 {
 	int phy_mode;
 	volatile struct resource *res;
 	void __iomem *hsio_block;
-	struct tcc_gmac *gmac;
+	struct tcc_dwmac *gmac;
+	int ret;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	hsio_block = devm_ioremap_resource(&pdev->dev, res);
@@ -256,6 +239,16 @@ static struct tcc_gmac *tcc_config_dt(struct platform_device *pdev)
 		pr_err("[ERROR][GMAC] Unsupported phy interface: %d\n",
 				phy_mode);
 		return ERR_PTR(-ENOTSUPP);
+	}
+
+	ret = of_get_named_gpio(pdev->dev.of_node, "phyrst-gpio", 0);
+	if (ret < 0){
+		gmac->phy_rst = 0; 
+		pr_err("[ERROR][GMAC] phy reset gpio not found\n");
+	}
+	else {
+		gmac->phy_rst = ret;
+		gpio_request(gmac->phy_rst, "PHY_RST");
 	}
 
 	of_property_read_u32(pdev->dev.of_node, "txclk-o-dly", &gmac->txclk_o_dly);
@@ -310,10 +303,11 @@ static struct tcc_gmac *tcc_config_dt(struct platform_device *pdev)
 	return gmac;
 }
 
+
 static int tcc_dwmac_probe(struct platform_device *pdev)
 {
 	int ret;
-	struct tcc_gmac *gmac;
+	struct tcc_dwmac *gmac;
 	struct plat_stmmacenet_data *plat_dat;
 	struct stmmac_resources stmmac_res;
 
@@ -327,18 +321,20 @@ static int tcc_dwmac_probe(struct platform_device *pdev)
 	if (IS_ERR(gmac))
 		return PTR_ERR(gmac);
 
+	gmac->gmac_block = stmmac_res.addr;
+	
+	tcc_dwmac_init(pdev, gmac);
+
 	plat_dat = stmmac_probe_config_dt(pdev, &stmmac_res.mac);
 	if (IS_ERR(plat_dat))
 		return PTR_ERR(plat_dat);
 
-	plat_dat->init = tcc_gmac_init;
-
-	tcc_gmac_init(pdev, gmac);
-	tcc_gmac_clk_enable(gmac);
-	tcc_gmac_tuning_timing(&stmmac_res, gmac);
-
+	plat_dat->init = tcc_dwmac_init;
 	plat_dat->bsp_priv = gmac;
 
+	// TBD:
+	// set Clause 45 register
+	
 	ret = stmmac_dvr_probe(&pdev->dev, plat_dat, &stmmac_res);
 	if (ret) {
 		stmmac_remove_config_dt(pdev, plat_dat);
@@ -365,6 +361,6 @@ static struct platform_driver tcc_dwmac_driver = {
 };
 module_platform_driver(tcc_dwmac_driver);
 
-MODULE_DESCRIPTION("Adaptrum Anarion DWMAC specific glue layer");
-MODULE_AUTHOR("Alexandru Gagniuc <mr.nuke.me@gmail.com>");
+MODULE_AUTHOR("Telechips <linux@telechips.com>");
+MODULE_DESCRIPTION("Telechips 10/100/1000 Ethernet Driver\n");
 MODULE_LICENSE("GPL v2");

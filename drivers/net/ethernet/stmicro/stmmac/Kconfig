@@ -40,6 +40,7 @@ config DWMAC_DWC_QOS_ETH
 config DWMAC_GENERIC
 	tristate "Generic driver for DWMAC"
 	default STMMAC_PLATFORM
+	depends on !DWMAC_TCC
 	---help---
 	  Generic DWMAC driver for platforms that don't require any
 	  platform specific code to function or is using platform
@@ -166,21 +167,34 @@ config DWMAC_SUN8I
 	  stmmac device driver. This driver is used for H3/A83T/A64
 	  EMAC ethernet controller.
 
-config TCC_DWMAC_510A
+config DWMAC_TCC
+	tristate "Telechips dwmac support"
+	default y
+	depends on OF 
+	select MFD_SYSCON
+	---help---
+	  Telechips dwmac support
+
+if DWMAC_TCC
+
+config DWMAC_TCC_510A
 	tristate "Telechips GMAC 5.10a support"
-	default ARCH_TCC805X
+	default y
 	depends on OF && ARCH_TCC805X
 	select MFD_SYSCON
 	---help---
 	  Support for Telechips GMAC 5.1a support 
 
-config TCC_DWMAC_373A
+config DWMAC_TCC_373A
 	tristate "Telechips GMAC 3.73a support"
-	default ARCH_TCC803X
-	depends on OF && ARCH_TCC803X && !TCC_GMAC
+	default n
+	depends on OF && !TCC_GMAC
 	select MFD_SYSCON
 	---help---
 	  Support for Telechips GMAC 3.73a support 
+	  3.73a driver cannot be enabled with the tcc legacy gmac driver
+	  at the same time.
+endif
 
 endif
 

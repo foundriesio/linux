@@ -26,11 +26,7 @@
 #define __STMMAC_H__
 
 
-#if defined(CONFIG_TCC_DWMAC_510A) || defined(CONFIG_TCC_DWMAC_373A)
-#define STMMAC_RESOURCE_NAME   "hsio-clk"
-#else
 #define STMMAC_RESOURCE_NAME	"stmmaceth"
-#endif
 #define DRV_MODULE_VERSION	"Jan_2016"
 
 #include <linux/clk.h>
@@ -40,10 +36,7 @@
 #include "common.h"
 #include <linux/ptp_clock_kernel.h>
 #include <linux/reset.h>
-
-#if defined(CONFIG_TCC_DWMAC_510A)
-#include "dwmac-tcc.h"
-#endif
+#include "dwmac-tcc-v2.h"
 
 struct stmmac_resources {
 	void __iomem *addr;
@@ -161,9 +154,6 @@ struct stmmac_priv {
 	struct dentry *dbgfs_dma_cap;
 #endif
 
-#if defined(CONFIG_TCC_DWMAC_510A)
-	struct gmac_dt_info_t dt_info;
-#endif
 	struct miscdevice *misc;
 };
 

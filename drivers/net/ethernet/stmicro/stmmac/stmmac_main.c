@@ -58,9 +58,6 @@
 #include "dwmac1000.h"
 #include <linux/miscdevice.h>
 
-#if defined(CONFIG_TCC_DWMAC_510A)
-#include "dwmac-tcc.h"
-#endif
 #include "dwmac4_dma.h"
 #define	STMMAC_ALIGN(x)		ALIGN(ALIGN(x, SMP_CACHE_BYTES), 16)
 #define	TSO_MAX_BUFF_SIZE	(SZ_16K - 1)
@@ -710,6 +707,8 @@ static int stmmac_hwtstamp_ioctl(struct net_device *dev, struct ifreq *ifr)
 	}
 	priv->hwts_rx_en = ((config.rx_filter == HWTSTAMP_FILTER_NONE) ? 0 : 1);
 	priv->hwts_tx_en = config.tx_type == HWTSTAMP_TX_ON;
+
+	netdev_dbg(priv->dev, "%s. ptp_rate: %d\n", __func__, priv->plat->clk_ptp_rate);
 
 	if (!priv->hwts_tx_en && !priv->hwts_rx_en)
 		priv->hw->ptp->config_hw_tstamping(priv->ptpaddr, 0);
@@ -2603,6 +2602,8 @@ static int stmmac_open(struct net_device *dev)
 	if (priv->hw->pcs != STMMAC_PCS_RGMII &&
 	    priv->hw->pcs != STMMAC_PCS_TBI &&
 	    priv->hw->pcs != STMMAC_PCS_RTBI) {
+
+#if 1
 		ret = stmmac_init_phy(dev);
 		if (ret) {
 			netdev_err(priv->dev,
@@ -2610,6 +2611,7 @@ static int stmmac_open(struct net_device *dev)
 				   __func__, ret);
 			return ret;
 		}
+#endif
 	}
 
 	/* Extra statistics */
@@ -4164,7 +4166,7 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 	if (!mac)
 		return -ENOMEM;
 
-#if defined(CONFIG_TCC_DWMAC_510A)
+#if defined(CONFIG_DWMAC_TCC_510A)
 	if ((unsigned)(priv->synopsys_id) != 0x51){
 		printk("%s.[WARN] Exit gmac probe due to version mismatch\n",
 				__func__);
@@ -4173,7 +4175,7 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 				priv->synopsys_id);
 		return -ENODEV;
 	}
-#elif defined(CONFIG_TCC_DWMAC_373A)
+#elif defined(CONFIG_DWMAC_TCC_373A)
 	if ((unsigned)(priv->synopsys_id) != 0x37){
 		printk("%s.[WARN] Exit gmac probe due to version mismatch\n",
 				__func__);
@@ -4305,13 +4307,7 @@ int stmmac_dvr_probe(struct device *device,
 	priv->dev->base_addr = (unsigned long)res->addr;
 
 	printk("%s. \n", __func__);
-#if defined(CONFIG_TCC_DWMAC_510A)
-	// TCC specific function.
-	dwmac_tcc_init(np, &priv->dt_info);
-	pin = devm_pinctrl_get_select(priv->device, "rgmii");
-	dwmac_tcc_clk_enable(plat_dat);
-	dwmac_tcc_portinit(&priv->dt_info, priv->ioaddr);
-	dwmac_tcc_tunning_timing(&priv->dt_info, priv->ioaddr);
+#if 0
 	dwmac_tcc_phy_reset(&priv->dt_info);
 #endif
 
@@ -4621,12 +4617,15 @@ int stmmac_resume(struct device *dev)
 	struct plat_stmmacenet_data *plat_dat = priv->plat;
 	struct pinctrl *pin;
 
+	pr_info("%s.\n", __func__);
+
 	if (!netif_running(ndev))
 		return 0;
 	// else
 		// stmmac_open(ndev);
 
-#if defined(CONFIG_TCC_DWMAC_510A)
+#if 0
+#if defined(CONFIG_DWMAC_TCC_510A)
 	// TCC specific function.
 	dwmac_tcc_init(np, &priv->dt_info);
 	pin = devm_pinctrl_get_select(priv->device, "rgmii");
@@ -4634,6 +4633,7 @@ int stmmac_resume(struct device *dev)
 	dwmac_tcc_portinit(&priv->dt_info, priv->ioaddr);
 	dwmac_tcc_tunning_timing(&priv->dt_info, priv->ioaddr);
 	dwmac_tcc_phy_reset(&priv->dt_info);
+#endif
 #endif
 
 #if 1

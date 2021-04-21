@@ -334,7 +334,7 @@ static int stmmac_dt_phy(struct plat_stmmacenet_data *plat,
 	/* If phy-handle property is passed from DT, use it as the PHY */
 	plat->phy_node = of_parse_phandle(np, "phy-handle", 0);
 	if (plat->phy_node)
-		dev_dbg(dev, "Found phy-handle subnode\n");
+		dev_info(dev, "Found phy-handle subnode\n");
 
 	/* If phy-handle is not specified, check if we have a fixed-phy */
 	if (!plat->phy_node && of_phy_is_fixed_link(np)) {
@@ -396,7 +396,7 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	// dwmac tcc init performs parsing desvice tree and initialize 
 	// private data.
 #if 0
-#if defined(CONFIG_TCC_DWMAC_510A)
+#if defined(CONFIG_DWMAC_TCC_510A)
 	dwmac_tcc_init(np, NULL);
 #endif
 #endif
@@ -531,7 +531,7 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	clk_prepare_enable(plat->stmmac_clk);
 
 
-#if defined(CONFIG_TCC_DWMAC_510A) || defined(CONFIG_TCC_DWMAC_373A)
+#if defined(CONFIG_DWMAC_TCC_510A) || defined(CONFIG_DWMAC_TCC_373A)
 	plat->pclk = devm_clk_get(&pdev->dev, "gmac-pclk");
 #else
 	plat->pclk = devm_clk_get(&pdev->dev, "pclk");
@@ -546,14 +546,14 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	clk_prepare_enable(plat->pclk);
 
 	/* Fall-back to main clock in case of no PTP ref is passed */
-	plat->clk_ptp_ref = devm_clk_get(&pdev->dev, "ptp_ref");
+	plat->clk_ptp_ref = devm_clk_get(&pdev->dev, "ptp-pclk");
 	if (IS_ERR(plat->clk_ptp_ref)) {
 		plat->clk_ptp_rate = clk_get_rate(plat->stmmac_clk);
 		plat->clk_ptp_ref = NULL;
 		dev_warn(&pdev->dev, "PTP uses main clock\n");
 	} else {
 		plat->clk_ptp_rate = clk_get_rate(plat->clk_ptp_ref);
-		dev_dbg(&pdev->dev, "PTP rate %d\n", plat->clk_ptp_rate);
+		dev_info(&pdev->dev, "PTP rate %d\n", plat->clk_ptp_rate);
 	}
 
 	plat->stmmac_rst = devm_reset_control_get(&pdev->dev,

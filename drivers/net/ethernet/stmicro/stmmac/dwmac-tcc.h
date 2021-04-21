@@ -511,6 +511,7 @@ struct gmac_dt_info_t {
 	u32 col_dly;
 };
 
+#if 0
 int dwmac_tcc_init(struct device_node *np, struct gmac_dt_info_t *dt_info);
 // void tca_gmac_clk_enable(struct gmac_dt_info_t *dt_info);
 void dwmac_tcc_clk_enable(struct plat_stmmacenet_data *plat);
@@ -524,5 +525,7 @@ void dwmac_tcc_tunning_timing(struct gmac_dt_info_t *dt_info, void __iomem *ioad
 void dwmac_tcc_portinit(struct gmac_dt_info_t *dt_info, void __iomem *ioaddr);
 void IO_UTIL_ReadECID (unsigned ecid[]);
 int tca_get_mac_addr_from_ecid(unsigned char *mac_addr);
+int tcc_dwmac_init(struct device_node *np, struct gmac_dt_info_t *dt_info);
+#endif
 
 #endif /*_TCA_GMAC_H_*/
