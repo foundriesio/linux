@@ -653,17 +653,17 @@ config TCC_PM_LUT_DRV
 
 config TCC_LUT_3D_DRV
 		boolean "TCC 3D LUT Driver"
-		default n
+		default y
 		depends on (ARCH_TCC805X)
 
 config TCC_LUT_3D_DRV_0
 		boolean "TCC 3D LUT Driver for Display Controller 0"
 		depends on TCC_LUT_3D_DRV
-		default n
+		default y
 config TCC_LUT_3D_DRV_1
 		boolean "TCC 3D LUT Driver for Display Controller 1"
 		depends on TCC_LUT_3D_DRV
-		default n
+		default y
 
 config TCC_MEM
     bool "TCC MEM driver"

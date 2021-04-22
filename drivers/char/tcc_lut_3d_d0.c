@@ -158,7 +158,9 @@ static int lut_3d_drv_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, lut_3d);
 	/* Copy lut to lut_3d_api to support external APIs */
 	lut_3d_api = lut_3d;
-
+	pr_info(
+		"[INF][LUT 3D] %s: :%s, Driver %s Initialized\n",
+			__func__, LUT_VERSION, pdev->name);
 	return 0;
 
 err_misc_register:
