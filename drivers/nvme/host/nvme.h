@@ -165,7 +165,9 @@ struct nvme_ctrl {
 	const struct nvme_ctrl_ops *ops;
 	struct request_queue *admin_q;
 	struct request_queue *connect_q;
+#ifndef __GENKSYMS__
 	struct request_queue *fabrics_q;
+#endif
 	struct device *dev;
 	int instance;
 	int numa_node;
