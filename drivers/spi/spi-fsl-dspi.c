@@ -119,10 +119,6 @@
 #define SPI_FRAME_EBITS(bits)	SPI_CTARE_FMSZE(((bits) - 1) >> 4)
 #define SPI_FRAME_EBITS_MASK	SPI_CTARE_FMSZE(1)
 
-/* Register offsets for regmap_pushr */
-#define PUSHR_CMD		0x0
-#define PUSHR_TX		0x2
-
 #define SPI_CS_INIT		0x01
 #define SPI_CS_ASSERT		0x02
 #define SPI_CS_DROP		0x04
@@ -209,6 +205,13 @@ struct fsl_dspi {
 	struct completion	xfer_done;
 
 	struct fsl_dspi_dma	*dma;
+	/*
+	 * Offsets for CMD and TXDATA within SPI_PUSHR when accessed
+	 * individually (in XSPI mode)
+	 */
+	int					pushr_cmd;
+	int					pushr_tx;
+
 };
 
 static u32 dspi_pop_tx(struct fsl_dspi *dspi)
@@ -573,12 +576,12 @@ static void cmd_fifo_write(struct fsl_dspi *dspi)
 
 	if (dspi->len > 0)
 		cmd |= SPI_PUSHR_CMD_CONT;
-	regmap_write(dspi->regmap_pushr, PUSHR_CMD, cmd);
+	regmap_write(dspi->regmap_pushr, dspi->pushr_cmd, cmd);
 }
 
 static void tx_fifo_write(struct fsl_dspi *dspi, u16 txdata)
 {
-	regmap_write(dspi->regmap_pushr, PUSHR_TX, txdata);
+	regmap_write(dspi->regmap_pushr, dspi->pushr_tx, txdata);
 }
 
 static void dspi_tcfq_write(struct fsl_dspi *dspi)
@@ -978,6 +981,7 @@ static int dspi_probe(struct platform_device *pdev)
 	void __iomem *base;
 	struct fsl_dspi_platform_data *pdata;
 	int ret = 0, cs_num, bus_num;
+	bool big_endian;
 
 	master = spi_alloc_master(&pdev->dev, sizeof(struct fsl_dspi));
 	if (!master)
@@ -1001,6 +1005,7 @@ static int dspi_probe(struct platform_device *pdev)
 		master->bus_num = pdata->bus_num;
 
 		dspi->devtype_data = &coldfire_data;
+		big_endian = true;
 	} else {
 
 		ret = of_property_read_u32(np, "spi-num-chipselects", &cs_num);
@@ -1023,6 +1028,15 @@ static int dspi_probe(struct platform_device *pdev)
 			ret = -EFAULT;
 			goto out_master_put;
 		}
+
+		big_endian = of_device_is_big_endian(np);
+	}
+	if (big_endian) {
+		dspi->pushr_cmd = 0;
+		dspi->pushr_tx = 2;
+	} else {
+		dspi->pushr_cmd = 2;
+		dspi->pushr_tx = 0;
 	}
 
 	if (dspi->devtype_data->xspi_mode)
