@@ -2384,10 +2384,11 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		status = "disabled";
+		ranges = <0 0 0x11B00000 0xCFFF>;
 
 		dwc3 {
 			compatible = "snps,dwc3";
-			reg = <0x11B00000 0xCFFF>;
+			reg = <0 0xCFFF>;
 			interrupts = <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH>;
 			telechips,dwc3_phy = <&dwc3_phy>;
 		};
