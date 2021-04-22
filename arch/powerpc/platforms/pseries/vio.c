@@ -26,7 +26,9 @@
 #include <linux/mm.h>
 #include <linux/dma-mapping.h>
 #include <linux/kobject.h>
+#ifndef __GENKSYMS__
 #include <linux/kexec.h>
+#endif
 
 #include <asm/iommu.h>
 #include <asm/dma.h>
@@ -1292,9 +1294,7 @@ static void vio_bus_shutdown(struct device *dev)
 
 	if (dev->driver) {
 		viodrv = to_vio_driver(dev->driver);
-		if (viodrv->shutdown)
-			viodrv->shutdown(viodev);
-		else if (kexec_in_progress)
+		if (kexec_in_progress)
 			vio_bus_remove(dev);
 	}
 }
