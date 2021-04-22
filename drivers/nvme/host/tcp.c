@@ -1642,6 +1642,7 @@ static void nvme_tcp_destroy_admin_queue(struct nvme_ctrl *ctrl, bool remove)
 	if (remove) {
 		free_opal_dev(ctrl->opal_dev);
 		blk_cleanup_queue(ctrl->admin_q);
+		blk_cleanup_queue(ctrl->fabrics_q);
 		blk_mq_free_tag_set(ctrl->admin_tagset);
 	}
 	nvme_tcp_free_admin_queue(ctrl);
@@ -1662,10 +1663,16 @@ static int nvme_tcp_configure_admin_queue(struct nvme_ctrl *ctrl, bool new)
 			goto out_free_queue;
 		}
 
+		ctrl->fabrics_q = blk_mq_init_queue(ctrl->admin_tagset);
+		if (IS_ERR(ctrl->fabrics_q)) {
+			error = PTR_ERR(ctrl->fabrics_q);
+			goto out_free_tagset;
+		}
+
 		ctrl->admin_q = blk_mq_init_queue(ctrl->admin_tagset);
 		if (IS_ERR(ctrl->admin_q)) {
 			error = PTR_ERR(ctrl->admin_q);
-			goto out_free_tagset;
+			goto out_cleanup_fabrics_q;
 		}
 	}
 
@@ -1686,6 +1693,8 @@ static int nvme_tcp_configure_admin_queue(struct nvme_ctrl *ctrl, bool new)
 	if (error)
 		goto out_stop_queue;
 
+	blk_mq_unquiesce_queue(ctrl->admin_q);
+
 	error = nvme_init_identify(ctrl);
 	if (error)
 		goto out_stop_queue;
@@ -1697,6 +1706,9 @@ out_stop_queue:
 out_cleanup_queue:
 	if (new)
 		blk_cleanup_queue(ctrl->admin_q);
+out_cleanup_fabrics_q:
+	if (new)
+		blk_cleanup_queue(ctrl->fabrics_q);
 out_free_tagset:
 	if (new)
 		blk_mq_free_tag_set(ctrl->admin_tagset);
@@ -1715,7 +1727,8 @@ static void nvme_tcp_teardown_admin_queue(struct nvme_ctrl *ctrl,
 			nvme_cancel_request, ctrl);
 		blk_mq_tagset_wait_completed_request(ctrl->admin_tagset);
 	}
-	blk_mq_unquiesce_queue(ctrl->admin_q);
+	if (remove)
+		blk_mq_unquiesce_queue(ctrl->admin_q);
 	nvme_tcp_destroy_admin_queue(ctrl, remove);
 }
 
@@ -1842,6 +1855,7 @@ static void nvme_tcp_error_recovery_work(struct work_struct *work)
 	/* unquiesce to fail fast pending requests */
 	nvme_start_queues(ctrl);
 	nvme_tcp_teardown_admin_queue(ctrl, false);
+	blk_mq_unquiesce_queue(ctrl->admin_q);
 
 	if (!nvme_change_ctrl_state(ctrl, NVME_CTRL_CONNECTING)) {
 		/* state change failure is ok if we're in DELETING state */
@@ -1855,6 +1869,7 @@ static void nvme_tcp_error_recovery_work(struct work_struct *work)
 static void nvme_tcp_teardown_ctrl(struct nvme_ctrl *ctrl, bool shutdown)
 {
 	nvme_tcp_teardown_io_queues(ctrl, shutdown);
+	blk_mq_quiesce_queue(ctrl->admin_q);
 	if (shutdown)
 		nvme_shutdown_ctrl(ctrl);
 	else
