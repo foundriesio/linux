@@ -577,9 +577,11 @@ blk_status_t nvmf_fail_nonready_command(struct nvme_ctrl *ctrl,
 {
 	if (ctrl->state != NVME_CTRL_DELETING &&
 	    ctrl->state != NVME_CTRL_DEAD &&
-	    !test_bit(NVME_CTRL_FAILFAST_EXPIRED, &ctrl->flags) &&
 	    !blk_noretry_request(rq) && !(rq->cmd_flags & REQ_NVME_MPATH))
-		return BLK_STS_RESOURCE;
+#ifndef __GENKSYMS__
+		    if (!test_bit(NVME_CTRL_FAILFAST_EXPIRED, &ctrl->flags))
+#endif
+			return BLK_STS_RESOURCE;
 
 	nvme_req(rq)->status = NVME_SC_HOST_PATH_ERROR;
 	blk_mq_start_request(rq);
@@ -641,7 +643,9 @@ static const match_table_t opt_tokens = {
 	{ NVMF_OPT_DISABLE_SQFLOW,	"disable_sqflow"	},
 	{ NVMF_OPT_HDR_DIGEST,		"hdr_digest"		},
 	{ NVMF_OPT_DATA_DIGEST,		"data_digest"		},
+#ifndef __GENKSYMS__
 	{ NVMF_OPT_FAIL_FAST_TMO,	"fast_io_fail_tmo=%d"   },
+#endif
 	{ NVMF_OPT_ERR,			NULL			}
 };
 
@@ -661,7 +665,9 @@ static int nvmf_parse_options(struct nvmf_ctrl_options *opts,
 	opts->reconnect_delay = NVMF_DEF_RECONNECT_DELAY;
 	opts->kato = NVME_DEFAULT_KATO;
 	opts->duplicate_connect = false;
+#ifndef __GENKSYMS__
 	opts->fast_io_fail_tmo = NVMF_DEF_FAIL_FAST_TMO;
+#endif
 	opts->hdr_digest = false;
 	opts->data_digest = false;
 
@@ -788,6 +794,7 @@ static int nvmf_parse_options(struct nvmf_ctrl_options *opts,
 				pr_warn("ctrl_loss_tmo < 0 will reconnect forever\n");
 			ctrl_loss_tmo = token;
 			break;
+#ifndef __GENKSYMS__
 		case NVMF_OPT_FAIL_FAST_TMO:
 			if (match_int(args, &token)) {
 				ret = -EINVAL;
@@ -799,6 +806,7 @@ static int nvmf_parse_options(struct nvmf_ctrl_options *opts,
 					token);
 			opts->fast_io_fail_tmo = token;
 			break;
+#endif
 		case NVMF_OPT_HOSTNQN:
 			if (opts->host) {
 				pr_err("hostnqn already user-assigned: %s\n",
@@ -893,9 +901,11 @@ static int nvmf_parse_options(struct nvmf_ctrl_options *opts,
 	} else {
 		opts->max_reconnects = DIV_ROUND_UP(ctrl_loss_tmo,
 						opts->reconnect_delay);
+#ifndef __GENKSYMS__
 		if (ctrl_loss_tmo < opts->fast_io_fail_tmo)
 			pr_warn("failfast tmo (%d) larger than controller loss tmo (%d)\n",
 				opts->fast_io_fail_tmo, ctrl_loss_tmo);
+#endif
 	}
 
 	if (!opts->host) {
@@ -993,11 +1003,18 @@ void nvmf_free_options(struct nvmf_ctrl_options *opts)
 EXPORT_SYMBOL_GPL(nvmf_free_options);
 
 #define NVMF_REQUIRED_OPTS	(NVMF_OPT_TRANSPORT | NVMF_OPT_NQN)
+#ifndef __GENKSYMS__
 #define NVMF_ALLOWED_OPTS	(NVMF_OPT_QUEUE_SIZE | NVMF_OPT_NR_IO_QUEUES | \
 				 NVMF_OPT_KATO | NVMF_OPT_HOSTNQN | \
 				 NVMF_OPT_HOST_ID | NVMF_OPT_DUP_CONNECT |\
 				 NVMF_OPT_DISABLE_SQFLOW |\
 				 NVMF_OPT_FAIL_FAST_TMO)
+#else
+#define NVMF_ALLOWED_OPTS	(NVMF_OPT_QUEUE_SIZE | NVMF_OPT_NR_IO_QUEUES | \
+				 NVMF_OPT_KATO | NVMF_OPT_HOSTNQN | \
+				 NVMF_OPT_HOST_ID | NVMF_OPT_DUP_CONNECT |\
+				 NVMF_OPT_DISABLE_SQFLOW)
+#endif
 
 static struct nvme_ctrl *
 nvmf_create_ctrl(struct device *dev, const char *buf, size_t count)
