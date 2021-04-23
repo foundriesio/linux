@@ -2,15 +2,39 @@
 /*
  * Copyright (C) Telechips Inc.
  */
+#include <linux/mailbox/mailbox-tcc.h>
 
 #ifndef TCC_SC_PROTOCOL
 #define TCC_SC_PROTOCOL
+
 
 #define TCC_SC_MMC_DATA_READ		(1)
 #define TCC_SC_MMC_DATA_WRITE		(2)
 #define TCC_SC_FW_INFO_DESC_SIZE	(16) /* in byte */
 
 struct tcc_sc_fw_handle;
+
+struct tcc_sc_fw_xfer {
+	struct tcc_sc_mbox_msg tx_mssg;
+	u32 tx_cmd_buf_len;
+	u32 tx_data_buf_len;
+	struct tcc_sc_mbox_msg rx_mssg;
+	u32 rx_cmd_buf_len;
+	u32 rx_data_buf_len;
+
+	struct list_head node;
+	spinlock_t lock;
+
+	u8	status;
+#define TCC_SC_FW_XFER_STAT_IDLE	(0x0)
+#define TCC_SC_FW_XFER_STAT_TX_PEND	(0x1)
+#define TCC_SC_FW_XFER_STAT_TX_START	(0x2)
+#define TCC_SC_FW_XFER_STAT_RX_PEND	(0x3)
+#define TCC_SC_FW_XFER_STAT_HALT	(0x4)
+
+	void (*complete)(void *args, void *msg);
+	void *args;
+};
 
 struct tcc_sc_fw_prot_mmc {
 	u32 max_segs;

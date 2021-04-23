@@ -55,28 +55,6 @@ struct tcc_sc_fw_cmd {
 	u32 args[6];
 };
 
-struct tcc_sc_fw_xfer {
-	struct tcc_sc_mbox_msg tx_mssg;
-	u32 tx_cmd_buf_len;
-	u32 tx_data_buf_len;
-	struct tcc_sc_mbox_msg rx_mssg;
-	u32 rx_cmd_buf_len;
-	u32 rx_data_buf_len;
-
-	struct list_head node;
-	spinlock_t lock;
-
-	u8	status;
-#define TCC_SC_FW_XFER_STAT_IDLE	(0x0)
-#define TCC_SC_FW_XFER_STAT_TX_PEND	(0x1)
-#define TCC_SC_FW_XFER_STAT_TX_START	(0x2)
-#define TCC_SC_FW_XFER_STAT_RX_PEND	(0x3)
-#define TCC_SC_FW_XFER_STAT_HALT	(0x4)
-
-	void (*complete)(void *args, void *msg);
-	void *args;
-};
-
 struct tcc_sc_fw_sync_ctx {
 	struct tcc_sc_fw_xfer *xfer;
 	struct tcc_sc_fw_cmd *response;
@@ -141,6 +119,32 @@ static struct tcc_sc_fw_info *handle_to_tcc_sc_fw_info
 	return (struct tcc_sc_fw_info *)handle->priv;
 }
 
+static void tcc_sc_fw_set_xfer_status(struct tcc_sc_fw_xfer *xfer, u8 status)
+{
+	unsigned long flags;
+
+	if(xfer != NULL) {
+		spin_lock_irqsave(&xfer->lock, flags);
+		xfer->status = status;
+		trace_tcc_sc_fw_xfer_status(xfer);
+		spin_unlock_irqrestore(&xfer->lock, flags);
+	}
+}
+
+static u8 tcc_sc_fw_get_xfer_status(struct tcc_sc_fw_xfer *xfer)
+{
+	unsigned long flags;
+	u8 status = 0;
+
+	if(xfer != NULL) {
+		spin_lock_irqsave(&xfer->lock, flags);
+		status = xfer->status;
+		spin_unlock_irqrestore(&xfer->lock, flags);
+	}
+
+	return status;
+}
+
 static struct tcc_sc_fw_xfer *get_tcc_sc_fw_xfer(struct tcc_sc_fw_info *info)
 {
 	struct tcc_sc_fw_xfer *xfer;
@@ -169,9 +173,7 @@ static void put_tcc_sc_fw_xfer(struct tcc_sc_fw_xfer *xfer,
 {
 	unsigned long flags;
 
-	spin_lock_irqsave(&xfer->lock, flags);
-	xfer->status = TCC_SC_FW_XFER_STAT_IDLE;
-	spin_unlock_irqrestore(&xfer->lock, flags);
+	tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_IDLE);
 
 	spin_lock_irqsave(&info->xfers_lock, flags);
 	list_add_tail(&xfer->node, &info->xfers_list);
@@ -203,18 +205,16 @@ static void tcc_sc_fw_halt_xfer(struct tcc_sc_fw_info *info,
 	struct tcc_sc_fw_xfer *list;
 	u8 status;
 
-	spin_lock_irqsave(&xfer->lock, flags);
-	if(xfer->status == TCC_SC_FW_XFER_STAT_TX_PEND) {
-		xfer->status = TCC_SC_FW_XFER_STAT_HALT;
-		spin_unlock_irqrestore(&xfer->lock, flags);
+	status = tcc_sc_fw_get_xfer_status(xfer);
+
+	if(status == TCC_SC_FW_XFER_STAT_TX_PEND) {
+		tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_HALT);
 
 		dev_err(info->dev, "[ERROR][TCC_SC_FW] Halt tx pending xfer(%p)\n",
 			xfer);
-	} else if((xfer->status == TCC_SC_FW_XFER_STAT_TX_START) ||
-		(xfer->status == TCC_SC_FW_XFER_STAT_RX_PEND)){
-		status = xfer->status;
-		xfer->status = TCC_SC_FW_XFER_STAT_HALT;
-		spin_unlock_irqrestore(&xfer->lock, flags);
+	} else if((status == TCC_SC_FW_XFER_STAT_TX_START) ||
+		(status == TCC_SC_FW_XFER_STAT_RX_PEND)){
+		tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_HALT);
 
 		spin_lock_irqsave(&info->rx_lock, flags);
 		if (!list_empty(&info->rx_pending)) {
@@ -227,12 +227,12 @@ static void tcc_sc_fw_halt_xfer(struct tcc_sc_fw_info *info,
 
 					if(status == TCC_SC_FW_XFER_STAT_RX_PEND) {
 						dev_err(info->dev,
-							"[ERROR][TCC_SC_FW] Remove xfer(%p) from rx_pending list, put to pool\n",
+							"[ERROR][TCC_SC_FW] Halt xfer, remove xfer(%p) from rx_pending list, put to pool\n",
 							xfer);
 						put_tcc_sc_fw_xfer(xfer, info);
 					} else {
 						dev_err(info->dev,
-							"[ERROR][TCC_SC_FW] Remove xfer(%p) from rx_pending list\n",
+							"[ERROR][TCC_SC_FW] Halt xfer, remove xfer(%p) from rx_pending list\n",
 							xfer);
 					}
 					break;
@@ -242,8 +242,6 @@ static void tcc_sc_fw_halt_xfer(struct tcc_sc_fw_info *info,
 		spin_unlock_irqrestore(&info->rx_lock, flags);
 
 	} else {
-		spin_unlock_irqrestore(&xfer->lock, flags);
-
 		dev_warn(info->dev, "[WARN][TCC_SC_FW] Wrong xfer(%p) status 0x%x (%s)\n",
 			xfer, xfer->status, __func__);
 		tcc_sc_fw_print_command(info,
@@ -257,8 +255,9 @@ static s32 tcc_sc_fw_xfer_async(struct tcc_sc_fw_info *info,
 	s32 ret;
 	struct device *dev = info->dev;
 	unsigned long flags;
+	u8 status;
 
-	trace_tcc_sc_fw_start_xfer(&xfer->tx_mssg);
+	trace_tcc_sc_fw_start_xfer(xfer);
 
 	spin_lock_irqsave(&info->lock, flags);
 	if(info->uid >= 0xFFFF)
@@ -271,13 +270,12 @@ static s32 tcc_sc_fw_xfer_async(struct tcc_sc_fw_info *info,
 	xfer->tx_mssg.cmd[0] |= ((info->uid & 0xFFFF) << 16);
 	xfer->tx_mssg.flags = 0;
 
-	spin_lock_irqsave(&xfer->lock, flags);
-	if(xfer->status != TCC_SC_FW_XFER_STAT_IDLE) {
+	status = tcc_sc_fw_get_xfer_status(xfer);
+	if(status != TCC_SC_FW_XFER_STAT_IDLE) {
 		dev_warn(info->dev, "[WARN][TCC_SC_FW] Wrong xfer(%p) status 0x%x (%s)\n",
 			xfer, xfer->status, __func__);
 	}
-	xfer->status = TCC_SC_FW_XFER_STAT_TX_PEND;
-	spin_unlock_irqrestore(&xfer->lock, flags);
+	tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_TX_PEND);
 
 	ret = mbox_send_message(info->chan, &xfer->tx_mssg);
 	if (ret < 0) {
@@ -346,18 +344,16 @@ static void tcc_sc_fw_tx_prepare(struct mbox_client *cl, void *msg)
 	struct tcc_sc_mbox_msg *tx_mbox_msg = msg;
 	struct tcc_sc_fw_info *info = cl_to_tcc_sc_fw_info(cl);
 	struct tcc_sc_fw_xfer *xfer = msg_to_tcc_sc_fw_xfer(tx_mbox_msg);
+	u8 status;
 
-	spin_lock_irqsave(&xfer->lock, flags);
-	if(xfer->status == TCC_SC_FW_XFER_STAT_HALT) {
-		spin_unlock_irqrestore(&xfer->lock, flags);
-
+	status = tcc_sc_fw_get_xfer_status(xfer);
+	if(status == TCC_SC_FW_XFER_STAT_HALT) {
 		xfer->tx_mssg.flags = TCC_SC_MBOX_FLAG_SKIP_XFER;
 		dev_warn(info->dev,
 			"[WARN][TCC_SC_FW] xfer(%p) is halted. Skip transfer message\n",
 			xfer);
 	} else if(xfer->status == TCC_SC_FW_XFER_STAT_TX_PEND) {
-		xfer->status = TCC_SC_FW_XFER_STAT_TX_START;
-		spin_unlock_irqrestore(&xfer->lock, flags);
+		tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_TX_START);
 
 		spin_lock_irqsave(&info->rx_lock, flags);
 		list_add_tail(&xfer->node, &info->rx_pending);
@@ -369,25 +365,21 @@ static void tcc_sc_fw_tx_prepare(struct mbox_client *cl, void *msg)
 
 static void tcc_sc_fw_tx_done(struct mbox_client *cl, void *msg, int r)
 {
-	unsigned long flags;
 	struct tcc_sc_mbox_msg *tx_mbox_msg = msg;
 	struct tcc_sc_fw_info *info = cl_to_tcc_sc_fw_info(cl);
 	struct tcc_sc_fw_xfer *xfer = msg_to_tcc_sc_fw_xfer(tx_mbox_msg);
+	u8 status;
 
-	spin_lock_irqsave(&xfer->lock, flags);
-	if(xfer->status == TCC_SC_FW_XFER_STAT_HALT) {
-		spin_unlock_irqrestore(&xfer->lock, flags);
+	status = tcc_sc_fw_get_xfer_status(xfer);
 
+	if(status == TCC_SC_FW_XFER_STAT_HALT) {
 		dev_warn(info->dev,
 			"[WARN][TCC_SC_FW] put halted xfer(%p) to pool (%d)\n",
 			xfer, r);
 
 		put_tcc_sc_fw_xfer(xfer, info);
 	} else if(xfer->status == TCC_SC_FW_XFER_STAT_TX_START){
-		xfer->status = TCC_SC_FW_XFER_STAT_RX_PEND;
-		spin_unlock_irqrestore(&xfer->lock, flags);
-	} else {
-		spin_unlock_irqrestore(&xfer->lock, flags);
+		tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_RX_PEND);
 	}
 }
 
@@ -400,8 +392,6 @@ static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 	struct tcc_sc_mbox_msg *mbox_msg = mssg;
 	struct tcc_sc_mbox_msg *rx_mbox_msg;
 	unsigned long flags;
-
-	trace_tcc_sc_fw_rx_complete(mbox_msg);
 
 	match = NULL;
 
@@ -453,10 +443,11 @@ static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 
 		put_tcc_sc_fw_xfer(xfer, info);
 
-		trace_tcc_sc_fw_done_xfer(rx_mbox_msg);
+		trace_tcc_sc_fw_done_xfer(xfer);
 
 		dev_dbg(dev, "[DEBUG][TCC_SC_FW] Complete command rx\n");
 	}else {
+		trace_tcc_sc_fw_rx_invalid_message(mbox_msg);
 		dev_err(dev, "[ERROR][TCC_SC_FW] Invalid response\n");
 	}
 
@@ -571,6 +562,9 @@ static s32 tcc_sc_fw_cmd_get_mmc_prot_info(
 	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
 	xfer->tx_mssg.cmd_len = (u32)sizeof(struct tcc_sc_fw_cmd) /
 	    (u32)sizeof(u32);
+
+	xfer->tx_mssg.data_len = 0;
+
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
 	ret = tcc_sc_fw_xfer_sync(info, xfer, &res_cmd);
@@ -673,6 +667,9 @@ static s32 tcc_sc_fw_cmd_get_revision(struct tcc_sc_fw_info *info)
 	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
 	xfer->tx_mssg.cmd_len = (u32)sizeof(struct tcc_sc_fw_cmd)
 	    / (u32)sizeof(u32);
+
+	xfer->tx_mssg.data_len = 0;
+
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
 	ret = tcc_sc_fw_xfer_sync(info, xfer, &res_cmd);
@@ -731,6 +728,9 @@ static s32 tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
 	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
 	xfer->tx_mssg.cmd_len = (u32)sizeof(struct tcc_sc_fw_cmd)
 	    / (u32)sizeof(u32);
+
+	xfer->tx_mssg.data_len = 0;
+
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
 	ret = tcc_sc_fw_xfer_sync(info, xfer, &res_cmd);
@@ -788,6 +788,9 @@ static s32 tcc_sc_fw_cmd_request_gpio_no_res_cmd(const struct tcc_sc_fw_handle *
 	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
 	xfer->tx_mssg.cmd_len = (u32)sizeof(struct tcc_sc_fw_cmd)
 	    / (u32)sizeof(u32);
+
+	xfer->tx_mssg.data_len = 0;
+
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
 	ret = tcc_sc_fw_xfer_async(info, xfer);
@@ -830,6 +833,9 @@ static s32 tcc_sc_fw_cmd_get_otp_cmd (const struct tcc_sc_fw_handle *handle,
 	memcpy(xfer->tx_mssg.cmd, &req_cmd, sizeof(struct tcc_sc_fw_cmd));
 	xfer->tx_mssg.cmd_len = (u32)sizeof(struct tcc_sc_fw_cmd)
 	    / (u32)sizeof(u32);
+
+	xfer->tx_mssg.data_len = 0;
+
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
 	ret = tcc_sc_fw_xfer_sync(info, xfer, &res_cmd);

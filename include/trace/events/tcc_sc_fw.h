@@ -120,69 +120,121 @@ TRACE_EVENT(tcc_sc_fw_done_mmc_req,
 
 TRACE_EVENT(tcc_sc_fw_start_xfer,
 
-	TP_PROTO(struct tcc_sc_mbox_msg *msg),
+	TP_PROTO(struct tcc_sc_fw_xfer *xfer),
 
-	TP_ARGS(msg),
+	TP_ARGS(xfer),
 
 	TP_STRUCT__entry(
+		__field(struct tcc_sc_fw_xfer *,	xfer)
 		__field(u32,			cmd_len)
 		__field(u32,			data_len)
-		__field(struct tcc_sc_mbox_msg *,	msg)
+		__field(u32,			cmd0)
+		__field(u32,			cmd1)
 	),
 
 	TP_fast_assign(
-		__entry->cmd_len = msg ? msg->cmd_len : 0;
-		__entry->data_len = msg ? msg->data_len : 0;
-		__entry->msg = msg;
+		__entry->xfer = xfer;
+		__entry->cmd_len = xfer ? xfer->tx_mssg.cmd_len : 0;
+		__entry->data_len = xfer ? xfer->tx_mssg.data_len : 0;
+		__entry->cmd0 = xfer ? xfer->tx_mssg.cmd[0] : 0;
+		__entry->cmd1 = xfer ? xfer->tx_mssg.cmd[1] : 0;
 	),
 
-	TP_printk("start struct tcc_sc_mbox_msg[%p]: cmd_len %u data_len %u",
-		  __entry->msg, __entry->cmd_len,  __entry->data_len)
+	TP_printk("start xfer[%p]: cmd_len %u data_len %u cmd[0] 0x%08x cmd[1] 0x%08x",
+		  __entry->xfer, __entry->cmd_len,  __entry->data_len,
+		  __entry->cmd0, __entry->cmd1)
 );
 
 TRACE_EVENT(tcc_sc_fw_done_xfer,
 
-	TP_PROTO(struct tcc_sc_mbox_msg *msg),
+	TP_PROTO(struct tcc_sc_fw_xfer *xfer),
 
-	TP_ARGS(msg),
+	TP_ARGS(xfer),
 
 	TP_STRUCT__entry(
+		__field(struct tcc_sc_fw_xfer *,	xfer)
 		__field(u32,			cmd_len)
 		__field(u32,			data_len)
-		__field(struct tcc_sc_mbox_msg *,	msg)
+		__field(u32,			cmd0)
+		__field(u32,			cmd1)
 	),
 
 	TP_fast_assign(
-		__entry->cmd_len = msg ? msg->cmd_len : 0;
-		__entry->data_len = msg ? msg->data_len : 0;
-		__entry->msg = msg;
+		__entry->xfer = xfer;
+		__entry->cmd_len = xfer ? xfer->rx_mssg.cmd_len : 0;
+		__entry->data_len = xfer ? xfer->rx_mssg.data_len : 0;
+		__entry->cmd0 = xfer ? xfer->rx_mssg.cmd[0] : 0;
+		__entry->cmd1 = xfer ? xfer->rx_mssg.cmd[1] : 0;
 	),
 
-	TP_printk("done struct tcc_sc_mbox_msg[%p]: cmd_len %u data_len %u",
-		  __entry->msg, __entry->cmd_len,  __entry->data_len)
+	TP_printk("done xfer[%p]: cmd_len %u data_len %u cmd[0] 0x%08x cmd[1] 0x%08x",
+		  __entry->xfer, __entry->cmd_len,  __entry->data_len,
+		  __entry->cmd0, __entry->cmd1)
 );
 
-TRACE_EVENT(tcc_sc_fw_rx_complete,
+TRACE_EVENT(tcc_sc_fw_rx_invalid_message,
 
 	TP_PROTO(struct tcc_sc_mbox_msg *msg),
 
 	TP_ARGS(msg),
 
 	TP_STRUCT__entry(
+		__field(struct tcc_sc_mbox_msg *,	msg)
 		__field(u32,			cmd_len)
 		__field(u32,			data_len)
-		__field(struct tcc_sc_mbox_msg *,	msg)
+		__field(u32,			cmd0)
+		__field(u32,			cmd1)
 	),
 
 	TP_fast_assign(
+		__entry->msg = msg;
 		__entry->cmd_len = msg ? msg->cmd_len : 0;
 		__entry->data_len = msg ? msg->data_len : 0;
-		__entry->msg = msg;
+		__entry->cmd0 = msg ? msg->cmd[0] : 0;
+		__entry->cmd1 = msg ? msg->cmd[1] : 0;
 	),
 
-	TP_printk(
-		"rx_complete struct tcc_sc_mbox_msg[%p]: cmd_len %u data_len %u",
-		  __entry->msg, __entry->cmd_len,  __entry->data_len)
+	TP_printk("invalid rx_msg[%p]: cmd_len %u data_len %u cmd[0] 0x%08x cmd[1] 0x%08x",
+		  __entry->msg, __entry->cmd_len,  __entry->data_len,
+		  __entry->cmd0, __entry->cmd1)
+);
+
+TRACE_EVENT(tcc_sc_fw_xfer_status,
+
+	TP_PROTO(struct tcc_sc_fw_xfer *xfer),
+
+	TP_ARGS(xfer),
+
+	TP_STRUCT__entry(
+		__field(struct tcc_sc_fw_xfer *,	xfer)
+		__field(u32,			status)
+		__field(u32,			tx_cmd_len)
+		__field(u32,			tx_dat_len)
+		__field(u32,			tx_cmd0)
+		__field(u32,			tx_cmd1)
+		__field(u32,			rx_cmd_len)
+		__field(u32,			rx_dat_len)
+		__field(u32,			rx_cmd0)
+		__field(u32,			rx_cmd1)
+	),
+
+	TP_fast_assign(
+		__entry->xfer = xfer;
+		__entry->status = xfer->status;
+		__entry->tx_cmd_len = xfer ? xfer->tx_mssg.cmd_len : 0;
+		__entry->tx_dat_len = xfer ? xfer->tx_mssg.data_len : 0;
+		__entry->tx_cmd0 = xfer ? xfer->tx_mssg.cmd[0] : 0;
+		__entry->tx_cmd1 = xfer ? xfer->tx_mssg.cmd[1] : 0;
+		__entry->rx_cmd_len = xfer ? xfer->rx_mssg.cmd_len : 0;
+		__entry->rx_dat_len = xfer ? xfer->rx_mssg.data_len : 0;
+		__entry->rx_cmd0 = xfer ? xfer->rx_mssg.cmd[0] : 0;
+		__entry->rx_cmd1 = xfer ? xfer->rx_mssg.cmd[1] : 0;
+	),
+
+	TP_printk("Status %u xfer[%p]: TX(%u, %u): cmd[0] 0x%08x cmd[1] 0x%08x RX(%u, %u): cmd[0] 0x%08x cmd[1] 0x%08x",
+		  __entry->status, __entry->xfer,
+		  __entry->tx_cmd_len, __entry->tx_dat_len, __entry->tx_cmd0, __entry->tx_cmd1,
+		  __entry->rx_cmd_len, __entry->rx_dat_len, __entry->rx_cmd0, __entry->rx_cmd1)
 );
 
 #endif /* _TRACE_TCC_SC_FW_H */
