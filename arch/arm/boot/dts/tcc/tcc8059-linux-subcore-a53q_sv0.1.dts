@@ -1653,6 +1653,7 @@
                 status = "okay";
                 compatible = "gpio-backlight";
                 gpios = <&gpma 27 0>;
+		default-on;
 	};
 
         lcd_port3_bl: lcd_port3_bl {};
