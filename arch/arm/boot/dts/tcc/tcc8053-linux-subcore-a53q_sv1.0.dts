@@ -1665,6 +1665,7 @@
 		status = "okay";
 		compatible = "gpio-backlight";
 		gpios = <&gpmb 29 0>;
+		default-on;
 	};
 
 	lcd_port4_bl: lcd_port4_bl {};
