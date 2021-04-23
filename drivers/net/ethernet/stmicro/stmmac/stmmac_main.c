@@ -58,7 +58,7 @@
 #include "dwmac1000.h"
 #include <linux/miscdevice.h>
 
-#include "dwmac4_dma.h"
+// #include "dwmac4_dma.h"
 #define	STMMAC_ALIGN(x)		ALIGN(ALIGN(x, SMP_CACHE_BYTES), 16)
 #define	TSO_MAX_BUFF_SIZE	(SZ_16K - 1)
 

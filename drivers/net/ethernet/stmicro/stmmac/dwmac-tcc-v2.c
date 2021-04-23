@@ -198,7 +198,7 @@ int tcc_dwmac_init(struct platform_device *pdev, void *priv)
 static struct tcc_dwmac *tcc_config_dt(struct platform_device *pdev)
 {
 	int phy_mode;
-	volatile struct resource *res;
+	struct resource *res;
 	void __iomem *hsio_block;
 	struct tcc_dwmac *gmac;
 	int ret;
@@ -321,7 +321,7 @@ static int tcc_dwmac_probe(struct platform_device *pdev)
 	if (IS_ERR(gmac))
 		return PTR_ERR(gmac);
 
-	gmac->gmac_block = stmmac_res.addr;
+	gmac->gmac_block = (uintptr_t)stmmac_res.addr;
 	
 	tcc_dwmac_init(pdev, gmac);
 
