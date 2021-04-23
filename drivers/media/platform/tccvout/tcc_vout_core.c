@@ -1697,7 +1697,7 @@ void vout_onthefly_display_update(struct tcc_vout_device *vout, struct v4l2_buff
 		#endif
 
 		VIOC_SC_SetUpdate(vioc->sc.addr);
-		#ifdef CONFIG_ARCH_TCC803X
+		#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 		tca_map_convter_driver_set(VIOC_MC0, vout->src_pix.width, vout->src_pix.height,
 				vout->crop_src.left, vout->crop_src.top, vout->crop_src.width, vout->crop_src.height,
 				bY2R, &vioc->map_converter.mapConv_info);
@@ -2395,7 +2395,7 @@ void vout_m2m_display_update(struct tcc_vout_device *vout, struct v4l2_buffer *b
 //			vioc->map_converter.mapConv_info.m_FbcYOffsetAddr[1], vioc->map_converter.mapConv_info.m_FbcCOffsetAddr[1]);
 //		dprintk("%s map converter: size: %dx%d pos: (0,0)\n", __func__, vout->src_pix.width, vout->src_pix.height);
 
-		#ifdef CONFIG_ARCH_TCC803X
+		#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 		tca_map_convter_driver_set(VIOC_MC1, vout->src_pix.width, vout->src_pix.height,
 				vout->crop_src.left, vout->crop_src.top, vout->crop_src.width, vout->crop_src.height, ON,
 				&vioc->map_converter.mapConv_info);
