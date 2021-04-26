@@ -355,6 +355,14 @@
 			size = <PMAP_SIZE_CAMERA_PREVIEW7>;
 			// no-map;
 		};
+
+		pmap_tsif: tsif {
+			compatible = "telechips,pmap";
+			telechips,pmap-name = "tsif";
+			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			size = <PMAP_SIZE_TSIF>;
+			no-map;
+		};
 	};
 
 	clocks {
@@ -412,7 +420,7 @@
 				<0>,    /* FBUS_CPU0 */
 				<CLK_IGNORE_UNUSED>,    /* FBUS_CPU1 */
 				<(CLK_SET_RATE_GATE | CLK_IGNORE_UNUSED)>,    /* FBUS_CBUS */
-				<(CLK_SET_RATE_GATE | CLK_IGNORE_UNUSED)>,    /* FBUS_CMBUS */
+				<(CLK_IGNORE_UNUSED)>,				/* FBUS_CMBUS */
 				<(CLK_SET_RATE_GATE | CLK_IGNORE_UNUSED)>,    /* FBUS_HSIO */
 				<(CLK_SET_RATE_GATE | CLK_IGNORE_UNUSED)>,    /* FBUS_SMU */
 				<(CLK_SET_RATE_GATE | CLK_IGNORE_UNUSED)>,   /* FBUS_GPU */
@@ -2032,6 +2040,23 @@
 		timeout-sec = <20>;
 	};
 
+	/* A53 <-> CM4 */
+	sec_ipc: mbox@19002000 {
+		compatible = "telechips,multichannel-mailbox";
+		reg = <0x19002000 0x100>;
+		interrupts = <GIC_SPI 43 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SPI 348 IRQ_TYPE_LEVEL_HIGH>;
+		#mbox-cells = <1>;
+		max-channel = <TCC_CM4_MBOX0_MAX>;
+	};
+
+	sec-ipc-m4 {
+		compatible = "telechips,sec-ipc-m4";
+		mbox-names = "sec-ipc-m4";
+		mboxes = <&sec_ipc TCC_CM4_MBOX1>;
+		mbox-id = TCC_MBOX_CM4_ID;
+	};
+
 	/* A53 <-> HSM core */
 	hsm_mbox: mbox@0x1E110000 {
 		compatible = "telechips,multichannel-mailbox";
@@ -2402,6 +2427,51 @@
 		block-type = <1>; // 0: Stereo 1: 7.1CH
 		adma = <&adma7>;
 		status = "disabled";
+	};
+
+	/*H/W Demux Test*/
+	tcc_hwdemux_test {
+		compatible = "telechips,hwdemux_test";
+	};
+
+	/* H/W Demux */
+	hwdemux: hwdemux@19000000 {
+		compatible = "telechips,hwdemux";
+		reg = <0x19080000 0x10000>,
+		     <0x19100000 0x32>;
+		reg-names = "code_mem", "config";
+		clocks = <&clk_fbus FBUS_CMBUS>;
+		status = "okay";
+	};
+
+	tcc_hwdmx_tsif@0 {
+		compatible = "telechips,tcc89xx-hwdmx-tsif";
+		tsif-id = <0>;
+		tsif-port = <0>;
+		pinctrl-names = "idle", "active";
+		pinctrl-0 = <&ts0_idle>;
+		pinctrl-1 = <&ts0_active>;
+		clocks = <&clk_peri PERI_TSRX0>;
+		clock-names = "tsrx0";
+	};
+
+	tcc_hwdmx_tsif@1 {
+		compatible = "telechips,tcc89xx-hwdmx-tsif";
+		tsif-id = <1>;
+		tsif-port = <1>;
+		pinctrl-names = "idle", "active";
+		pinctrl-0 = <&ts1_idle>;
+		pinctrl-1 = <&ts1_active>;
+		clocks = <&clk_peri PERI_TSRX1>;
+		clock-names = "tsrx1";
+	};
+
+	tcc_isdbt_ctrl {
+		compatible = "telechips,tcc_isdbt_ctrl";
+		pw-gpios = <&gpa 23 0>;
+		dxb0-gpios = <&gpa 22 0>, <&gpa 21 0>, <0>, <0>;
+		dxb1-gpios = <&gpa 31 0>, <&gpa 25 0>, <0>, <0>;
+		ant-gpios = <0>, <0>;
 	};
 
 	/* storage core mmc driver (experimental) */
@@ -3554,6 +3624,31 @@
 	gpsb42_bus: gpsb42_bus {
 		telechips,pins = "gpmd-12", "gpmd-13", "gpmd-15", "gpmd-14";
 		telechips,pin-function = <6>;
+		telechips,input_buffer_enable;
+	};
+
+	ts0_idle: ts0_idle {
+		telechips,pins = "gpc-0", "gpc-2", "gpc-1", "gpc-3";
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+
+	ts0_active: ts0_active {
+		telechips,pins = "gpc-0", "gpc-2", "gpc-1", "gpc-3";
+		telechips,pin-function = <5>;
+		telechips,input-enable;
+	};
+
+	ts1_idle: ts1_idle {
+		telechips,pins = "gpc-4", "gpc-6", "gpc-5", "gpc-7";
+		telechips,pin-function = <0>;
+		telechips,output-low;
+	};
+
+	ts1_active: ts1_active {
+		telechips,pins = "gpc-4", "gpc-6", "gpc-5", "gpc-7";
+		telechips,pin-function = <5>;
+		telechips,input-enable;
 		telechips,input_buffer_enable;
 	};
 

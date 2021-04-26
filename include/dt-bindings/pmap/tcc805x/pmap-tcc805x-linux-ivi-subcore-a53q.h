@@ -7,6 +7,9 @@
 
 #include <dt-bindings/pmap/tcc805x/pmap-tcc805x-linux-ivi-subcore-a53q-display.h>
 
+#define SIZE_TSIF			0x00400000
+#define PMAP_SIZE_TSIF			SIZE_TSIF
+
 #define RESERVED_MEM_BASE		(0x4A800000)
 #define RESERVED_MEM_SIZE		(0x15800000 - \
 					PMAP_SIZE_CAMERAS - \
