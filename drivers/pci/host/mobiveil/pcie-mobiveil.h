@@ -3,8 +3,10 @@
  * PCIe host controller driver for Mobiveil PCIe Host controller
  *
  * Copyright (c) 2018 Mobiveil Inc.
+ * Copyright 2019 NXP
+ *
  * Author: Subrahmanya Lingappa <l.subrahmanya@mobiveil.co.in>
- * Refactor: Zhiqiang Hou <Zhiqiang.Hou@nxp.com>
+ *	   Hou Zhiqiang <Zhiqiang.Hou@nxp.com>
  */
 
 #ifndef _PCIE_MOBIVEIL_H
@@ -51,15 +53,15 @@
 
 #define PAB_INTP_AMBA_MISC_ENB		0x0b0c
 #define PAB_INTP_AMBA_MISC_STAT		0x0b1c
-#define  PAB_INTP_RESET			(0x1 << 1)
-#define  PAB_INTP_MSI			(0x1 << 3)
-#define  PAB_INTP_INTA			(0x1 << 5)
-#define  PAB_INTP_INTB			(0x1 << 6)
-#define  PAB_INTP_INTC			(0x1 << 7)
-#define  PAB_INTP_INTD			(0x1 << 8)
-#define  PAB_INTP_PCIE_UE		(0x1 << 9)
-#define  PAB_INTP_IE_PMREDI		(0x1 << 29)
-#define  PAB_INTP_IE_EC			(0x1 << 30)
+#define  PAB_INTP_RESET			BIT(1)
+#define  PAB_INTP_MSI			BIT(3)
+#define  PAB_INTP_INTA			BIT(5)
+#define  PAB_INTP_INTB			BIT(6)
+#define  PAB_INTP_INTC			BIT(7)
+#define  PAB_INTP_INTD			BIT(8)
+#define  PAB_INTP_PCIE_UE		BIT(9)
+#define  PAB_INTP_IE_PMREDI		BIT(29)
+#define  PAB_INTP_IE_EC			BIT(30)
 #define  PAB_INTP_MSI_MASK		PAB_INTP_MSI
 #define  PAB_INTP_INTX_MASK		(PAB_INTP_INTA | PAB_INTP_INTB |\
 					PAB_INTP_INTC | PAB_INTP_INTD)
@@ -68,8 +70,7 @@
 #define  WIN_ENABLE_SHIFT		0
 #define  WIN_TYPE_SHIFT			1
 #define  WIN_TYPE_MASK			0x3
-#define  WIN_SIZE_SHIFT			10
-#define  WIN_SIZE_MASK			0x3fffff
+#define  WIN_SIZE_MASK			0xfffffc00
 
 #define PAB_EXT_AXI_AMAP_SIZE(win)	PAB_EXT_REG_ADDR(0xbaf0, win)
 
@@ -136,8 +137,6 @@
 #define OFFSET_TO_PAGE_IDX(off)		\
 	((off >> PAGE_SEL_OFFSET_SHIFT) & PAGE_SEL_MASK)
 
-struct mobiveil_pcie;
-
 struct mobiveil_msi {			/* MSI information */
 	struct mutex lock;		/* protect bitmap variable */
 	struct irq_domain *msi_domain;
@@ -147,14 +146,16 @@ struct mobiveil_msi {			/* MSI information */
 	DECLARE_BITMAP(msi_irq_in_use, PCI_NUM_MSI);
 };
 
+struct mobiveil_pcie;
+
 struct mobiveil_rp_ops {
 	int (*interrupt_init)(struct mobiveil_pcie *pcie);
 	int (*read_other_conf)(struct pci_bus *bus, unsigned int devfn,
 			       int where, int size, u32 *val);
 };
 
-struct root_port {
-	u8 root_bus_nr;
+struct mobiveil_root_port {
+	char root_bus_nr;
 	void __iomem *config_axi_slave_base;	/* endpoint config base */
 	struct resource *ob_io_res;
 	struct mobiveil_rp_ops *ops;
@@ -162,6 +163,7 @@ struct root_port {
 	raw_spinlock_t intx_mask_lock;
 	struct irq_domain *intx_domain;
 	struct mobiveil_msi msi;
+	struct pci_host_bridge *bridge;
 };
 
 struct mobiveil_pab_ops {
@@ -171,16 +173,15 @@ struct mobiveil_pab_ops {
 
 struct mobiveil_pcie {
 	struct platform_device *pdev;
-	struct list_head *resources;
-	void __iomem *csr_axi_slave_base;	/* PAB registers base */
-	phys_addr_t pcie_reg_base;	/* Physical PCIe Controller Base */
+	void __iomem *csr_axi_slave_base;	/* root port config base */
 	void __iomem *apb_csr_base;	/* MSI register base */
-	u32 apio_wins;
-	u32 ppio_wins;
-	u32 ob_wins_configured;		/* configured outbound windows */
-	u32 ib_wins_configured;		/* configured inbound windows */
+	phys_addr_t pcie_reg_base;	/* Physical PCIe Controller Base */
+	int apio_wins;
+	int ppio_wins;
+	int ob_wins_configured;		/* configured outbound windows */
+	int ib_wins_configured;		/* configured inbound windows */
 	const struct mobiveil_pab_ops *ops;
-	struct root_port rp;
+	struct mobiveil_root_port rp;
 };
 
 int mobiveil_pcie_host_probe(struct mobiveil_pcie *pcie);
@@ -191,39 +192,42 @@ void program_ob_windows(struct mobiveil_pcie *pcie, int win_num, u64 cpu_addr,
 			u64 pci_addr, u32 type, u64 size);
 void program_ib_windows(struct mobiveil_pcie *pcie, int win_num, u64 cpu_addr,
 			u64 pci_addr, u32 type, u64 size);
-void mobiveil_pcie_disable_ob_win(struct mobiveil_pcie *pci, int win_num);
-void mobiveil_pcie_disable_ib_win(struct mobiveil_pcie *pci, int win_num);
-u32 csr_read(struct mobiveil_pcie *pcie, u32 off, size_t size);
-void csr_write(struct mobiveil_pcie *pcie, u32 val, u32 off, size_t size);
+u32 mobiveil_csr_read(struct mobiveil_pcie *pcie, u32 off, size_t size);
+void mobiveil_csr_write(struct mobiveil_pcie *pcie, u32 val, u32 off,
+			size_t size);
 
-static inline u32 csr_readl(struct mobiveil_pcie *pcie, u32 off)
+static inline u32 mobiveil_csr_readl(struct mobiveil_pcie *pcie, u32 off)
 {
-	return csr_read(pcie, off, 0x4);
+	return mobiveil_csr_read(pcie, off, 0x4);
 }
 
-static inline u32 csr_readw(struct mobiveil_pcie *pcie, u32 off)
+static inline u16 mobiveil_csr_readw(struct mobiveil_pcie *pcie, u32 off)
 {
-	return csr_read(pcie, off, 0x2);
+	return mobiveil_csr_read(pcie, off, 0x2);
 }
 
-static inline u32 csr_readb(struct mobiveil_pcie *pcie, u32 off)
+static inline u8 mobiveil_csr_readb(struct mobiveil_pcie *pcie, u32 off)
 {
-	return csr_read(pcie, off, 0x1);
+	return mobiveil_csr_read(pcie, off, 0x1);
 }
 
-static inline void csr_writel(struct mobiveil_pcie *pcie, u32 val, u32 off)
+
+static inline void mobiveil_csr_writel(struct mobiveil_pcie *pcie, u32 val,
+				       u32 off)
 {
-	csr_write(pcie, val, off, 0x4);
+	mobiveil_csr_write(pcie, val, off, 0x4);
 }
 
-static inline void csr_writew(struct mobiveil_pcie *pcie, u32 val, u32 off)
+static inline void mobiveil_csr_writew(struct mobiveil_pcie *pcie, u16 val,
+				       u32 off)
 {
-	csr_write(pcie, val, off, 0x2);
+	mobiveil_csr_write(pcie, val, off, 0x2);
 }
 
-static inline void csr_writeb(struct mobiveil_pcie *pcie, u32 val, u32 off)
+static inline void mobiveil_csr_writeb(struct mobiveil_pcie *pcie, u8 val,
+				       u32 off)
 {
-	csr_write(pcie, val, off, 0x1);
+	mobiveil_csr_write(pcie, val, off, 0x1);
 }
 
 #endif /* _PCIE_MOBIVEIL_H */
