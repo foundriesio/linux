@@ -2973,11 +2973,11 @@
 
 		tcc_video_scaler_main_m2m {
 			clocks = <&clk_ddi DDIBUS_VIOC>;
-			m2m_sc_rdma = <&vioc_rdma VIOC_RDMA14>;
+			m2m_sc_rdma = <&vioc_rdma VIOC_RDMA15>;
 			m2m_sc_scaler = <&vioc_scaler VIOC_SCALER1>;	/* id:1, path:17 */
 			m2m_sc_wmix = <&vioc_wmix VIOC_WMIX4>;	/* id:5, path:6 */
 			m2m_sc_wdma = <&vioc_wdma VIOC_WDMA04>;
-			m2m_sc_scaler_path = <VIOC_SC_RDMA_14>;
+			m2m_sc_scaler_path = <VIOC_SC_RDMA_15>;
 			m2m_sc_settop_support = <1>;
 		};
 
@@ -3261,7 +3261,7 @@
 		compatible = "telechips,scaler_drv";
 		reg = <0x0 0x1 0x0 0x0>;
 		clocks = <&clk_ddi DDIBUS_VIOC>;
-		rdmas = <&vioc_rdma VIOC_RDMA14>;
+		rdmas = <&vioc_rdma VIOC_RDMA15>;
 		scalers = <&vioc_scaler VIOC_SCALER1>;
 		wmixs = <&vioc_wmix VIOC_WMIX4>;
 		wdmas = <&vioc_wdma VIOC_WDMA04>;
