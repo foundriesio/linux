@@ -2962,8 +2962,8 @@
 	        };
 
 		tcc_video_main_m2m{
-			main_rdma_num_m2m = <VIOC_VIQE_RDMA_14>;
-			telechips,main_rdma,m2m = <&vioc_rdma VIOC_RDMA14>;
+			main_rdma_num_m2m = <VIOC_VIQE_RDMA_15>;
+			telechips,main_rdma,m2m = <&vioc_rdma VIOC_RDMA15>;
 		};
 
 		tcc_video_sub_m2m {
