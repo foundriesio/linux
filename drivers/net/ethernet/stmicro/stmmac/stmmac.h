@@ -26,7 +26,11 @@
 #define __STMMAC_H__
 
 
+#if defined(CONFIG_DWMAC_TCC)
+#define STMMAC_RESOURCE_NAME	"hsio-clk"
+#else
 #define STMMAC_RESOURCE_NAME	"stmmaceth"
+#endif
 #define DRV_MODULE_VERSION	"Jan_2016"
 
 #include <linux/clk.h>

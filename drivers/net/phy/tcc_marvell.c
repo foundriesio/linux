@@ -20,30 +20,26 @@ MODULE_LICENSE("GPL");
 
 #define MRVL_Q212X_LPSD_FEATURE_ENABLE 0
 
+
+// Clause 22 to Clause 45 access method is from Marvell 88Q111x phy datasheet.
+
 static int phy_read_c22_to_c45(struct phy_device *phydev, uint16_t dev_addr,
 			       u32 reg_addr)
 {
-	phy_write(phydev, MMD_ACCESS_CTRL,
-		  (unsigned
-		   short)((unsigned short)(OPERATION_ADDR <<
-					   OPERATION_BIT_SHIFT) | dev_addr));
-	phy_write(phydev, MMD_ACCESS_ADDR_DATA, (unsigned short)reg_addr);
-	phy_write(phydev, MMD_ACCESS_CTRL,
-		  (unsigned
-		   short)((unsigned short)(OPERATION_RW << OPERATION_BIT_SHIFT)
-			  | dev_addr));
+	phy_write(phydev, MMD_ACCESS_CTRL, (((OPERATION_ADDR) & 0x3)<<OPERATION_BIT_SHIFT) | (dev_addr & 0x1F));
+	phy_write(phydev, MMD_ACCESS_ADDR_DATA, reg_addr);
+	phy_write(phydev, MMD_ACCESS_CTRL, (((OPERATION_RW) & 0x3)<<OPERATION_BIT_SHIFT) | (dev_addr & 0x1F));
+
 	return phy_read(phydev, (u32) MMD_ACCESS_ADDR_DATA);
 }
 
 static void phy_write_c22_to_c45(struct phy_device *phydev, uint16_t dev_addr,
 				 uint16_t reg_addr, uint16_t data)
 {
-	phy_write(phydev, MMD_ACCESS_CTRL,
-		  (unsigned short)((unsigned short)OPERATION_ADDR + dev_addr));
-	phy_write(phydev, MMD_ACCESS_ADDR_DATA, (unsigned short)reg_addr);
-	phy_write(phydev, MMD_ACCESS_CTRL,
-		  (unsigned short)((unsigned short)OPERATION_RW + dev_addr));
-	phy_write(phydev, MMD_ACCESS_ADDR_DATA, (unsigned short)data);
+	phy_write(phydev, MMD_ACCESS_CTRL, (((OPERATION_ADDR) & 0x3)<<OPERATION_BIT_SHIFT) | (dev_addr & 0x1F));
+	phy_write(phydev, MMD_ACCESS_ADDR_DATA, reg_addr);
+	phy_write(phydev, MMD_ACCESS_CTRL, (((OPERATION_RW) & 0x3)<<OPERATION_BIT_SHIFT) | (dev_addr & 0x1F));
+	phy_write(phydev, MMD_ACCESS_ADDR_DATA, data);
 
 	return;
 }
@@ -325,8 +321,8 @@ static int q2110_aneg_done(struct phy_device *phydev)
 
 static struct phy_driver q2110_driver[1] = {
 	{
-	 .phy_id = 0x00000980,	// OUI + Model Number + Revision Number
-	 .phy_id_mask = 0x00000000,	// Uncertain Revision Number
+	 .phy_id = 0x000000,	// OUI + Model Number + Revision Number
+	 .phy_id_mask = 0xfff,	// Uncertain Revision Number
 	 .name = "Marvell Q2110",
 	 .features =
 	 (unsigned int)SUPPORTED_100baseT_Full | (unsigned int)
@@ -342,7 +338,7 @@ static struct phy_driver q2110_driver[1] = {
 module_phy_driver(q2110_driver);
 
 static struct mdio_device_id __maybe_unused tcc_marvell_tbl[] = {
-	{0x00000980, 0x00000000},
+	{0x000000, 0xfff},
 	{}
 };
 

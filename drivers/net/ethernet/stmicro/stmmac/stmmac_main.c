@@ -58,6 +58,8 @@
 #include "dwmac1000.h"
 #include <linux/miscdevice.h>
 
+#include "dwmac-tcc-v2.h"
+
 // #include "dwmac4_dma.h"
 #define	STMMAC_ALIGN(x)		ALIGN(ALIGN(x, SMP_CACHE_BYTES), 16)
 #define	TSO_MAX_BUFF_SIZE	(SZ_16K - 1)
@@ -127,7 +129,7 @@ static void stmmac_exit_fs(struct net_device *dev);
 
 struct net_device *misc_ndev;
 
-struct iodata 
+struct iodata
 {
 	unsigned short addr;
 	unsigned short data;
@@ -2599,6 +2601,12 @@ static int stmmac_open(struct net_device *dev)
 	int ret;
 	int i;
 
+	// When using marvell phy, reset the phy before init the phy.
+	// to reconfigure Master/Slave setting.
+#if defined(CONFIG_TCC_MARVELL_PHY)
+	tcc_dwmac_phy_reset(priv->plat->bsp_priv);
+#endif
+
 	if (priv->hw->pcs != STMMAC_PCS_RGMII &&
 	    priv->hw->pcs != STMMAC_PCS_TBI &&
 	    priv->hw->pcs != STMMAC_PCS_RTBI) {
@@ -3725,7 +3733,7 @@ static irqreturn_t stmmac_interrupt(int irq, void *dev_id)
 	u32 queue;
 
 	queues_count = (rx_cnt > tx_cnt) ? rx_cnt : tx_cnt;
-	
+
 	if (priv->irq_wake)
 		pm_wakeup_event(priv->device, 0);
 
@@ -3845,24 +3853,24 @@ long stmmac_misc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	iodata.addr = (arg & 0xFFFF);
 	iodata.data = (arg>>16);
 
-	printk("USERDATA, addr : 0x%08x, data : 0x%08x \n", iodata.addr, 
+	pr_info("USERDATA, addr : 0x%08x, data : 0x%08x \n", iodata.addr,
 			iodata.data);
 
 	switch(cmd){
 		case CMD_PHY_READ:
 			data = phy_read(misc_ndev->phydev, iodata.addr);
-			printk("Read addr: 0x%08x, value :0x%08x\n", 
+			pr_info("Read addr: 0x%08x, value :0x%08x\n",
 					iodata.addr, data);
 			return data;
 		case CMD_PHY_WRITE:
 			phy_write(misc_ndev->phydev, iodata.addr, iodata.data);
-			printk("Write addr: %08x, data: %08x\n", iodata.addr,
+			pr_info("Write addr: %08x, data: %08x\n", iodata.addr,
 					iodata.data);
-			printk("--Read: %08x\n", phy_read(misc_ndev->phydev,
+			pr_info("--Read: %08x\n", phy_read(misc_ndev->phydev,
 						iodata.addr));
 			break;
 		default:
-			printk("not supported IOCTL cmd: %08x\n", cmd);
+			pr_info("not supported IOCTL cmd: %08x\n", cmd);
 			break;
 	}
 	return ret;
@@ -3870,13 +3878,13 @@ long stmmac_misc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 int stmmac_misc_open(struct inode *inode, struct file *filp)
 {
-	printk("%s\n", __func__);
+	pr_info("%s\n", __func__);
 	return 0;
 }
 
 int stmmac_misc_release(struct inode *inode, struct file *filp)
 {
-	printk("%s\n", __func__);
+	pr_info("%s\n", __func__);
 	return 0;
 }
 
@@ -4168,19 +4176,19 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 
 #if defined(CONFIG_DWMAC_TCC_510A)
 	if ((unsigned)(priv->synopsys_id) != 0x51){
-		printk("%s.[WARN] Exit gmac probe due to version mismatch\n",
+		pr_info("%s.[WARN] Exit gmac probe due to version mismatch\n",
 				__func__);
-		printk("%s.[WARN] device driver : 5.1a version.\n", __func__);
-		printk("%s.[WARN] version read: %08x\n", __func__,
+		pr_info("%s.[WARN] device driver : 5.1a version.\n", __func__);
+		pr_info("%s.[WARN] version read: %08x\n", __func__,
 				priv->synopsys_id);
 		return -ENODEV;
 	}
 #elif defined(CONFIG_DWMAC_TCC_373A)
 	if ((unsigned)(priv->synopsys_id) != 0x37){
-		printk("%s.[WARN] Exit gmac probe due to version mismatch\n",
+		pr_info("%s.[WARN] Exit gmac probe due to version mismatch\n",
 				__func__);
-		printk("%s.[WARN] device driver : 3.7a version.\n", __func__);
-		printk("%s.[WARN] version read: %08x\n", __func__,
+		pr_info("%s.[WARN] device driver : 3.7a version.\n", __func__);
+		pr_info("%s.[WARN] version read: %08x\n", __func__,
 				priv->synopsys_id);
 		return -ENODEV;
 	}
@@ -4306,7 +4314,7 @@ int stmmac_dvr_probe(struct device *device,
 	priv->ioaddr = res->addr;
 	priv->dev->base_addr = (unsigned long)res->addr;
 
-	printk("%s. \n", __func__);
+	pr_info("%s. \n", __func__);
 #if 0
 	dwmac_tcc_phy_reset(&priv->dt_info);
 #endif
@@ -4322,7 +4330,7 @@ int stmmac_dvr_probe(struct device *device,
 	priv->misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
 
 	if (priv->misc == 0)
-		printk("%s. Failed to alloc misc device\n", __func__);
+		pr_info("%s. Failed to alloc misc device\n", __func__);
 
 	priv->misc->minor	= MISC_DYNAMIC_MINOR;
 	priv->misc->fops	= &stmmac_misc_fops;
@@ -4332,7 +4340,7 @@ int stmmac_dvr_probe(struct device *device,
 	ret = misc_register(priv->misc);
 
 	if (ret)
-		printk("%s. Failed to register misc device\n", __func__);
+		pr_info("%s. Failed to register misc device\n", __func__);
 
 	dev_set_drvdata(device, priv->dev);
 

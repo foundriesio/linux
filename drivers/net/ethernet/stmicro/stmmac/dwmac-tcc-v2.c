@@ -63,13 +63,13 @@ void tcc_dwmac_clk_enable(void *priv)
 
 	if (gmac->gmac_clk) {
 		switch (gmac->phy_mode){
-			case PHY_INTERFACE_MODE_RGMII:		
-			case PHY_INTERFACE_MODE_GMII:		
+			case PHY_INTERFACE_MODE_RGMII:
+			case PHY_INTERFACE_MODE_GMII:
 				clk_set_rate(gmac->gmac_clk, 125*1000*1000);
 				break;
-			case PHY_INTERFACE_MODE_RMII:		
+			case PHY_INTERFACE_MODE_RMII:
 				clk_set_rate(gmac->gmac_clk, 50*1000*1000);
-			case PHY_INTERFACE_MODE_MII:		
+			case PHY_INTERFACE_MODE_MII:
 				clk_set_rate(gmac->gmac_clk, 25*1000*1000);
 				break;
 			default:
@@ -137,13 +137,15 @@ void tcc_dwmac_tuning_timing(void *priv)
 void tcc_dwmac_phy_reset(void *priv)
 {
 	struct tcc_dwmac *gmac = priv;
-	
+
         if (gmac->phy_rst != 0) {
                 gpio_direction_output(gmac->phy_rst, 0);
                 msleep(10);
                 gpio_direction_output(gmac->phy_rst, 1);
                 msleep(150);
         }
+	else
+		pr_err("[ERROR][GMAC] No phy reset gpio.\n");
 }
 
 
@@ -159,19 +161,19 @@ int tcc_dwmac_init(struct platform_device *pdev, void *priv)
 	pr_info("%s.\n", __func__);
 
 	switch (gmac->phy_mode){
-		case PHY_INTERFACE_MODE_RGMII:		
+		case PHY_INTERFACE_MODE_RGMII:
 			sw_config |= (GMAC_CONFIG_INTF_RGMII & GMAC_CONFIG_INTF_SEL_MASK);
 			pin = devm_pinctrl_get_select(&pdev->dev, "rgmii");
 			break;
-		case PHY_INTERFACE_MODE_GMII:		
+		case PHY_INTERFACE_MODE_GMII:
 			sw_config |= (GMAC_CONFIG_INTF_GMII & GMAC_CONFIG_INTF_SEL_MASK);
 			pin = devm_pinctrl_get_select(&pdev->dev, "gmii");
 			break;
-		case PHY_INTERFACE_MODE_RMII:		
+		case PHY_INTERFACE_MODE_RMII:
 			sw_config |= (GMAC_CONFIG_INTF_RMII & GMAC_CONFIG_INTF_SEL_MASK);
 			pin = devm_pinctrl_get_select(&pdev->dev, "rmii");
 			break;
-		case PHY_INTERFACE_MODE_MII:		
+		case PHY_INTERFACE_MODE_MII:
 			sw_config |= (GMAC_CONFIG_INTF_MII & GMAC_CONFIG_INTF_SEL_MASK);
 			pin = devm_pinctrl_get_select(&pdev->dev, "mii");
 			break;
@@ -219,19 +221,19 @@ static struct tcc_dwmac *tcc_config_dt(struct platform_device *pdev)
 
 	phy_mode = of_get_phy_mode(pdev->dev.of_node);
 	switch (phy_mode) {
-	case PHY_INTERFACE_MODE_RGMII:		
+	case PHY_INTERFACE_MODE_RGMII:
 		gmac->phy_mode = PHY_INTERFACE_MODE_RGMII;
 		pr_info("[INFO][GMAC] Phy interface: RGMII\n");
 		break;
-	case PHY_INTERFACE_MODE_GMII:		
+	case PHY_INTERFACE_MODE_GMII:
 		gmac->phy_mode = PHY_INTERFACE_MODE_GMII;
 		pr_info("[INFO][GMAC] Phy interface: GMII\n");
 		break;
-	case PHY_INTERFACE_MODE_RMII:		
+	case PHY_INTERFACE_MODE_RMII:
 		gmac->phy_mode = PHY_INTERFACE_MODE_RMII;
 		pr_info("[INFO][GMAC] Phy interface: RMII\n");
 		break;
-	case PHY_INTERFACE_MODE_MII:		
+	case PHY_INTERFACE_MODE_MII:
 		gmac->phy_mode = PHY_INTERFACE_MODE_MII;
 		pr_info("[INFO][GMAC] Phy interface: MII\n");
 		break;
@@ -243,7 +245,7 @@ static struct tcc_dwmac *tcc_config_dt(struct platform_device *pdev)
 
 	ret = of_get_named_gpio(pdev->dev.of_node, "phyrst-gpio", 0);
 	if (ret < 0){
-		gmac->phy_rst = 0; 
+		gmac->phy_rst = 0;
 		pr_err("[ERROR][GMAC] phy reset gpio not found\n");
 	}
 	else {
@@ -288,7 +290,7 @@ static struct tcc_dwmac *tcc_config_dt(struct platform_device *pdev)
 #endif
 
 #if defined(CONFIG_TCC_MARVELL)
-	gmac->rxclk_i_dly = 9;	
+	gmac->rxclk_i_dly = 9;
 #endif
 
 	gmac->gmac_clk = of_clk_get_by_name(pdev->dev.of_node, "gmac-pclk");
@@ -322,7 +324,7 @@ static int tcc_dwmac_probe(struct platform_device *pdev)
 		return PTR_ERR(gmac);
 
 	gmac->gmac_block = (uintptr_t)stmmac_res.addr;
-	
+
 	tcc_dwmac_init(pdev, gmac);
 
 	plat_dat = stmmac_probe_config_dt(pdev, &stmmac_res.mac);
@@ -334,7 +336,7 @@ static int tcc_dwmac_probe(struct platform_device *pdev)
 
 	// TBD:
 	// set Clause 45 register
-	
+
 	ret = stmmac_dvr_probe(&pdev->dev, plat_dat, &stmmac_res);
 	if (ret) {
 		stmmac_remove_config_dt(pdev, plat_dat);

@@ -76,6 +76,8 @@ struct tcc_dwmac {
 	unsigned int c45_reg_addr_mask;
 };
 
+void tcc_dwmac_phy_reset(void *priv);
+
 // int tcc_dwmac_init(struct platform_device *pdev, void *priv);
 // void tcc_dwmac_clk_enable(void *priv);
 // void tcc_dwmac_tuning_timing(struct stmmac_resources *stmmac_res, void *priv);
