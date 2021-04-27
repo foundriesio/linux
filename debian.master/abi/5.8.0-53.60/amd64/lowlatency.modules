@@ -2047,8 +2047,6 @@ ina2xx-adc
 ina3221
 industrialio
 industrialio-buffer-cb
-industrialio-buffer-dma
-industrialio-buffer-dmaengine
 industrialio-configfs
 industrialio-hw-consumer
 industrialio-sw-device
