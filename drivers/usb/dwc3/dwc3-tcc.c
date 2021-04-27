@@ -25,27 +25,15 @@
 #include <linux/usb/usb_phy_generic.h>
 #include "core.h"
 
-struct USB30PHYCFG {
-	volatile uint32_t U30_CLKMASK;
-	volatile uint32_t U30_SWRESETN;
-	volatile uint32_t U30_PWRCTRL;
-	volatile uint32_t U30_OVERCRNT;
-	volatile uint32_t U30_PCFG0;
-	volatile uint32_t U30_PCFG1;
-	volatile uint32_t U30_PCFG2;
-	volatile uint32_t U30_PCFG3;
-	volatile uint32_t U30_PCFG4;
-	volatile uint32_t U30_PFLT;
-	volatile uint32_t U30_PINT;
-	volatile uint32_t U30_LCFG;
-	volatile uint32_t U30_PCR0;
-	volatile uint32_t U30_PCR1;
-	volatile uint32_t U30_PCR2;
-	volatile uint32_t U30_SWUTMI;
+struct pcfg_unit {
+	char *reg_name;
+	uint32_t offset;
+	uint32_t mask;
+	char str[256];
 };
 
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-struct USB30SSPHYCFG {
+struct USB30PHYCFG {
 	volatile uint32_t U30_CLKMASK;
 	volatile uint32_t U30_SWRESETN;
 	volatile uint32_t U30_PWRCTRL;
@@ -78,12 +66,75 @@ struct USB30SSPHYCFG {
 	volatile uint32_t U30_DBG1;
 	volatile uint32_t reserved[1];
 	volatile uint32_t FPHY_PCFG0;
-	volatile uint32_t FPHY_PCFG1;
+	volatile uint32_t U30_PHY_CFG;	// FPHY_PCFG1(Name on Datasheet)
 	volatile uint32_t FPHY_PCFG2;
 	volatile uint32_t FPHY_PCFG3;
 	volatile uint32_t FPHY_PCFG4;
 	volatile uint32_t FPHY_LCFG0;
 	volatile uint32_t FPHY_LCFG1;
+};
+
+enum {
+	TXVRT,
+	CDT,
+	TXPPT,
+	TP,
+	TXRT,
+	TXREST,
+	TXHSXVT,
+	PCFG_MAX
+};
+
+struct pcfg_unit USB_PCFG[7] = {
+        /* name, offset, mask */
+        {"TXVRT  ",  0, (0xF<<0)},
+        {"CDT    ",  4, (0x7<<4)},
+        {"TXPPT  ",  7, (0x1<<7)},
+        {"TP     ",  8, (0x3<<8)},
+        {"TXRT   ", 10, (0x3<<10)},
+        {"TXREST ", 12, (0x3<<12)},
+        {"TXHSXVT", 14, (0x3<<14)},
+};
+#else
+struct USB30PHYCFG {
+	volatile uint32_t U30_CLKMASK;
+	volatile uint32_t U30_SWRESETN;
+	volatile uint32_t U30_PWRCTRL;
+	volatile uint32_t U30_OVERCRNT;
+	volatile uint32_t U30_PCFG0;
+	volatile uint32_t U30_PCFG1;
+	volatile uint32_t U30_PHY_CFG;	// U30_PCFG2(Name on Datasheet)
+	volatile uint32_t U30_PCFG3;
+	volatile uint32_t U30_PCFG4;
+	volatile uint32_t U30_PFLT;
+	volatile uint32_t U30_PINT;
+	volatile uint32_t U30_LCFG;
+	volatile uint32_t U30_PCR0;
+	volatile uint32_t U30_PCR1;
+	volatile uint32_t U30_PCR2;
+	volatile uint32_t U30_SWUTMI;
+};
+
+enum {
+	TXVREFTUNE,
+	TXRISETUNE,
+	TXRESTUNE,
+	TXPREEMPPULSETUNE,
+	TXPREEMPAMPTUNE,
+	TXHSXVTUNE,
+	COMPDISTUNE,
+	PCFG_MAX
+};
+
+struct pcfg_unit USB_PCFG[7] = {
+        /* name, offset, mask */
+        {"TXVREFTUNE       ",  6, (0xF<<6)},
+        {"TXRISETUNE       ", 10, (0x3<<10)},
+        {"TXRESTUNE        ", 12, (0x3<<12)},
+        {"TXPREEMPPULSETUNE", 14, (0x1<<14)},
+        {"TXPREEMPAMPTUNE  ", 15, (0x3<<15)},
+        {"TXHSXVTUNE       ", 17, (0x3<<17)},
+        {"COMPDISTUNE      ", 29, (0x7<<29)},
 };
 #endif
 
@@ -663,97 +714,74 @@ static DEVICE_ATTR(tx_vboost, 0644,
 #define SOFFN_SHIFT       (3)
 #define GET_SOFFN_NUM(x)  (((x) >> SOFFN_SHIFT) & SOFFN_MASK)
 
+static char *dwc3_pcfg_display(uint32_t old_reg, uint32_t new_reg, char *str)
+{
+	ulong new_val, old_val;
+	int32_t i;
+
+	for (i = 0; i < (int32_t)PCFG_MAX; i++) {
+		old_val = (ISSET(old_reg, USB_PCFG[i].mask)) >>
+			(USB_PCFG[i].offset);
+		new_val = (ISSET(new_reg, USB_PCFG[i].mask)) >>
+			(USB_PCFG[i].offset);
+
+		if (old_val != new_val) {
+			sprintf(USB_PCFG[i].str, "%s = 0x%lX -> 0x%lX\n",
+					USB_PCFG[i].reg_name, old_val, new_val);
+		} else {
+			sprintf(USB_PCFG[i].str, "%s = 0x%lX\n",
+					USB_PCFG[i].reg_name, old_val);
+		}
+
+		strncat(str, USB_PCFG[i].str, 256 - strlen(str) - 1);
+	}
+
+	return str;
+}
+
 /**
- * Show the current value of the USB30 PHY Configuration Register2 (U30_PCFG2)
+ * Show the current value of the USB30 PHY Configuration Register (U30_PHY_CFG)
  */
-static ssize_t dwc3_eyep_show(struct device *dev,
-			      struct device_attribute *attr, char *buf)
+static ssize_t dwc3_pcfg_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
 {
 	struct dwc3_tcc *tcc = platform_get_drvdata(to_platform_device(dev));
-	uint32_t val;
-	uint32_t reg;
-	char str[256] = { 0 };
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	struct USB30SSPHYCFG *pUSBPHYCFG;
-#endif
+	struct USB30PHYCFG *pUSBPHYCFG =
+		(struct USB30PHYCFG *)tcc->dwc3_phy->get_base(tcc->dwc3_phy);
+	uint32_t reg = readl(&pUSBPHYCFG->U30_PHY_CFG);
+	char str[256] = {0};
 
 	if (tcc->dwc3_phy == NULL) {
 		return -ENODEV;
 	}
 
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	pUSBPHYCFG =
-		(struct USB30SSPHYCFG *)
-			(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
-	reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
-	val = reg & 0xFU;
-#else
-	struct USB30PHYCFG *pUSBPHYCFG =
-	    (struct USB30PHYCFG *)
-			(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
-	reg = readl(&pUSBPHYCFG->U30_PCFG2);
-	val = (ISSET(reg, TXVRT_MASK)) >> TXVRT_SHIFT;
-#endif
-	sprintf(str, "%ld%ld%ld%ld",
-			ISSET(val, 0x8) >> 3,
-			ISSET(val, 0x4) >> 2,
-			ISSET(val, 0x2) >> 1, ISSET(val, 0x1) >> 0);
-
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	return sprintf(buf, "U30_FPCFG1 = 0x%08X\nTXVRT = %s\n", reg, str);
-#else
-	return sprintf(buf, "U30_PCFG2 = 0x%08X\nTXVREFTUNE = %s\n", reg, str);
-#endif
+	return sprintf(buf, "U30_PHY_CFG = 0x%08X\n%s", reg,
+			dwc3_pcfg_display(reg, reg, str));
 }
 
 /**
  * HS DC Voltage Level is set
  */
-static ssize_t dwc3_eyep_store(struct device *dev,
-			       struct device_attribute *attr,
-			       const char *buf, size_t count)
+static ssize_t dwc3_pcfg_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct dwc3_tcc *tcc = platform_get_drvdata(to_platform_device(dev));
-	int ret;
-	ulong val;
-	uint32_t reg = 0;
-#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	struct USB30SSPHYCFG *pUSBPHYCFG;
-#else
-	struct USB30PHYCFG *pUSBPHYCFG;
-#endif
+	struct USB30PHYCFG *pUSBPHYCFG =
+		(struct USB30PHYCFG *)tcc->dwc3_phy->get_base(tcc->dwc3_phy);
+	int32_t i;
+	uint32_t old_reg = readl(&pUSBPHYCFG->U30_PHY_CFG);
+	uint32_t new_reg = simple_strtoul(buf, NULL, 16);
+	char str[256] = {0};
+
 	if (tcc->dwc3_phy == NULL) {
 		return -ENODEV;
 	}
 
-	ret = kstrtoul(buf, 0, &val);
-	if (ret == -ERANGE) {
-		pr_err("[ERROR][USB] overflow occurred in krstrtoul()\n");
-		return ret;
-	} else if (ret == -EINVAL) {
-		pr_err("[ERROR][USB] parsing error occurred in krstrtoul()\n");
-		return ret;
-	}
-
-#if defined(CONFIG_ARCH_TCC803X)
-	pUSBPHYCFG =
-	    (struct USB30SSPHYCFG *)tcc->dwc3_phy->get_base(tcc->dwc3_phy);
-	reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
-#elif defined(CONFIG_ARCH_TCC805X)
-	pUSBPHYCFG =
-	    (struct USB30SSPHYCFG *)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
-	reg = readl(&pUSBPHYCFG->FPHY_PCFG1);
-#else
-	pUSBPHYCFG =
-	    (struct USB30PHYCFG *)(tcc->dwc3_phy->get_base(tcc->dwc3_phy));
-	reg = readl(&pUSBPHYCFG->U30_PCFG2);
-#endif
-
-	if ((count < 5UL) || (count > 5UL)) {
-		pr_info("[INFO][USB]\nThis argument length is not 4\n\n");
-		pr_info("[INFO][USB] \tUsage : echo xxxx > xhci_eyep\n\n");
-		pr_info("[INFO][USB] \t\t1) length of xxxx is 4\n");
-		pr_info("[INFO][USB] \t\t2) x is binary number(0 or 1)\n\n");
+	if (((count - 1U) < 10U) || (10U < (count - 1U))) {
+		pr_info("[INFO][USB]\nThis argument length is not 10\n\n");
+		pr_info("\tUsage : echo 0xXXXXXXXX > dwc3_pcfg\n\n");
+		pr_info("\t\t1) length of 0xXXXXXXXX is 10\n");
+		pr_info("\t\t2) X is hex number(0 to f)\n\n");
 		return (ssize_t)count;
 	}
 
@@ -761,32 +789,40 @@ static ssize_t dwc3_eyep_store(struct device *dev,
 		return -ENXIO;
 	}
 
-	if (((buf[0] != '0') && (buf[0] != '1'))
-	    || ((buf[1] != '0') && (buf[1] != '1'))
-	    || ((buf[2] != '0') && (buf[2] != '1'))
-	    || ((buf[3] != '0') && (buf[3] != '1'))) {
-		pr_info("[INFO][USB]\necho %c%c%c%c is not binary value\n\n",
-		     buf[0], buf[1], buf[2], buf[3]);
-		pr_info("[INFO][USB] \tUsage : echo xxxx > xhci_eyep\n\n");
-		pr_info("[INFO][USB] \t\t1) x is binary number(0 or 1)\n\n");
+	if ((buf[0] != '0') || (buf[1] != 'x')) {
+		pr_info("[INFO][USB]\n\techo %c%cXXXXXXXX is not 0x\n\n",
+				buf[0], buf[1]);
+		pr_info("\tUsage : echo 0xXXXXXXXX > dwc3_pcfg\n\n");
+		pr_info("\t\t1) 0 is binary number)\n\n");
 		return (ssize_t)count;
 	}
-#if defined(CONFIG_ARCH_TCC803X)
-	BITCSET(reg, 0xF, val); // val range is 0x0 ~ 0xF
-	writel(reg, &pUSBPHYCFG->FPHY_PCFG1);
-#elif defined(CONFIG_ARCH_TCC805X)
-	BITCSET(reg, 0xF, val); // val range is 0x0 ~ 0xF
-	writel(reg, &pUSBPHYCFG->FPHY_PCFG1);
-#else
-	BITCSET(reg, TXVRT_MASK, val << TXVRT_SHIFT); // val range is 0x0 ~ 0xF
-	writel(reg, &pUSBPHYCFG->U30_PCFG2);
-#endif
+
+	for (i = 2; i < 10; i++) {
+		if (((buf[i] >= '0') && (buf[i] <= '9')) ||
+				((buf[i] >= 'a') && (buf[i] <= 'f')) ||
+				((buf[i] >= 'A') && (buf[i] <= 'F'))) {
+			continue;
+		} else {
+			pr_info("[INFO][USB]\necho 0x%c%c%c%c%c%c%c%c is not hex\n\n",
+					buf[2], buf[3], buf[4], buf[5],
+					buf[6], buf[7], buf[8], buf[9]);
+			pr_info("\tUsage : echo 0xXXXXXXXX > dwc3_pcfg\n\n");
+			pr_info("\t\t2) X is hex number(0 to f)\n\n");
+			return (ssize_t)count;
+		}
+	}
+
+	pr_info("[INFO][USB] Before\nU30_PHY_CFG = 0x%08X\n", old_reg);
+	writel(new_reg, &pUSBPHYCFG->U30_PHY_CFG);
+	new_reg = readl(&pUSBPHYCFG->U30_PHY_CFG);
+
+	dwc3_pcfg_display(old_reg, new_reg, str);
+	pr_info("\n[INFO][USB] After\n%sU30_PHY_CFG = 0x%08X\n", str, new_reg);
 
 	return (ssize_t)count;
 }
 
-static DEVICE_ATTR(dwc3_eyep, 0644, dwc3_eyep_show,
-		   dwc3_eyep_store);
+static DEVICE_ATTR(dwc3_pcfg, 0644, dwc3_pcfg_show, dwc3_pcfg_store);
 
 static void dwc3_tcc_power_ctrl(struct dwc3_tcc *tcc, int32_t on_off)
 {
@@ -1190,10 +1226,10 @@ static int32_t dwc3_tcc_new_probe(struct platform_device *pdev)
 		goto err1;
 	}
 #endif
-	ret = device_create_file(&pdev->dev, &dev_attr_dwc3_eyep);
+	ret = device_create_file(&pdev->dev, &dev_attr_dwc3_pcfg);
 	if (ret != 0) {
 		dev_err(&pdev->dev,
-			"[ERROR][USB] failed to create dwc3_eyep\n");
+			"[ERROR][USB] failed to create dwc3_pcfg\n");
 		goto err1;
 	}
 
@@ -1219,7 +1255,7 @@ static int32_t dwc3_tcc_new_remove(struct platform_device *pdev)
 	}
 
 	of_platform_depopulate(tcc->dev);
-	device_remove_file(&pdev->dev, &dev_attr_dwc3_eyep);
+	device_remove_file(&pdev->dev, &dev_attr_dwc3_pcfg);
 #if defined(DWC3_SQ_TEST_MODE)
 	device_remove_file(&pdev->dev, &dev_attr_tx_vboost);
 	device_remove_file(&pdev->dev, &dev_attr_tx_swing);
