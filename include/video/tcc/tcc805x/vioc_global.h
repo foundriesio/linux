@@ -331,6 +331,8 @@
 #define VIOC_VIQE_RDMA_16			(0x0B)
 #define VIOC_VIQE_VIN_01			(0x0C)
 #define VIOC_VIQE_RDMA_17			(0x0D)
+#define VIOC_VIQE_RDMA_13			(0x0E)
+#define VIOC_VIQE_RDMA_15			(0x0F)
 
 #define VIOC_DEINTLS_RDMA_00			(0x00)
 #define VIOC_DEINTLS_RDMA_01			(0x01)
@@ -346,6 +348,8 @@
 #define VIOC_DEINTLS_RDMA_16			(0x0B)
 #define VIOC_DEINTLS_VIN_01			(0x0C)
 #define VIOC_DEINTLS_RDMA_17			(0x0D)
+#define VIOC_DEINTLS_RDMA_13			(0x0E)
+#define VIOC_DEINTLS_RDMA_15		        (0x0F)
 
 #define	VIOC_VM_RDMA_00				(0x00)
 #define	VIOC_VM_RDMA_01				(0x01)
