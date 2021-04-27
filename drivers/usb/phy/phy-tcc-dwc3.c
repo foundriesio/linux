@@ -16,6 +16,7 @@
 #include <asm/system_info.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <linux/kthread.h>
+#include <soc/tcc/chipinfo.h>
 
 #define PHY_RESUME      (2)
 
@@ -483,9 +484,6 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 	uint32_t uTmp = 0;
 	uint32_t tmp_data = 0;
 	int32_t tmp_cnt;
-#if defined(CONFIG_ARCH_TCC803X)
-	uint32_t cal_value = 0;
-#endif
 
 	if (dwc3_phy_dev == NULL) {
 		return -ENODEV;
@@ -529,6 +527,8 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 			tmp_data = readl(&USBPHYCFG->U30_PCFG0);
 			tmp_data &= (Hw5);
 		}
+
+		tmp_data = 0;
 
 		// External SRAM LD Done Set
 		writel((readl(&USBPHYCFG->U30_PCFG0) | (Hw3)),
@@ -575,54 +575,54 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 		/* Set 2.0phy REXT */
 		tmp_cnt = 0;
 
-#if defined(CONFIG_ARCH_TCC803X)
-		do {
-			// Read calculated value
-			writel(Hw26|Hw25, dwc3_phy_dev->ref_base);
-			uTmp = readl(dwc3_phy_dev->ref_base);
-			dev_info(dwc3_phy_dev->dev, "[INFO][USB] 2.0H status bus = 0x%08x\n",
-					uTmp);
-			cal_value = 0x0000F000U & uTmp;
+		if (IS_ENABLED(CONFIG_ARCH_TCC803X) || (get_chip_name() == 0x8059)) {
+			do {
+				// Read calculated value
+				writel(Hw26|Hw25, dwc3_phy_dev->ref_base);
+				uTmp = readl(dwc3_phy_dev->ref_base);
+				dev_info(dwc3_phy_dev->dev, "[INFO][USB] 2.0H status bus = 0x%08x\n",
+						uTmp);
+				tmp_data = 0x0000F000U & uTmp;
 
-			cal_value = cal_value<<4; // set TESTDATAIN
+				tmp_data = tmp_data<<4; // set TESTDATAIN
 
-			//Read Status Bus
-			writel(Hw26 | Hw25, &USBPHYCFG->FPHY_PCFG3);
-			uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
+				//Read Status Bus
+				writel(Hw26 | Hw25, &USBPHYCFG->FPHY_PCFG3);
+				uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
 
-			//Read Override Bus
-			writel(Hw29 | Hw26 | Hw25, &USBPHYCFG->FPHY_PCFG3);
-			uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
+				//Read Override Bus
+				writel(Hw29 | Hw26 | Hw25, &USBPHYCFG->FPHY_PCFG3);
+				uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
 
-			//Write Override Bus
-			writel(Hw29 | Hw26 | Hw25 | Hw23 |
-					Hw22 | Hw21 | Hw20 | cal_value,
-					&USBPHYCFG->FPHY_PCFG3);
-			udelay(1);
+				//Write Override Bus
+				writel(Hw29 | Hw26 | Hw25 | Hw23 |
+						Hw22 | Hw21 | Hw20 | tmp_data,
+						&USBPHYCFG->FPHY_PCFG3);
+				udelay(1);
 
-			writel(Hw29 | Hw28 | Hw26 | Hw25 |
-					Hw23 | Hw22 | Hw21 | Hw20 | cal_value,
-					&USBPHYCFG->FPHY_PCFG3);
-			udelay(1);
+				writel(Hw29 | Hw28 | Hw26 | Hw25 |
+						Hw23 | Hw22 | Hw21 | Hw20 | tmp_data,
+						&USBPHYCFG->FPHY_PCFG3);
+				udelay(1);
 
-			writel(Hw29 | Hw26 | Hw25 | Hw23 |
-					Hw22 | Hw21 | Hw20 | cal_value,
-					&USBPHYCFG->FPHY_PCFG3);
-			udelay(1);
+				writel(Hw29 | Hw26 | Hw25 | Hw23 |
+						Hw22 | Hw21 | Hw20 | tmp_data,
+						&USBPHYCFG->FPHY_PCFG3);
+				udelay(1);
 
-			//Read Status Bus
-			writel(Hw26 | Hw25, &USBPHYCFG->FPHY_PCFG3);
-			uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
+				//Read Status Bus
+				writel(Hw26 | Hw25, &USBPHYCFG->FPHY_PCFG3);
+				uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
 
-			//Read Override Bus
-			writel(Hw29 | Hw26 | Hw25, &USBPHYCFG->FPHY_PCFG3);
-			uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
-			dev_info(dwc3_phy_dev->dev, "[INFO][USB] 2.0 REXT = 0x%08x\n",
-					(0x0000F000U & uTmp));
+				//Read Override Bus
+				writel(Hw29 | Hw26 | Hw25, &USBPHYCFG->FPHY_PCFG3);
+				uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
+				dev_info(dwc3_phy_dev->dev, "[INFO][USB] 2.0 REXT = 0x%08x\n",
+						(0x0000F000U & uTmp));
 
-			tmp_cnt++;
-		} while (((uTmp & 0x0000F000U) == 0U) && (tmp_cnt < 5));
-#endif
+				tmp_cnt++;
+			} while (((uTmp & 0x0000F000U) == 0U) && (tmp_cnt < 5));
+		}
 
 #if defined(CONFIG_ENABLE_BC_30_HOST)
 		writel(readl(&USBPHYCFG->FPHY_PCFG4) | (1 << 31),
