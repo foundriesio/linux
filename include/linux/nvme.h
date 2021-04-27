@@ -1204,6 +1204,25 @@ struct nvme_command {
 	};
 };
 
+static inline bool nvme_is_fabrics(struct nvme_command *cmd)
+{
+	return cmd->common.opcode == nvme_fabrics_command;
+}
+
+struct nvme_error_slot {
+	__le64		error_count;
+	__le16		sqid;
+	__le16		cmdid;
+	__le16		status_field;
+	__le16		param_error_location;
+	__le64		lba;
+	__le32		nsid;
+	__u8		vs;
+	__u8		resv[3];
+	__le64		cs;
+	__u8		resv2[24];
+};
+
 static inline bool nvme_is_write(struct nvme_command *cmd)
 {
 	/*
@@ -1211,7 +1230,7 @@ static inline bool nvme_is_write(struct nvme_command *cmd)
 	 *
 	 * Why can't we simply have a Fabrics In and Fabrics out command?
 	 */
-	if (unlikely(cmd->common.opcode == nvme_fabrics_command))
+	if (unlikely(nvme_is_fabrics(cmd)))
 		return cmd->fabrics.fctype & 1;
 	return cmd->common.opcode & 1;
 }
@@ -1326,6 +1345,7 @@ enum {
 	NVME_SC_ANA_INACCESSIBLE	= 0x302,
 	NVME_SC_ANA_TRANSITION		= 0x303,
 	NVME_SC_HOST_PATH_ERROR		= 0x370,
+	NVME_SC_HOST_ABORTED_CMD	= 0x371,
 
 	NVME_SC_CRD			= 0x1800,
 	NVME_SC_DNR			= 0x4000,

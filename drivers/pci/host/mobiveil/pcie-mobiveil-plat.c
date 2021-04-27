@@ -3,8 +3,10 @@
  * PCIe host controller driver for Mobiveil PCIe Host controller
  *
  * Copyright (c) 2018 Mobiveil Inc.
+ * Copyright 2019 NXP
+ *
  * Author: Subrahmanya Lingappa <l.subrahmanya@mobiveil.co.in>
- * Refactor: Zhiqiang Hou <Zhiqiang.Hou@nxp.com>
+ *	   Hou Zhiqiang <Zhiqiang.Hou@nxp.com>
  */
 
 #include <linux/init.h>
@@ -20,11 +22,16 @@
 static int mobiveil_pcie_probe(struct platform_device *pdev)
 {
 	struct mobiveil_pcie *pcie;
+	struct pci_host_bridge *bridge;
 	struct device *dev = &pdev->dev;
 
-	pcie = devm_kzalloc(dev, sizeof(*pcie), GFP_KERNEL);
-	if (!pcie)
+	/* allocate the PCIe port */
+	bridge = devm_pci_alloc_host_bridge(dev, sizeof(*pcie));
+	if (!bridge)
 		return -ENOMEM;
+
+	pcie = pci_host_bridge_priv(bridge);
+	pcie->rp.bridge = bridge;
 
 	pcie->pdev = pdev;
 

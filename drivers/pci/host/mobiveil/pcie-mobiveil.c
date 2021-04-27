@@ -3,8 +3,10 @@
  * PCIe host controller driver for Mobiveil PCIe Host controller
  *
  * Copyright (c) 2018 Mobiveil Inc.
+ * Copyright 2019 NXP
+ *
  * Author: Subrahmanya Lingappa <l.subrahmanya@mobiveil.co.in>
- * Refactor: Zhiqiang Hou <Zhiqiang.Hou@nxp.com>
+ *	   Hou Zhiqiang <Zhiqiang.Hou@nxp.com>
  */
 
 #include <linux/delay.h>
@@ -93,7 +95,7 @@ static int mobiveil_pcie_write(void __iomem *addr, int size, u32 val)
 	return PCIBIOS_SUCCESSFUL;
 }
 
-u32 csr_read(struct mobiveil_pcie *pcie, u32 off, size_t size)
+u32 mobiveil_csr_read(struct mobiveil_pcie *pcie, u32 off, size_t size)
 {
 	void *addr;
 	u32 val;
@@ -108,7 +110,8 @@ u32 csr_read(struct mobiveil_pcie *pcie, u32 off, size_t size)
 	return val;
 }
 
-void csr_write(struct mobiveil_pcie *pcie, u32 val, u32 off, size_t size)
+void mobiveil_csr_write(struct mobiveil_pcie *pcie, u32 val, u32 off,
+			       size_t size)
 {
 	void *addr;
 	int ret;
@@ -125,12 +128,12 @@ bool mobiveil_pcie_link_up(struct mobiveil_pcie *pcie)
 	if (pcie->ops->link_up)
 		return pcie->ops->link_up(pcie);
 
-	return (csr_readl(pcie, LTSSM_STATUS) &
+	return (mobiveil_csr_readl(pcie, LTSSM_STATUS) &
 		LTSSM_STATUS_L0_MASK) == LTSSM_STATUS_L0;
 }
 
-void program_ib_windows(struct mobiveil_pcie *pcie, int win_num, u64 cpu_addr,
-			u64 pci_addr, u32 type, u64 size)
+void program_ib_windows(struct mobiveil_pcie *pcie, int win_num,
+			u64 cpu_addr, u64 pci_addr, u32 type, u64 size)
 {
 	u32 value;
 	u64 size64 = ~(size - 1);
@@ -141,25 +144,24 @@ void program_ib_windows(struct mobiveil_pcie *pcie, int win_num, u64 cpu_addr,
 		return;
 	}
 
-	value = csr_readl(pcie, PAB_PEX_AMAP_CTRL(win_num));
-	value &= ~(AMAP_CTRL_TYPE_MASK << AMAP_CTRL_TYPE_SHIFT |
-		 WIN_SIZE_MASK << WIN_SIZE_SHIFT);
-	value |= (type << AMAP_CTRL_TYPE_SHIFT) | (1 << AMAP_CTRL_EN_SHIFT) |
-		 (lower_32_bits(size64) & WIN_SIZE_MASK << WIN_SIZE_SHIFT);
-	csr_writel(pcie, value, PAB_PEX_AMAP_CTRL(win_num));
+	value = mobiveil_csr_readl(pcie, PAB_PEX_AMAP_CTRL(win_num));
+	value &= ~(AMAP_CTRL_TYPE_MASK << AMAP_CTRL_TYPE_SHIFT | WIN_SIZE_MASK);
+	value |= type << AMAP_CTRL_TYPE_SHIFT | 1 << AMAP_CTRL_EN_SHIFT |
+		 (lower_32_bits(size64) & WIN_SIZE_MASK);
+	mobiveil_csr_writel(pcie, value, PAB_PEX_AMAP_CTRL(win_num));
 
-	csr_writel(pcie, upper_32_bits(size64),
-		   PAB_EXT_PEX_AMAP_SIZEN(win_num));
+	mobiveil_csr_writel(pcie, upper_32_bits(size64),
+			    PAB_EXT_PEX_AMAP_SIZEN(win_num));
 
-	csr_writel(pcie, lower_32_bits(cpu_addr),
-		   PAB_PEX_AMAP_AXI_WIN(win_num));
-	csr_writel(pcie, upper_32_bits(cpu_addr),
-		   PAB_EXT_PEX_AMAP_AXI_WIN(win_num));
+	mobiveil_csr_writel(pcie, lower_32_bits(cpu_addr),
+			    PAB_PEX_AMAP_AXI_WIN(win_num));
+	mobiveil_csr_writel(pcie, upper_32_bits(cpu_addr),
+			    PAB_EXT_PEX_AMAP_AXI_WIN(win_num));
 
-	csr_writel(pcie, lower_32_bits(pci_addr),
-		   PAB_PEX_AMAP_PEX_WIN_L(win_num));
-	csr_writel(pcie, upper_32_bits(pci_addr),
-		   PAB_PEX_AMAP_PEX_WIN_H(win_num));
+	mobiveil_csr_writel(pcie, lower_32_bits(pci_addr),
+			    PAB_PEX_AMAP_PEX_WIN_L(win_num));
+	mobiveil_csr_writel(pcie, upper_32_bits(pci_addr),
+			    PAB_PEX_AMAP_PEX_WIN_H(win_num));
 
 	pcie->ib_wins_configured++;
 }
@@ -167,10 +169,9 @@ void program_ib_windows(struct mobiveil_pcie *pcie, int win_num, u64 cpu_addr,
 /*
  * routine to program the outbound windows
  */
-void program_ob_windows(struct mobiveil_pcie *pcie, int win_num, u64 cpu_addr,
-			u64 pci_addr, u32 type, u64 size)
+void program_ob_windows(struct mobiveil_pcie *pcie, int win_num,
+			u64 cpu_addr, u64 pci_addr, u32 type, u64 size)
 {
-
 	u32 value;
 	u64 size64 = ~(size - 1);
 
@@ -184,28 +185,29 @@ void program_ob_windows(struct mobiveil_pcie *pcie, int win_num, u64 cpu_addr,
 	 * program Enable Bit to 1, Type Bit to (00) base 2, AXI Window Size Bit
 	 * to 4 KB in PAB_AXI_AMAP_CTRL register
 	 */
-	value = csr_readl(pcie, PAB_AXI_AMAP_CTRL(win_num));
-	value &= ~(WIN_TYPE_MASK << WIN_TYPE_SHIFT |
-		 WIN_SIZE_MASK << WIN_SIZE_SHIFT);
+	value = mobiveil_csr_readl(pcie, PAB_AXI_AMAP_CTRL(win_num));
+	value &= ~(WIN_TYPE_MASK << WIN_TYPE_SHIFT | WIN_SIZE_MASK);
 	value |= 1 << WIN_ENABLE_SHIFT | type << WIN_TYPE_SHIFT |
-		 (lower_32_bits(size64) & WIN_SIZE_MASK << WIN_SIZE_SHIFT);
-	csr_writel(pcie, value, PAB_AXI_AMAP_CTRL(win_num));
+		 (lower_32_bits(size64) & WIN_SIZE_MASK);
+	mobiveil_csr_writel(pcie, value, PAB_AXI_AMAP_CTRL(win_num));
 
-	csr_writel(pcie, upper_32_bits(size64), PAB_EXT_AXI_AMAP_SIZE(win_num));
+	mobiveil_csr_writel(pcie, upper_32_bits(size64),
+			    PAB_EXT_AXI_AMAP_SIZE(win_num));
 
 	/*
 	 * program AXI window base with appropriate value in
 	 * PAB_AXI_AMAP_AXI_WIN0 register
 	 */
-	csr_writel(pcie, lower_32_bits(cpu_addr) & (~AXI_WINDOW_ALIGN_MASK),
-		   PAB_AXI_AMAP_AXI_WIN(win_num));
-	csr_writel(pcie, upper_32_bits(cpu_addr),
-		   PAB_EXT_AXI_AMAP_AXI_WIN(win_num));
+	mobiveil_csr_writel(pcie,
+			    lower_32_bits(cpu_addr) & (~AXI_WINDOW_ALIGN_MASK),
+			    PAB_AXI_AMAP_AXI_WIN(win_num));
+	mobiveil_csr_writel(pcie, upper_32_bits(cpu_addr),
+			    PAB_EXT_AXI_AMAP_AXI_WIN(win_num));
 
-	csr_writel(pcie, lower_32_bits(pci_addr),
-		   PAB_AXI_AMAP_PEX_WIN_L(win_num));
-	csr_writel(pcie, upper_32_bits(pci_addr),
-		   PAB_AXI_AMAP_PEX_WIN_H(win_num));
+	mobiveil_csr_writel(pcie, lower_32_bits(pci_addr),
+			    PAB_AXI_AMAP_PEX_WIN_L(win_num));
+	mobiveil_csr_writel(pcie, upper_32_bits(pci_addr),
+			    PAB_AXI_AMAP_PEX_WIN_H(win_num));
 
 	pcie->ob_wins_configured++;
 }
@@ -222,25 +224,7 @@ int mobiveil_bringup_link(struct mobiveil_pcie *pcie)
 		usleep_range(LINK_WAIT_MIN, LINK_WAIT_MAX);
 	}
 
-	dev_info(&pcie->pdev->dev, "link never came up\n");
+	dev_err(&pcie->pdev->dev, "link never came up\n");
 
 	return -ETIMEDOUT;
-}
-
-void mobiveil_pcie_disable_ib_win(struct mobiveil_pcie *pci, int win_num)
-{
-	u32 val;
-
-	val = csr_readl(pci, PAB_PEX_AMAP_CTRL(win_num));
-	val &= ~(1 << AMAP_CTRL_EN_SHIFT);
-	csr_writel(pci, val, PAB_PEX_AMAP_CTRL(win_num));
-}
-
-void mobiveil_pcie_disable_ob_win(struct mobiveil_pcie *pci, int win_num)
-{
-	u32 val;
-
-	val = csr_readl(pci, PAB_AXI_AMAP_CTRL(win_num));
-	val &= ~(1 << WIN_ENABLE_SHIFT);
-	csr_writel(pci, val, PAB_AXI_AMAP_CTRL(win_num));
 }
