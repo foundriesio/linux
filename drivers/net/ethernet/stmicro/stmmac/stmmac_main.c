@@ -64,6 +64,9 @@
 #define	STMMAC_ALIGN(x)		ALIGN(ALIGN(x, SMP_CACHE_BYTES), 16)
 #define	TSO_MAX_BUFF_SIZE	(SZ_16K - 1)
 
+// #define DWMAC_TCC_510A_PTP_DEBUG 1
+// #define DWMAC_TCC_510A_PTP_INIT 1
+
 /* Module parameters */
 #define TX_TIMEO	5000
 static int watchdog = TX_TIMEO;
@@ -463,6 +466,8 @@ static void stmmac_get_tx_hwtstamp(struct stmmac_priv *priv,
 	if (!priv->hwts_tx_en)
 		return;
 
+	if (skb_shinfo(skb)->tx_flags & SKBTX_IN_PROGRESS)
+		netdev_dbg(priv->dev, "SKBTX in PROGRESS\n");
 	/* exit if skb doesn't support hw tstamp */
 	if (likely(!skb || !(skb_shinfo(skb)->tx_flags & SKBTX_IN_PROGRESS)))
 		return;
@@ -553,9 +558,14 @@ static int stmmac_hwtstamp_ioctl(struct net_device *dev, struct ifreq *ifr)
 		return -EOPNOTSUPP;
 	}
 
+#if defined(DWMAC_TCC_510A_PTP_DEBUG)
+	config.tx_type = HWTSTAMP_TX_ON;
+	config.rx_filter = HWTSTAMP_FILTER_ALL;
+#else
 	if (copy_from_user(&config, ifr->ifr_data,
 			   sizeof(struct hwtstamp_config)))
 		return -EFAULT;
+#endif
 
 	netdev_dbg(priv->dev, "%s config flags:0x%x, tx_type:0x%x, rx_filter:0x%x\n",
 		   __func__, config.flags, config.tx_type, config.rx_filter);
@@ -737,16 +747,25 @@ static int stmmac_hwtstamp_ioctl(struct net_device *dev, struct ifreq *ifr)
 		priv->hw->ptp->config_addend(priv->ptpaddr,
 					     priv->default_addend);
 
+#if defined(DWMAC_TCC_510A_PTP_DEBUG)
+		now.tv_sec = 0;
+		now.tv_nsec = 0;
+#else
 		/* initialize system time */
 		ktime_get_real_ts64(&now);
+#endif
 
 		/* lower 32 bits of tv_sec are safe until y2106 */
 		priv->hw->ptp->init_systime(priv->ptpaddr, (u32)now.tv_sec,
 					    now.tv_nsec);
 	}
 
+#if defined(DWMAC_TCC_510A_PTP_DEBUG)
+	return 0;
+#else
 	return copy_to_user(ifr->ifr_data, &config,
 			    sizeof(struct hwtstamp_config)) ? -EFAULT : 0;
+#endif
 }
 
 /**
@@ -779,6 +798,8 @@ static int stmmac_init_ptp(struct stmmac_priv *priv)
 	priv->hw->ptp = &stmmac_ptp;
 	priv->hwts_tx_en = 0;
 	priv->hwts_rx_en = 0;
+
+	pr_info("%s. after IEEE 1588\n", __func__);
 
 	stmmac_ptp_register(priv);
 
@@ -2698,6 +2719,9 @@ static int stmmac_open(struct net_device *dev)
 
 	// for(i=0;i<3;i++)
 		// stmmac_enable_dma_irq(priv, i);
+#if defined(DWMAC_TCC_510A_PTP_DEBUG)
+	stmmac_hwtstamp_ioctl(dev, 0);
+#endif
 
 	stmmac_enable_all_queues(priv);
 	stmmac_start_all_queues(priv);
@@ -3191,6 +3215,9 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 		priv->xstats.tx_set_ic_bit++;
 	}
 
+#if defined(DWMAC_TCC_510A_PTP_DEBUG)
+	skb_shinfo(skb)->tx_flags |= SKBTX_HW_TSTAMP;
+#endif
 	skb_tx_timestamp(skb);
 
 	/* Ready to fill the first descriptor and set the OWN bit w/o any

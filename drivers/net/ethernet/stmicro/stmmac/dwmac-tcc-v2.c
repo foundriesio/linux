@@ -289,7 +289,7 @@ static struct tcc_dwmac *tcc_config_dt(struct platform_device *pdev)
 	gmac->rxdv_dly = 31;
 #endif
 
-#if defined(CONFIG_TCC_MARVELL)
+#if defined(CONFIG_TCC_MARVELL_PHY)
 	gmac->rxclk_i_dly = 9;
 #endif
 
