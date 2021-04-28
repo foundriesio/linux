@@ -485,7 +485,6 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 	int32_t half_frame_len = frame_len / 2;
 #if defined(TCC805x_CS_SND)
 	uint32_t chip_rev = (uint32_t)get_chip_rev();
-	uint32_t chip_name = (uint32_t)get_chip_name();
 #endif
 
 	damr &=
@@ -495,7 +494,7 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 		| DAMR_DSP_MODE_Msk);
 
 #if defined(TCC805x_CS_SND)
-	if ((chip_rev == 1) && (chip_name == 0x8050)) {
+	if (chip_rev >= (uint32_t) 1) {
 		mccr0 &=
 			~(MCCR0_FRAME_SIZE_Msk
 				| MCCR0_FRAME_CLK_DIV_Msk
@@ -548,7 +547,7 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 		mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE;
 
 #if defined(TCC805x_CS_SND)
-		if ((chip_rev == 1) && (chip_name == 0x8050)) {
+		if (chip_rev >= (uint32_t) 1) {
 			if (late == TRUE)
 				mccr0 |= MCCR0_MODE_SELECT_ENABLE;
 		} else {

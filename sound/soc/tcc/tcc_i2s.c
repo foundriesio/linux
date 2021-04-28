@@ -961,10 +961,9 @@ static int tcc_i2s_hw_params(
 #if defined(TCC805x_CS_SND)
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		uint32_t chip_rev = (uint32_t)get_chip_rev();
-		uint32_t chip_name = (uint32_t)get_chip_name();
 		uint32_t bclk = 0;
 
-		if ((chip_rev == 1) && (chip_name == 0x8050)) {
+		if (chip_rev >= (uint32_t) 1) {
 			if (i2s->tdm_mode == TRUE)
 				tcc_dai_set_dsp_tdm_mode_rx_channel(i2s->dai_reg, i2s->tdm_slots);
 			else
