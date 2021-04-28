@@ -294,11 +294,14 @@ err_null_pointer:
 	return 0;
 }
 
-static int tcc_drm_crtc_check_pixelclock_match(
-		unsigned long res, unsigned long data)
+static int tcc_drm_crtc_check_pixelclock_match(unsigned long res,
+			unsigned long data, unsigned int clk_div)
 {
 	unsigned long bp;
 	int match = 0;
+
+	if(clk_div)
+		data *= clk_div*2;
 
 	bp = DIV_ROUND_UP(data, 10);
 	if (res > (data - bp) && res < (data + bp))
@@ -355,7 +358,6 @@ static int tcc_drm_crtc_check_display_timing(struct drm_crtc *crtc,
 	struct DisplayBlock_Info ddinfo;
 	int need_reset = 0;
 	u32 vactive;
-
 	VIOC_DISP_GetDisplayBlock_Info(
 		hw_data->display_device.virt_addr, &ddinfo);
 	/* Check turn on status of display device */
@@ -385,7 +387,9 @@ static int tcc_drm_crtc_check_display_timing(struct drm_crtc *crtc,
 	if (
 		!tcc_drm_crtc_check_pixelclock_match(
 			clk_get_rate(
-				hw_data->ddc_clock), mode->clock * 1000)) {
+				hw_data->ddc_clock), mode->clock * 1000,
+				vioc_disp_get_clkdiv(
+                                  hw_data->display_device.virt_addr))) {
 		dev_info(
 			crtc->dev->dev,
 			"[INFO][%s] %s display device(%d) clock is not match %ldHz : %dHz\r\n",
@@ -696,11 +700,12 @@ int tcc_drm_crtc_set_display_timing(struct drm_crtc *crtc,
 
 finish:
 	#endif
-
 	/* Set pixel clocks */
 	if (
 		!tcc_drm_crtc_check_pixelclock_match(
-			clk_get_rate(hw_data->ddc_clock), vm.pixelclock)) {
+			clk_get_rate(hw_data->ddc_clock), vm.pixelclock,
+				vioc_disp_get_clkdiv(
+                                  hw_data->display_device.virt_addr))) {
 		dev_info(
 			crtc->dev->dev,
 			"[INFO][%s] %s display device(%d) clock is not match %ldHz : %dHz\r\n",
