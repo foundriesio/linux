@@ -103,7 +103,7 @@ static uint16_t getMasterSlave(struct phy_device *phydev)
 		short)((unsigned int)((unsigned int)
 				  phy_read_c22_to_c45(phydev, 7,
 						      0x8001) >> (unsigned int)14) &
-		       (unsigned int)0x0001);
+		(unsigned int)0x0001);
 }
 
 static bool checkLink(struct phy_device *phydev)
@@ -151,22 +151,22 @@ static void initQ212X(struct phy_device *phydev)
 	phy_write_c22_to_c45(phydev, 7, 0x0200, 0x0000);
 	regData = (unsigned short)phy_read_c22_to_c45(phydev, 1, 0x0834);
 	regData =
-	    (unsigned short)(((unsigned short)regData & (unsigned short)0xFFF0)
-			     | (unsigned short)0x0001);
+	(unsigned short)(((unsigned short)regData & (unsigned short)0xFFF0)
+			| (unsigned short)0x0001);
 
 	get_mas_slave = getMasterSlave(phydev);
 	if ((unsigned int)get_mas_slave == (unsigned int)0x1) {	// master
 		regData &=
-		    (unsigned
-		     short)(~(unsigned short)((unsigned short)1 <<
-					      (unsigned short)14));
+		(unsigned
+		short)(~(unsigned short)((unsigned short)1 <<
+					(unsigned short)14));
 		regData |=
-		    (unsigned short)((unsigned short)1 << (unsigned short)14);
+		(unsigned short)((unsigned short)1 << (unsigned short)14);
 	} else {		// slave
 		regData &=
-		    (unsigned
-		     short)(~(unsigned short)((unsigned short)1 <<
-					      (unsigned short)14));
+		(unsigned
+		short)(~(unsigned short)((unsigned short)1 <<
+					(unsigned short)14));
 	}
 
 	phy_write_c22_to_c45(phydev, 1, 0x0834, regData);
@@ -257,6 +257,20 @@ static int q2110_config_init(struct phy_device *phydev)
 
 	initQ212X(phydev);
 
+#if defined(CONFIG_TCC_MARVELL_LOOPBACK)
+	// Ethernet phy loopback mode
+	pr_info(" Set Loopback mode !!!! \n");
+
+	regData = phy_read_c22_to_c45(phydev, 1, 0x0000);
+	pr_info("Before set loopback: %08x\n", regData);
+
+	regData |= 0x1;
+	phy_write_c22_to_c45(phydev, 1, 0x0000, regData);
+
+	regData = phy_read_c22_to_c45(phydev, 1, 0x0000);
+	pr_info("After set loopback: %08x\n", regData);
+#endif
+
 	pr_info("phy id before: %08x\n", phydev->phy_id);
 	phydev->phy_id = (unsigned int)phy_read_c22_to_c45(phydev, 1, 0x0003);
 
@@ -277,6 +291,11 @@ static int q2110_read_status(struct phy_device *phydev)
 	phydev->speed = SPEED_1000;
 	// phydev->speed = SPEED_100;
 	phydev->duplex = DUPLEX_FULL;
+
+#if defined(CONFIG_TCC_MARVELL_LOOPBACK)
+	// If loopback is enabled, force ethernet phy to be link up.
+	phydev->link = 1; // link up
+#endif
 
 	if ((unsigned int)phydev->link != (unsigned int)0)
 		phydev->state = PHY_RUNNING;

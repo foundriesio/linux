@@ -170,7 +170,7 @@ config DWMAC_SUN8I
 config DWMAC_TCC
 	tristate "Telechips dwmac support"
 	default y
-	depends on OF 
+	depends on OF
 	select MFD_SYSCON
 	---help---
 	  Telechips dwmac support
@@ -183,7 +183,7 @@ config DWMAC_TCC_510A
 	depends on OF && ARCH_TCC805X
 	select MFD_SYSCON
 	---help---
-	  Support for Telechips GMAC 5.1a support 
+	  Support for Telechips GMAC 5.1a support
 
 config DWMAC_TCC_373A
 	tristate "Telechips GMAC 3.73a support"
@@ -191,9 +191,16 @@ config DWMAC_TCC_373A
 	depends on OF && !TCC_GMAC
 	select MFD_SYSCON
 	---help---
-	  Support for Telechips GMAC 3.73a support 
+	  Support for Telechips GMAC 3.73a support
 	  3.73a driver cannot be enabled with the tcc legacy gmac driver
 	  at the same time.
+
+config DWMAC_TCC_LOOPBACK
+	tristate "Telechips GMAC Loopback support"
+	default n
+	---help---
+	  Support for Telechips GMAC Loopback mode
+
 endif
 
 endif

@@ -21,6 +21,11 @@
 #include "stmmac_pcs.h"
 #include "dwmac4.h"
 
+#if defined(CONFIG_DWMAC_TCC_LOOPBACK)
+#define GMAC_LM	(0x1000)
+#endif
+
+
 static void dwmac4_core_init(struct mac_device_info *hw,
 			     struct net_device *dev)
 {
@@ -29,6 +34,9 @@ static void dwmac4_core_init(struct mac_device_info *hw,
 	int mtu = dev->mtu;
 
 	value |= GMAC_CORE_INIT;
+#if defined(CONFIG_DWMAC_TCC_LOOPBACK)
+	value |= GMAC_LM;
+#endif
 
 	if (mtu > 1500)
 		value |= GMAC_CONFIG_2K;

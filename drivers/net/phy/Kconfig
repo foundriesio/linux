@@ -400,26 +400,33 @@ config XILINX_GMII2RGMII
 	  Ethernet physical media devices and the Gigabit Ethernet controller.
 
 config TCC_MARVELL_PHY
-        tristate "Drivers for Marvell PHYs Telechips support"
+	tristate "Drivers for Marvell PHYs Telechips support"
 	---help---
 	Supports the Marvell PHYs for telechips evaluation board.
 
+config TCC_MARVELL_LOOPBACK
+	tristate "Telechip Marvell phy loopback mode enable"
+	default n
+	depends on TCC_MARVELL_PHY
+	---help---
+	Support for Telechips Marvell phy loopback mode.
+
 config TCC_RTL9000_PHY
-       tristate "Drivers for RTL9000 PHYs Telechips support"
-       ---help---
-               Supports the RTL9000 PHYs for telechips evaluation board.
+	tristate "Drivers for RTL9000 PHYs Telechips support"
+	---help---
+	Supports the RTL9000 PHYs for telechips evaluation board.
 
 if TCC_RTL9000_PHY
 choice
-       prompt "Select RTL9000 PHY Master/Slave mode"
-       depends on TCC_RTL9000_PHY
-       help
+	prompt "Select RTL9000 PHY Master/Slave mode"
+	depends on TCC_RTL9000_PHY
+	help
 
 config TCC_RTL9000_MASTER_MODE
-       bool "RTL9000 Master Mode"
+	bool "RTL9000 Master Mode"
 
 config TCC_RTL9000_SLAVE_MODE
-       bool "RTL9000 Slave Mode"
+	bool "RTL9000 Slave Mode"
 
 endchoice
 endif
@@ -431,7 +438,7 @@ config TCC_REALTEK_PHY
 		Supports the Realtek PHYs for telechips evaluation board.
 
 config TCC_BROADCOM_PHY_89811
-    tristate "Drivers for Broadcom 89811 PHYs Telechips support"
+	tristate "Drivers for Broadcom 89811 PHYs Telechips support"
 	---help---
 		Supports the Broadcom 89811 PHYs for telechips evaluation board.
 
