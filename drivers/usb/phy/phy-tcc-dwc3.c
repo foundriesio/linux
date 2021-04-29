@@ -53,6 +53,7 @@ struct tcc_dwc3_device {
 	struct work_struct dwc3_work;
 	struct task_struct *dwc3_chgdet_thread;
 	int32_t irq;
+	bool chg_ready;
 #endif
 };
 
@@ -251,7 +252,7 @@ static void tcc_dwc3_set_chg_det(struct usb_phy *phy)
 	struct PUSBSSPHYCFG *USBPHYCFG =
 		(struct PUSBSSPHYCFG *)dwc3_phy_dev->base;
 
-	dev_dbg(dwc3_phy_dev->dev, "[INFO][USB] Charging Detection!!\n");
+	dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB] Charging Detection!!\n");
 	writel(readl(&USBPHYCFG->FPHY_PCFG2) | (1 << 8),
 			&USBPHYCFG->FPHY_PCFG2); //enable chg det
 	//	writel(readl(&USBPHYCFG->FPHY_PCFG4) | (1 << 28),
@@ -269,7 +270,7 @@ static int dwc3_chgdet_thread(void *work)
 	dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB]Start to check CHGDET\n");
 	while (!kthread_should_stop() && timeout > 0) {
 		pcfg2 = readl(&USBPHYCFG->FPHY_PCFG2);
-		mdelay(1);
+		usleep_range(1000,1100);
 		timeout--;
 	}
 
@@ -294,6 +295,8 @@ static void tcc_dwc3_stop_chg_det(struct usb_phy *phy)
 		container_of(phy, struct tcc_dwc3_device, phy);
 	struct PUSBSSPHYCFG *USBPHYCFG =
 		(struct PUSBSSPHYCFG *)dwc3_phy_dev->base;
+
+	dwc3_phy_dev->chg_ready = false;
 
 	dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB]stop chg det!\n");
 	if (dwc3_phy_dev->dwc3_chgdet_thread != NULL) {
@@ -326,11 +329,13 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 	int32_t count = 3;
 	int32_t timeout_count = 500; //100ms
 
+	dwc3_phy_dev->chg_ready = true;
+
 	while (count > 0) {
 		if ((readl(&USBPHYCFG->FPHY_PCFG2) & (1 << 22)) != 0) {
 			break;
 		}
-		mdelay(1);
+		usleep_range(1000,1100);
 		count--;
 	}
 
@@ -344,7 +349,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 		while (timeout_count > 0) {
 			pcfg2 = readl(&USBPHYCFG->FPHY_PCFG2);
 			if ((pcfg2 & (1 << 22)) != 0) {
-				mdelay(1);
+				usleep_range(1000,1100);
 				timeout_count--;
 			} else {
 				break;
@@ -358,19 +363,23 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 		writel(readl(&USBPHYCFG->FPHY_PCFG2) & ~((1 << 9) | (1 << 8)),
 				&USBPHYCFG->FPHY_PCFG2);
 
-		// writel(readl(&USBPHYCFG->FPHY_PCFG2) | (1 << 8),
-		// &USBPHYCFG->FPHY_PCFG2); //enable chg det
-		dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB] Enable chg det monitor!\n");
-		if (dwc3_phy_dev->dwc3_chgdet_thread != NULL) {
-			kthread_stop(dwc3_phy_dev->dwc3_chgdet_thread);
-			dwc3_phy_dev->dwc3_chgdet_thread = NULL;
-		}
-		dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB] start chg det thread!\n");
-		dwc3_phy_dev->dwc3_chgdet_thread =
-			kthread_run(dwc3_chgdet_thread,
-					(void *)dwc3_phy_dev, "dwc3-chgdet");
-		if (IS_ERR(dwc3_phy_dev->dwc3_chgdet_thread)) {
-			dev_err(dwc3_phy_dev->dev, "[ERROR][USB] failed to run dwc3_chgdet_thread\n");
+		if (dwc3_phy_dev->chg_ready == true) {
+			// writel(readl(&USBPHYCFG->FPHY_PCFG2) | (1 << 8),
+			// &USBPHYCFG->FPHY_PCFG2); //enable chg det
+			dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB] Enable chg det monitor!\n");
+			if (dwc3_phy_dev->dwc3_chgdet_thread != NULL) {
+				kthread_stop(dwc3_phy_dev->dwc3_chgdet_thread);
+				dwc3_phy_dev->dwc3_chgdet_thread = NULL;
+			}
+			dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB] start chg det thread!\n");
+			dwc3_phy_dev->dwc3_chgdet_thread =
+				kthread_run(dwc3_chgdet_thread,
+						(void *)dwc3_phy_dev, "dwc3-chgdet");
+			if (IS_ERR(dwc3_phy_dev->dwc3_chgdet_thread)) {
+				dev_err(dwc3_phy_dev->dev, "[ERROR][USB] failed to run dwc3_chgdet_thread\n");
+			}
+		} else {
+			dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB] No need to start chg det monitor!\n");
 		}
 	}
 }
@@ -401,7 +410,7 @@ static void tcc_dwc3_set_chg_det(struct usb_phy *phy)
 		container_of(phy, struct tcc_dwc3_device, phy);
 	struct PUSBPHYCFG *USBPHYCFG = (struct PUSBPHYCFG *)dwc3_phy_dev->base;
 
-	dev_info(dwc3_phy_dev->dev, "[INFO][USB] Charging Detection!!\n");
+	dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB] Charging Detection!!\n");
 
 	// enable chg det
 	writel(readl(&USBPHYCFG->U30_PCFG1) | (1 << 17), &USBPHYCFG->U30_PCFG1);
@@ -420,7 +429,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 			dev_info(dwc3_phy_dev->dev, "[INFO][USB] Chager Detecttion!!\n");
 			break;
 		}
-		mdelay(1);
+		usleep_range(1000,1100);
 		count--;
 	}
 
@@ -430,7 +439,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 	} else {
 		pcfg = readl(&USBPHYCFG->U30_PCFG1);
 		writel((pcfg | (1 << 18)), &USBPHYCFG->U30_PCFG1);
-		mdelay(100);
+		usleep_range(1000,1100);
 		writel(readl(&USBPHYCFG->U30_PCFG1) & ~((1 << 18) | (1 << 17)),
 				&USBPHYCFG->U30_PCFG1);
 	}

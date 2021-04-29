@@ -43,6 +43,7 @@ struct tcc_ehci_device {
 	int irq;
 	struct task_struct *ehci_chgdet_thread;
 	struct work_struct chgdet_work;
+	bool chg_ready;
 #endif
 };
 
@@ -205,7 +206,7 @@ static int ehci_chgdet_thread(void *work)
 	dev_dbg(phy_dev->dev, "[DEBUG][USB]Start to check CHGDET\n");
 	while (!kthread_should_stop() && timeout > 0) {
 		pcfg2 = readl(&ehci_pcfg->pcfg2);
-		mdelay(1);
+		usleep_range(1000,1100);
 		timeout--;
 	}
 
@@ -228,18 +229,50 @@ static void chgdet_monitor(struct work_struct *data)
 	struct tcc_ehci_device *phy_dev = container_of(data,
 			struct tcc_ehci_device, chgdet_work);
 
-	dev_dbg(phy_dev->dev, "[DEBUG][USB]Enable chg det monitor!\n");
-	if (phy_dev->ehci_chgdet_thread != NULL) {
-		kthread_stop(phy_dev->ehci_chgdet_thread);
-		phy_dev->ehci_chgdet_thread = NULL;
-	}
-	dev_dbg(phy_dev->dev, "[DEBUG][USB]start chg det thread!\n");
-	phy_dev->ehci_chgdet_thread = kthread_run(ehci_chgdet_thread,
-			(void *)phy_dev, "ehci-chgdet");
-	if (IS_ERR(phy_dev->ehci_chgdet_thread)) {
-		dev_err(phy_dev->dev, "[ERROR][USB]failed to run ehci_chgdet_thread\n");
+	struct ehci_phy_reg *ehci_pcfg = (struct ehci_phy_reg *)phy_dev->base;
+	uint32_t pcfg2 = 0;
+	int32_t timeout_count = 500;
+
+	phy_dev->chg_ready = true;
+	pcfg2 = readl(&ehci_pcfg->pcfg2);
+
+	writel((pcfg2 | (1 << 9)), &ehci_pcfg->pcfg2);
+
+	while (timeout_count > 0) {
+		pcfg2 = readl(&ehci_pcfg->pcfg2);
+		if ((pcfg2 & (1 << 22)) != 0) { //Check VDP_SRC signal
+			usleep_range(1000,1100);
+			timeout_count--;
+		} else {
+			break;
+		}
 	}
 
+	if (timeout_count == 0) {
+		dev_dbg(phy_dev->dev, "[DEBUG][USB]Timeout - VDM_SRC is still High\n");
+	} else {
+		dev_dbg(phy_dev->dev, "[DEBUG][USB]Time count(%d) - VDM_SRC is low\n",
+				(500-timeout_count));
+	}
+
+	writel(readl(&ehci_pcfg->pcfg2) & ~((1 << 9) | (1 << 8)),
+			&ehci_pcfg->pcfg2);
+
+	if (phy_dev->chg_ready == true) {
+		dev_dbg(phy_dev->dev, "[DEBUG][USB]Enable chg det monitor!\n");
+		if (phy_dev->ehci_chgdet_thread != NULL) {
+			kthread_stop(phy_dev->ehci_chgdet_thread);
+			phy_dev->ehci_chgdet_thread = NULL;
+		}
+		dev_dbg(phy_dev->dev, "[DEBUG][USB]start chg det thread!\n");
+		phy_dev->ehci_chgdet_thread = kthread_run(ehci_chgdet_thread,
+				(void *)phy_dev, "ehci-chgdet");
+		if (IS_ERR(phy_dev->ehci_chgdet_thread)) {
+			dev_err(phy_dev->dev, "[ERROR][USB]failed to run ehci_chgdet_thread\n");
+		}
+	} else {
+		dev_dbg(phy_dev->dev, "[DEBUG][USB]No need to start chg det monitor\n");
+	}
 }
 
 static void tcc_ehci_set_chg_det(struct usb_phy *phy)
@@ -269,6 +302,8 @@ static void tcc_ehci_stop_chg_det(struct usb_phy *phy)
 	struct ehci_phy_reg *ehci_pcfg =
 		(struct ehci_phy_reg *)ehci_phy_dev->base;
 
+	ehci_phy_dev->chg_ready = false;
+
 	dev_dbg(ehci_phy_dev->dev, "[DEBUG][USB]stop chg det!\n");
 	if (ehci_phy_dev->ehci_chgdet_thread != NULL) {
 		dev_dbg(ehci_phy_dev->dev, "[DEBUG][USB]kill chg det thread!\n");
@@ -291,35 +326,9 @@ static irqreturn_t chg_irq(int irq, void *data)
 {
 	struct tcc_ehci_device *phy_dev = (struct tcc_ehci_device *)data;
 	struct ehci_phy_reg *ehci_pcfg = (struct ehci_phy_reg *)phy_dev->base;
-	uint32_t pcfg2 = 0;
-	int32_t timeout_count = 500; //500ms
-
 
 	writel(readl(&ehci_pcfg->pcfg4) & ~(1 << 28), &ehci_pcfg->pcfg4);
-	dev_info(phy_dev->dev, "[INFO][USB] Charging Detection!\n");
-
-	pcfg2 = readl(&ehci_pcfg->pcfg2);
-	writel((pcfg2 | (1 << 9)), &ehci_pcfg->pcfg2);
-
-	while (timeout_count > 0) {
-		pcfg2 = readl(&ehci_pcfg->pcfg2);
-		if ((pcfg2 & (1 << 22)) != 0) { //Check VDP_SRC signal
-			mdelay(1);
-			timeout_count--;
-		} else {
-			break;
-		}
-	}
-
-	if (timeout_count == 0) {
-		dev_dbg(phy_dev->dev, "[DEBUG][USB]Timeout - VDM_SRC is still High\n");
-	} else {
-		dev_dbg(phy_dev->dev, "[DEBUG][USB]Time count(%d) - VDM_SRC is low\n",
-				(500-timeout_count));
-	}
-
-	writel(readl(&ehci_pcfg->pcfg2) & ~((1 << 9) | (1 << 8)),
-			&ehci_pcfg->pcfg2);
+	dev_dbg(phy_dev->dev, "[DEBUG][USB] Charging Detection!\n");
 
 	// clear irq
 	writel(readl(&ehci_pcfg->pcfg4) | (1 << 31), &ehci_pcfg->pcfg4);
