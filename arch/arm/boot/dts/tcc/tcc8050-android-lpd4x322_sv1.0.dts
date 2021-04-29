@@ -173,8 +173,8 @@
 
 	tcm38xx {
 		compatible = "telechips,tcm38xx";
-		wifi_pwr-gpio = <&gpmd 10 0>; /* BT_WIFI_VBAT_EN */
-		wlreg_on-gpio = <&gpmd 11 0>; /* WIFI_REG_ON */
+		wifi_pwr-gpio = <&gpsd1 10 0>; /* BT_WIFI_VBAT_EN */
+		wlreg_on-gpio = <&gpmc 2 0>; /* WIFI_REG_ON */
 		//wifi_pwr_1p8v-gpio = <&gpsd1 6 0>;
 		//wifi_pwr_3p3v-gpio = <&gpsd1 7 0>;
 	};
