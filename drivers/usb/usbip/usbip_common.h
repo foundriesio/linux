@@ -293,6 +293,10 @@ struct usbip_device {
 		void (*reset)(struct usbip_device *);
 		void (*unusable)(struct usbip_device *);
 	} eh_ops;
+#ifndef __GENKSYMS__
+	/* mutex for synchronizing sysfs store paths */
+	struct mutex sysfs_lock;
+#endif
 };
 
 #define kthread_get_run(threadfn, data, namefmt, ...)			   \
