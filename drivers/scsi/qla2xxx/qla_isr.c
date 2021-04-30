@@ -4000,11 +4000,11 @@ qla24xx_enable_msix(struct qla_hw_data *ha, struct rsp_que *rsp)
             !shost_use_blk_mq(vha->host)) {
 		/* user wants to control IRQ setting for target mode */
 		ret = pci_alloc_irq_vectors(ha->pdev, min_vecs,
-		    min((u16)ha->msix_count, (u16)num_online_cpus()),
+		    min((u16)ha->msix_count, (u16)(num_online_cpus() + min_vecs)),
 		    PCI_IRQ_MSIX);
 	} else
 		ret = pci_alloc_irq_vectors_affinity(ha->pdev, min_vecs,
-		    min((u16)ha->msix_count, (u16)num_online_cpus()),
+		    min((u16)ha->msix_count, (u16)(num_online_cpus() + min_vecs)),
 		    PCI_IRQ_MSIX | PCI_IRQ_AFFINITY,
 		    &desc);
 
