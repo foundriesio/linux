@@ -384,7 +384,7 @@ skipit:
 static int lpfc_debugfs_last_xripool;
 
 /**
- * lpfc_debugfs_common_xri_data - Dump Hardware Queue info to a buffer
+ * lpfc_debugfs_commonxripools_data - Dump Hardware Queue info to a buffer
  * @phba: The HBA to gather host buffer info from.
  * @buf: The buffer to dump log into.
  * @size: The maximum amount of data to process.
@@ -2427,7 +2427,7 @@ lpfc_debugfs_dif_err_write(struct file *file, const char __user *buf,
 	memset(dstbuf, 0, 33);
 	size = (nbytes < 32) ? nbytes : 32;
 	if (copy_from_user(dstbuf, buf, size))
-		return 0;
+		return -EFAULT;
 
 	if (dent == phba->debug_InjErrLBA) {
 		if ((dstbuf[0] == 'o') && (dstbuf[1] == 'f') &&
@@ -2436,7 +2436,7 @@ lpfc_debugfs_dif_err_write(struct file *file, const char __user *buf,
 	}
 
 	if ((tmp == 0) && (kstrtoull(dstbuf, 0, &tmp)))
-		return 0;
+		return -EINVAL;
 
 	if (dent == phba->debug_writeGuard)
 		phba->lpfc_injerr_wgrd_cnt = (uint32_t)tmp;
@@ -5161,7 +5161,7 @@ error_out:
  * This routine is to get the available extent information.
  *
  * Returns:
- * overall lenth of the data read into the internal buffer.
+ * overall length of the data read into the internal buffer.
  **/
 static int
 lpfc_idiag_extacc_avail_get(struct lpfc_hba *phba, char *pbuffer, int len)
@@ -5212,7 +5212,7 @@ lpfc_idiag_extacc_avail_get(struct lpfc_hba *phba, char *pbuffer, int len)
  * This routine is to get the allocated extent information.
  *
  * Returns:
- * overall lenth of the data read into the internal buffer.
+ * overall length of the data read into the internal buffer.
  **/
 static int
 lpfc_idiag_extacc_alloc_get(struct lpfc_hba *phba, char *pbuffer, int len)
@@ -5284,7 +5284,7 @@ lpfc_idiag_extacc_alloc_get(struct lpfc_hba *phba, char *pbuffer, int len)
  * This routine is to get the driver extent information.
  *
  * Returns:
- * overall lenth of the data read into the internal buffer.
+ * overall length of the data read into the internal buffer.
  **/
 static int
 lpfc_idiag_extacc_drivr_get(struct lpfc_hba *phba, char *pbuffer, int len)
