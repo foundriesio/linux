@@ -3883,7 +3883,7 @@ lpfc_bsg_sli_cfg_dma_desc_setup(struct lpfc_hba *phba, enum nemb_type nemb_tp,
  * @dmabuff: Pointer to a DMA buffer descriptor.
  *
  * This routine performs SLI_CONFIG (0x9B) read mailbox command operation with
- * non-embedded external bufffers.
+ * non-embedded external bufffer.
  **/
 static int
 lpfc_bsg_sli_cfg_read_cmd_ext(struct lpfc_hba *phba, struct bsg_job *job,
@@ -4071,7 +4071,7 @@ job_error:
  * @dmabuff: Pointer to a DMA buffer descriptor.
  *
  * This routine performs SLI_CONFIG (0x9B) write mailbox command operation with
- * non-embedded external bufffers.
+ * non-embedded external bufffer.
  **/
 static int
 lpfc_bsg_sli_cfg_write_cmd_ext(struct lpfc_hba *phba, struct bsg_job *job,
@@ -4215,7 +4215,7 @@ lpfc_bsg_sli_cfg_write_cmd_ext(struct lpfc_hba *phba, struct bsg_job *job,
 		goto job_error;
 	}
 
-	/* wait for additoinal external buffers */
+	/* wait for additional external buffers */
 
 	bsg_reply->result = 0;
 	bsg_job_done(job, bsg_reply->result,
@@ -4237,8 +4237,8 @@ job_error:
  * @dmabuff: Pointer to a DMA buffer descriptor.
  *
  * This routine handles SLI_CONFIG (0x9B) mailbox command with non-embedded
- * external bufffers, including both 0x9B with non-embedded MSEs and 0x9B
- * with embedded sussystem 0x1 and opcodes with external HBDs.
+ * external buffers, including both 0x9B with non-embedded MSEs and 0x9B
+ * with embedded subsystem 0x1 and opcodes with external HBDs.
  **/
 static int
 lpfc_bsg_handle_sli_cfg_mbox(struct lpfc_hba *phba, struct bsg_job *job,
@@ -4562,7 +4562,7 @@ lpfc_bsg_write_ebuf_set(struct lpfc_hba *phba, struct bsg_job *job,
 		goto job_error;
 	}
 
-	/* wait for additoinal external buffers */
+	/* wait for additional external buffers */
 	bsg_reply->result = 0;
 	bsg_job_done(job, bsg_reply->result,
 		       bsg_reply->reply_payload_rcv_len);
@@ -4628,7 +4628,7 @@ lpfc_bsg_handle_sli_cfg_ebuf(struct lpfc_hba *phba, struct bsg_job *job,
  * @mb: Pointer to a BSG mailbox object.
  * @dmabuff: Pointer to a DMA buffer descriptor.
  *
- * This routine checkes and handles non-embedded multi-buffer SLI_CONFIG
+ * This routine checks and handles non-embedded multi-buffer SLI_CONFIG
  * (0x9B) mailbox commands and external buffers.
  **/
 static int
@@ -4706,7 +4706,7 @@ sli_cfg_ext_error:
  * from the mailbox pool, copy the caller mailbox command.
  *
  * If offline and the sli is active we need to poll for the command (port is
- * being reset) and com-plete the job, otherwise issue the mailbox command and
+ * being reset) and complete the job, otherwise issue the mailbox command and
  * let our completion handler finish the command.
  **/
 static int
