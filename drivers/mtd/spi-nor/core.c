@@ -986,7 +986,7 @@ static int spi_nor_write_16bit_cr_and_check(struct spi_nor *nor, u8 cr)
  *
  * Return: 0 on success, -errno otherwise.
  */
-static int spi_nor_write_sr_and_check(struct spi_nor *nor, u8 sr1)
+int spi_nor_write_sr_and_check(struct spi_nor *nor, u8 sr1)
 {
 	if (nor->flags & SNOR_F_HAS_16BIT_SR)
 		return spi_nor_write_16bit_sr_and_check(nor, sr1);
@@ -3512,29 +3512,36 @@ static void spi_nor_prot_unlock(struct spi_nor *nor)
 }
 
 /**
- * spi_nor_unlock_all() - Unlocks the entire flash memory array.
+ * spi_nor_try_unlock_all() - Tries to unlock the entire flash memory array.
  * @nor:	pointer to a 'struct spi_nor'.
  *
  * Some SPI NOR flashes are write protected by default after a power-on reset
  * cycle, in order to avoid inadvertent writes during power-up. Backward
  * compatibility imposes to unlock the entire flash memory array at power-up
  * by default.
+ *
+ * Unprotecting the entire flash array will fail for boards which are hardware
+ * write-protected. Thus any errors are ignored.
  */
-static int spi_nor_unlock_all(struct spi_nor *nor)
+static void spi_nor_try_unlock_all(struct spi_nor *nor)
 {
 	const struct flash_info *info = nor->info;
+	int ret = 0;
+
+	if (!(nor->flags & SNOR_F_HAS_LOCK))
+		return;
 
 	if (nor->jedec_id == CFI_MFR_ATMEL ||
 	    nor->jedec_id == CFI_MFR_INTEL ||
-	    nor->jedec_id == CFI_MFR_SST ||
-	    nor->flags & SNOR_F_HAS_LOCK) {
+	    nor->jedec_id == CFI_MFR_SST) {
 		if (info->flags & SST_GLOBAL_PROT_UNLK) {
 			spi_nor_prot_unlock(nor);
 		} else {
-			return spi_nor_unlock(&nor->mtd, 0, nor->params->size);
+			ret = spi_nor_unlock(&nor->mtd, 0, nor->params->size);
 		}
 	}
-	return 0;
+	if (ret)
+		dev_dbg(nor->dev, "Failed to unlock the entire flash memory array\n");
 }
 
 static int spi_nor_init(struct spi_nor *nor)
@@ -3555,11 +3562,7 @@ static int spi_nor_init(struct spi_nor *nor)
 		return err;
 	}
 
-	err = spi_nor_unlock_all(nor);
-	if (err) {
-		dev_dbg(nor->dev, "Failed to unlock the entire flash memory array\n");
-		return err;
-	}
+	spi_nor_try_unlock_all(nor);
 
 	if (nor->addr_width == 4 && !(nor->info->flags & SNOR_F_4B_OPCODES) &&
 	    (nor->jedec_id != CFI_MFR_AMD)) {
