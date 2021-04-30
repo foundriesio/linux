@@ -39,7 +39,7 @@ extern int vout_set_m2m_path(int deintl_default, struct tcc_vout_device *vout);
 extern int vout_vioc_set_default(struct tcc_vout_device *vout);
 extern int vout_vioc_init(struct tcc_vout_device *vout);
 extern void vout_deinit(struct tcc_vout_device *vout);
-extern void vout_disp_ctrl(struct tcc_vout_vioc *vioc, int enable);
+extern void vout_disp_ctrl(struct tcc_vout_device *vout, int enable);
 extern void vout_rdma_setup(struct tcc_vout_device *vout);
 extern void vout_wmix_setup(struct tcc_vout_device *vout);
 extern void vout_wmix_getsize(struct tcc_vout_device *vout,

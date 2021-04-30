@@ -125,6 +125,12 @@ enum VOUT_CH_TYPE {
 	VOUT_MAX_CH,
 };
 
+enum VOUT_MUTE_TYPE {
+	VOUT_MUTE_OFF,
+	VOUT_MUTE_ON,
+	VOUT_MUTE_MAX,
+};
+
 #ifdef CONFIG_VIOC_MAP_DECOMP
 enum vioc_mapconv_list {
 	VIOC_MC_00,
@@ -480,9 +486,15 @@ struct tcc_vout_device {
 	wait_queue_head_t frame_wait;
 	int wakeup_int;
 
+	int vout_mute;
+	int is_streaming;
+
 #if defined(CONFIG_TCC_DUAL_DISPLAY)
 	int ext_wakeup_int;
 	int hdmi_wakeup_int;
+
+	int ext_flag;
+	int hdmi_flag;
 
 	wait_queue_head_t ext_frame_wait;
 	wait_queue_head_t hdmi_frame_wait;
