@@ -1942,6 +1942,7 @@ static int32_t tccvin_video_subdevs_set_fmt(struct tccvin_streaming *stream)
 	struct tccvin_device		*dev		= NULL;
 	int32_t				idx		= 0;
 	struct v4l2_subdev		*subdev		= NULL;
+	struct v4l2_subdev_pad_config	*pad_cfg	= NULL;
 	struct v4l2_subdev_format	*fmt		= NULL;
 	int32_t ret = 0;
 
@@ -1950,23 +1951,35 @@ static int32_t tccvin_video_subdevs_set_fmt(struct tccvin_streaming *stream)
 	dev		= stream->dev;
 
 	subdev = dev->linked_subdevs[dev->bounded_subdevs - 1].sd;
+
+	subdev->entity.num_pads = dev->bounded_subdevs;
+	pad_cfg = v4l2_subdev_alloc_pad_config(subdev);
+	if (pad_cfg == NULL) {
+		loge("pad_cfg is null\n");
+		return -ENOMEM;
+	}
+
 	fmt = &dev->linked_subdevs[dev->bounded_subdevs - 1].fmt;
+	fmt->which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	logi("call %s get format\n", subdev->name);
-	ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, fmt);
+	ret = v4l2_subdev_call(subdev, pad, get_fmt, pad_cfg, fmt);
 
 	/* set fmt the other subdevs according to the first subdev */
 	for (idx = dev->bounded_subdevs-2; idx >= 0; idx--) {
 		subdev = dev->linked_subdevs[idx].sd;
 
 		logi("call %s set_fmt\n", subdev->name);
-		ret = v4l2_subdev_call(subdev, pad, set_fmt, NULL, fmt);
+		ret = v4l2_subdev_call(subdev, pad, set_fmt, pad_cfg, fmt);
 		if (ret != 0) {
 			logi("v4l2_subdev_call(video, set_fmt) is wrong\n");
 			continue;
 		}
-		ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, fmt);
+		ret = v4l2_subdev_call(subdev, pad, get_fmt, pad_cfg, fmt);
 		logi("fmt: 0x%x\n", fmt->format.code);
 	}
+
+	v4l2_subdev_free_pad_config(pad_cfg);
+
 	return ret;
 }
 
