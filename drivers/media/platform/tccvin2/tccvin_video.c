@@ -49,148 +49,134 @@
  * Video formats
  */
 
-struct tccvin_format_desc tccvin_format_list[] = {
+struct tccvin_format tccvin_format_list[] = {
 	/* RGB */
 	{
-		.name		= "RGB 8:8:8 (RGB3)",
 		/* B1 31:24, R 23:16, G 15:8, B0 7:0 : RGB24bit */
 		.guid		= VIOC_IMG_FMT_RGB888,
 		/* 'RBG3' 24 RGB-8-8-8 */
 		.fcc		= V4L2_PIX_FMT_RGB24,
+		.mbus_code	= MEDIA_BUS_FMT_RGB888_1X24,
 		.bpp		= 24,
 		.num_planes	= 1,
 	},
 	{
-		.name		= "ARGB 8:8:8:8 (RGB4)",
 		/* A 31:24, R 23:16, G 15:8, B 7:0 : RGB32bit */
 		.guid		= VIOC_IMG_FMT_ARGB8888,
 		/* 'RGB4' 32 RGB-8-8-8-8 */
 		.fcc		= V4L2_PIX_FMT_RGB32,
+		.mbus_code	= MEDIA_BUS_FMT_ARGB8888_1X32,
 		.bpp		= 32,
 		.num_planes	= 1,
 	},
 
 	/* sequential (YUV packed) */
 	{
-		.name		= "YUV 4:2:2 (UYVY)",
 		/* LSB [Y|U|Y|V] MSB : YCbCr 4:2:2 sequential */
 		.guid		= VIOC_IMG_FMT_UYVY,
 		/* 'UYVY' 16 YUV 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_UYVY,
+		.mbus_code	= MEDIA_BUS_FMT_UYVY8_1X16,
 		.bpp		= 16,
 		.num_planes	= 1,
 	},
 	{
-		.name		= "YUV 4:2:2 (VYUY)",
 		/* LSB [Y|V|Y|U] MSB : YCbCr 4:2:2 sequential */
 		.guid		= VIOC_IMG_FMT_VYUY,
 		/* 'VYUY' 16 YUV 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_VYUY,
+		.mbus_code	= MEDIA_BUS_FMT_VYUY8_1X16,
 		.bpp		= 16,
 		.num_planes	= 1,
 	},
 	{
-		.name		= "YUV 4:2:2 (YUYV)",
 		/* LSB [Y|U|Y|V] MSB : YCbCr 4:2:2 sequential */
 		.guid		= VIOC_IMG_FMT_YUYV,
 		/* 'YUYV' 16 YUV 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_YUYV,
+		.mbus_code	= MEDIA_BUS_FMT_YUYV8_1X16,
 		.bpp		= 16,
 		.num_planes	= 1,
 	},
 	{
-		.name		= "YUV 4:2:2 (YVYU)",
 		/* LSB [Y|V|Y|U] MSB : YCbCr 4:2:2 sequential */
 		.guid		= VIOC_IMG_FMT_YVYU,
 		/* 'YVYU' 16 YVU 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_YVYU,
+		.mbus_code	= MEDIA_BUS_FMT_YVYU8_1X16,
 		.bpp		= 16,
 		.num_planes	= 1,
 	},
 
 	/* separated (Y, U, V planar) */
 	{
-		.name		= "YVU 4:2:0 (YV12)",
 		/* YCbCr 4:2:0 separated */
 		.guid		= VIOC_IMG_FMT_YUV420SEP,
 		/* 'YV12' 12 YVU 4:2:0 */
 		.fcc		= V4L2_PIX_FMT_YVU420,
+		.mbus_code	= MEDIA_BUS_FMT_YVYU8_2X8,
 		.bpp		= 12,
 		.num_planes	= 3,
 	},
 	{
-		.name		= "YUV 4:2:0 (YU12)",
 		/* YCbCr 4:2:0 separated */
 		.guid		= VIOC_IMG_FMT_YUV420SEP,
 		/* 'YU12' 12 YUV 4:2:0 */
 		.fcc		= V4L2_PIX_FMT_YUV420,
+		.mbus_code	= MEDIA_BUS_FMT_YUYV8_2X8,
 		.bpp		= 12,
 		.num_planes	= 3,
 	},
 	{
-		.name		= "YUV 4:2:2 (422P)",
 		/* YCbCr 4:2:2 separated */
 		.guid		= VIOC_IMG_FMT_YUV422SEP,
 		/* '422P' 16 YVU422 Planar */
 		.fcc		= V4L2_PIX_FMT_YUV422P,
+		.mbus_code	= MEDIA_BUS_FMT_YUYV8_2X8,
 		.bpp		= 16,
 		.num_planes	= 3,
 	},
 
 	/* interleaved (Y planar, UV planar) */
 	{
-		.name		= "YUV 4:2:0 (NV12)",
 		/* YCbCr 4:2:0 interleaved type0 */
 		.guid		= VIOC_IMG_FMT_YUV420IL0,
 		/* 'NV12' 12 Y/CbCr 4:2:0 */
 		.fcc		= V4L2_PIX_FMT_NV12,
+		.mbus_code	= MEDIA_BUS_FMT_YVYU8_2X8,
 		.bpp		= 12,
 		.num_planes	= 2,
 	},
 	{
-		.name		= "YUV 4:2:0 (NV21)",
 		/* YCbCr 4:2:0 interleaved type1 */
 		.guid		= VIOC_IMG_FMT_YUV420IL1,
 		/* 'NV21' 12 Y/CrCb 4:2:0 */
 		.fcc		= V4L2_PIX_FMT_NV21,
+		.mbus_code	= MEDIA_BUS_FMT_YVYU8_2X8,
 		.bpp		= 12,
 		.num_planes	= 2,
 	},
 	{
-		.name		= "YUV 4:2:0 (NV16)",
 		/* YCbCr 4:2:2 interleaved type0 */
 		.guid		= VIOC_IMG_FMT_YUV422IL0,
 		/* 'NV16' 16 Y/CbCr 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_NV16,
+		.mbus_code	= MEDIA_BUS_FMT_YVYU8_2X8,
 		.bpp		= 16,
 		.num_planes	= 2,
 	},
 	{
-		.name		= "YUV 4:2:0 (NV61)",
 		/* YCbCr 4:2:2 interleaved type1 */
 		.guid		= VIOC_IMG_FMT_YUV422IL1,
 		/* 'NV61' 16 Y/CrCb 4:2:2 */
 		.fcc		= V4L2_PIX_FMT_NV61,
+		.mbus_code	= MEDIA_BUS_FMT_YVYU8_2X8,
 		.bpp		= 16,
 		.num_planes	= 2,
 	},
 };
 
-struct framesize tccvin_framesize_list[] = {
-	{	1920,	1080	},
-	{	1920,	 720	},
-	{	1280,	 800	},
-	{	1280,	 720	},
-	{	1024,	 600	},
-	{	 720,	 480	},
-	{	 640,	 480	},
-	{	 320,	 240	},
-};
-
-u32 tccvin_framerate_list[] = {
-	15,
-	30,
-};
+struct tccvin_frame cur_frame;
 
 /* ------------------------------------------------------------------------
  * sysfs
@@ -333,52 +319,17 @@ int tccvin_create_timestamp(struct device *dev)
  * Utility functions
  */
 
-int tccvin_count_supported_formats(void)
-{
-	return ARRAY_SIZE(tccvin_format_list);
-}
-
-struct tccvin_format_desc *tccvin_format_by_index(int index)
+struct tccvin_format *tccvin_format_by_index(int index)
 {
 	return &tccvin_format_list[index];
 }
 
-int tccvin_count_supported_framesizes(void)
+unsigned int tccvin_count_supported_formats(void)
 {
-	return ARRAY_SIZE(tccvin_framesize_list);
+	return ARRAY_SIZE(tccvin_format_list);
 }
 
-struct framesize *tccvin_framesize_by_index(int index)
-{
-	return &tccvin_framesize_list[index];
-}
-
-int tccvin_count_supported_framerates(void)
-{
-	return ARRAY_SIZE(tccvin_framerate_list);
-}
-
-int tccvin_framerate_by_index(int index)
-{
-	return tccvin_framerate_list[index];
-}
-
-struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid)
-{
-	uint32_t			len = ARRAY_SIZE(tccvin_format_list);
-	uint32_t			i;
-
-	for (i = 0; i < len; ++i) {
-		if (guid == tccvin_format_list[i].guid) {
-			/* format is supported */
-			return &tccvin_format_list[i];
-		}
-	}
-
-	return NULL;
-}
-
-struct tccvin_format_desc *tccvin_format_by_fcc(const __u32 fcc)
+struct tccvin_format *tccvin_format_by_fcc(const __u32 fcc)
 {
 	uint32_t			len = ARRAY_SIZE(tccvin_format_list);
 	uint32_t			i;
@@ -730,8 +681,8 @@ int tccvin_set_pgl(struct tccvin_streaming *vdev)
 
 	rdma		= VIOC_RDMA_GetAddress(vdev->cif.vioc_path.pgl);
 
-	width		= vdev->cur_frame->wWidth;
-	height		= vdev->cur_frame->wHeight;
+	width		= vdev->cur_frame->width;
+	height		= vdev->cur_frame->height;
 	format		= PGL_FORMAT;
 	buf_addr	= vdev->cif.pmap_pgl.base;
 
@@ -1030,7 +981,6 @@ static int32_t tccvin_set_scaler(struct tccvin_streaming *vdev,
 	VIOC_SC_SetOutSize(sc, width, height + 1);
 	VIOC_SC_SetUpdate(sc);
 
-end:
 	return 0;
 }
 
@@ -1071,10 +1021,11 @@ static int32_t tccvin_set_wmixer(struct tccvin_streaming *vdev)
 
 	wmixer		= VIOC_WMIX_GetAddress(vdev->cif.vioc_path.wmixer);
 
-	width		= vdev->cur_frame->wWidth;
-	height		= vdev->cur_frame->wHeight;
+	width		= vdev->cur_frame->width;
+	height		= vdev->cur_frame->height;
 
-	if (!((vdev->rect_compose.left == 0) && (vdev->rect_compose.top == 0))) {
+	if (!((vdev->rect_compose.left == 0) &&
+		(vdev->rect_compose.top == 0))) {
 		out_posx	= vdev->rect_compose.left;
 		out_posy	= vdev->rect_compose.top;
 	}
@@ -1131,12 +1082,10 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 
 	uint32_t			width		= 0;
 	uint32_t			height		= 0;
-	struct tccvin_format_desc	*format_desc	= NULL;
+	struct tccvin_format		*pformat	= NULL;
 	uint32_t			format		= 0;
-	uint32_t			buf_index	= 0;
-	struct vb2_plane		*plane		= NULL;
-	struct vb2_queue		*q		= &vdev->queue.queue;
 	int				idxpln		= 0;
+	int				npln		= 0;
 	unsigned long			addr[3]		= { 0, };
 
 	WARN_ON(IS_ERR_OR_NULL(vdev));
@@ -1146,10 +1095,10 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 
 	wdma		= VIOC_WDMA_GetAddress(vdev->cif.vioc_path.wdma);
 
-	width		= vdev->cur_frame->wWidth;
-	height		= vdev->cur_frame->wHeight;
-	format_desc	= tccvin_format_by_fcc(vdev->cur_format->fcc);
-	format		= format_desc->guid;
+	width		= vdev->cur_frame->width;
+	height		= vdev->cur_frame->height;
+	pformat		= tccvin_format_by_fcc(vdev->cur_format->fcc);
+	format		= pformat->guid;
 
 	logd("WDMA: 0x%px, size[%d x %d], format[%d]\n",
 		wdma, width, height, format);
@@ -1171,10 +1120,16 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 			switch (buf->buf.vb2_buf.memory) {
 			case VB2_MEMORY_MMAP:
 			case V4L2_MEMORY_DMABUF:
-				for (idxpln = 0; idxpln < buf->buf.vb2_buf.num_planes; idxpln++) {
-					addr[idxpln] = vb2_dma_contig_plane_dma_addr(&buf->buf.vb2_buf, idxpln);
-					logi("VIN[%d] bufidx: %d, idxpln: %d, addr: 0x%08lx\n",
-						vdev->vdev.num, buf->buf.vb2_buf.index, idxpln, addr[idxpln]);
+				npln = buf->buf.vb2_buf.num_planes;
+				for (idxpln = 0; idxpln < npln; idxpln++) {
+					addr[idxpln] =
+						vb2_dma_contig_plane_dma_addr(
+							&buf->buf.vb2_buf,
+							idxpln);
+					logi("VIN[%d] - buf[%d][%d]: 0x%08lx\n",
+						vdev->vdev.num,
+						buf->buf.vb2_buf.index,
+						idxpln, addr[idxpln]);
 				}
 
 				break;
@@ -1184,7 +1139,7 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 					buf->buf.vb2_buf.memory);
 				break;
 			}
-			logd("VIN[%d] bufidx: %d, addr: 0x%08lx, 0x%08lx, 0x%08lx\n",
+			logd("VIN[%d] - buf[%d]: 0x%08lx, 0x%08lx, 0x%08lx\n",
 				vdev->vdev.num, buf->buf.vb2_buf.index,
 				addr[0], addr[1], addr[2]);
 			VIOC_WDMA_SetImageBase(wdma, addr[0], addr[1], addr[2]);
@@ -1290,8 +1245,8 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 	void __iomem			*wdma		= NULL;
 	unsigned long			flags;
 	uint32_t			status		= 0;
-	uint32_t			buf_index	= 0;
 	int				idxpln		= 0;
+	int				npln		= 0;
 	unsigned long			addr[3]		= { 0, };
 	bool				ret		= 0;
 
@@ -1327,7 +1282,7 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 		spin_lock_irqsave(&queue->irqlock, flags);
 		/* check if the incoming buffer list is empty */
 		if (list_empty(&stream->queue.irqqueue)) {
-			loge("The incoming buffer list is empty\n");
+			logd("The incoming buffer list is empty\n");
 			spin_unlock_irqrestore(&queue->irqlock, flags);
 			goto wdma_update;
 		}
@@ -1367,8 +1322,12 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 		switch (stream->next_buf->buf.vb2_buf.memory) {
 		case VB2_MEMORY_MMAP:
 		case VB2_MEMORY_DMABUF:
-			for (idxpln = 0; idxpln < stream->next_buf->buf.vb2_buf.num_planes; idxpln++) {
-				addr[idxpln] = vb2_dma_contig_plane_dma_addr(&stream->next_buf->buf.vb2_buf, idxpln);
+			npln = stream->next_buf->buf.vb2_buf.num_planes;
+			for (idxpln = 0; idxpln < npln; idxpln++) {
+				/* get address */
+				addr[idxpln] = vb2_dma_contig_plane_dma_addr(
+					&stream->next_buf->buf.vb2_buf,
+					idxpln);
 			}
 			break;
 		default:
@@ -1454,8 +1413,8 @@ void tccvin_get_default_rect(struct tccvin_streaming *stream,
 	case V4L2_SEL_TGT_COMPOSE_DEFAULT:
 		rect->left	= 0;
 		rect->top	= 0;
-		rect->width	= stream->cur_frame->wWidth;
-		rect->height	= stream->cur_frame->wHeight;
+		rect->width	= stream->cur_frame->width;
+		rect->height	= stream->cur_frame->height;
 		break;
 	case V4L2_SEL_TGT_CROP_DEFAULT:
 		rect->left	= 0;
@@ -1488,8 +1447,9 @@ static void tccvin_init_selection(struct tccvin_streaming *stream,
 	if (tccvin_is_null_rect(rect)) {
 		tccvin_get_default_rect(stream, rect, type);
 	} else {
-		logd("Preview size has been passed from user application. \
-No need to use default setting in the type(0x%08x)\n", type);
+		logd("Preview size has been passed from user application.\n");
+		logd("No need to use default setting in the type(0x%08x)\n",
+			type);
 	}
 }
 
@@ -1528,7 +1488,7 @@ static int32_t tccvin_start_stream(struct tccvin_streaming *vdev)
 
 	/* size info */
 	logd("preview size: %d * %d\n",
-		vdev->cur_frame->wWidth, vdev->cur_frame->wHeight);
+		vdev->cur_frame->width, vdev->cur_frame->height);
 
 	/* map cif-port */
 	tccvin_map_cif_port(vdev);
@@ -1826,8 +1786,6 @@ static void tccvin_disable_clock(struct tccvin_streaming *vdev)
 
 int tccvin_video_init(struct tccvin_streaming *stream)
 {
-	struct tccvin_format		*format		= NULL;
-	struct tccvin_frame		*frame		= NULL;
 	int32_t				ret		= 0;
 
 	WARN_ON(IS_ERR_OR_NULL(stream));
@@ -1867,28 +1825,7 @@ int tccvin_video_init(struct tccvin_streaming *stream)
 	/* allocate essential buffers */
 	tccvin_allocate_essential_buffers(stream);
 
-	if (stream->nformats == 0) {
-		logi("No supported video formats found.\n");
-		return -EINVAL;
-	}
-
 	atomic_set(&stream->active, 0);
-
-	/* use the first format in default */
-	format = &stream->format[0];
-
-	if (format->nframes == 0) {
-		logi("No frame descriptor found for the default format.\n");
-		return -EINVAL;
-	}
-
-	/* use the first frame in default */
-	frame = &format->frame[0];
-
-	/* set the default format */
-	stream->def_format = format;
-	stream->cur_format = format;
-	stream->cur_frame = frame;
 
 	return ret;
 }

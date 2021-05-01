@@ -42,57 +42,24 @@
 #include "tccvin_video.h"
 
 /* Rounds an integer value up to the next multiple of num */
-#define ROUND_UP_2(num)         (((num)+1)&~1)
-#define ROUND_UP_4(num)         (((num)+3)&~3)
+#define ROUND_UP_2(num)		(((num)+1)&~1)
+#define ROUND_UP_4(num)		(((num)+3)&~3)
 
 /* ------------------------------------------------------------------------
  * V4L2 interface
  */
 
-/*
- * Find the frame interval closest to the requested frame interval for the
- * given frame format and size. This should be done by the device as part of
- * the Video Probe and Commit negotiation, but some hardware don't implement
- * that feature.
- */
-static __u32 tccvin_try_frame_interval(struct tccvin_frame *frame,
-	__u32 interval)
-{
-	unsigned int i;
-
-	if (frame->bFrameIntervalType) {
-		__u32 best = -1, dist;
-
-		for (i = 0; i < frame->bFrameIntervalType; ++i) {
-			dist = interval > frame->dwFrameInterval[i]
-			     ? interval - frame->dwFrameInterval[i]
-			     : frame->dwFrameInterval[i] - interval;
-
-			if (dist > best) {
-				/* dist > best */
-				break;
-			}
-
-			best = dist;
-		}
-
-		interval = frame->dwFrameInterval[i-1];
-	}
-
-	return interval;
-}
-
 int tccvin_get_imagesize(unsigned int width, unsigned int height,
 	unsigned int fcc, unsigned int (*planes)[])
 {
-	struct tccvin_format_desc *fmtdesc = NULL;
+	struct tccvin_format *format = NULL;
 
 	if (planes == NULL) {
 		loge("planes are not available\n");
 		return -EINVAL;
 	}
 
-	fmtdesc = tccvin_format_by_fcc(fcc);
+	format = tccvin_format_by_fcc(fcc);
 
 	switch (fcc) {
 	/* RGB */
@@ -110,7 +77,7 @@ int tccvin_get_imagesize(unsigned int width, unsigned int height,
 	/* 'YVYU' 16 YVU 4:2:2 */
 	case V4L2_PIX_FMT_YVYU:
 		(*planes)[0]	= ROUND_UP_4(width) * ROUND_UP_2(height) *
-					fmtdesc->bpp / 8;
+					format->bpp / 8;
 		(*planes)[1]	= 0;
 		(*planes)[2]	= 0;
 		break;
@@ -127,7 +94,7 @@ int tccvin_get_imagesize(unsigned int width, unsigned int height,
 
 	/* '422P' 16 YVU422 Planar */
 	case V4L2_PIX_FMT_YUV422P:
-		(*planes)[0]	= ROUND_UP_4(width) * ROUND_UP_2(height);;
+		(*planes)[0]	= ROUND_UP_4(width) * ROUND_UP_2(height);
 		(*planes)[1]	= (*planes)[0] / 2;
 		(*planes)[2]	= (*planes)[0] / 2;
 		break;
@@ -168,10 +135,10 @@ static __u32 tccvin_v4l2_get_bytesperline(const struct tccvin_format *format,
 	case V4L2_PIX_FMT_YVU420:
 	case V4L2_PIX_FMT_YUV420:
 	case V4L2_PIX_FMT_M420:
-		return frame->wWidth;
+		return frame->width;
 
 	default:
-		return format->bpp * frame->wWidth / 8;
+		return format->bpp * frame->width / 8;
 	}
 }
 
@@ -179,13 +146,12 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	struct v4l2_format *fmt, struct tccvin_format **tccvin_format,
 	struct tccvin_frame **tccvin_frame)
 {
+	unsigned int nformats;
 	struct tccvin_format *format = NULL;
+	struct tccvin_frame frame_internal;
 	struct tccvin_frame *frame = NULL;
-	__u16 rw, rh;
-	unsigned int d, maxd;
 	unsigned int i;
 	unsigned int imagesize[VIDEO_MAX_PLANES];
-	__u32 interval;
 	int idxpln = 0;
 	int ret = 0;
 	__u8 *fcc;
@@ -197,73 +163,44 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	}
 
 	fcc = (__u8 *)&fmt->fmt.pix_mp.pixelformat;
-	logd("Trying format 0x%08x (%c%c%c%c): %ux%u.\n",
-			fmt->fmt.pix_mp.pixelformat,
+	logi("Trying format %c%c%c%c: %ux%u.\n",
 			fcc[0], fcc[1], fcc[2], fcc[3],
 			fmt->fmt.pix_mp.width, fmt->fmt.pix_mp.height);
 
 	/* Check if the hardware supports the requested format, use the default
 	 * format otherwise.
 	 */
-	for (i = 0; i < stream->nformats; ++i) {
-		format = &stream->format[i];
+	nformats = tccvin_count_supported_formats();
+	for (i = 0; i < nformats; ++i) {
+		format = tccvin_format_by_index(i);
 		if (format->fcc == fmt->fmt.pix_mp.pixelformat) {
-			logd("format is available\n");
+			logd("format(%c%c%c%c) is available\n",
+				fcc[0], fcc[1], fcc[2], fcc[3]);
 			break;
 		}
 	}
 
-	if (i == stream->nformats) {
+	if (i == nformats) {
 		format = stream->def_format;
 		fmt->fmt.pix_mp.pixelformat = format->fcc;
 	}
 
-	/* Find the closest image size. The distance between image sizes is
-	 * the size in pixels of the non-overlapping regions between the
-	 * requested size and the frame-specified size.
-	 */
-	rw = fmt->fmt.pix_mp.width;
-	rh = fmt->fmt.pix_mp.height;
-	maxd = (unsigned int)-1;
-
-	for (i = 0; i < format->nframes; ++i) {
-		__u16 w = format->frame[i].wWidth;
-		__u16 h = format->frame[i].wHeight;
-
-		d = min(w, rw) * min(h, rh);
-		d = w*h + rw*rh - 2*d;
-		if (d < maxd) {
-			maxd = d;
-			frame = &format->frame[i];
-		}
-
-		if (maxd == 0) {
-			/* max is 0 */
-			break;
-		}
-	}
-
-	if (frame == NULL) {
-		loge("Unsupported size %ux%u.\n",
-			fmt->fmt.pix_mp.width, fmt->fmt.pix_mp.height);
+	if ((fmt->fmt.pix_mp.width * fmt->fmt.pix_mp.height) >=
+		(MAX_FRAMEWIDTH * MAX_FRAMEHEIGHT)) {
+		loge("frmaesize(%u * %u) is not supported\n",
+			fmt->fmt.pix_mp.width,
+			fmt->fmt.pix_mp.height);
 		return -EINVAL;
 	}
 
-	/* Use the default frame interval. */
-	interval = frame->dwDefaultFrameInterval;
-	logi("Using default frame interval %u.%u us (%u.%u fps).\n",
-		interval/10, interval%10, 10000000/interval,
-		(100000000/interval)%10);
+	frame = &frame_internal;
+	frame->width = fmt->fmt.pix_mp.width;
+	frame->height = fmt->fmt.pix_mp.height;
 
-	/* Set the format index, frame index and frame interval. */
-	tccvin_try_frame_interval(frame, interval);
-
-	fmt->fmt.pix_mp.width = frame->wWidth;
-	fmt->fmt.pix_mp.height = frame->wHeight;
 	fmt->fmt.pix_mp.field = V4L2_FIELD_NONE;
 	fmt->fmt.pix_mp.colorspace = format->colorspace;
 	fmt->fmt.pix_mp.num_planes = format->num_planes;
-	tccvin_get_imagesize(frame->wWidth, frame->wHeight,
+	tccvin_get_imagesize(frame->width, frame->height,
 		format->fcc, &imagesize);
 	for (idxpln = 0; idxpln < fmt->fmt.pix_mp.num_planes; idxpln++) {
 		fmt->fmt.pix_mp.plane_fmt[idxpln].sizeimage =
@@ -278,10 +215,10 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	logd("colorspace: 0x%08x\n",	fmt->fmt.pix_mp.colorspace);
 	logd("num_planes: 0x%08x\n",	fmt->fmt.pix_mp.num_planes);
 	for (idxpln = 0; idxpln < fmt->fmt.pix_mp.num_planes; idxpln++) {
-		logd("idxpln: %d, bytesperline: 0x%08x\n",
-			idxpln, fmt->fmt.pix_mp.plane_fmt[idxpln].bytesperline);
-		logd("idxpln: %d, sizeimage: 0x%08x\n",
-			idxpln, fmt->fmt.pix_mp.plane_fmt[idxpln].sizeimage);
+		logd("idxpln: %d, bpl: 0x%08x, sizeimage: 0x%08x\n",
+			idxpln,
+			fmt->fmt.pix_mp.plane_fmt[idxpln].bytesperline,
+			fmt->fmt.pix_mp.plane_fmt[idxpln].sizeimage);
 	}
 
 	if (tccvin_format != NULL) {
@@ -290,7 +227,7 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	}
 	if (tccvin_frame != NULL) {
 		/* frame is available */
-		*tccvin_frame = frame;
+		**tccvin_frame = *frame;
 	}
 
 	return ret;
@@ -319,13 +256,13 @@ static int tccvin_v4l2_get_format(struct tccvin_streaming *stream,
 		goto done;
 	}
 
-	fmt->fmt.pix_mp.width = frame->wWidth;
-	fmt->fmt.pix_mp.height = frame->wHeight;
+	fmt->fmt.pix_mp.width = frame->width;
+	fmt->fmt.pix_mp.height = frame->height;
 	fmt->fmt.pix_mp.pixelformat = format->fcc;
 	fmt->fmt.pix_mp.field = V4L2_FIELD_NONE;
 	fmt->fmt.pix_mp.colorspace = format->colorspace;
 	fmt->fmt.pix_mp.num_planes = format->num_planes;
-	tccvin_get_imagesize(frame->wWidth, frame->wHeight,
+	tccvin_get_imagesize(frame->width, frame->height,
 		format->fcc, &imagesize);
 	for (idxpln = 0; idxpln < fmt->fmt.pix_mp.num_planes; idxpln++) {
 		fmt->fmt.pix_mp.plane_fmt[idxpln].sizeimage =
@@ -352,6 +289,9 @@ static int tccvin_v4l2_set_format(struct tccvin_streaming *stream,
 		return -EINVAL;
 	}
 
+	/* Recursive */
+	frame = stream->cur_frame;
+
 	ret = tccvin_v4l2_try_format(stream, fmt, &format, &frame);
 	if (ret < 0) {
 		loge("tccvin_v4l2_try_format, ret: %d\n", ret);
@@ -371,6 +311,191 @@ static int tccvin_v4l2_set_format(struct tccvin_streaming *stream,
 
 done:
 	mutex_unlock(&stream->mutex);
+	return ret;
+}
+
+static int tccvin_v4l2_get_frameinterval(struct tccvin_streaming *stream,
+	struct v4l2_streamparm *streamparm)
+{
+	struct v4l2_subdev *subdev = NULL;
+	int32_t n_subdev = 0;
+	int32_t idx_subdev = 0;
+	int ret = 0;
+
+	n_subdev = stream->dev->bounded_subdevs;
+	logd("The number of subdevs is %d\n", n_subdev);
+
+	for (idx_subdev = n_subdev - 1; idx_subdev >= 0; idx_subdev--) {
+		subdev = stream->dev->linked_subdevs[idx_subdev].sd;
+
+		ret = v4l2_subdev_call(subdev, video, g_parm, streamparm);
+		logd("v4l2_subdev_call, ret: %d\n", ret);
+		switch (ret) {
+		case -ENODEV:
+			loge("subdev is null\n");
+			ret = -ENODEV;
+			break;
+		case -ENOIOCTLCMD:
+			loge("%s - not supported\n", subdev->name);
+			ret = -ENOIOCTLCMD;
+			break;
+		case -EINVAL:
+			loge("%s - condition is wrong\n", subdev->name);
+			ret = -EINVAL;
+			break;
+		default:
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static int tccvin_v4l2_set_frameinterval(struct tccvin_streaming *stream,
+	struct v4l2_streamparm *streamparm)
+{
+	struct v4l2_subdev *subdev = NULL;
+	int32_t n_subdev = 0;
+	int32_t idx_subdev = 0;
+	int ret = 0;
+
+	n_subdev = stream->dev->bounded_subdevs;
+	logd("The number of subdevs is %d\n", n_subdev);
+
+	for (idx_subdev = n_subdev - 1; idx_subdev >= 0; idx_subdev--) {
+		subdev = stream->dev->linked_subdevs[idx_subdev].sd;
+
+		ret = v4l2_subdev_call(subdev, video, s_parm, streamparm);
+		logd("v4l2_subdev_call, ret: %d\n", ret);
+		switch (ret) {
+		case -ENODEV:
+			loge("subdev is null\n");
+			ret = -ENODEV;
+			break;
+		case -ENOIOCTLCMD:
+			loge("%s - not supported\n", subdev->name);
+			ret = -ENOIOCTLCMD;
+			break;
+		case -EINVAL:
+			loge("%s - condition is wrong\n", subdev->name);
+			ret = -EINVAL;
+			break;
+		default:
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static int tccvin_v4l2_enum_framesizes(struct tccvin_streaming *stream,
+	struct v4l2_frmsizeenum *fsize)
+{
+	struct v4l2_subdev *subdev = NULL;
+	int32_t n_subdev = 0;
+	int32_t idx_subdev = 0;
+	struct v4l2_subdev_frame_size_enum fse;
+	struct tccvin_format *format = NULL;
+	int ret = 0;
+
+	n_subdev = stream->dev->bounded_subdevs;
+	logd("The number of subdevs is %d\n", n_subdev);
+
+	fse.index = fsize->index;
+	format = tccvin_format_by_fcc(fsize->pixel_format);
+	if (format == NULL) {
+		loge("format is NULL\n");
+		return -EINVAL;
+	}
+	fse.code = format->mbus_code;
+	fse.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+
+	for (idx_subdev = n_subdev - 1; idx_subdev >= 0; idx_subdev--) {
+		subdev = stream->dev->linked_subdevs[idx_subdev].sd;
+
+		fse.pad = idx_subdev;
+		ret = v4l2_subdev_call(subdev,
+			pad, enum_frame_size, NULL, &fse);
+		logd("v4l2_subdev_call, ret: %d\n", ret);
+		switch (ret) {
+		case -ENODEV:
+			loge("subdev is null\n");
+			break;
+		case -ENOIOCTLCMD:
+			loge("%s - not supported\n", subdev->name);
+			break;
+		case -EINVAL:
+			loge("%s - condition is wrong\n", subdev->name);
+			break;
+		default:
+			logd("%s - size: %u * %u\n",
+				subdev->name, fse.max_width, fse.max_height);
+			fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
+			fsize->discrete.width = fse.max_width;
+			fsize->discrete.height = fse.max_height;
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static int tccvin_v4l2_enum_frameintervals(struct tccvin_streaming *stream,
+	struct v4l2_frmivalenum *fival)
+{
+	struct v4l2_subdev *subdev = NULL;
+	int32_t n_subdev = 0;
+	int32_t idx_subdev = 0;
+	struct v4l2_subdev_frame_interval_enum fie;
+	struct tccvin_format *format = NULL;
+	int ret = 0;
+
+	n_subdev = stream->dev->bounded_subdevs;
+	logd("The number of subdevs is %d\n", n_subdev);
+
+	fie.index = fival->index;
+	format = tccvin_format_by_fcc(fival->pixel_format);
+	if (format == NULL) {
+		loge("format is NULL\n");
+		return -EINVAL;
+	}
+	fie.code = format->mbus_code;
+	fie.width = fival->width;
+	fie.height = fival->height;
+	fie.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+
+	for (idx_subdev = n_subdev - 1; idx_subdev >= 0; idx_subdev--) {
+		subdev = stream->dev->linked_subdevs[idx_subdev].sd;
+
+		fie.pad = idx_subdev;
+		ret = v4l2_subdev_call(subdev,
+			pad, enum_frame_interval, NULL, &fie);
+		logd("v4l2_subdev_call, ret: %d\n", ret);
+		switch (ret) {
+		case -ENODEV:
+			loge("subdev is null\n");
+			break;
+		case -ENOIOCTLCMD:
+			loge("%s - not supported\n", subdev->name);
+			break;
+		case -EINVAL:
+			loge("%s - condition is wrong\n", subdev->name);
+			break;
+		default:
+			logd("index: %d, format: 0x%08x\n",
+				fival->index, fival->pixel_format);
+			logd(" . width: %d, height: %d\n",
+				fival->width, fival->height);
+			logd(" . numerator: %d, denominator: %d\n",
+				fival->discrete.numerator,
+				fival->discrete.denominator);
+			fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
+			fival->discrete.numerator = fie.interval.numerator;
+			fival->discrete.denominator = fie.interval.denominator;
+			break;
+		}
+	}
+
 	return ret;
 }
 
@@ -521,11 +646,13 @@ static int tccvin_ioctl_querycap(struct file *file, void *fh,
 static int tccvin_ioctl_enum_fmt(struct tccvin_streaming *stream,
 	struct v4l2_fmtdesc *fmt)
 {
+	unsigned int nformats;
 	struct tccvin_format *format;
 	enum v4l2_buf_type type = fmt->type;
 	__u32 index = fmt->index;
 
-	if (fmt->type != stream->type || fmt->index >= stream->nformats) {
+	nformats = tccvin_count_supported_formats();
+	if (fmt->type != stream->type || fmt->index >= nformats) {
 		/* type or format is unavailable */
 		return -EINVAL;
 	}
@@ -534,9 +661,8 @@ static int tccvin_ioctl_enum_fmt(struct tccvin_streaming *stream,
 	fmt->index = index;
 	fmt->type = type;
 
-	format = &stream->format[fmt->index];
+	format = tccvin_format_by_index(fmt->index);
 	fmt->flags = 0;
-	strlcpy(fmt->description, format->name, sizeof(fmt->description));
 	fmt->description[sizeof(fmt->description) - 1] = 0;
 	fmt->pixelformat = format->fcc;
 
@@ -681,7 +807,7 @@ static int tccvin_ioctl_qbuf(struct file *file, void *fh,
 }
 
 static int tccvin_ioctl_expbuf(struct file *file, void *fh,
-			       struct v4l2_exportbuffer *exp)
+	struct v4l2_exportbuffer *exp)
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
@@ -815,6 +941,7 @@ static int tccvin_g_selection(
 
 	rect_src = affordable(stream, s);
 	if (rect_src == NULL) {
+		/* source is null */
 		return -1;
 	}
 
@@ -832,10 +959,11 @@ static int tccvin_g_selection(
 	return 0;
 }
 
-static struct v4l2_rect* tccvin_affordable_rect_for_sel(
+static struct v4l2_rect *tccvin_affordable_rect_for_sel(
 	struct tccvin_streaming *stream, struct v4l2_selection *s)
 {
-	struct v4l2_rect* ret;
+	struct v4l2_rect *ret;
+
 	switch (s->target) {
 	case V4L2_SEL_TGT_CROP:
 	case V4L2_SEL_TGT_CROP_DEFAULT:
@@ -878,6 +1006,7 @@ static int tccvin_s_selection(
 
 	rect_tgt = affordable(stream, s);
 	if (rect_tgt == NULL) {
+		/* target is null */
 		return -1;
 	}
 
@@ -885,12 +1014,12 @@ static int tccvin_s_selection(
 
 	rect_tgt->left		= rect_src->left;
 	rect_tgt->top		= rect_src->top;
-	rect_tgt->width 	= rect_src->width;
+	rect_tgt->width		= rect_src->width;
 	rect_tgt->height	= rect_src->height;
 
 	mutex_lock(&stream->mutex);
-	s->r.width = stream->cur_frame->wWidth;
-	s->r.height = stream->cur_frame->wHeight;
+	s->r.width = stream->cur_frame->width;
+	s->r.height = stream->cur_frame->height;
 	mutex_unlock(&stream->mutex);
 
 	return 0;
@@ -901,6 +1030,7 @@ static int tccvin_ioctl_s_selection(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
+
 	return tccvin_s_selection(tccvin_affordable_rect_for_sel, stream, s);
 }
 
@@ -909,22 +1039,24 @@ static int tccvin_ioctl_g_parm(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
-	struct v4l2_fract *fract = NULL;
 	int ret = 0;
 
-	memset(a, 0, sizeof(*a));
-	a->type = stream->type;
-	switch (a->type) {
-	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
-		fract = &(a->parm.capture.timeperframe);
-		fract->numerator	= 1;
-		fract->denominator	=
-			stream->cur_frame->dwDefaultFrameInterval;
-		break;
-	default:
-		ret = -1;
-		break;
+	if ((a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
+	    (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
+		loge("type(%u) is wrong\n", stream->type);
+		return -EINVAL;
 	}
+
+	a->parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
+	ret = tccvin_v4l2_get_frameinterval(stream, a);
+	if (ret < 0) {
+		loge("tccvin_v4l2_get_frameinterval, ret: %d\n", ret);
+		ret = -1;
+	}
+
+	logi("framerate got from video source: %u / %d\n",
+		a->parm.capture.timeperframe.numerator,
+		a->parm.capture.timeperframe.denominator);
 
 	return ret;
 }
@@ -936,19 +1068,26 @@ static int tccvin_ioctl_s_parm(struct file *file, void *fh,
 	struct tccvin_streaming *stream = handle->stream;
 	int ret = 0;
 
-	switch (stream->type) {
-	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
-		/* Does the video-input path support this framerate? */
-		/* Do all the video sources support this framerate? */
-		stream->cur_frame->dwDefaultFrameInterval =
-			tccvin_try_frame_interval(stream->cur_frame,
-				a->parm.capture.timeperframe.denominator);
-		logd("numerator: %d, denominator: %d\n",
-			1, stream->cur_frame->dwDefaultFrameInterval);
-		break;
-	default:
+	if ((a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
+	    (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
+		loge("type(%u) is wrong\n", stream->type);
+		return -EINVAL;
+	}
+
+	if (a->parm.capture.capability != V4L2_CAP_TIMEPERFRAME) {
+		loge("capability(0x%x) is not V4L2_CAP_TIMEPERFRAME\n",
+			a->parm.capture.capability);
+		return -EINVAL;
+	}
+
+	logi("framerate to set to video source: %u / %d\n",
+		a->parm.capture.timeperframe.numerator,
+		a->parm.capture.timeperframe.denominator);
+
+	ret = tccvin_v4l2_set_frameinterval(stream, a);
+	if (ret < 0) {
+		loge("tccvin_v4l2_set_frameinterval, ret: %d\n", ret);
 		ret = -1;
-		break;
 	}
 
 	return ret;
@@ -959,31 +1098,20 @@ static int tccvin_ioctl_enum_framesizes(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
-	struct tccvin_format *format = NULL;
-	struct tccvin_frame *frame;
-	int i;
+	__u8 *fcc;
+	int ret = 0;
 
-	/* Look for the given pixel format */
-	for (i = 0; i < stream->nformats; i++) {
-		if (stream->format[i].fcc == fsize->pixel_format) {
-			format = &stream->format[i];
-			break;
-		}
-	}
-	if (format == NULL) {
-		/* format is NULL */
-		return -EINVAL;
+	ret = tccvin_v4l2_enum_framesizes(stream, fsize);
+	if ((ret < 0) && (ret != -EINVAL)) {
+		loge("tccvin_v4l2_set_frameinterval, ret: %d\n", ret);
+		return ret;
 	}
 
-	if (fsize->index >= format->nframes) {
-		/* index is wrong */
-		return -EINVAL;
-	}
+	fcc = (__u8 *)&fsize->pixel_format;
+	logi("idx: %u, fmt: %c%c%c%c, framesize: %u * %u\n",
+		fsize->index, fcc[0], fcc[1], fcc[2], fcc[3],
+		fsize->discrete.width, fsize->discrete.height);
 
-	frame = &format->frame[fsize->index];
-	fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
-	fsize->discrete.width = frame->wWidth;
-	fsize->discrete.height = frame->wHeight;
 	return 0;
 }
 
@@ -992,50 +1120,20 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
-	struct tccvin_format *format = NULL;
-	struct tccvin_frame *frame = NULL;
-	int i;
+	__u8 *fcc;
+	int ret = 0;
 
-	/* Look for the given pixel format and frame size */
-	for (i = 0; i < stream->nformats; i++) {
-		if (stream->format[i].fcc == fival->pixel_format) {
-			format = &stream->format[i];
-			break;
-		}
-	}
-	if (format == NULL) {
-		/* frame is NULL */
-		return -EINVAL;
+	ret = tccvin_v4l2_enum_frameintervals(stream, fival);
+	if ((ret < 0) && (ret != -EINVAL)) {
+		loge("tccvin_v4l2_enum_frameintervals, ret: %d\n", ret);
+		return ret;
 	}
 
-	for (i = 0; i < format->nframes; i++) {
-		if (format->frame[i].wWidth == fival->width &&
-		    format->frame[i].wHeight == fival->height) {
-			frame = &format->frame[i];
-			break;
-		}
-	}
-	if (frame == NULL) {
-		/* frame is NULL */
-		return -EINVAL;
-	}
-
-	if (frame->bFrameIntervalType) {
-		if (fival->index >= frame->bFrameIntervalType) {
-			/* interval index is wrong */
-			return -EINVAL;
-		}
-
-		fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
-		fival->discrete.numerator = 1;
-		fival->discrete.denominator =
-			frame->dwFrameInterval[fival->index];
-		logd("index: %d, pixel_format: 0x%08x, width: %d, height: %d\n",
-			fival->index, fival->pixel_format,
-			fival->width, fival->height);
-		logd("numerator: %d, denominator: %d\n",
-			fival->discrete.numerator, fival->discrete.denominator);
-	}
+	fcc = (__u8 *)&fival->pixel_format;
+	logi("idx: %u, fmt: %c%c%c%c, framesize: %u * %u, framerate: %u / %u\n",
+		fival->index, fcc[0], fcc[1], fcc[2], fcc[3],
+		fival->width, fival->height,
+		fival->discrete.numerator, fival->discrete.denominator);
 
 	return 0;
 }

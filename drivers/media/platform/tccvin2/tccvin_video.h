@@ -49,6 +49,9 @@
 #define	VIDEO_MAX_PLANES		(3)
 #endif
 
+#define	MAX_FRAMEWIDTH			(8192)
+#define	MAX_FRAMEHEIGHT			(8192)
+
 #define PGL_FORMAT			(VIOC_IMG_FMT_ARGB8888)
 #define PGL_BG_R			(0xff)
 #define PGL_BG_G			(0xff)
@@ -126,14 +129,6 @@ enum preview_method {
 	PREVIEW_DD,
 };
 
-struct tccvin_format_desc {
-	char				*name;
-	__u32				guid;
-	__u32				fcc;
-	__u8				bpp;
-	__u32				num_planes;
-};
-
 /* The term 'entity' refers to both TCCVIN units and TCCVIN terminals.
  *
  * The type field is either the terminal type (wTerminalType in the terminal
@@ -174,18 +169,9 @@ struct tccvin_entity {
 	struct v4l2_subdev		subdev;
 };
 
-struct framesize {
+struct tccvin_frame {
 	unsigned int			width;
 	unsigned int			height;
-};
-
-struct tccvin_frame {
-	__u8  bFrameIndex;
-	__u16 wWidth;
-	__u16 wHeight;
-	__u8  bFrameIntervalType;
-	__u32 dwDefaultFrameInterval;
-	__u32 *dwFrameInterval;
 };
 
 struct tccvin_format {
@@ -193,10 +179,10 @@ struct tccvin_format {
 	__u8 bpp;
 	__u8 colorspace;
 	__u32 fcc;
+	__s32 mbus_code;
 	__u32 num_planes;
 	__u32 flags;
-
-	char name[32];
+	__u32 guid;
 
 	unsigned int nframes;
 	struct tccvin_frame *frame;
@@ -251,9 +237,6 @@ struct tccvin_streaming {
 	struct v4l2_rect			rect_bound;
 	struct v4l2_rect			rect_crop;
 	struct v4l2_rect			rect_compose;
-
-	unsigned int				nformats;
-	struct tccvin_format			*format;
 
 	struct tccvin_format			*def_format;
 	struct tccvin_format			*cur_format;
@@ -375,6 +358,8 @@ extern unsigned int tccvin_timeout_param;
  * Internal functions.
  */
 
+extern struct tccvin_frame cur_frame;
+
 /* Video buffers queue management. */
 extern int tccvin_queue_init(struct tccvin_video_queue *queue,
 	enum v4l2_buf_type type, int drop_corrupted);
@@ -417,14 +402,9 @@ extern const struct v4l2_file_operations tccvin_fops;
 /* Video */
 extern int tccvin_create_recovery_trigger(struct device *dev);
 extern int tccvin_create_timestamp(struct device *dev);
-extern int tccvin_count_supported_formats(void);
-extern struct tccvin_format_desc *tccvin_format_by_index(int index);
-extern struct tccvin_format_desc *tccvin_format_by_fcc(const __u32 fcc);
-extern int tccvin_count_supported_framesizes(void);
-extern struct framesize *tccvin_framesize_by_index(int index);
-extern int tccvin_count_supported_framerates(void);
-extern int tccvin_framerate_by_index(int index);
-extern struct tccvin_format_desc *tccvin_format_by_guid(const __u32 guid);
+extern unsigned int tccvin_count_supported_formats(void);
+extern struct tccvin_format *tccvin_format_by_index(int index);
+extern struct tccvin_format *tccvin_format_by_fcc(const __u32 fcc);
 extern int tccvin_video_init(struct tccvin_streaming *stream);
 extern int tccvin_video_deinit(struct tccvin_streaming *stream);
 extern int tccvin_video_streamon(struct tccvin_streaming *stream);

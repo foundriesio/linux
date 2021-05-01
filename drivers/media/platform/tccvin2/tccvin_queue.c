@@ -99,8 +99,10 @@ static int tccvin_queue_setup(struct vb2_queue *vq,
 		/* the number of default planes is 3 */
 		*nplanes = stream->cur_format->num_planes;
 	}
+	logd("nplanes: %u\n", *nplanes);
 
-	tccvin_get_imagesize(stream->cur_frame->wWidth, stream->cur_frame->wHeight,
+	tccvin_get_imagesize(stream->cur_frame->width,
+		stream->cur_frame->height,
 		stream->cur_format->fcc, &imagesize);
 	for (idxpln = 0; idxpln < *nplanes; idxpln++) {
 		sizes[idxpln] = imagesize[idxpln];
@@ -131,11 +133,16 @@ static int tccvin_buffer_prepare(struct vb2_buffer *vb)
 	buf->error = 0;
 	buf->mem = vb2_plane_vaddr(vb, 0);
 	buf->length = vb2_plane_size(vb, 0);
-	if (vb->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		/* vb->type is V4L2_BUF_TYPE_VIDEO_CAPTURE */
+	if ((vb->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) ||
+	    (vb->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
+		/* vb->type is either V4L2_BUF_TYPE_VIDEO_CAPTURE
+		 * or V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
+		 */
 		buf->bytesused = 0;
 	} else {
-		/* vb->type is not V4L2_BUF_TYPE_VIDEO_CAPTURE */
+		/* vb->type is neither V4L2_BUF_TYPE_VIDEO_CAPTURE
+		 * nor V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
+		 */
 		buf->bytesused = vb2_get_plane_payload(vb, 0);
 	}
 
@@ -274,7 +281,7 @@ int tccvin_query_buffer(struct tccvin_video_queue *queue,
 	mutex_lock(&queue->mutex);
 	ret = vb2_querybuf(&queue->queue, buf);
 	if (ret == 0) {
-	        struct vb2_buffer *vb;
+		struct vb2_buffer *vb;
 		int idxpln;
 
 		switch (buf->memory) {
@@ -284,7 +291,8 @@ int tccvin_query_buffer(struct tccvin_video_queue *queue,
 				buf->index, buf->length, vb->num_planes);
 			for (idxpln = 0; idxpln < buf->length; idxpln++) {
 				buf->m.planes[idxpln].reserved[0] =
-					vb2_dma_contig_plane_dma_addr(vb, idxpln);
+					vb2_dma_contig_plane_dma_addr(vb,
+						idxpln);
 				logd("bufidx: %d, plan: %d, addr: 0x%08x\n",
 					buf->index, idxpln,
 					buf->m.planes[idxpln].reserved[0]);

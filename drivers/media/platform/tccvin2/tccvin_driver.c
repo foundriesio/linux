@@ -85,133 +85,41 @@ unsigned int tccvin_timeout_param = TCCVIN_CTRL_STREAMING_TIMEOUT;
  * Descriptors parsing
  */
 
-static int tccvin_parse_format(struct tccvin_device *dev,
-	struct tccvin_streaming *streaming, struct tccvin_format *format,
-	__u32 **intervals, int nintervals)
-{
-	struct tccvin_format_desc *fmtdesc;
-	struct tccvin_format *streamimg_format;
-	struct tccvin_frame *frame;
-	struct framesize *framesize;
-	int idxFormat, idxFrame, idxInterval;
-	int ret = 0;
-
-	for (idxFormat = 0; idxFormat < streaming->nformats; idxFormat++) {
-		fmtdesc = tccvin_format_by_index(idxFormat);
-
-		streamimg_format = &format[idxFormat];
-		streamimg_format->index = idxFormat;
-		strlcpy(streamimg_format->name, fmtdesc->name,
-			sizeof(streamimg_format->name));
-		streamimg_format->fcc = fmtdesc->fcc;
-		streamimg_format->bpp = fmtdesc->bpp;
-		streamimg_format->colorspace = 0;
-		streamimg_format->num_planes = fmtdesc->num_planes;
-		streamimg_format->flags = 0;
-		streamimg_format->nframes = format->nframes;
-		streamimg_format->frame = format->frame;
-
-		logd("index: %d\n",		streamimg_format->index);
-		logd("bpp: %d\n",		streamimg_format->bpp);
-		logd("colorspace: 0x%08x\n",	streamimg_format->colorspace);
-		logd("fcc: 0x%08x\n",		streamimg_format->fcc);
-		logd("flags: 0x%08x\n",		streamimg_format->flags);
-		logd("name: %s\n",		streamimg_format->name);
-		logd("nframes: %d\n",		streamimg_format->nframes);
-
-		for (idxFrame = 0; idxFrame < streamimg_format->nframes; idxFrame++) {
-			frame = &streamimg_format->frame[idxFrame];
-			frame->bFrameIndex = idxFrame;
-			framesize = tccvin_framesize_by_index(idxFrame);
-			frame->wWidth = framesize->width;
-			frame->wHeight = framesize->height;
-			frame->bFrameIntervalType = nintervals;
-			for (idxInterval = 0; idxInterval < nintervals;
-				idxInterval++) {
-				(*intervals)[idxInterval] =
-					tccvin_framerate_by_index(idxInterval);
-				frame->dwDefaultFrameInterval =
-					(*intervals)[idxInterval];
-			}
-			frame->dwFrameInterval = *intervals;
-
-			logd("index: %d\n",	frame->bFrameIndex);
-			logd("width: %d\n",	frame->wWidth);
-			logd("height: %d\n",	frame->wHeight);
-			logd("default_frame_interval: %d\n",
-				frame->dwDefaultFrameInterval);
-			logd("frame_interval_type: %d\n",
-				frame->bFrameIntervalType);
-			logd("frame_interval: %d\n",
-				*frame->dwFrameInterval);
-		}
-	}
-
-	return ret;
-}
-
 static int tccvin_parse_streaming(struct tccvin_device *dev)
 {
-	struct tccvin_streaming *streaming = NULL;
+	struct tccvin_streaming *stream = dev->stream;
 	struct tccvin_format *format;
 	struct tccvin_frame *frame;
-	unsigned int nformats = 0, nframes = 0, nintervals = 0;
-	unsigned int size;
-	__u32 *interval;
+	unsigned int nformats = 0;
+	__u8 *fcc;
 	int ret = -EINVAL;
-
-	streaming = kzalloc(sizeof(*streaming), GFP_KERNEL);
-	if (streaming == NULL) {
-		/* streaming is NULL */
-		return -EINVAL;
-	}
-
-	mutex_init(&streaming->mutex);
-	streaming->dev = dev;
-
-	/* Parse the header descriptor. */
-	streaming->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 
 	/* Count the format and frame descriptors. */
 	nformats = tccvin_count_supported_formats();
-	nframes = tccvin_count_supported_framesizes();
-	nintervals = tccvin_count_supported_framerates();
-
 	if (nformats == 0) {
 		loge("no format is supported\n");
 		goto error;
 	}
 
-	size = nformats * sizeof(*format) + nframes * sizeof(*frame)
-	     + nintervals * sizeof(*interval);
-	format = kzalloc(size, GFP_KERNEL);
-	if (format == NULL) {
-		ret = -ENOMEM;
-		goto error;
-	}
+	format = tccvin_format_by_index(0);
 
-	frame = (struct tccvin_frame *)&format[nformats];
-	interval = (__u32 *)&frame[nframes];
+	fcc = (__u8 *)&format->fcc;
+	logd("idx: %d, fcc: %c%c%c%c, num_planes: %u, bpp: %d\n",
+		format->index, fcc[0], fcc[1], fcc[2], fcc[3],
+		format->num_planes, format->bpp);
 
-	format->nframes = nframes;
-	format->frame = frame;
+	frame = &cur_frame;
 
-	streaming->nformats = nformats;
-	streaming->format = format;
+	logd("size: %u * %u\n", frame->width, frame->height);
 
-	ret = tccvin_parse_format(dev, streaming, format,
-		&interval, nintervals);
-	if (ret < 0) {
-		/* failure of parsing format */
-		goto error;
-	}
+	/* set the default format */
+	stream->def_format = format;
+	stream->cur_format = format;
+	stream->cur_frame = frame;
 
-	dev->stream = streaming;
 	return 0;
 
 error:
-	kfree(streaming->format);
-	kfree(streaming);
 	return ret;
 }
 
@@ -253,15 +161,14 @@ static void tccvin_delete(struct kref *kref)
 {
 	struct tccvin_device *dev =
 		container_of(kref, struct tccvin_device, ref);
-	struct tccvin_streaming *streaming = dev->stream;
+	struct tccvin_streaming *stream = dev->stream;
 
 	if (dev->vdev.dev) {
 		/* unregister v4l2 device */
 		v4l2_device_unregister(&dev->vdev);
 	}
 
-	kfree(streaming->format);
-	kfree(streaming);
+	kfree(stream);
 
 	kfree(dev);
 }
@@ -288,7 +195,7 @@ static void tccvin_unregister_video(struct tccvin_device *dev)
 		video_unregister_device(&stream->vdev);
 	}
 
-	/* Deitialize the streaming interface with default streaming
+	/* Deitialize the stream interface with default stream
 	 * parameters.
 	 */
 	ret = tccvin_video_deinit(stream);
@@ -336,7 +243,7 @@ static int tccvin_register_video(struct tccvin_device *dev,
 		return ret;
 	}
 
-	/* Initialize the streaming interface with default streaming
+	/* Initialize the stream interface with default stream
 	 * parameters.
 	 */
 	ret = tccvin_video_init(stream);
@@ -391,11 +298,16 @@ int tccvin_async_complete(struct v4l2_async_notifier *notifier)
 	ret = v4l2_device_register_subdev_nodes(&dev->vdev);
 	if (ret != 0) {
 		loge("FAIL - register subdev nodes\n");
-		goto err;
+		goto error;
 	}
 
+	/* Parse the Video Class control descriptor. */
+	if (tccvin_parse_control(dev) < 0) {
+		loge("Unable to parse tccvin descriptors.\n");
+		goto error;
+	}
 
-err:
+error:
 	return ret;
 }
 
@@ -617,6 +529,7 @@ end:
 static int tccvin_core_probe(struct platform_device *pdev)
 {
 	struct tccvin_device *dev;
+	struct tccvin_streaming *stream = NULL;
 
 	/* Get the index from its alias */
 	pdev->id = of_alias_get_id(pdev->dev.of_node, "videoinput");
@@ -640,11 +553,19 @@ static int tccvin_core_probe(struct platform_device *pdev)
 
 	sprintf(dev->name, "videoinput%d", pdev->id);
 
-	/* Parse the Video Class control descriptor. */
-	if (tccvin_parse_control(dev) < 0) {
-		loge("Unable to parse tccvin descriptors.\n");
-		goto error;
+	/* allocate stream data */
+	stream = kzalloc(sizeof(*stream), GFP_KERNEL);
+	if (stream == NULL) {
+		/* stream is NULL */
+		return -EINVAL;
 	}
+
+	/* init stream data */
+	mutex_init(&stream->mutex);
+	stream->dev = dev;
+	stream->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+
+	dev->stream = stream;
 
 	/* Initialize the media device and register the V4L2 device. */
 	if (v4l2_device_register(&pdev->dev, &dev->vdev) < 0) {
@@ -671,6 +592,7 @@ e_v4l2_dev_unregister:
 	v4l2_device_unregister(dev->stream->vdev.v4l2_dev);
 error:
 	tccvin_unregister_video(dev);
+	kfree(stream);
 	kref_put(&dev->ref, tccvin_delete);
 	return -ENODEV;
 }

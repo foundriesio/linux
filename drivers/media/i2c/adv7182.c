@@ -36,7 +36,7 @@
 #include <media/v4l2-subdev.h>
 #include <video/tcc/vioc_vin.h>
 
-#define LOG_TAG			"VSRC:ADV7182"
+#define LOG_TAG				"VSRC:ADV7182"
 
 #define loge(fmt, ...) \
 	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
@@ -47,25 +47,32 @@
 #define logi(fmt, ...) \
 	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
-#define WIDTH				720
-#define HEIGHT				480
+#define DEFAULT_WIDTH			(720)
+#define DEFAULT_HEIGHT			(480)
 
-#define ADV7182_REG_STATUS_1		0x10
+#define	DEFAULT_FRAMERATE		(60)
+
+#define ADV7182_REG_STATUS_1		(0x10)
 #define ADV7182_VAL_STATUS_1_COL_KILL	(1 << 7)
 #define ADV7182_VAL_STATUS_1_FSC_LOCK	(1 << 2)
 #define ADV7182_VAL_STATUS_1_IN_LOCK	(1 << 0)
 
-#define ADV7182_REG_STATUS_3		0x13
+#define ADV7182_REG_STATUS_3		(0x13)
 #define ADV7182_VAL_STATUS_3_INST_HLOCK	(1 << 0)
 
 struct power_sequence {
-	int			pwr_port;
-	int			pwd_port;
-	int			rst_port;
+	int				pwr_port;
+	int				pwd_port;
+	int				rst_port;
 
-	enum of_gpio_flags	pwr_value;
-	enum of_gpio_flags	pwd_value;
-	enum of_gpio_flags	rst_value;
+	enum of_gpio_flags		pwr_value;
+	enum of_gpio_flags		pwd_value;
+	enum of_gpio_flags		rst_value;
+};
+
+struct frame_size {
+	u32 width;
+	u32 height;
 };
 
 /*
@@ -74,11 +81,11 @@ struct power_sequence {
  */
 struct adv7182 {
 	struct v4l2_subdev		sd;
+	struct v4l2_mbus_framefmt	fmt;
+	int				framerate;
 	struct v4l2_ctrl_handler	hdl;
 
 	struct power_sequence		gpio;
-
-	struct v4l2_mbus_framefmt fmt;
 
 	/* Regmaps */
 	struct regmap			*regmap;
@@ -102,20 +109,33 @@ const struct reg_sequence adv7182_reg_defaults[] = {
 };
 
 static const struct regmap_config adv7182_regmap = {
-	.reg_bits		= 8,
-	.val_bits		= 8,
+	.reg_bits	= 8,
+	.val_bits	= 8,
 
-	.max_register		= 0xFF,
-	.cache_type		= REGCACHE_NONE,
+	.max_register	= 0xFF,
+	.cache_type	= REGCACHE_NONE,
+};
+
+static struct frame_size adv7182_framesizes[] = {
+	{	720,	480	},
+};
+
+static u32 adv7182_framerates[] = {
+	60,
 };
 
 struct v4l2_dv_timings adv7182_dv_timings = {
-	.type	= V4L2_DV_BT_656_1120,
-	.bt	= {
-		.width		= WIDTH,
-		.height		= HEIGHT,
+	.type		= V4L2_DV_BT_656_1120,
+	.bt		= {
+		.width		= DEFAULT_WIDTH,
+		.height		= DEFAULT_HEIGHT,
 		.interlaced	= V4L2_DV_INTERLACED,
-		.polarities	= 0,/* V4L2_DV_VSYNC_POS_POL */
+		/* IMPORTANT
+		 * The below field "polarities" is not used
+		 * becasue polarities for vsync and hsync are supported only.
+		 * So, use flags of "struct v4l2_mbus_config".
+		 */
+		.polarities	= 0,
 	},
 };
 
@@ -124,8 +144,8 @@ static u32 adv7182_codes[] = {
 };
 
 struct v4l2_mbus_config adv7182_mbus_config = {
-	.type	= V4L2_MBUS_BT656,
-	.flags	=
+	.type		= V4L2_MBUS_BT656,
+	.flags		=
 		V4L2_MBUS_DATA_ACTIVE_LOW	|
 		V4L2_MBUS_PCLK_SAMPLE_FALLING	|
 		V4L2_MBUS_VSYNC_ACTIVE_LOW	|
@@ -134,8 +154,8 @@ struct v4l2_mbus_config adv7182_mbus_config = {
 };
 
 struct v4l2_mbus_framefmt adv7182_mbus_framefmt = {
-	.width		= WIDTH,
-	.height		= HEIGHT,
+	.width		= DEFAULT_WIDTH,
+	.height		= DEFAULT_HEIGHT,
 	.code		= MEDIA_BUS_FMT_UYVY8_2X8,
 };
 
@@ -165,27 +185,33 @@ int adv7182_parse_device_tree(struct adv7182 *dev, struct i2c_client *client)
 void adv7182_request_gpio(struct adv7182 *dev)
 {
 	if (dev->gpio.pwr_port > 0) {
-		/* request power */
+		/* power */
 		gpio_request(dev->gpio.pwr_port, "adv7182 power");
 	}
 	if (dev->gpio.pwd_port > 0) {
-		/* request power-down */
+		/* power-down */
 		gpio_request(dev->gpio.pwd_port, "adv7182 power-down");
 	}
 	if (dev->gpio.rst_port > 0) {
-		/* request reset */
+		/* reset */
 		gpio_request(dev->gpio.rst_port, "adv7182 reset");
 	}
 }
 
 void adv7182_free_gpio(struct adv7182 *dev)
 {
-	if (dev->gpio.pwr_port > 0)
+	if (dev->gpio.pwr_port > 0) {
+		/* power */
 		gpio_free(dev->gpio.pwr_port);
-	if (dev->gpio.pwd_port > 0)
+	}
+	if (dev->gpio.pwd_port > 0) {
+		/* power-down */
 		gpio_free(dev->gpio.pwd_port);
-	if (dev->gpio.rst_port > 0)
+	}
+	if (dev->gpio.rst_port > 0) {
+		/* reset */
 		gpio_free(dev->gpio.rst_port);
+	}
 }
 
 /*
@@ -201,7 +227,7 @@ static inline struct adv7182 *to_state(struct v4l2_subdev *sd)
  */
 static int adv7182_s_ctrl(struct v4l2_ctrl *ctrl)
 {
-	int	ret = 0;
+	int			ret	= 0;
 
 	switch (ctrl->id) {
 	case V4L2_CID_BRIGHTNESS:
@@ -290,7 +316,13 @@ static int adv7182_g_input_status(struct v4l2_subdev *sd, u32 *status)
 		logd("status 1: 0x%08x\n", val);
 
 		/* check sync signal lock */
-		if (!(val & (ADV7182_VAL_STATUS_1_FSC_LOCK | ADV7182_VAL_STATUS_1_IN_LOCK))) {
+		if (!(val & (ADV7182_VAL_STATUS_1_FSC_LOCK))) {
+			logw("V4L2_IN_ST_NO_SIGNAL\n");
+			*status |= V4L2_IN_ST_NO_SIGNAL;
+		}
+
+		/* check sync signal lock */
+		if (!(val & (ADV7182_VAL_STATUS_1_IN_LOCK))) {
 			logw("V4L2_IN_ST_NO_SIGNAL\n");
 			*status |= V4L2_IN_ST_NO_SIGNAL;
 		}
@@ -338,7 +370,8 @@ static int adv7182_s_stream(struct v4l2_subdev *sd, int enable)
 		loge("Failed to get video source object by subdev\n");
 		ret = -EINVAL;
 	} else {
-		ret = regmap_multi_reg_write(dev->regmap, adv7182_reg_defaults,
+		ret = regmap_multi_reg_write(dev->regmap,
+			adv7182_reg_defaults,
 			ARRAY_SIZE(adv7182_reg_defaults));
 		msleep(50);
 	}
@@ -359,10 +392,64 @@ static int adv7182_s_stream(struct v4l2_subdev *sd, int enable)
 	return ret;
 }
 
+static int adv7182_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *parm)
+{
+	struct v4l2_captureparm *cp	= &parm->parm.capture;
+	struct adv7182		*dev	= NULL;
+
+	dev = to_state(sd);
+	if (!dev) {
+		loge("Failed to get video source object by subdev\n");
+		return -EINVAL;
+	}
+
+	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
+	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
+		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
+		return -EINVAL;
+	}
+
+	cp->capability = V4L2_CAP_TIMEPERFRAME;
+	cp->timeperframe.numerator = 1;
+	cp->timeperframe.denominator = dev->framerate;
+	logd("capability: %u, framerate: %u / %u\n",
+		cp->capability,
+		cp->timeperframe.numerator,
+		cp->timeperframe.denominator);
+
+	return 0;
+}
+
+static int adv7182_s_parm(struct v4l2_subdev *sd,
+	struct v4l2_streamparm *parm)
+{
+	struct v4l2_captureparm *cp	= &parm->parm.capture;
+	struct adv7182		*dev	= NULL;
+
+	dev = to_state(sd);
+	if (!dev) {
+		loge("Failed to get video source object by subdev\n");
+		return -EINVAL;
+	}
+
+	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
+	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
+		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
+		return -EINVAL;
+	}
+
+	/* set framerate with i2c setting if supported */
+
+	cp->capability = V4L2_CAP_TIMEPERFRAME;
+	dev->framerate = cp->timeperframe.denominator;
+
+	return 0;
+}
+
 static int adv7182_g_dv_timings(struct v4l2_subdev *sd,
 	struct v4l2_dv_timings *timings)
 {
-	int ret = 0;
+	int			ret	= 0;
 
 	memcpy((void *)timings, (const void *)&adv7182_dv_timings,
 		sizeof(*timings));
@@ -382,6 +469,44 @@ static int adv7182_g_mbus_config(struct v4l2_subdev *sd,
 /*
  * v4l2_subdev_pad_ops implementations
  */
+static int adv7182_enum_frame_size(struct v4l2_subdev *sd,
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_frame_size_enum *fse)
+{
+	struct frame_size	*size		= NULL;
+
+	if (ARRAY_SIZE(adv7182_framesizes) <= fse->index) {
+		logd("index(%u) is wrong\n", fse->index);
+		return -EINVAL;
+	}
+
+	size = &adv7182_framesizes[fse->index];
+	logd("size: %u * %u\n", size->width, size->height);
+
+	fse->min_width = fse->max_width = size->width;
+	fse->min_height	= fse->max_height = size->height;
+	logd("max size: %u * %u\n", fse->max_width, fse->max_height);
+
+	return 0;
+}
+
+static int adv7182_enum_frame_interval(struct v4l2_subdev *sd,
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_frame_interval_enum *fie)
+{
+	if (ARRAY_SIZE(adv7182_framerates) <= fie->index) {
+		logd("index(%u) is wrong\n", fie->index);
+		return -EINVAL;
+	}
+
+	fie->interval.numerator = 1;
+	fie->interval.denominator = adv7182_framerates[fie->index];
+	logd("framerate: %u / %u\n",
+		fie->interval.numerator, fie->interval.denominator);
+
+	return 0;
+}
+
 static int adv7182_enum_mbus_code(struct v4l2_subdev *sd,
 	struct v4l2_subdev_pad_config *cfg,
 	struct v4l2_subdev_mbus_code_enum *code)
@@ -398,8 +523,8 @@ static int adv7182_get_fmt(struct v4l2_subdev *sd,
 	struct v4l2_subdev_pad_config *cfg,
 	struct v4l2_subdev_format *format)
 {
-	struct adv7182		*dev = to_state(sd);
-	int ret	= 0;
+	struct adv7182		*dev	= to_state(sd);
+	int			ret	= 0;
 
 	memcpy((void *)&format->format,
 		(const void *)&dev->fmt,
@@ -412,8 +537,8 @@ static int adv7182_set_fmt(struct v4l2_subdev *sd,
 	struct v4l2_subdev_pad_config *cfg,
 	struct v4l2_subdev_format *format)
 {
-	struct adv7182 *dev = to_state(sd);
-	int ret	= 0;
+	struct adv7182		*dev	= to_state(sd);
+	int			ret	= 0;
 
 	memcpy((void *)&dev->fmt,
 		(const void *)&format->format,
@@ -439,12 +564,16 @@ static const struct v4l2_subdev_core_ops adv7182_v4l2_subdev_core_ops = {
 static const struct v4l2_subdev_video_ops adv7182_v4l2_subdev_video_ops = {
 	.g_input_status		= adv7182_g_input_status,
 	.s_stream		= adv7182_s_stream,
+	.g_parm			= adv7182_g_parm,
+	.s_parm			= adv7182_s_parm,
 	.g_dv_timings		= adv7182_g_dv_timings,
 	.g_mbus_config		= adv7182_g_mbus_config,
 };
 
 static const struct v4l2_subdev_pad_ops adv7182_v4l2_subdev_pad_ops = {
 	.enum_mbus_code		= adv7182_enum_mbus_code,
+	.enum_frame_size	= adv7182_enum_frame_size,
+	.enum_frame_interval	= adv7182_enum_frame_interval,
 	.get_fmt		= adv7182_get_fmt,
 	.set_fmt		= adv7182_set_fmt,
 };
@@ -531,6 +660,9 @@ int adv7182_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	/* init mbus format */
 	memcpy((void *)&dev->fmt, (const void *)&adv7182_mbus_framefmt,
 		sizeof(dev->fmt));
+
+	/* init framerate */
+	dev->framerate = DEFAULT_FRAMERATE;
 
 	/* request gpio */
 	adv7182_request_gpio(dev);
