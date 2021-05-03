@@ -10484,8 +10484,20 @@ static int insert_prealloc_file_extent(struct btrfs_trans_handle *trans,
 	qgroup_released = btrfs_qgroup_release_data(inode, file_offset, len);
 	if (qgroup_released < 0)
 		return qgroup_released;
-	return insert_reserved_file_extent(trans, inode, file_offset,
+	ret = insert_reserved_file_extent(trans, inode, file_offset,
 					   &stack_fi, qgroup_released);
+	/*
+	 * We have released qgroup data range at the beginning of the function,
+	 * and normally qgroup_released bytes will be freed when committing
+	 * transaction.
+	 * But if we error out early, we have to free what we have released
+	 * or we leak qgroup data reservation.
+	 */
+	if (ret < 0)
+		btrfs_qgroup_free_refroot(BTRFS_I(inode)->root->fs_info,
+			BTRFS_I(inode)->root->root_key.objectid, qgroup_released,
+			BTRFS_QGROUP_RSV_DATA);
+	return ret;
 }
 static int __btrfs_prealloc_file_range(struct inode *inode, int mode,
 				       u64 start, u64 num_bytes, u64 min_size,
