@@ -1,6 +1,5 @@
 config TCC_SDR_IPC
-	tristate "Telechips IPC Driver for SDR Applications"
-	default n
-	depends on TCC_MULTI_MAILBOX && ARCH_TCC805X
-	help
-		TCC SDR IPC only supports TCC805X.
+    tristate "Telechips IPC Driver for SDR Applications"
+    default n
+    depends on TCC_MULTI_MAILBOX && ARCH_TCC805X
+    help TCC SDR IPC only supports TCC805X.
