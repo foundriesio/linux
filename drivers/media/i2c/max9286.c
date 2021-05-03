@@ -36,37 +36,33 @@
 #include <media/v4l2-subdev.h>
 #include <video/tcc/vioc_vin.h>
 
-#define LOG_TAG			"VSRC:MAX9286"
+#define LOG_TAG				"VSRC:MAX9286"
 
-#define loge(fmt, ...)		\
-		pr_err("[ERROR][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logw(fmt, ...)		\
-		pr_warn("[WARN][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logd(fmt, ...)		\
-		pr_debug("[DEBUG][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logi(fmt, ...)		\
-		pr_info("[INFO][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define loge(fmt, ...) \
+	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logw(fmt, ...) \
+	pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logd(fmt, ...) \
+	pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logi(fmt, ...) \
+	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
-#define DEFAULT_WIDTH			1280
-#define DEFAULT_HEIGHT			720
+#define DEFAULT_WIDTH			(1280)
+#define DEFAULT_HEIGHT			(720)
 
-#define MAX9286_REG_STATUS_1	0x1E
-#define MAX9286_VAL_STATUS_1	0x40
+#define MAX9286_REG_STATUS_1		(0x1E)
+#define MAX9286_VAL_STATUS_1		(0x40)
 
 struct power_sequence {
-	int			pwr_port;
-	int			pwd_port;
-	int			rst_port;
-	int			intb_port;
+	int				pwr_port;
+	int				pwd_port;
+	int				rst_port;
+	int				intb_port;
 
-	enum of_gpio_flags	pwr_value;
-	enum of_gpio_flags	pwd_value;
-	enum of_gpio_flags	rst_value;
-	enum of_gpio_flags	intb_value;
+	enum of_gpio_flags		pwr_value;
+	enum of_gpio_flags		pwd_value;
+	enum of_gpio_flags		rst_value;
+	enum of_gpio_flags		intb_value;
 };
 
 /*
@@ -146,7 +142,7 @@ static const struct regmap_config max9286_regmap = {
 };
 
 /*
- * gpio fuctions
+ * gpio functions
  */
 int max9286_parse_device_tree(struct max9286 *dev, struct i2c_client *client)
 {
@@ -173,37 +169,45 @@ int max9286_parse_device_tree(struct max9286 *dev, struct i2c_client *client)
 void max9286_request_gpio(struct max9286 *dev)
 {
 	if (dev->gpio.pwr_port > 0) {
-		/* request power */
+		/* power */
 		gpio_request(dev->gpio.pwr_port, "max9286 power");
 	}
 	if (dev->gpio.pwd_port > 0) {
-		/* request power-down */
+		/* power-down */
 		gpio_request(dev->gpio.pwd_port, "max9286 power-down");
 	}
 	if (dev->gpio.rst_port > 0) {
-		/* request reset */
+		/* reset */
 		gpio_request(dev->gpio.rst_port, "max9286 reset");
 	}
 	if (dev->gpio.intb_port > 0) {
-		/* request intb */
+		/* intb */
 		gpio_request(dev->gpio.intb_port, "max9286 interrupt");
 	}
 }
 
 void max9286_free_gpio(struct max9286 *dev)
 {
-	if (dev->gpio.pwr_port > 0)
+	if (dev->gpio.pwr_port > 0) {
+		/* power */
 		gpio_free(dev->gpio.pwr_port);
-	if (dev->gpio.pwd_port > 0)
+	}
+	if (dev->gpio.pwd_port > 0) {
+		/* power-down */
 		gpio_free(dev->gpio.pwd_port);
-	if (dev->gpio.rst_port > 0)
+	}
+	if (dev->gpio.rst_port > 0) {
+		/* reset */
 		gpio_free(dev->gpio.rst_port);
-	if (dev->gpio.intb_port > 0)
+	}
+	if (dev->gpio.intb_port > 0) {
+		/* intb */
 		gpio_free(dev->gpio.intb_port);
+	}
 }
 
 /*
- * Helper fuctions for reflection
+ * Helper functions for reflection
  */
 static inline struct max9286 *to_dev(struct v4l2_subdev *sd)
 {
@@ -222,8 +226,8 @@ static int max9286_init(struct v4l2_subdev *sd, u32 enable)
 
 	if ((dev->i_cnt == 0) && (enable == 1)) {
 		ret = regmap_multi_reg_write(dev->regmap,
-				max9286_reg_defaults,
-				ARRAY_SIZE(max9286_reg_defaults));
+			max9286_reg_defaults,
+			ARRAY_SIZE(max9286_reg_defaults));
 		if (ret < 0) {
 			/* failed to write i2c */
 			loge("Fail initializing max9286 device\n");
@@ -399,15 +403,16 @@ static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 }
 
 static int max9286_get_fmt(struct v4l2_subdev *sd,
-				struct v4l2_subdev_pad_config *cfg,
-				struct v4l2_subdev_format *format)
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_format *format)
 {
 	struct max9286		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&format->format, (const void *)&dev->fmt,
+	memcpy((void *)&format->format,
+		(const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -415,15 +420,16 @@ static int max9286_get_fmt(struct v4l2_subdev *sd,
 }
 
 static int max9286_set_fmt(struct v4l2_subdev *sd,
-				struct v4l2_subdev_pad_config *cfg,
-				struct v4l2_subdev_format *format)
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_format *format)
 {
 	struct max9286		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&dev->fmt, (const void *)&format->format,
+	memcpy((void *)&dev->fmt,
+		(const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -476,9 +482,9 @@ MODULE_DEVICE_TABLE(of, max9286_of_match);
 
 int max9286_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	struct max9286 *dev = NULL;
-	const struct of_device_id *dev_id = NULL;
-	int ret = 0;
+	struct max9286			*dev	= NULL;
+	const struct of_device_id	*dev_id	= NULL;
+	int				ret	= 0;
 
 	/* allocate and clear memory for a device */
 	dev = devm_kzalloc(&client->dev, sizeof(struct max9286), GFP_KERNEL);

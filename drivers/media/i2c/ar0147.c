@@ -36,20 +36,26 @@
 #include <media/v4l2-subdev.h>
 #include <video/tcc/vioc_vin.h>
 
-#define LOG_TAG			"VSRC:ar0147"
+#define LOG_TAG				"VSRC:AR0147"
 
-#define loge(fmt, ...)		\
-		pr_err("[ERROR][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logw(fmt, ...)		\
-		pr_warn("[WARN][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logd(fmt, ...)		\
-		pr_debug("[DEBUG][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logi(fmt, ...)		\
-		pr_info("[INFO][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define loge(fmt, ...) \
+	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logw(fmt, ...) \
+	pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logd(fmt, ...) \
+	pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logi(fmt, ...) \
+	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+
+#define DEFAULT_WIDTH			(1296)
+#define DEFAULT_HEIGHT			(816)
+
+#define	DEFAULT_FRAMERATE		(30)
+
+struct frame_size {
+	u32 width;
+	u32 height;
+};
 
 /*
  * This object contains essential v4l2 objects
@@ -59,6 +65,7 @@ struct ar0147 {
 	struct v4l2_subdev		sd;
 	struct v4l2_mbus_framefmt	fmt;
 	struct v4l2_ctrl_handler	hdl;
+	int				framerate;
 
 	/* Regmaps */
 	struct regmap			*regmap;
@@ -703,17 +710,25 @@ static const struct regmap_config ar0147_regmap = {
 	.cache_type		= REGCACHE_NONE,
 };
 
+static struct frame_size ar0147_framesizes[] = {
+	{	1296,	816	},
+};
+
+static u32 ar0147_framerates[] = {
+	30,
+};
+
 static void ar0147_init_format(struct ar0147 *dev)
 {
-	dev->fmt.width = 1296;
-	dev->fmt.height	= 816;
+	dev->fmt.width = DEFAULT_WIDTH;
+	dev->fmt.height	= DEFAULT_HEIGHT;
 	dev->fmt.code = MEDIA_BUS_FMT_SGRBG12_1X12;
 	dev->fmt.field = V4L2_FIELD_NONE;
 	dev->fmt.colorspace = V4L2_COLORSPACE_SMPTE170M;
 }
 
 /*
- * Helper fuctions for reflection
+ * Helper functions for reflection
  */
 static inline struct ar0147 *to_dev(struct v4l2_subdev *sd)
 {
@@ -725,7 +740,7 @@ static inline struct ar0147 *to_dev(struct v4l2_subdev *sd)
  */
 static int ar0147_s_ctrl(struct v4l2_ctrl *ctrl)
 {
-	int	ret = 0;
+	int			ret	= 0;
 
 	switch (ctrl->id) {
 	case V4L2_CID_BRIGHTNESS:
@@ -789,9 +804,104 @@ static int ar0147_s_stream(struct v4l2_subdev *sd, int enable)
 	return ret;
 }
 
+static int ar0147_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *parm)
+{
+	struct v4l2_captureparm *cp	= &parm->parm.capture;
+	struct ar0147		*dev	= NULL;
+
+	dev = to_state(sd);
+	if (!dev) {
+		loge("Failed to get video source object by subdev\n");
+		return -EINVAL;
+	}
+
+	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
+	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
+		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
+		return -EINVAL;
+	}
+
+	cp->capability = V4L2_CAP_TIMEPERFRAME;
+	cp->timeperframe.numerator = 1;
+	cp->timeperframe.denominator = dev->framerate;
+	logd("capability: %u, framerate: %u / %u\n",
+		cp->capability,
+		cp->timeperframe.numerator,
+		cp->timeperframe.denominator);
+
+	return 0;
+}
+
+static int ar0147_s_parm(struct v4l2_subdev *sd,
+	struct v4l2_streamparm *parm)
+{
+	struct v4l2_captureparm *cp	= &parm->parm.capture;
+	struct ar0147		*dev	= NULL;
+
+	dev = to_state(sd);
+	if (!dev) {
+		loge("Failed to get video source object by subdev\n");
+		return -EINVAL;
+	}
+
+	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
+	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
+		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
+		return -EINVAL;
+	}
+
+	/* set framerate with i2c setting if supported */
+
+	cp->capability = V4L2_CAP_TIMEPERFRAME;
+	dev->framerate = cp->timeperframe.denominator;
+
+	return 0;
+}
+
+/*
+ * v4l2_subdev_pad_ops implementations
+ */
+static int ar0147_enum_frame_size(struct v4l2_subdev *sd,
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_frame_size_enum *fse)
+{
+	struct frame_size	*size		= NULL;
+
+	if (ARRAY_SIZE(ar0147_framesizes) <= fse->index) {
+		logd("index(%u) is wrong\n", fse->index);
+		return -EINVAL;
+	}
+
+	size = &ar0147_framesizes[fse->index];
+	logd("size: %u * %u\n", size->width, size->height);
+
+	fse->min_width = fse->max_width = size->width;
+	fse->min_height	= fse->max_height = size->height;
+	logd("max size: %u * %u\n", fse->max_width, fse->max_height);
+
+	return 0;
+}
+
+static int ar0147_enum_frame_interval(struct v4l2_subdev *sd,
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_frame_interval_enum *fie)
+{
+	if (ARRAY_SIZE(ar0147_framerates) <= fie->index) {
+		logd("index(%u) is wrong\n", fie->index);
+		return -EINVAL;
+	}
+
+	fie->interval.numerator = 1;
+	fie->interval.denominator = ar0147_framerates[fie->index];
+	logd("framerate: %u / %u\n",
+		fie->interval.numerator, fie->interval.denominator);
+
+	return 0;
+}
+
 static int ar0147_get_fmt(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_pad_config *cfg,
-			   struct v4l2_subdev_format *format)
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_format *format)
 {
 	struct ar0147		*dev	= to_dev(sd);
 	int			ret	= 0;
@@ -806,8 +916,8 @@ static int ar0147_get_fmt(struct v4l2_subdev *sd,
 }
 
 static int ar0147_set_fmt(struct v4l2_subdev *sd,
-			    struct v4l2_subdev_pad_config *cfg,
-			    struct v4l2_subdev_format *format)
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_format *format)
 {
 	struct ar0147		*dev	= to_dev(sd);
 	int			ret	= 0;
@@ -834,9 +944,13 @@ static const struct v4l2_subdev_core_ops ar0147_core_ops = {
 
 static const struct v4l2_subdev_video_ops ar0147_video_ops = {
 	.s_stream		= ar0147_s_stream,
+	.g_parm			= ar0147_g_parm,
+	.s_parm			= ar0147_s_parm,
 };
 
 static const struct v4l2_subdev_pad_ops ar0147_pad_ops = {
+	.enum_frame_size	= ar0147_enum_frame_size,
+	.enum_frame_interval	= ar0147_enum_frame_interval,
 	.get_fmt		= ar0147_get_fmt,
 	.set_fmt		= ar0147_set_fmt,
 };

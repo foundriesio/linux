@@ -37,25 +37,21 @@
 #include <video/tcc/vioc_vin.h>
 #include "max96712-reg.h"
 
-#define LOG_TAG			"VSRC:MAX96712"
+#define LOG_TAG				"VSRC:MAX96712"
 
-#define loge(fmt, ...)		\
-		pr_err("[ERROR][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logw(fmt, ...)		\
-		pr_warn("[WARN][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logd(fmt, ...)		\
-		pr_debug("[DEBUG][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logi(fmt, ...)		\
-		pr_info("[INFO][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define loge(fmt, ...) \
+	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logw(fmt, ...) \
+	pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logd(fmt, ...) \
+	pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logi(fmt, ...) \
+	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
-#define DEFAULT_WIDTH		(1920)
-#define DEFAULT_HEIGHT		(1080)
+#define DEFAULT_WIDTH			(1920)
+#define DEFAULT_HEIGHT			(1080)
 
-#define MAX96712_LINK_MODE	MAX96712_GMSL1_4CH
+#define MAX96712_LINK_MODE		MAX96712_GMSL1_4CH
 
 /*
  * TODO
@@ -80,15 +76,15 @@
 #define MAX96712_SER_REG_I2C_DEST		MAX96701_REG_I2C_DEST_B
 
 struct power_sequence {
-	int			pwr_port;
-	int			pwd_port;
-	int			rst_port;
-	int			intb_port;
+	int				pwr_port;
+	int				pwd_port;
+	int				rst_port;
+	int				intb_port;
 
-	enum of_gpio_flags	pwr_value;
-	enum of_gpio_flags	pwd_value;
-	enum of_gpio_flags	rst_value;
-	enum of_gpio_flags	intb_value;
+	enum of_gpio_flags		pwr_value;
+	enum of_gpio_flags		pwd_value;
+	enum of_gpio_flags		rst_value;
+	enum of_gpio_flags		intb_value;
 };
 
 /*
@@ -548,7 +544,7 @@ static const struct regmap_config max96712_regmap = {
 };
 
 /*
- * gpio fuctions
+ * gpio functions
  */
 int max96712_parse_device_tree(struct max96712 *dev, struct i2c_client *client)
 {
@@ -575,37 +571,45 @@ int max96712_parse_device_tree(struct max96712 *dev, struct i2c_client *client)
 void max96712_request_gpio(struct max96712 *dev)
 {
 	if (dev->gpio.pwr_port > 0) {
-		/* request power */
+		/* power */
 		gpio_request(dev->gpio.pwr_port, "max96712 power");
 	}
 	if (dev->gpio.pwd_port > 0) {
-		/* request power-down */
+		/* power-down */
 		gpio_request(dev->gpio.pwd_port, "max96712 power down");
 	}
 	if (dev->gpio.rst_port > 0) {
-		/* request reset */
+		/* reset */
 		gpio_request(dev->gpio.rst_port, "max96712 reset");
 	}
 	if (dev->gpio.intb_port > 0) {
-		/* request intb */
+		/* intb */
 		gpio_request(dev->gpio.intb_port, "max96712 interrupt");
 	}
 }
 
 void max96712_free_gpio(struct max96712 *dev)
 {
-	if (dev->gpio.pwr_port > 0)
+	if (dev->gpio.pwr_port > 0) {
+		/* power */
 		gpio_free(dev->gpio.pwr_port);
-	if (dev->gpio.pwd_port > 0)
+	}
+	if (dev->gpio.pwd_port > 0) {
+		/* power-down */
 		gpio_free(dev->gpio.pwd_port);
-	if (dev->gpio.rst_port > 0)
+	}
+	if (dev->gpio.rst_port > 0) {
+		/* reset */
 		gpio_free(dev->gpio.rst_port);
-	if (dev->gpio.intb_port > 0)
+	}
+	if (dev->gpio.intb_port > 0) {
+		/* intb */
 		gpio_free(dev->gpio.intb_port);
+	}
 }
 
 /*
- * Helper fuctions for reflection
+ * Helper functions for reflection
  */
 static inline struct max96712 *to_dev(struct v4l2_subdev *sd)
 {
@@ -1118,15 +1122,16 @@ static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 }
 
 static int max96712_get_fmt(struct v4l2_subdev *sd,
-				struct v4l2_subdev_pad_config *cfg,
-				struct v4l2_subdev_format *format)
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_format *format)
 {
 	struct max96712		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&format->format, (const void *)&dev->fmt,
+	memcpy((void *)&format->format,
+		(const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -1134,15 +1139,16 @@ static int max96712_get_fmt(struct v4l2_subdev *sd,
 }
 
 static int max96712_set_fmt(struct v4l2_subdev *sd,
-				struct v4l2_subdev_pad_config *cfg,
-				struct v4l2_subdev_format *format)
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_format *format)
 {
 	struct max96712		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&dev->fmt, (const void *)&format->format,
+	memcpy((void *)&dev->fmt,
+		(const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -1195,9 +1201,9 @@ MODULE_DEVICE_TABLE(of, max96712_of_match);
 
 int max96712_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	struct max96712 *dev = NULL;
-	const struct of_device_id *dev_id = NULL;
-	int ret = 0;
+	struct max96712			*dev	= NULL;
+	const struct of_device_id	*dev_id	= NULL;
+	int				ret	= 0;
 
 	/* allocate and clear memory for a device */
 	dev = devm_kzalloc(&client->dev, sizeof(struct max96712), GFP_KERNEL);
@@ -1260,7 +1266,7 @@ int max96712_remove(struct i2c_client *client)
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
 	struct max96712		*dev	= to_dev(sd);
 
-	// release regmap
+	/* release regmap */
 	regmap_exit(dev->regmap);
 
 	/* gree gpio */

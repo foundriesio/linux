@@ -2,7 +2,7 @@
  *
  * Copyright (C) 2018 Telechips Inc.
  *
- * This program is free software you can redistribute it and/or modify it under
+ * This program is free software; you can redistribute it and/or modify it under
  *the terms of the GNU General Public License as published by the Free Software
  *Foundation; either version 2 of the License, or (at your option) any later
  *version.
@@ -36,26 +36,22 @@
 #include <media/v4l2-subdev.h>
 #include <video/tcc/vioc_vin.h>
 
-#define LOG_TAG			"VSRC:MAX96705"
+#define LOG_TAG				"VSRC:MAX96705"
 
-#define loge(fmt, ...)		\
-		pr_err("[ERROR][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logw(fmt, ...)		\
-		pr_warn("[WARN][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logd(fmt, ...)		\
-		pr_debug("[DEBUG][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logi(fmt, ...)		\
-		pr_info("[INFO][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define loge(fmt, ...) \
+	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logw(fmt, ...) \
+	pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logd(fmt, ...) \
+	pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logi(fmt, ...) \
+	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
 
 
 /*
- * This object contains essential v4l2 objects such as sub-device and
- * ctrl_handler
+ * This object contains essential v4l2 objects
+ * such as sub-device and ctrl_handler
  */
 struct max96705 {
 	struct v4l2_subdev		sd;
@@ -104,10 +100,11 @@ const struct reg_sequence max96705_reg_defaults_raw8[] = {
 };
 
 static const struct regmap_config max96705_regmap = {
-	.reg_bits	= 8,
-	.val_bits	= 8,
-	.max_register	= 0xFF,
-	.cache_type	= REGCACHE_NONE,
+	.reg_bits		= 8,
+	.val_bits		= 8,
+
+	.max_register		= 0xFF,
+	.cache_type		= REGCACHE_NONE,
 };
 
 static void max96705_init_format(struct max96705 *dev)
@@ -116,8 +113,9 @@ static void max96705_init_format(struct max96705 *dev)
 	dev->fmt.height		= 800,
 	dev->fmt.code		= MEDIA_BUS_FMT_Y8_1X8;
 	dev->fmt.field		= V4L2_FIELD_NONE;
-	dev->fmt.colorspace = V4L2_COLORSPACE_SMPTE170M;
+	dev->fmt.colorspace	= V4L2_COLORSPACE_SMPTE170M;
 }
+
 /*
  * Helper functions for reflection
  */
@@ -157,7 +155,7 @@ static int max96705_init(struct v4l2_subdev *sd, u32 enable)
 		if (ret < 0)
 			loge("Fail initializing max96705 device\n");
 	} else if ((dev->i_cnt == 1) && (enable == 0)) {
-		//ret = regmap_write(dev->regmap, 0x15, 0x93);
+		/* ret = regmap_write(dev->regmap, 0x15, 0x93); */
 	}
 
 	if (enable)
@@ -188,10 +186,13 @@ static int max96705_s_stream(struct v4l2_subdev *sd, int enable)
 		ret = regmap_write(dev->regmap, 0x04, 0x47);
 	}
 
-	if (enable)
+	if (enable) {
+		/* count up */
 		dev->s_cnt++;
-	else
+	} else {
+		/* count down */
 		dev->s_cnt--;
+	}
 
 	msleep(30);
 
@@ -200,15 +201,16 @@ static int max96705_s_stream(struct v4l2_subdev *sd, int enable)
 }
 
 static int max96705_get_fmt(struct v4l2_subdev *sd,
-			    struct v4l2_subdev_pad_config *cfg,
-			    struct v4l2_subdev_format *format)
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_format *format)
 {
 	struct max96705		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&format->format, (const void *)&dev->fmt,
+	memcpy((void *)&format->format,
+		(const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -216,15 +218,16 @@ static int max96705_get_fmt(struct v4l2_subdev *sd,
 }
 
 static int max96705_set_fmt(struct v4l2_subdev *sd,
-			    struct v4l2_subdev_pad_config *cfg,
-			    struct v4l2_subdev_format *format)
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_format *format)
 {
 	struct max96705		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&dev->fmt, (const void *)&format->format,
+	memcpy((void *)&dev->fmt,
+		(const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -275,18 +278,18 @@ MODULE_DEVICE_TABLE(of, max96705_of_match);
 
 int max96705_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	struct max96705		*dev	= NULL;
+	struct max96705			*dev	= NULL;
 	const struct of_device_id	*dev_id	= NULL;
-	int			ret	= 0;
+	int				ret	= 0;
 
-	// allocate and clear memory for a device
+	/* allocate and clear memory for a device */
 	dev = devm_kzalloc(&client->dev, sizeof(struct max96705), GFP_KERNEL);
 	if (dev == NULL) {
 		loge("Allocate a device struct.\n");
 		return -ENOMEM;
 	}
 
-	// set the specific information
+	/* set the specific information */
 	if (client->dev.of_node) {
 		dev_id = of_match_node(max96705_of_match, client->dev.of_node);
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
@@ -297,17 +300,17 @@ int max96705_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	mutex_init(&dev->lock);
 
-	// Register with V4L2 layer as a slave device
+	/* Register with V4L2 layer as a slave device */
 	v4l2_i2c_subdev_init(&dev->sd, client, &max96705_ops);
 
-	// register a v4l2 sub device
+	/* register a v4l2 sub device */
 	ret = v4l2_async_register_subdev(&dev->sd);
 	if (ret)
 		loge("Failed to register subdevice\n");
 	else
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
 
-	// init regmap
+	/* init regmap */
 	dev->regmap = devm_regmap_init_i2c(client, &max96705_regmap);
 	if (IS_ERR(dev->regmap)) {
 		loge("devm_regmap_init_i2c is wrong\n");
@@ -321,7 +324,7 @@ int max96705_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	goto goto_end;
 
 goto_free_device_data:
-	// free the videosource data
+	/* free the videosource data */
 	kfree(dev);
 
 goto_end:
@@ -333,7 +336,7 @@ int max96705_remove(struct i2c_client *client)
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
 	struct max96705		*dev	= to_dev(sd);
 
-	// release regmap
+	/* release regmap */
 	regmap_exit(dev->regmap);
 
 	v4l2_async_unregister_subdev(sd);

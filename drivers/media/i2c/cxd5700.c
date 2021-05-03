@@ -36,20 +36,26 @@
 #include <media/v4l2-subdev.h>
 #include <video/tcc/vioc_vin.h>
 
-#define LOG_TAG			"VSRC:cxd5700"
+#define LOG_TAG				"VSRC:CXD5700"
 
-#define loge(fmt, ...)		\
-		pr_err("[ERROR][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logw(fmt, ...)		\
-		pr_warn("[WARN][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logd(fmt, ...)		\
-		pr_debug("[DEBUG][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logi(fmt, ...)		\
-		pr_info("[INFO][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define loge(fmt, ...) \
+	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logw(fmt, ...) \
+	pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logd(fmt, ...) \
+	pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logi(fmt, ...) \
+	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+
+#define DEFAULT_WIDTH			(1920)
+#define DEFAULT_HEIGHT			(1080)
+
+#define	DEFAULT_FRAMERATE		(30)
+
+struct frame_size {
+	u32 width;
+	u32 height;
+};
 
 /*
  * This object contains essential v4l2 objects
@@ -58,6 +64,7 @@
 struct cxd5700 {
 	struct v4l2_subdev		sd;
 	struct v4l2_mbus_framefmt	fmt;
+	int				framerate;
 
 	/* Regmaps */
 	struct regmap			*regmap;
@@ -73,23 +80,32 @@ const char cxd5700_reg_defaults[] = {
 };
 
 static const struct regmap_config cxd5700_regmap = {
-	.reg_bits		= 8,
-	.val_bits		= 8,
+	.reg_bits	= 8,
+	.val_bits	= 8,
 
-	.max_register		= 0xFF,
-	.cache_type		= REGCACHE_NONE,
+	.max_register	= 0xFF,
+	.cache_type	= REGCACHE_NONE,
+};
+
+static struct frame_size cxd5700_framesizes[] = {
+	{	1920,	1080	},
+};
+
+static u32 cxd5700_framerates[] = {
+	30,
 };
 
 static void cxd5700_init_format(struct cxd5700 *dev)
 {
-	dev->fmt.width = 1920;
-	dev->fmt.height	= 1080;
+	dev->fmt.width = DEFAULT_WIDTH;
+	dev->fmt.height	= DEFAULT_HEIGHT;
 	dev->fmt.code = MEDIA_BUS_FMT_UYVY8_1X16;//MEDIA_BUS_FMT_UYVY8_2X8;
 	dev->fmt.field = V4L2_FIELD_NONE;
 	dev->fmt.colorspace = V4L2_COLORSPACE_SMPTE170M;
 }
+
 /*
- * Helper fuctions for reflection
+ * Helper functions for reflection
  */
 static inline struct cxd5700 *to_dev(struct v4l2_subdev *sd)
 {
@@ -113,6 +129,7 @@ static int cxd5700_init(struct v4l2_subdev *sd, u32 enable)
 				ARRAY_SIZE(cxd5700_reg_defaults));
 		if (ret < 0)
 			loge("regmap_multi_reg_write returned %d\n", ret);
+		msleep(100);	/* stabilization time */
 	} else if ((dev->i_cnt == 1) && (enable == 0)) {
 	}
 
@@ -141,9 +158,104 @@ static int cxd5700_s_stream(struct v4l2_subdev *sd, int enable)
 	return ret;
 }
 
+static int cxd5700_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *parm)
+{
+	struct v4l2_captureparm *cp	= &parm->parm.capture;
+	struct cxd5700		*dev	= NULL;
+
+	dev = to_dev(sd);
+	if (!dev) {
+		loge("Failed to get video source object by subdev\n");
+		return -EINVAL;
+	}
+
+	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
+	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
+		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
+		return -EINVAL;
+	}
+
+	cp->capability = V4L2_CAP_TIMEPERFRAME;
+	cp->timeperframe.numerator = 1;
+	cp->timeperframe.denominator = dev->framerate;
+	logd("capability: %u, framerate: %u / %u\n",
+		cp->capability,
+		cp->timeperframe.numerator,
+		cp->timeperframe.denominator);
+
+	return 0;
+}
+
+static int cxd5700_s_parm(struct v4l2_subdev *sd,
+	struct v4l2_streamparm *parm)
+{
+	struct v4l2_captureparm *cp	= &parm->parm.capture;
+	struct cxd5700		*dev	= NULL;
+
+	dev = to_dev(sd);
+	if (!dev) {
+		loge("Failed to get video source object by subdev\n");
+		return -EINVAL;
+	}
+
+	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
+	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
+		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
+		return -EINVAL;
+	}
+
+	/* set framerate with i2c setting if supported */
+
+	cp->capability = V4L2_CAP_TIMEPERFRAME;
+	dev->framerate = cp->timeperframe.denominator;
+
+	return 0;
+}
+
+/*
+ * v4l2_subdev_pad_ops implementations
+ */
+static int cxd5700_enum_frame_size(struct v4l2_subdev *sd,
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_frame_size_enum *fse)
+{
+	struct frame_size	*size		= NULL;
+
+	if (ARRAY_SIZE(cxd5700_framesizes) <= fse->index) {
+		logd("index(%u) is wrong\n", fse->index);
+		return -EINVAL;
+	}
+
+	size = &cxd5700_framesizes[fse->index];
+	logd("size: %u * %u\n", size->width, size->height);
+
+	fse->min_width = fse->max_width = size->width;
+	fse->min_height	= fse->max_height = size->height;
+	logd("max size: %u * %u\n", fse->max_width, fse->max_height);
+
+	return 0;
+}
+
+static int cxd5700_enum_frame_interval(struct v4l2_subdev *sd,
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_frame_interval_enum *fie)
+{
+	if (ARRAY_SIZE(cxd5700_framerates) <= fie->index) {
+		logd("index(%u) is wrong\n", fie->index);
+		return -EINVAL;
+	}
+
+	fie->interval.numerator = 1;
+	fie->interval.denominator = cxd5700_framerates[fie->index];
+	logd("framerate: %u / %u\n",
+		fie->interval.numerator, fie->interval.denominator);
+
+	return 0;
+}
+
 static int cxd5700_get_fmt(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_pad_config *cfg,
-			   struct v4l2_subdev_format *format)
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_format *format)
 {
 	struct cxd5700		*dev	= to_dev(sd);
 	int			ret	= 0;
@@ -158,8 +270,8 @@ static int cxd5700_get_fmt(struct v4l2_subdev *sd,
 }
 
 static int cxd5700_set_fmt(struct v4l2_subdev *sd,
-			    struct v4l2_subdev_pad_config *cfg,
-			    struct v4l2_subdev_format *format)
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_format *format)
 {
 	struct cxd5700		*dev	= to_dev(sd);
 	int			ret	= 0;
@@ -182,9 +294,13 @@ static const struct v4l2_subdev_core_ops cxd5700_core_ops = {
 
 static const struct v4l2_subdev_video_ops cxd5700_video_ops = {
 	.s_stream		= cxd5700_s_stream,
+	.g_parm			= cxd5700_g_parm,
+	.s_parm			= cxd5700_s_parm,
 };
 
 static const struct v4l2_subdev_pad_ops cxd5700_pad_ops = {
+	.enum_frame_size	= cxd5700_enum_frame_size,
+	.enum_frame_interval	= cxd5700_enum_frame_interval,
 	.get_fmt		= cxd5700_get_fmt,
 	.set_fmt		= cxd5700_set_fmt,
 };
@@ -217,18 +333,18 @@ MODULE_DEVICE_TABLE(of, cxd5700_of_match);
 
 int cxd5700_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	struct cxd5700 *dev = NULL;
-	const struct of_device_id *dev_id = NULL;
-	int ret = 0;
+	struct cxd5700			*dev	= NULL;
+	const struct of_device_id	*dev_id	= NULL;
+	int				ret	= 0;
 
-	// allocate and clear memory for a device
+	/* allocate and clear memory for a device */
 	dev = devm_kzalloc(&client->dev, sizeof(struct cxd5700), GFP_KERNEL);
 	if (dev == NULL) {
 		loge("Allocate a device struct.\n");
 		return -ENOMEM;
 	}
 
-	// set the specific information
+	/* set the specific information */
 	if (client->dev.of_node) {
 		dev_id = of_match_node(cxd5700_of_match, client->dev.of_node);
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
@@ -239,17 +355,17 @@ int cxd5700_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	mutex_init(&dev->lock);
 
-	// Register with V4L2 layer as a slave device
+	/* Register with V4L2 layer as a slave device */
 	v4l2_i2c_subdev_init(&dev->sd, client, &cxd5700_ops);
 
-	// register a v4l2 sub device
+	/* register a v4l2 sub device */
 	ret = v4l2_async_register_subdev(&dev->sd);
 	if (ret)
 		loge("Failed to register subdevice\n");
 	else
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
 
-	// init regmap
+	/* init regmap */
 	dev->regmap = devm_regmap_init_i2c(client, &cxd5700_regmap);
 	if (IS_ERR(dev->regmap)) {
 		loge("devm_regmap_init_i2c is wrong\n");
@@ -263,7 +379,7 @@ int cxd5700_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	goto goto_end;
 
 goto_free_device_data:
-	// free the videosource data
+	/* free the videosource data */
 	kfree(dev);
 
 goto_end:
@@ -275,7 +391,7 @@ int cxd5700_remove(struct i2c_client *client)
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
 	struct cxd5700		*dev	= to_dev(sd);
 
-	// release regmap
+	/* release regmap */
 	regmap_exit(dev->regmap);
 
 	v4l2_async_unregister_subdev(sd);

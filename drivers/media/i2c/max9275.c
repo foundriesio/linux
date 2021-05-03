@@ -36,24 +36,20 @@
 #include <media/v4l2-subdev.h>
 #include <video/tcc/vioc_vin.h>
 
-#define LOG_TAG			"VSRC:MAX9275"
+#define LOG_TAG				"VSRC:MAX9275"
 
-#define loge(fmt, ...)		\
-		pr_err("[ERROR][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logw(fmt, ...)		\
-		pr_warn("[WARN][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logd(fmt, ...)		\
-		pr_debug("[DEBUG][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
-#define logi(fmt, ...)		\
-		pr_info("[INFO][%s] %s - "\
-			fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define loge(fmt, ...) \
+	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logw(fmt, ...) \
+	pr_warn("[WARN][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logd(fmt, ...) \
+	pr_debug("[DEBUG][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
+#define logi(fmt, ...) \
+	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
 /*
- * This object contains essential v4l2 objects
- * such as sub-device and ctrl_handler
+ * This object contains essential v4l2 objects such as sub-device and
+ * ctrl_handler
  */
 struct max9275 {
 	struct v4l2_subdev		sd;
@@ -74,15 +70,15 @@ const struct reg_sequence max9275_reg_defaults[] = {
 };
 
 static const struct regmap_config max9275_regmap = {
-	.reg_bits		= 8,
-	.val_bits		= 8,
+	.reg_bits	= 8,
+	.val_bits	= 8,
 
-	.max_register		= 0xFF,
-	.cache_type		= REGCACHE_NONE,
+	.max_register	= 0xFF,
+	.cache_type	= REGCACHE_NONE,
 };
 
 /*
- * Helper fuctions for reflection
+ * Helper functions for reflection
  */
 static inline struct max9275 *to_dev(struct v4l2_subdev *sd)
 {
@@ -146,15 +142,16 @@ static int max9275_s_stream(struct v4l2_subdev *sd, int enable)
 }
 
 static int max9275_get_fmt(struct v4l2_subdev *sd,
-			    struct v4l2_subdev_pad_config *cfg,
-			    struct v4l2_subdev_format *format)
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_format *format)
 {
 	struct max9275		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&format->format, (const void *)&dev->fmt,
+	memcpy((void *)&format->format,
+		(const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -162,15 +159,16 @@ static int max9275_get_fmt(struct v4l2_subdev *sd,
 }
 
 static int max9275_set_fmt(struct v4l2_subdev *sd,
-			    struct v4l2_subdev_pad_config *cfg,
-			    struct v4l2_subdev_format *format)
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_format *format)
 {
 	struct max9275		*dev	= to_dev(sd);
 	int			ret	= 0;
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&dev->fmt, (const void *)&format->format,
+	memcpy((void *)&dev->fmt,
+		(const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -221,11 +219,11 @@ MODULE_DEVICE_TABLE(of, max9275_of_match);
 
 int max9275_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	struct max9275 *dev = NULL;
-	const struct of_device_id *dev_id = NULL;
-	int ret = 0;
+	struct max9275			*dev	= NULL;
+	const struct of_device_id	*dev_id	= NULL;
+	int				ret	= 0;
 
-	// allocate and clear memory for a device
+	/* allocate and clear memory for a device */
 	dev = devm_kzalloc(&client->dev, sizeof(struct max9275), GFP_KERNEL);
 	if (dev == NULL) {
 		loge("Allocate a device struct.\n");
@@ -243,17 +241,17 @@ int max9275_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	mutex_init(&dev->lock);
 
-	// Register with V4L2 layer as a slave device
+	/* Register with V4L2 layer as a slave device */
 	v4l2_i2c_subdev_init(&dev->sd, client, &max9275_ops);
 
-	// register a v4l2 sub device
+	/* register a v4l2 sub device */
 	ret = v4l2_async_register_subdev(&dev->sd);
 	if (ret)
 		loge("Failed to register subdevice\n");
 	else
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
 
-	// init regmap
+	/* init regmap */
 	dev->regmap = devm_regmap_init_i2c(client, &max9275_regmap);
 	if (IS_ERR(dev->regmap)) {
 		loge("devm_regmap_init_i2c is wrong\n");
@@ -264,7 +262,7 @@ int max9275_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	goto goto_end;
 
 goto_free_device_data:
-	// free the videosource data
+	/* free the videosource data */
 	kfree(dev);
 
 goto_end:
@@ -276,7 +274,7 @@ int max9275_remove(struct i2c_client *client)
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
 	struct max9275		*dev	= to_dev(sd);
 
-	// release regmap
+	/* release regmap */
 	regmap_exit(dev->regmap);
 
 	v4l2_async_unregister_subdev(sd);
@@ -298,4 +296,3 @@ static struct i2c_driver max9275_driver = {
 };
 
 module_i2c_driver(max9275_driver);
-

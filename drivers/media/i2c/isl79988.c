@@ -36,7 +36,7 @@
 #include <media/v4l2-subdev.h>
 #include <video/tcc/vioc_vin.h>
 
-#define LOG_TAG			"VSRC:ISL79988"
+#define LOG_TAG				"VSRC:ISL79988"
 
 #define loge(fmt, ...) \
 	pr_err("[ERROR][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
@@ -47,33 +47,40 @@
 #define logi(fmt, ...) \
 	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
-#define WIDTH			720
-#define HEIGHT			480
+#define DEFAULT_WIDTH			(720)
+#define DEFAULT_HEIGHT			(480)
 
-#define ISL79988_STATUS_REG	0x1B
-#define ISL79988_STATUS_VAL	0x03
+#define	DEFAULT_FRAMERATE		(60)
+
+#define ISL79988_STATUS_REG		(0x1B)
+#define ISL79988_STATUS_VAL		(0x03)
 
 struct power_sequence {
-	int			pwr_port;
-	int			pwd_port;
-	int			rst_port;
+	int				pwr_port;
+	int				pwd_port;
+	int				rst_port;
 
-	enum of_gpio_flags	pwr_value;
-	enum of_gpio_flags	pwd_value;
-	enum of_gpio_flags	rst_value;
+	enum of_gpio_flags		pwr_value;
+	enum of_gpio_flags		pwd_value;
+	enum of_gpio_flags		rst_value;
+};
+
+struct frame_size {
+	u32 width;
+	u32 height;
 };
 
 /*
- * This object contains essential v4l2 objects such as sub-device and
- * ctrl_handler
+ * This object contains essential v4l2 objects
+ * such as sub-device and ctrl_handler
  */
 struct isl79988 {
 	struct v4l2_subdev		sd;
+	struct v4l2_mbus_framefmt	fmt;
+	int				framerate;
 	struct v4l2_ctrl_handler	hdl;
 
 	struct power_sequence		gpio;
-
-	struct v4l2_mbus_framefmt fmt;
 
 	/* Regmaps */
 	struct regmap			*regmap;
@@ -113,13 +120,26 @@ static const struct regmap_config isl79988_regmap = {
 	.cache_type		= REGCACHE_NONE,
 };
 
+static struct frame_size isl79988_framesizes[] = {
+	{	720,	480	},
+};
+
+static u32 isl79988_framerates[] = {
+	60,
+};
+
 struct v4l2_dv_timings isl79988_dv_timings = {
-	.type	= V4L2_DV_BT_656_1120,
-	.bt	= {
-		.width		= WIDTH,
-		.height		= HEIGHT,
+	.type		= V4L2_DV_BT_656_1120,
+	.bt		= {
+		.width		= DEFAULT_WIDTH,
+		.height		= DEFAULT_HEIGHT,
 		.interlaced	= V4L2_DV_INTERLACED,
-		.polarities	= 0,/* V4L2_DV_VSYNC_POS_POL */
+		/* IMPORTANT
+		 * The below field "polarities" is not used
+		 * becasue polarities for vsync and hsync are supported only.
+		 * So, use flags of "struct v4l2_mbus_config".
+		 */
+		.polarities	= 0,
 	},
 };
 
@@ -128,12 +148,12 @@ static u32 isl79988_codes[] = {
 };
 
 struct v4l2_mbus_config isl79988_mbus_config = {
-	.type	= V4L2_MBUS_BT656,
-	.flags	=
-		V4L2_MBUS_DATA_ACTIVE_LOW |
-		V4L2_MBUS_PCLK_SAMPLE_FALLING |
-		V4L2_MBUS_VSYNC_ACTIVE_LOW |
-		V4L2_MBUS_HSYNC_ACTIVE_LOW |
+	.type		= V4L2_MBUS_BT656,
+	.flags		=
+		V4L2_MBUS_DATA_ACTIVE_LOW	|
+		V4L2_MBUS_PCLK_SAMPLE_FALLING	|
+		V4L2_MBUS_VSYNC_ACTIVE_LOW	|
+		V4L2_MBUS_HSYNC_ACTIVE_LOW	|
 		V4L2_MBUS_MASTER,
 };
 
@@ -144,7 +164,7 @@ struct v4l2_mbus_framefmt isl79988_mbus_framefmt = {
 };
 
 /*
- * gpio fuctions
+ * gpio functions
  */
 int isl79988_parse_device_tree(struct isl79988 *dev, struct i2c_client *client)
 {
@@ -169,15 +189,15 @@ int isl79988_parse_device_tree(struct isl79988 *dev, struct i2c_client *client)
 void isl79988_request_gpio(struct isl79988 *dev)
 {
 	if (dev->gpio.pwr_port > 0) {
-		/* power pin */
+		/* power */
 		gpio_request(dev->gpio.pwr_port, "isl79988 power");
 	}
 	if (dev->gpio.pwd_port > 0) {
-		/* power down pin */
+		/* power-down */
 		gpio_request(dev->gpio.pwd_port, "isl79988 power-down");
 	}
 	if (dev->gpio.rst_port > 0) {
-		/* reset pin */
+		/* reset */
 		gpio_request(dev->gpio.rst_port, "isl79988 reset");
 	}
 }
@@ -185,21 +205,21 @@ void isl79988_request_gpio(struct isl79988 *dev)
 void isl79988_free_gpio(struct isl79988 *dev)
 {
 	if (dev->gpio.pwr_port > 0) {
-		/* power pin */
+		/* power */
 		gpio_free(dev->gpio.pwr_port);
 	}
 	if (dev->gpio.pwd_port > 0) {
-		/* power down pin */
+		/* power-down */
 		gpio_free(dev->gpio.pwd_port);
 	}
 	if (dev->gpio.rst_port > 0) {
-		/* reset pin */
+		/* reset */
 		gpio_free(dev->gpio.rst_port);
 	}
 }
 
 /*
- * Helper fuctions for reflection
+ * Helper functions for reflection
  */
 static inline struct isl79988 *to_state(struct v4l2_subdev *sd)
 {
@@ -211,7 +231,7 @@ static inline struct isl79988 *to_state(struct v4l2_subdev *sd)
  */
 static int isl79988_s_ctrl(struct v4l2_ctrl *ctrl)
 {
-	int	ret = 0;
+	int			ret	= 0;
 
 	switch (ctrl->id) {
 	case V4L2_CID_BRIGHTNESS:
@@ -284,7 +304,7 @@ static int isl79988_g_input_status(struct v4l2_subdev *sd, u32 *status)
 	unsigned int		val	= 0;
 	int			ret	= 0;
 
-	// check V4L2_IN_ST_NO_SIGNAL
+	/* check V4L2_IN_ST_NO_SIGNAL */
 	ret = regmap_write(dev->regmap, 0xFF, 0x00);
 	if (ret < 0)
 		loge("Failed to set to use page 0\n");
@@ -318,26 +338,86 @@ static int isl79988_s_stream(struct v4l2_subdev *sd, int enable)
 		loge("Failed to get video source object by subdev\n");
 		ret = -EINVAL;
 	} else {
-		ret = regmap_multi_reg_write(dev->regmap, isl79988_reg_defaults,
+		ret = regmap_multi_reg_write(dev->regmap,
+			isl79988_reg_defaults,
 			ARRAY_SIZE(isl79988_reg_defaults));
 		msleep(600);
 	}
 
-	// pinctrl
+	/* pinctrl */
 	client = v4l2_get_subdevdata(&dev->sd);
+	if (client == NULL) {
+		loge("client is NULL\n");
+		ret = -1;
+	}
+
 	pctrl = pinctrl_get_select(&client->dev, "default");
 	if (!IS_ERR(pctrl)) {
-		/* release kref about pinctrl */
 		pinctrl_put(pctrl);
+		ret = -1;
 	}
 
 	return ret;
 }
 
+static int isl79988_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *parm)
+{
+	struct v4l2_captureparm *cp	= &parm->parm.capture;
+	struct isl79988		*dev	= NULL;
+
+	dev = to_state(sd);
+	if (!dev) {
+		loge("Failed to get video source object by subdev\n");
+		return -EINVAL;
+	}
+
+	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
+	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
+		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
+		return -EINVAL;
+	}
+
+	cp->capability = V4L2_CAP_TIMEPERFRAME;
+	cp->timeperframe.numerator = 1;
+	cp->timeperframe.denominator = dev->framerate;
+	logd("capability: %u, framerate: %u / %u\n",
+		cp->capability,
+		cp->timeperframe.numerator,
+		cp->timeperframe.denominator);
+
+	return 0;
+}
+
+static int isl79988_s_parm(struct v4l2_subdev *sd,
+	struct v4l2_streamparm *parm)
+{
+	struct v4l2_captureparm *cp	= &parm->parm.capture;
+	struct isl79988		*dev	= NULL;
+
+	dev = to_state(sd);
+	if (!dev) {
+		loge("Failed to get video source object by subdev\n");
+		return -EINVAL;
+	}
+
+	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
+	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
+		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
+		return -EINVAL;
+	}
+
+	/* set framerate with i2c setting if supported */
+
+	cp->capability = V4L2_CAP_TIMEPERFRAME;
+	dev->framerate = cp->timeperframe.denominator;
+
+	return 0;
+}
+
 static int isl79988_g_dv_timings(struct v4l2_subdev *sd,
 	struct v4l2_dv_timings *timings)
 {
-	int ret = 0;
+	int			ret	= 0;
 
 	memcpy((void *)timings, (const void *)&isl79988_dv_timings,
 		sizeof(*timings));
@@ -357,6 +437,44 @@ static int isl79988_g_mbus_config(struct v4l2_subdev *sd,
 /*
  * v4l2_subdev_pad_ops implementations
  */
+static int isl79988_enum_frame_size(struct v4l2_subdev *sd,
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_frame_size_enum *fse)
+{
+	struct frame_size	*size		= NULL;
+
+	if (ARRAY_SIZE(isl79988_framesizes) <= fse->index) {
+		logd("index(%u) is wrong\n", fse->index);
+		return -EINVAL;
+	}
+
+	size = &isl79988_framesizes[fse->index];
+	logd("size: %u * %u\n", size->width, size->height);
+
+	fse->min_width = fse->max_width = size->width;
+	fse->min_height	= fse->max_height = size->height;
+	logd("max size: %u * %u\n", fse->max_width, fse->max_height);
+
+	return 0;
+}
+
+static int isl79988_enum_frame_interval(struct v4l2_subdev *sd,
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_frame_interval_enum *fie)
+{
+	if (ARRAY_SIZE(isl79988_framerates) <= fie->index) {
+		logd("index(%u) is wrong\n", fie->index);
+		return -EINVAL;
+	}
+
+	fie->interval.numerator = 1;
+	fie->interval.denominator = isl79988_framerates[fie->index];
+	logd("framerate: %u / %u\n",
+		fie->interval.numerator, fie->interval.denominator);
+
+	return 0;
+}
+
 static int isl79988_enum_mbus_code(struct v4l2_subdev *sd,
 	struct v4l2_subdev_pad_config *cfg,
 	struct v4l2_subdev_mbus_code_enum *code)
@@ -373,11 +491,10 @@ static int isl79988_get_fmt(struct v4l2_subdev *sd,
 	struct v4l2_subdev_pad_config *cfg,
 	struct v4l2_subdev_format *format)
 {
-	struct isl79988		*dev = to_state(sd);
-	int ret	= 0;
+	struct isl79988		*dev	= to_state(sd);
+	int			ret	= 0;
 
-	memcpy((void *)&format->format,
-		(const void *)&dev->fmt,
+	memcpy((void *)&format->format, (const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	return ret;
@@ -387,11 +504,10 @@ static int isl79988_set_fmt(struct v4l2_subdev *sd,
 	struct v4l2_subdev_pad_config *cfg,
 	struct v4l2_subdev_format *format)
 {
-	struct isl79988 *dev = to_state(sd);
-	int ret	= 0;
+	struct isl79988		*dev	= to_state(sd);
+	int			ret	= 0;
 
-	memcpy((void *)&dev->fmt,
-		(const void *)&format->format,
+	memcpy((void *)&dev->fmt, (const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	isl79988_dv_timings.bt.width = format->format.width;
@@ -412,22 +528,26 @@ static const struct v4l2_subdev_core_ops isl79988_v4l2_subdev_core_ops = {
 };
 
 static const struct v4l2_subdev_video_ops isl79988_v4l2_subdev_video_ops = {
-	.g_input_status	= isl79988_g_input_status,
+	.g_input_status		= isl79988_g_input_status,
 	.s_stream		= isl79988_s_stream,
-	.g_dv_timings	= isl79988_g_dv_timings,
-	.g_mbus_config	= isl79988_g_mbus_config
+	.g_parm			= isl79988_g_parm,
+	.s_parm			= isl79988_s_parm,
+	.g_dv_timings		= isl79988_g_dv_timings,
+	.g_mbus_config		= isl79988_g_mbus_config
 };
 
 static const struct v4l2_subdev_pad_ops isl79988_v4l2_subdev_pad_ops = {
 	.enum_mbus_code		= isl79988_enum_mbus_code,
+	.enum_frame_size	= isl79988_enum_frame_size,
+	.enum_frame_interval	= isl79988_enum_frame_interval,
 	.get_fmt		= isl79988_get_fmt,
 	.set_fmt		= isl79988_set_fmt,
 };
 
 static const struct v4l2_subdev_ops isl79988_ops = {
-	.core		= &isl79988_v4l2_subdev_core_ops,
-	.video		= &isl79988_v4l2_subdev_video_ops,
-	.pad		= &isl79988_v4l2_subdev_pad_ops,
+	.core			= &isl79988_v4l2_subdev_core_ops,
+	.video			= &isl79988_v4l2_subdev_video_ops,
+	.pad			= &isl79988_v4l2_subdev_pad_ops,
 };
 
 struct isl79988 isl79988_data = {
@@ -452,18 +572,18 @@ MODULE_DEVICE_TABLE(of, isl79988_of_match);
 
 int isl79988_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	struct isl79988		*dev	= NULL;
-	const struct of_device_id *dev_id = NULL;
-	int			ret	= 0;
+	struct isl79988			*dev	= NULL;
+	const struct of_device_id	*dev_id	= NULL;
+	int				ret	= 0;
 
-	// allocate and clear memory for a device
+	/* allocate and clear memory for a device */
 	dev = devm_kzalloc(&client->dev, sizeof(struct isl79988), GFP_KERNEL);
 	if (dev == NULL) {
 		loge("Allocate a device struct.\n");
 		return -ENOMEM;
 	}
 
-	// set the specific information
+	/* set the specific information */
 	if (client->dev.of_node) {
 		dev_id = of_match_node(isl79988_of_match, client->dev.of_node);
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
@@ -472,17 +592,17 @@ int isl79988_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	logd("name: %s, addr: 0x%x, client: 0x%p\n",
 		client->name, (client->addr)<<1, client);
 
-	// parse the device tree
+	/* parse the device tree */
 	ret = isl79988_parse_device_tree(dev, client);
 	if (ret < 0) {
 		loge("cannot initialize gpio port\n");
 		return ret;
 	}
 
-	// Register with V4L2 layer as a slave device
+	/* Register with V4L2 layer as a slave device */
 	v4l2_i2c_subdev_init(&dev->sd, client, &isl79988_ops);
 
-	// regitster v4l2 control handlers
+	/* regitster v4l2 control handlers */
 	v4l2_ctrl_handler_init(&dev->hdl, 2);
 	v4l2_ctrl_new_std(&dev->hdl, &isl79988_ctrl_ops,
 		V4L2_CID_BRIGHTNESS, 0, 255, 1, 128);
@@ -496,7 +616,7 @@ int isl79988_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto goto_free_device_data;
 	}
 
-	// register a v4l2 sub device
+	/* register a v4l2 sub device */
 	ret = v4l2_async_register_subdev(&dev->sd);
 	if (ret)
 		loge("Failed to register subdevice\n");
@@ -505,12 +625,15 @@ int isl79988_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	/* init mbus format */
 	memcpy((void *)&dev->fmt, (const void *)&isl79988_mbus_framefmt,
-	       sizeof(dev->fmt));
+		sizeof(dev->fmt));
 
-	// request gpio
+	/* init framerate */
+	dev->framerate = DEFAULT_FRAMERATE;
+
+	/* request gpio */
 	isl79988_request_gpio(dev);
 
-	// init regmap
+	/* init regmap */
 	dev->regmap = devm_regmap_init_i2c(client, &isl79988_regmap);
 	if (IS_ERR(dev->regmap)) {
 		loge("devm_regmap_init_i2c is wrong\n");
@@ -521,7 +644,7 @@ int isl79988_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	goto goto_end;
 
 goto_free_device_data:
-	// free the videosource data
+	/* free the videosource data */
 	kfree(dev);
 
 goto_end:
@@ -533,10 +656,10 @@ int isl79988_remove(struct i2c_client *client)
 	struct v4l2_subdev	*sd	= i2c_get_clientdata(client);
 	struct isl79988		*dev	= to_state(sd);
 
-	// release regmap
+	/* release regmap */
 	regmap_exit(dev->regmap);
 
-	// gree gpio
+	/* gree gpio */
 	isl79988_free_gpio(dev);
 
 	v4l2_ctrl_handler_free(&dev->hdl);
@@ -553,7 +676,7 @@ static struct i2c_driver isl79988_driver = {
 	.probe		= isl79988_probe,
 	.remove		= isl79988_remove,
 	.driver		= {
-		.name			= "isl79988",
+		.name		= "isl79988",
 		.of_match_table	= of_match_ptr(isl79988_of_match),
 	},
 	.id_table	= isl79988_id,

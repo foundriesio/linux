@@ -76,8 +76,8 @@ struct frame_size {
 };
 
 /*
- * This object contains essential v4l2 objects such as sub-device and
- * ctrl_handler
+ * This object contains essential v4l2 objects
+ * such as sub-device and ctrl_handler
  */
 struct adv7182 {
 	struct v4l2_subdev		sd;
@@ -109,11 +109,11 @@ const struct reg_sequence adv7182_reg_defaults[] = {
 };
 
 static const struct regmap_config adv7182_regmap = {
-	.reg_bits	= 8,
-	.val_bits	= 8,
+	.reg_bits		= 8,
+	.val_bits		= 8,
 
-	.max_register	= 0xFF,
-	.cache_type	= REGCACHE_NONE,
+	.max_register		= 0xFF,
+	.cache_type		= REGCACHE_NONE,
 };
 
 static struct frame_size adv7182_framesizes[] = {
@@ -160,7 +160,7 @@ struct v4l2_mbus_framefmt adv7182_mbus_framefmt = {
 };
 
 /*
- * gpio fuctions
+ * gpio functions
  */
 int adv7182_parse_device_tree(struct adv7182 *dev, struct i2c_client *client)
 {
@@ -215,7 +215,7 @@ void adv7182_free_gpio(struct adv7182 *dev)
 }
 
 /*
- * Helper fuctions for reflection
+ * Helper functions for reflection
  */
 static inline struct adv7182 *to_state(struct v4l2_subdev *sd)
 {
@@ -526,8 +526,7 @@ static int adv7182_get_fmt(struct v4l2_subdev *sd,
 	struct adv7182		*dev	= to_state(sd);
 	int			ret	= 0;
 
-	memcpy((void *)&format->format,
-		(const void *)&dev->fmt,
+	memcpy((void *)&format->format, (const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	return ret;
@@ -540,8 +539,7 @@ static int adv7182_set_fmt(struct v4l2_subdev *sd,
 	struct adv7182		*dev	= to_state(sd);
 	int			ret	= 0;
 
-	memcpy((void *)&dev->fmt,
-		(const void *)&format->format,
+	memcpy((void *)&dev->fmt, (const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	adv7182_dv_timings.bt.width = format->format.width;

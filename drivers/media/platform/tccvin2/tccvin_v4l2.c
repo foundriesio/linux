@@ -325,7 +325,7 @@ static int tccvin_v4l2_get_frameinterval(struct tccvin_streaming *stream,
 	n_subdev = stream->dev->bounded_subdevs;
 	logd("The number of subdevs is %d\n", n_subdev);
 
-	for (idx_subdev = n_subdev - 1; idx_subdev >= 0; idx_subdev--) {
+	for (idx_subdev = 0; idx_subdev < n_subdev; idx_subdev++) {
 		subdev = stream->dev->linked_subdevs[idx_subdev].sd;
 
 		ret = v4l2_subdev_call(subdev, video, g_parm, streamparm);
@@ -336,11 +336,11 @@ static int tccvin_v4l2_get_frameinterval(struct tccvin_streaming *stream,
 			ret = -ENODEV;
 			break;
 		case -ENOIOCTLCMD:
-			loge("%s - not supported\n", subdev->name);
+			logd("%s - not supported\n", subdev->name);
 			ret = -ENOIOCTLCMD;
 			break;
 		case -EINVAL:
-			loge("%s - condition is wrong\n", subdev->name);
+			logd("%s - condition is wrong\n", subdev->name);
 			ret = -EINVAL;
 			break;
 		default:
@@ -362,7 +362,7 @@ static int tccvin_v4l2_set_frameinterval(struct tccvin_streaming *stream,
 	n_subdev = stream->dev->bounded_subdevs;
 	logd("The number of subdevs is %d\n", n_subdev);
 
-	for (idx_subdev = n_subdev - 1; idx_subdev >= 0; idx_subdev--) {
+	for (idx_subdev = 0; idx_subdev < n_subdev; idx_subdev++) {
 		subdev = stream->dev->linked_subdevs[idx_subdev].sd;
 
 		ret = v4l2_subdev_call(subdev, video, s_parm, streamparm);
@@ -373,11 +373,11 @@ static int tccvin_v4l2_set_frameinterval(struct tccvin_streaming *stream,
 			ret = -ENODEV;
 			break;
 		case -ENOIOCTLCMD:
-			loge("%s - not supported\n", subdev->name);
+			logd("%s - not supported\n", subdev->name);
 			ret = -ENOIOCTLCMD;
 			break;
 		case -EINVAL:
-			loge("%s - condition is wrong\n", subdev->name);
+			logd("%s - condition is wrong\n", subdev->name);
 			ret = -EINVAL;
 			break;
 		default:
@@ -410,7 +410,7 @@ static int tccvin_v4l2_enum_framesizes(struct tccvin_streaming *stream,
 	fse.code = format->mbus_code;
 	fse.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 
-	for (idx_subdev = n_subdev - 1; idx_subdev >= 0; idx_subdev--) {
+	for (idx_subdev = 0; idx_subdev < n_subdev; idx_subdev++) {
 		subdev = stream->dev->linked_subdevs[idx_subdev].sd;
 
 		fse.pad = idx_subdev;
@@ -422,10 +422,10 @@ static int tccvin_v4l2_enum_framesizes(struct tccvin_streaming *stream,
 			loge("subdev is null\n");
 			break;
 		case -ENOIOCTLCMD:
-			loge("%s - not supported\n", subdev->name);
+			logd("%s - not supported\n", subdev->name);
 			break;
 		case -EINVAL:
-			loge("%s - condition is wrong\n", subdev->name);
+			logd("%s - condition is wrong\n", subdev->name);
 			break;
 		default:
 			logd("%s - size: %u * %u\n",
@@ -433,7 +433,7 @@ static int tccvin_v4l2_enum_framesizes(struct tccvin_streaming *stream,
 			fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
 			fsize->discrete.width = fse.max_width;
 			fsize->discrete.height = fse.max_height;
-			break;
+			return 0;
 		}
 	}
 
@@ -464,7 +464,7 @@ static int tccvin_v4l2_enum_frameintervals(struct tccvin_streaming *stream,
 	fie.height = fival->height;
 	fie.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 
-	for (idx_subdev = n_subdev - 1; idx_subdev >= 0; idx_subdev--) {
+	for (idx_subdev = 0; idx_subdev < n_subdev; idx_subdev++) {
 		subdev = stream->dev->linked_subdevs[idx_subdev].sd;
 
 		fie.pad = idx_subdev;
@@ -476,12 +476,15 @@ static int tccvin_v4l2_enum_frameintervals(struct tccvin_streaming *stream,
 			loge("subdev is null\n");
 			break;
 		case -ENOIOCTLCMD:
-			loge("%s - not supported\n", subdev->name);
+			logd("%s - not supported\n", subdev->name);
 			break;
 		case -EINVAL:
-			loge("%s - condition is wrong\n", subdev->name);
+			logd("%s - condition is wrong\n", subdev->name);
 			break;
 		default:
+			fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
+			fival->discrete.numerator = fie.interval.numerator;
+			fival->discrete.denominator = fie.interval.denominator;
 			logd("index: %d, format: 0x%08x\n",
 				fival->index, fival->pixel_format);
 			logd(" . width: %d, height: %d\n",
@@ -489,10 +492,7 @@ static int tccvin_v4l2_enum_frameintervals(struct tccvin_streaming *stream,
 			logd(" . numerator: %d, denominator: %d\n",
 				fival->discrete.numerator,
 				fival->discrete.denominator);
-			fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
-			fival->discrete.numerator = fie.interval.numerator;
-			fival->discrete.denominator = fie.interval.denominator;
-			break;
+			return 0;
 		}
 	}
 
