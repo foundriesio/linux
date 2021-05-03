@@ -39,7 +39,7 @@
 #define DRIVER_DATE	"20210503"
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	4
-#define DRIVER_PATCH	6
+#define DRIVER_PATCH	7
 
 static struct device *tcc_drm_get_dma_device(void);
 

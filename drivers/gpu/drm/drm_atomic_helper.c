@@ -1009,10 +1009,13 @@ crtc_set_mode(struct drm_device *dev, struct drm_atomic_state *old_state)
 		 */
 		if (!new_crtc_state->mode_changed &&
 			!new_crtc_state->active_changed)
+			continue;
+		if (!new_crtc_state->active || !new_crtc_state->enable)
+			continue;
 		#else
 		if (!new_crtc_state->mode_changed)
-		#endif
 			continue;
+		#endif
 
 		funcs = crtc->helper_private;
 
@@ -1070,10 +1073,13 @@ crtc_set_mode(struct drm_device *dev, struct drm_atomic_state *old_state)
 		 */
 		if (!new_crtc_state->mode_changed &&
 			!new_crtc_state->active_changed)
+			continue;
+		if (!new_crtc_state->active || !new_crtc_state->enable)
+			continue;
 		#else
 		if (!new_crtc_state->mode_changed)
-		#endif
 			continue;
+		#endif
 
 		DRM_DEBUG_ATOMIC("modeset on [ENCODER:%d:%s]\n",
 				 encoder->base.id, encoder->name);
