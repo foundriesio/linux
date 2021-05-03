@@ -213,12 +213,23 @@ struct sock *__inet_lookup_listener(struct net *net,
 {
 	unsigned int hash = inet_lhashfn(net, hnum);
 	struct inet_listen_hashbucket *ilb = &hashinfo->listening_hash[hash];
-	int score, hiscore = 0, matches = 0, reuseport = 0;
+	int score, hiscore, matches, reuseport;
 	bool exact_dif = inet_exact_dif_match(net, skb);
-	struct sock *sk, *result = NULL;
-	u32 phash = 0;
+	struct sock *sk, *result;
+	u32 phash;
+
+begin:
+	hiscore = 0;
+	matches = 0;
+	reuseport = 0;
+	result = NULL;
+	phash = 0;
 
 	sk_for_each_rcu(sk, &ilb->head) {
+		if (unlikely(is_a_nulls(&sk->sk_nulls_node))) {
+			pr_info("%s: bsc#1180624 race encountered\n", __func__);
+			goto begin;
+		}
 		score = compute_score(sk, net, hnum, daddr, dif, exact_dif);
 		if (score > hiscore) {
 			reuseport = sk->sk_reuseport;
@@ -284,8 +295,10 @@ struct sock *__inet_lookup_established(struct net *net,
 
 begin:
 	sk_nulls_for_each_rcu(sk, node, &head->chain) {
-		if (unlikely(!node))
+		if (unlikely(!node)) {
+			pr_info("%s: bsc#1151794 race encountered\n", __func__);
 			goto begin;
+		}
 		if (sk->sk_hash != hash)
 			continue;
 		if (likely(INET_MATCH(sk, net, acookie,
