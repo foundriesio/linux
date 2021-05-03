@@ -385,7 +385,6 @@ int dpv14_api_set_video_stream_enable( int dp_id, unsigned char enable )
 
 int dpv14_api_set_audio_stream_enable( int dp_id, unsigned char enable )
 {
-	bool				bRetVal;
 	struct Dptx_Params 	*pstHandle;
 
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
@@ -401,12 +400,43 @@ int dpv14_api_set_audio_stream_enable( int dp_id, unsigned char enable )
 		return ( -ENODEV );
 	}
 
-	dptx_info("Set DP %d audio %s...",	enable ? "enable":"disable" );
+	dptx_info("Set DP %d audio %s...", dp_id, enable ? "enable":"disable" );
 
 	Dptx_Avgen_Set_Audio_Mute(pstHandle, (u8)dp_id, enable);
 
-	return ( 0 );
+	return 0;
 }
+
+int32_t tcc_dp_identify_lcd_mux_configuration(uint32_t dp_id, uint8_t lcd_mux_index)
+{
+	int32_t		iRetVal;
+	struct Dptx_Params 	*pstHandle;
+
+	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
+	{
+		dptx_err("Invalid dp id as %d", dp_id );
+		return EINVAL;
+	}
+
+	pstHandle = Dptx_Platform_Get_Device_Handle();
+	if (pstHandle == NULL) {
+		dptx_err("Failed to get handle" );
+		return ENODEV;
+	}
+
+	iRetVal = (int)Dptx_Platform_Get_MuxSelect(pstHandle);
+	if (iRetVal != 0) {
+		return ENODEV;
+	}
+
+	if (lcd_mux_index != pstHandle->aucMuxInput_Index[dp_id]) {
+		dptx_err("The mux index(%d) of DRM is NOT matched with mux index(%d) of DP%d configured in u-boot",
+					lcd_mux_index, pstHandle->aucMuxInput_Index[dp_id], dp_id);
+	}
+
+	return 0;
+}
+
 
 #endif
 

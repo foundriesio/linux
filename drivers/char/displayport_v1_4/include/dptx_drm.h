@@ -36,5 +36,9 @@ struct tcc_drm_dp_callback_funcs;
 
 int tcc_dp_register_drm(
     struct drm_encoder *encoder, struct tcc_drm_dp_callback_funcs *callbacks );
+
+int32_t tcc_dp_identify_lcd_mux_configuration(uint32_t dp_id, uint8_t lcd_mux_index);
+
+
 #endif /* __DPTX_DRM_H__  */
 
