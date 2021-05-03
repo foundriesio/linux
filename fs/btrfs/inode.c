@@ -10468,6 +10468,7 @@ static int insert_prealloc_file_extent(struct btrfs_trans_handle *trans,
 	struct btrfs_file_extent_item stack_fi;
 	u64 start = ins->objectid;
 	u64 len = ins->offset;
+	int qgroup_released;
 	int ret;
 
 	memset(&stack_fi, 0, sizeof(stack_fi));
@@ -10480,11 +10481,11 @@ static int insert_prealloc_file_extent(struct btrfs_trans_handle *trans,
 	btrfs_set_stack_file_extent_compression(&stack_fi, BTRFS_COMPRESS_NONE);
 	/* Encryption and other encoding is reserved and all 0 */
 
-	ret = btrfs_qgroup_release_data(inode, file_offset, len);
-	if (ret < 0)
-		return ret;
+	qgroup_released = btrfs_qgroup_release_data(inode, file_offset, len);
+	if (qgroup_released < 0)
+		return qgroup_released;
 	return insert_reserved_file_extent(trans, inode, file_offset,
-					   &stack_fi, ret);
+					   &stack_fi, qgroup_released);
 }
 static int __btrfs_prealloc_file_range(struct inode *inode, int mode,
 				       u64 start, u64 num_bytes, u64 min_size,
