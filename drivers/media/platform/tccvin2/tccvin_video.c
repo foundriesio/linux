@@ -1811,7 +1811,7 @@ int tccvin_video_init(struct tccvin_streaming *stream)
 		return ret;
 	}
 
-	stream->is_handover_needed	= 0;
+	stream->is_handover_needed	= V4L2_CAP_CTRL_SKIP_NONE;
 
 	/* preview method */
 	stream->preview_method		= PREVIEW_V4L2;
@@ -2129,7 +2129,8 @@ int32_t tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 	 * step 1
 	 * v4l2 sub dev - s_power
 	 */
-	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
+	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
+	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_SUBDEV)) {
 		/* set power */
 		tccvin_video_subdevs_s_power(stream, 1);
 	}
@@ -2145,7 +2146,8 @@ int32_t tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 	 * step 3
 	 * v4l2 sub dev - init
 	 */
-	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
+	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
+	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_SUBDEV)) {
 		/* init */
 		tccvin_video_subdevs_init(stream, 1);
 	}
@@ -2167,7 +2169,8 @@ int32_t tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
 	 * step 6
 	 * call start stream of all subdevs
 	 */
-	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
+	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
+	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_SUBDEV)) {
 		/* start stream */
 		tccvin_video_subdevs_s_stream(stream, 1);
 	}
@@ -2182,11 +2185,32 @@ int32_t tccvin_video_subdevs_streamoff(struct tccvin_streaming *stream)
 
 	WARN_ON(IS_ERR_OR_NULL(stream));
 
-	tccvin_video_subdevs_s_stream(stream, 0);
+	switch (stream->is_handover_needed) {
+	case V4L2_CAP_CTRL_SKIP_NONE:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_NONE\n");
+		break;
+	case V4L2_CAP_CTRL_SKIP_ALL:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_ALL\n");
+		break;
+	case V4L2_CAP_CTRL_SKIP_SUBDEV:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_SUBDEV\n");
+		break;
+	case V4L2_CAP_CTRL_SKIP_DEV:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_DEV\n");
+		break;
+	default:
+		loge("HANDOVER - handover(%u) is wrong\n");
+		break;
+	}
 
-	tccvin_video_subdevs_init(stream, 0);
+	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
+	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_SUBDEV)) {
+		tccvin_video_subdevs_s_stream(stream, 0);
 
-	tccvin_video_subdevs_s_power(stream, 0);
+		tccvin_video_subdevs_init(stream, 0);
+
+		tccvin_video_subdevs_s_power(stream, 0);
+	}
 
 	return ret;
 }
@@ -2200,9 +2224,22 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 	logi("preview method: %s\n", (stream->preview_method == PREVIEW_V4L2) ?
 		"PREVIEW_V4L2" : "PREVIEW_DD");
 
-	if (stream->is_handover_needed == V4L2_CAP_HANDOVER_NEED) {
-		/* handover procedure is needed */
-		logi("#### Handover - Skip to set the vioc path\n");
+	switch (stream->is_handover_needed) {
+	case V4L2_CAP_CTRL_SKIP_NONE:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_NONE\n");
+		break;
+	case V4L2_CAP_CTRL_SKIP_ALL:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_ALL\n");
+		break;
+	case V4L2_CAP_CTRL_SKIP_SUBDEV:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_SUBDEV\n");
+		break;
+	case V4L2_CAP_CTRL_SKIP_DEV:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_DEV\n");
+		break;
+	default:
+		loge("HANDOVER - handover(%u) is wrong\n");
+		break;
 	}
 
 	ret = tccvin_video_subdevs_streamon(stream);
@@ -2211,7 +2248,8 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 		return -1;
 	}
 
-	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
+	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
+	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_DEV)) {
 		/* reset vioc path */
 		tccvin_reset_vioc_path(stream);
 	}
@@ -2227,7 +2265,8 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 		}
 	}
 
-	if (stream->is_handover_needed != V4L2_CAP_HANDOVER_NEED) {
+	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
+	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_DEV)) {
 		ret = tccvin_start_stream(stream);
 		if (ret < 0) {
 			loge("Start Stream\n");
@@ -2244,10 +2283,13 @@ int32_t tccvin_video_streamoff(struct tccvin_streaming *stream)
 
 	WARN_ON(IS_ERR_OR_NULL(stream));
 
-	ret = tccvin_stop_stream(stream);
-	if (ret < 0) {
-		loge("Stop Stream\n");
-		return -1;
+	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
+	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_DEV)) {
+		ret = tccvin_stop_stream(stream);
+		if (ret < 0) {
+			loge("Stop Stream\n");
+			return -1;
+		}
 	}
 
 	if (stream->preview_method == PREVIEW_V4L2) {
@@ -2258,8 +2300,11 @@ int32_t tccvin_video_streamoff(struct tccvin_streaming *stream)
 		}
 	}
 
-	/* reset vioc path */
-	tccvin_reset_vioc_path(stream);
+	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
+	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_DEV)) {
+		/* reset vioc path */
+		tccvin_reset_vioc_path(stream);
+	}
 
 	ret = tccvin_video_subdevs_streamoff(stream);
 	if (ret < 0) {
@@ -2306,10 +2351,30 @@ void tccvin_check_path_status(struct tccvin_streaming *stream, int *status)
 int32_t tccvin_s_handover(struct tccvin_streaming *stream,
 	int32_t *is_handover_needed)
 {
-	stream->is_handover_needed = *is_handover_needed;
-	logi("is_handover_needed: %d\n", stream->is_handover_needed);
+	int	ret = 0;
 
-	return 0;
+	stream->is_handover_needed = *is_handover_needed;
+
+	switch (stream->is_handover_needed) {
+	case V4L2_CAP_CTRL_SKIP_NONE:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_NONE\n");
+		break;
+	case V4L2_CAP_CTRL_SKIP_ALL:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_ALL\n");
+		break;
+	case V4L2_CAP_CTRL_SKIP_SUBDEV:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_SUBDEV\n");
+		break;
+	case V4L2_CAP_CTRL_SKIP_DEV:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_DEV\n");
+		break;
+	default:
+		loge("HANDOVER - handover(%u) is wrong\n");
+		ret = -1;
+		break;
+	}
+
+	return ret;
 }
 
 int32_t tccvin_allocated_dmabuf(struct tccvin_streaming *stream, int32_t count)
