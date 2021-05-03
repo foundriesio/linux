@@ -4,3 +4,5 @@ config TCC_SDR_IPC
 	depends on TCC_MULTI_MAILBOX && ARCH_TCC805X
 	help
 		TCC SDR IPC only supports TCC805X.
+		This driver is for SDR Applications.
+		This driver supports communication between main_core(A72) and sub_core(A53).
