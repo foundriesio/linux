@@ -2465,7 +2465,7 @@
                 throttle_count = <5>;
                 throttle_active_count = <0>;
                 throttle_passive_count = <5>;
-                interrupts = <GIC_SPI 40 0>;
+                interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
                 cal_type = "TYPE_TWO_POINT_TRIMMING";
                 polling-delay-idle = <600>;
                 polling-delay-passive = <1000>;
