@@ -158,10 +158,8 @@ static inline const char *u32_to_str_in_format(u32 num, char *format)
 	u32 ths = 1000000U;
 	s32 idx;
 
-	if (format == NULL) {
-		/* XXX: Should not happen */
+	if (format == NULL)
 		return NULL;
-	}
 
 	for (idx = 0; idx < 12; idx += 4) {
 		(void)sprintf(&format[idx], ",%03u", (num / ths) % 1000U);
@@ -171,14 +169,12 @@ static inline const char *u32_to_str_in_format(u32 num, char *format)
 	idx = 0;
 
 	/* Remove unnecessary delimiters and zeros in front */
-	while (((u8)format[idx] == (u8)',') || ((u8)format[idx] == (u8)'0')) {
+	while (((u8)format[idx] == (u8)',') || ((u8)format[idx] == (u8)'0'))
 		++idx;
-	}
 
-	if ((u8)format[idx] == (u8)'\0') {
-		/* Keep the last zero, if the num is just zero */
+	/* Keep the last zero, if the num is just zero */
+	if ((u8)format[idx] == (u8)'\0')
 		--idx;
-	}
 
 	return &format[idx];
 }
@@ -216,11 +212,10 @@ static int bootstage_report_show(struct seq_file *m, void *v)
 		fmt = u32_to_str_in_format(stamp, buf);
 		seq_printf(m, "%11s", fmt);
 
-		if (stamp >= prev) {
+		if (stamp >= prev)
 			fmt = u32_to_str_in_format(stamp - prev, buf);
-		} else {
+		else
 			fmt = "overflow";
-		}
 
 		seq_printf(m, "%11s  %s\n", fmt, desc);
 
@@ -255,6 +250,7 @@ static int bootstage_data_show(struct seq_file *m, void *v)
 		stamp = get_boot_timestamp(n);
 
 		if (desc == NULL) {
+			/* Ignore printing stamp for force-skipped stages */
 			continue;
 		}
 
@@ -263,11 +259,11 @@ static int bootstage_data_show(struct seq_file *m, void *v)
 			continue;
 		}
 
-		if (stamp >= prev) {
+		if (stamp >= prev)
 			seq_printf(m, "%s,%u\n", desc, stamp - prev);
-		} else {
+		else
 			seq_printf(m, "%s,overflow\n", desc);
-		}
+
 		prev = stamp;
 	}
 
@@ -302,10 +298,8 @@ static struct proc_dir_entry *bootstage_procfs_init(void)
 
 	/* Create '/proc/bootstage' procfs directory */
 	pdir = proc_mkdir("bootstage", NULL);
-	if (pdir == NULL) {
-		/* Nothing to do, just return */
+	if (pdir == NULL)
 		goto procfs_dir_init_error;
-	}
 
 	/* Create '/proc/bootstage/report' procfs entry */
 	pent = proc_create("report", 0444, pdir, &bootstage_report_fops);
