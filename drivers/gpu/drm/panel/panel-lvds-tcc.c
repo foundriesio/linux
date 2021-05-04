@@ -1,17 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * rcar_du_crtc.c  --  R-Car Display Unit CRTCs
- *
- * Copyright (C) 2016 Laurent Pinchart
- * Copyright (C) 2016 Renesas Electronics Corporation
- *
- * Contact: Laurent Pinchart (laurent.pinchart@ideasonboard.com)
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Copyright (c) 2019 - present Telechips.co and/or its affiliates.
  */
-
 #include <linux/backlight.h>
 #include <linux/gpio/consumer.h>
 #include <linux/gpio.h>
@@ -32,13 +22,21 @@
 
 #include <video/tcc/vioc_lvds.h>
 
+#include "panel-tcc.h"
+
 #define LOG_TAG "DRMLVDS"
+
+#define DRIVER_DATE	"20210504"
+#define DRIVER_MAJOR	1
+#define DRIVER_MINOR	0
+#define DRIVER_PATCH	0
 
 //#define LVDS_DEBUG
 #ifdef LVDS_DEBUG
-#define LVDS_DBG(fmt, args...) pr_info("[INFO][DRMLVDS] " fmt, ## args)
+#define LVDS_DBG(fmt, args...) \
+	dev_info(lvds->dev, "[INFO][DRMLVDS] " fmt, ## args)
 #else
-#define LVDS_DBG(fmt, args...) do {} while(0)
+#define LVDS_DBG(fmt, args...) do {} while (0)
 #endif //LVDS_DEBUG
 
 #define TCC_LVDS_OUTPUT_VESA24 0
@@ -46,7 +44,7 @@
 #define TCC_LVDS_OUTPUT_MAX 2
 
 struct lvds_match_data {
-	char* name;
+	char *name;
 };
 
 static const struct lvds_match_data lvds_tm123xdhp90 = {
@@ -57,14 +55,26 @@ static const struct lvds_match_data lvds_fld0800 = {
 	.name = "FLD0900",
 };
 
-static unsigned int lvds_outformat[TCC_LVDS_OUTPUT_MAX][TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE] =
-{
+static unsigned int
+lvds_outformat[TCC_LVDS_OUTPUT_MAX][TXOUT_MAX_LINE][TXOUT_DATA_PER_LINE] = {
 	/* LVDS vesa-24 format */
 	{
-		{TXOUT_G_D(0), TXOUT_R_D(5), TXOUT_R_D(4), TXOUT_R_D(3), TXOUT_R_D(2), TXOUT_R_D(1), TXOUT_R_D(0)},
-		{TXOUT_B_D(1), TXOUT_B_D(0), TXOUT_G_D(5), TXOUT_G_D(4), TXOUT_G_D(3), TXOUT_G_D(2), TXOUT_G_D(1)},
-		{TXOUT_DE, TXOUT_VS, TXOUT_HS, TXOUT_B_D(5), TXOUT_B_D(4), TXOUT_B_D(3), TXOUT_B_D(2)},
-		{TXOUT_DUMMY, TXOUT_B_D(7), TXOUT_B_D(6), TXOUT_G_D(7), TXOUT_G_D(6), TXOUT_R_D(7), TXOUT_R_D(6)}
+		{
+			TXOUT_G_D(0), TXOUT_R_D(5), TXOUT_R_D(4), TXOUT_R_D(3),
+			TXOUT_R_D(2), TXOUT_R_D(1), TXOUT_R_D(0)
+		},
+		{
+			TXOUT_B_D(1), TXOUT_B_D(0), TXOUT_G_D(5), TXOUT_G_D(4),
+			TXOUT_G_D(3), TXOUT_G_D(2), TXOUT_G_D(1)
+		},
+		{
+			TXOUT_DE, TXOUT_VS, TXOUT_HS, TXOUT_B_D(5),
+			TXOUT_B_D(4), TXOUT_B_D(3), TXOUT_B_D(2)
+		},
+		{
+			TXOUT_DUMMY, TXOUT_B_D(7), TXOUT_B_D(6),
+			TXOUT_G_D(7), TXOUT_G_D(6), TXOUT_R_D(7), TXOUT_R_D(6)
+		}
 	},
 	/* LVDS jeida-24 format , not implemented*/
 };
@@ -102,6 +112,16 @@ struct panel_lvds {
 
 	struct lvds_pins lvds_pins;
 	int enabled;
+
+	/* Version ---------------------*/
+	/** @major: driver major number */
+	int major;
+	/** @minor: driver minor number */
+	int minor;
+	/** @patchlevel: driver patch level */
+	int patchlevel;
+	/** @date: driver date */
+	char *date;
 };
 
 static inline struct panel_lvds *to_panel_lvds(struct drm_panel *panel)
@@ -112,6 +132,7 @@ static inline struct panel_lvds *to_panel_lvds(struct drm_panel *panel)
 static int panel_lvds_disable(struct drm_panel *panel)
 {
 	struct panel_lvds *lvds = to_panel_lvds(panel);
+
 	dev_dbg(
 		lvds->dev, "[DEBUG][%s] %s with %s \r\n", LOG_TAG, __func__,
 		lvds->data->name);
@@ -123,23 +144,35 @@ static int panel_lvds_disable(struct drm_panel *panel)
 			lvds->backlight->props.state |= BL_CORE_FBBLANK;
 			backlight_update_status(lvds->backlight);
 		} else {
-			pr_err("[ERROR][%s] : backlight driver not valid\n", __func__);
+			dev_err(
+				lvds->dev,
+				"[ERROR][%s:%s] %s backlight driver not valid\n",
+				LOG_TAG, lvds->data->name, __func__);
 		}
 		#else
-		if (lvds->lvds_pins.blk_off != NULL)
-			pinctrl_select_state(
-				lvds->lvds_pins.p, lvds->lvds_pins.blk_off);
+		if (
+			panel_tcc_pin_select_state(
+				lvds->lvds_pins.p,
+				lvds->lvds_pins.blk_off) < 0) {
+			dev_warn(lvds->dev,
+				"[WARN][%s:%s] %s failed set pinctrl to blk_off\r\n",
+				LOG_TAG, lvds->data->name, __func__);
+		}
 		#endif
-
-		if (lvds->lvds_pins.pwr_off != NULL)
-			pinctrl_select_state(
-				lvds->lvds_pins.p, lvds->lvds_pins.pwr_off);
+		if (
+			panel_tcc_pin_select_state(
+				lvds->lvds_pins.p,
+				lvds->lvds_pins.pwr_off) < 0) {
+			dev_warn(lvds->dev,
+				"[WARN][%s:%s] %s failed set pinctrl to pwr_off\r\n",
+				LOG_TAG, lvds->data->name, __func__);
+		}
 		lvds->enabled = 0;
 	} else {
 		dev_dbg(
 			lvds->dev,
-			"[DEBUG][%s] %s with %s - already disabled \r\n",
-			LOG_TAG, __func__, lvds->data->name);
+			"[DEBUG][%s:%s] %s already disabled \r\n",
+			LOG_TAG, lvds->data->name, __func__);
 	}
 	return 0;
 }
@@ -149,8 +182,8 @@ static int panel_lvds_unprepare(struct drm_panel *panel)
 	struct panel_lvds *lvds = to_panel_lvds(panel);
 
 	dev_dbg(
-		lvds->dev, "[DEBUG][%s] %s with %s \r\n", LOG_TAG, __func__,
-		lvds->data->name);
+		lvds->dev, "[DEBUG][%s:%s] %s \r\n",
+		LOG_TAG, lvds->data->name, __func__);
 	if (!lvds->enabled) {
 		LVDS_WRAP_ResetPHY(
 			(lvds->tcc_lvds_hw.lvds_type == PANEL_LVDS_DUAL) ?
@@ -164,28 +197,35 @@ static int panel_lvds_prepare(struct drm_panel *panel)
 	struct panel_lvds *lvds = to_panel_lvds(panel);
 
 	dev_dbg(
-		lvds->dev,
-		"[DEBUG][%s] %s with %s \r\n", LOG_TAG, __func__,
-		lvds->data->name);
+		lvds->dev, "[DEBUG][%s:%s] %s \r\n",
+		LOG_TAG, lvds->data->name, __func__);
 	if (!lvds->enabled) {
-		if (lvds->lvds_pins.pwr_on_1 != NULL)
-			pinctrl_select_state(
-				lvds->lvds_pins.p, lvds->lvds_pins.pwr_on_1);
+		if (
+			panel_tcc_pin_select_state(
+				lvds->lvds_pins.p,
+				lvds->lvds_pins.pwr_on_1) < 0) {
+			dev_warn(lvds->dev,
+				"[WARN][%s:%s] %s failed set pinctrl to pwr_on_1\r\n",
+				LOG_TAG, lvds->data->name, __func__);
+		}
 		udelay(20);
-
-		if (lvds->lvds_pins.pwr_on_2 != NULL)
-			pinctrl_select_state(
-				lvds->lvds_pins.p, lvds->lvds_pins.pwr_on_2);
-
+		if (
+			panel_tcc_pin_select_state(
+				lvds->lvds_pins.p,
+				lvds->lvds_pins.pwr_on_2) < 0) {
+			dev_warn(lvds->dev,
+				"[WARN][%s:%s] %s failed set pinctrl to pwr_on_2\r\n",
+				LOG_TAG, lvds->data->name, __func__);
+		}
 		LVDS_WRAP_ResetPHY(
 			(lvds->tcc_lvds_hw.lvds_type == PANEL_LVDS_DUAL) ?
-			TS_MUX_IDX0 : lvds->tcc_lvds_hw.ts_mux_id,1);
+			TS_MUX_IDX0 : lvds->tcc_lvds_hw.ts_mux_id, 1);
 		lvds_splitter_init(&lvds->tcc_lvds_hw);
 	} else {
 		dev_dbg(
 			lvds->dev,
-			"[DEBUG][%s] %s with %s - already enabled \r\n",
-			LOG_TAG, __func__, lvds->data->name);
+			"[DEBUG][%s:%s] %s already enabled \r\n",
+			LOG_TAG, lvds->data->name, __func__);
 	}
 	return 0;
 }
@@ -195,8 +235,8 @@ static int panel_lvds_enable(struct drm_panel *panel)
 	struct panel_lvds *lvds = to_panel_lvds(panel);
 
 	dev_dbg(
-		lvds->dev, "[DEBUG][%s] %s with %s \r\n",
-		LOG_TAG, __func__, lvds->data->name);
+		lvds->dev, "[DEBUG][%s:%s] %s \r\n",
+		LOG_TAG, lvds->data->name, __func__);
 	if (!lvds->enabled) {
 		lvds_phy_init(&lvds->tcc_lvds_hw);
 		#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
@@ -205,19 +245,27 @@ static int panel_lvds_enable(struct drm_panel *panel)
 			lvds->backlight->props.power = FB_BLANK_UNBLANK;
 			backlight_update_status(lvds->backlight);
 		} else {
-			pr_err("[ERROR][%s] : backlight driver not valid\n", __func__);
+			dev_err(
+				lvds->dev,
+				"[ERROR][%s:%s] %s backlight driver not valid\n",
+				LOG_TAG, lvds->data->name, __func__);
 		}
 		#else
-		if (lvds->lvds_pins.blk_on != NULL)
-			pinctrl_select_state(
-				lvds->lvds_pins.p, lvds->lvds_pins.blk_on);
+		if (
+			panel_tcc_pin_select_state(
+				lvds->lvds_pins.p,
+				lvds->lvds_pins.blk_on) < 0) {
+			dev_warn(lvds->dev,
+				"[WARN][%s:%s] %s failed set pinctrl to blk_on\r\n",
+				LOG_TAG, lvds->data->name, __func__);
+		}
 		#endif
 		lvds->enabled = 1;
 	} else {
 		dev_dbg(
 			lvds->dev,
-			"[DEBUG][%s] %s with %s - already enabled \r\n",
-			LOG_TAG, __func__, lvds->data->name);
+			"[DEBUG][%s:%s] %s already enabled \r\n",
+			LOG_TAG, lvds->data->name, __func__);
 	}
 	return 0;
 }
@@ -229,10 +277,8 @@ static int panel_lvds_get_modes(struct drm_panel *panel)
 	struct drm_display_mode *mode;
 
 	mode = drm_mode_create(lvds->panel.drm);
-	if (mode == NULL) {
+	if (!mode)
 		return 0;
-	}
-
 	drm_display_mode_from_videomode(&lvds->video_mode, mode);
 	mode->type |= DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 	drm_mode_probed_add(connector, mode);
@@ -256,7 +302,7 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	unsigned int lane_idx;
 	unsigned int lvds_format;
 	lvds_hw_info_t lvds_info;
-	lvds_hw_info_t* lvds_ret;
+	lvds_hw_info_t *lvds_ret;
 	int ret = -ENODEV;
 
 	//todo LVDS timing function
@@ -264,8 +310,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	if (ret < 0) {
 		dev_err(
 			lvds->dev,
-			"[ERROR][%s] %s failed to get data-mapping property\r\n",
-			LOG_TAG, __func__);
+			"[ERROR][%s:%s] %s failed to get data-mapping property\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		goto err_parse_dt;
 	}
 	if (!strcmp(mapping, "vesa-24")) {
@@ -275,8 +321,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 		/* need to developed if vesa-16 and jeida-24 are needed. */
 		dev_err(
 			lvds->dev,
-			"[ERROR][%s] %s invalid or missing data-mapping property\r\n",
-			LOG_TAG, __func__);
+			"[ERROR][%s:%s] %s invalid or missing data-mapping property\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		goto err_parse_dt;
 	}
 
@@ -285,8 +331,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 			dn, "mode", 0, &lvds_info.lvds_type) < 0) {
 		dev_err(
 			lvds->dev,
-			"[ERROR][%s] %s failed to get mode property\r\n",
-			LOG_TAG, __func__);
+			"[ERROR][%s:%s] %s failed to get mode property\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		goto err_parse_dt;
 	}
 	LVDS_DBG("%s lvds - main_port: %d\n", __func__, lvds_info.lvds_type);
@@ -296,8 +342,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 			dn, "phy-ports", 0, &lvds_info.port_main) < 0) {
 		dev_err(
 			lvds->dev,
-			"[ERROR][%s] %s failed to get phy-ports property\r\n",
-			LOG_TAG, __func__);
+			"[ERROR][%s:%s] %s failed to get phy-ports property\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		goto err_parse_dt;
 	}
 	LVDS_DBG("%s lvds - main_port: %d\n", __func__, lvds_info.port_main);
@@ -308,8 +354,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 				dn, "phy-ports", 1, &lvds_info.port_sub) < 0) {
 			dev_err(
 				lvds->dev,
-				"[ERROR][%s] %s failed to get phy-ports for sub property\r\n",
-				LOG_TAG, __func__);
+				"[ERROR][%s:%s] %s failed to get phy-ports for sub property\r\n",
+				LOG_TAG, lvds->data->name, __func__);
 			goto err_parse_dt;
 		}
 		LVDS_DBG(
@@ -318,9 +364,10 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	} else if (lvds_info.lvds_type == PANEL_LVDS_SINGLE) {
 		lvds_info.port_sub = LVDS_PHY_PORT_MAX;
 	} else {
-		dev_err(lvds->dev,
-			"[ERROR][%s] %s wrong port number\r\n",
-							LOG_TAG, __func__);
+		dev_err(
+			lvds->dev,
+			"[ERROR][%s:%s] %s wrong port number\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		goto err_parse_dt;
 	}
 
@@ -329,8 +376,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 			dn, "lcdc-mux-select", 0, &lvds_info.lcdc_mux_id) < 0) {
 		dev_err(
 			lvds->dev,
-			"[ERROR][%s] %s failed to get lcdc-mux-select property\r\n",
-			LOG_TAG, __func__);
+			"[ERROR][%s:%s] %s failed to get lcdc-mux-select property\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		goto err_parse_dt;
 	}
 	LVDS_DBG(
@@ -344,8 +391,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 				&lvds_info.lane_main[lane_idx]) < 0) {
 			dev_err(
 				lvds->dev,
-				"[ERROR][%s] %s failed to get lane-main property\r\n",
-				LOG_TAG, __func__);
+				"[ERROR][%s:%s] %s failed to get lane-main property\r\n",
+				LOG_TAG, lvds->data->name, __func__);
 			goto err_parse_dt;
 		}
 		LVDS_DBG(
@@ -361,8 +408,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 					&lvds_info.lane_sub[lane_idx]) < 0) {
 				dev_err(
 					lvds->dev,
-					"[ERROR][%s] %s failed to get lane-sib property\r\n",
-					LOG_TAG, __func__);
+					"[ERROR][%s:%s] %s failed to get lane-sib property\r\n",
+					LOG_TAG, lvds->data->name, __func__);
 				goto err_parse_dt;
 			}
 			LVDS_DBG(
@@ -374,8 +421,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	if (of_property_read_u32_index(dn, "vcm", 0, &lvds_info.vcm) < 0) {
 		dev_err(
 			lvds->dev,
-			"[ERROR][%s] %s failed to get vcm property\r\n",
-			LOG_TAG, __func__);
+			"[ERROR][%s:%s] %s failed to get vcm property\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		goto err_parse_dt;
 	}
 	LVDS_DBG("%s lvds - vcm: %d\n", __func__, lvds_info.vcm);
@@ -383,8 +430,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	if (of_property_read_u32_index(dn, "vsw", 0, &lvds_info.vsw) < 0) {
 		dev_err(
 			lvds->dev,
-			"[ERROR][%s] %s failed to get vsw property\r\n",
-			LOG_TAG, __func__);
+			"[ERROR][%s:%s] %s failed to get vsw property\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		goto err_parse_dt;
 	}
 	LVDS_DBG("%s lvds - vsw: %d\n", __func__, lvds_info.vsw);
@@ -398,15 +445,15 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 		if (ret < 0) {
 			dev_err(
 				lvds->dev,
-				"[ERROR][%s] %s failed to get of_get_videomode\r\n",
-				LOG_TAG, __func__);
+				"[ERROR][%s:%s] %s failed to get of_get_videomode\r\n",
+				LOG_TAG, lvds->data->name, __func__);
 			goto err_parse_dt;
 		}
 	} else {
 		dev_err(
 			lvds->dev,
-			"[ERROR][%s] %s failed to get display-timings property\r\n",
-			LOG_TAG, __func__);
+			"[ERROR][%s:%s] %s failed to get display-timings property\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 	}
 
 	/* lvds hw_info registration */
@@ -436,11 +483,11 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 		lvds_info.lcdc_mux_id, lvds->video_mode.hactive);
 
 	if (lvds_ret == NULL) {
-		pr_err("%s : invalid lcdc_hw ptr\n",__func__);
+		dev_err(lvds->dev, "%s : invalid lcdc_hw ptr\n", __func__);
 		dev_err(
 			lvds->dev,
-			"[ERROR][%s] %s failed to get hardware information for lcd\r\n",
-			LOG_TAG, __func__);
+			"[ERROR][%s:%s] %s failed to get hardware information for lcd\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		ret = -EINVAL;
 		goto err_parse_dt;
 	}
@@ -450,8 +497,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	if (IS_ERR(lvds->lvds_pins.p)) {
 		dev_err(
 			lvds->dev,
-			"[ERROR][%s] %s failed to find pinctrl\r\n",
-			LOG_TAG, __func__);
+			"[ERROR][%s:%s] %s failed to find pinctrl\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		lvds->lvds_pins.p = NULL;
 		goto err_parse_dt;
 	}
@@ -460,8 +507,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	if (IS_ERR(lvds->lvds_pins.default0)) {
 		dev_err(
 			lvds->dev,
-			"[ERROR][%s] %s failed to find default\r\n",
-			LOG_TAG, __func__);
+			"[ERROR][%s:%s] %s failed to find default\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		lvds->lvds_pins.default0 = NULL;
 		goto err_parse_dt;
 	}
@@ -470,8 +517,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	if (IS_ERR(lvds->lvds_pins.pwr_on_1)) {
 		dev_warn(
 			lvds->dev,
-			"[WARN][%s] %s failed to find pwr_on1\r\n",
-			LOG_TAG, __func__);
+			"[WARN][%s:%s] %s failed to find pwr_on1\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		lvds->lvds_pins.pwr_on_1 = NULL;
 	}
 	lvds->lvds_pins.pwr_on_2 =
@@ -479,8 +526,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	if (IS_ERR(lvds->lvds_pins.pwr_on_2)) {
 		dev_warn(
 			lvds->dev,
-			"[WARN][%s] %s failed to find pwr_on2\r\n",
-			LOG_TAG, __func__);
+			"[WARN][%s:%s] %s failed to find pwr_on2\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		lvds->lvds_pins.pwr_on_2 = NULL;
 	}
 	lvds->lvds_pins.blk_on =
@@ -488,8 +535,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	if (IS_ERR(lvds->lvds_pins.blk_on)) {
 		dev_warn(
 			lvds->dev,
-			"[WARN][%s] %s failed to find blk_on\r\n",
-			LOG_TAG, __func__);
+			"[WARN][%s:%s] %s failed to find blk_on\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		lvds->lvds_pins.blk_on = NULL;
 	}
 	lvds->lvds_pins.blk_off =
@@ -497,8 +544,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	if (IS_ERR(lvds->lvds_pins.blk_off)) {
 		dev_warn(
 			lvds->dev,
-			"[WARN][%s] %s failed to find blk_off\r\n",
-			LOG_TAG, __func__);
+			"[WARN][%s:%s] %s failed to find blk_off\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		lvds->lvds_pins.blk_off = NULL;
 	}
 	lvds->lvds_pins.pwr_off =
@@ -506,8 +553,8 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 	if (IS_ERR(lvds->lvds_pins.pwr_off)) {
 		dev_warn(
 			lvds->dev,
-			"[WARN][%s] %s failed to find power_off\r\n",
-			LOG_TAG, __func__);
+			"[WARN][%s:%s] %s failed to find power_off\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		lvds->lvds_pins.pwr_off = NULL;
 	}
 
@@ -517,19 +564,28 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 		lvds->backlight = of_find_backlight_by_node(np);
 		of_node_put(np);
 
-		if (!lvds->backlight){ //backlight node is not valid
-			pr_err("[ERROR][%s] : backlight driver not valid\n", __func__);
-		}
-		else{
-			pr_info("[INFO][%s] : External backlight driver : max brightness[%d]\n",
-			__func__,
-			lvds->backlight->props.max_brightness);
-		}
+		if (!lvds->backlight) //backlight node is not valid
+			dev_err(
+				lvds->dev,
+				"[ERROR][%s:%s] %s backlight driver not valid\n",
+				LOG_TAG, lvds->data->name, __func__);
+		else
+			dev_info(
+				lvds->dev,
+				"[INFO][%s:%s] %s External backlight driver : max brightness[%d]\n",
+				LOG_TAG, lvds->data->name, __func__,
+				lvds->backlight->props.max_brightness);
 	} else {
-		pr_info("[INFO][%s] : Use pinctrl backlight\n", __func__);
+		dev_info(
+			lvds->dev,
+			"[INFO][%s:%s] %s Use pinctrl backlight\n",
+			LOG_TAG, lvds->data->name, __func__);
 	}
 	#else
-		pr_info("[INFO][%s] : Use pinctrl backlight\n", __func__);
+	dev_info(
+		lvds->dev,
+		"[INFO][%s:%s] %s Use pinctrl backlight\n",
+		LOG_TAG, lvds->data->name, __func__);
 	#endif
 
 err_parse_dt:
@@ -544,32 +600,27 @@ static int panel_lvds_probe(struct platform_device *pdev)
 
 	lvds = devm_kzalloc(&pdev->dev, sizeof(*lvds), GFP_KERNEL);
 	if (!lvds) {
-		dev_err(
-			lvds->dev,
-			"[ERROR][%s] %s failed to alloc device context\r\n",
-			LOG_TAG, __func__);
 		ret = -ENODEV;
 		goto err_init;
 	}
 	lvds->dev = &pdev->dev;
 
-	ret = panel_lvds_parse_dt(lvds);
-	if (ret < 0) {
-		dev_err(
-			lvds->dev,
-			"[ERROR][%s] %s failed to parse device tree\r\n",
-			LOG_TAG, __func__);
-		goto err_free_mem;
-	}
-
 	lvds->data =
-		(struct lvds_match_data*)of_device_get_match_data(&pdev->dev);
-	if (lvds->data == NULL) {
+		(struct lvds_match_data *)of_device_get_match_data(&pdev->dev);
+	if (!lvds->data) {
 		dev_err(
 			lvds->dev,
 			"[ERROR][%s] %s failed to find match_data from device tree\r\n",
 			LOG_TAG, __func__);
 		ret = -ENODEV;
+		goto err_free_mem;
+	}
+	ret = panel_lvds_parse_dt(lvds);
+	if (ret < 0) {
+		dev_err(
+			lvds->dev,
+			"[ERROR][%s:%s] %s failed to parse device tree\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		goto err_free_mem;
 	}
 
@@ -580,9 +631,10 @@ static int panel_lvds_probe(struct platform_device *pdev)
 
 	ret = drm_panel_add(&lvds->panel);
 	if (ret < 0) {
-		dev_err(lvds->dev,
-			"[ERROR][%s] %s with [%s] failed to drm_panel_init\r\n",
-						LOG_TAG, __func__, lvds->data->name);
+		dev_err(
+			lvds->dev,
+			"[ERROR][%s:%s] %s failed to drm_panel_init\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 		goto err_put_dev;
 	}
 	dev_set_drvdata(lvds->dev, lvds);
@@ -590,44 +642,56 @@ static int panel_lvds_probe(struct platform_device *pdev)
 		lvds->dev, "[DEBUG][%s] %s with [%s]\r\n",
 		LOG_TAG, __func__, lvds->data->name);
 	lvds_status =
-		LVDS_PHY_CheckStatus(lvds->tcc_lvds_hw.port_main, lvds->tcc_lvds_hw.port_sub);
+		LVDS_PHY_CheckStatus(
+			lvds->tcc_lvds_hw.port_main,
+			lvds->tcc_lvds_hw.port_sub);
 	if (!(lvds_status & 0x1)) {
 		dev_err(
 			lvds->dev,
-			"[DEBUG][%s] %s with [%s] Primary port(%d) is in death\r\n",
-			LOG_TAG, __func__, lvds->data->name,
+			"[ERROR][%s:%s] %s Primary port(%d) is in death\r\n",
+			LOG_TAG, lvds->data->name, __func__,
 			lvds->tcc_lvds_hw.port_main);
 	} else {
-		if (lvds->tcc_lvds_hw.lvds_type == PANEL_LVDS_SINGLE) {
+		if (lvds->tcc_lvds_hw.lvds_type == PANEL_LVDS_SINGLE)
 			lvds->enabled = 1;
-		}
 		dev_err(
 			lvds->dev,
-			"[DEBUG][%s] %s with [%s] Primary port(%d) is in alive\r\n",
-			LOG_TAG, __func__, lvds->data->name,
+			"[ERROR][%s:%s] %s Primary port(%d) is in alive\r\n",
+			LOG_TAG, lvds->data->name, __func__,
 			lvds->tcc_lvds_hw.port_main);
 	}
 	if (lvds->tcc_lvds_hw.lvds_type == PANEL_LVDS_DUAL) {
 		if (!(lvds_status & 0x2)) {
 			dev_err(
-			lvds->dev,
-			"[DEBUG][%s] %s with [%s] Secondary port(%d) is in death\r\n",
-			LOG_TAG, __func__, lvds->data->name,
-			lvds->tcc_lvds_hw.port_sub);
+				lvds->dev,
+				"[ERROR][%s:%s] %s Secondary port(%d) is in death\r\n",
+				LOG_TAG, lvds->data->name, __func__,
+				lvds->tcc_lvds_hw.port_sub);
 		} else {
 			lvds->enabled = 1;
 			dev_err(
-			lvds->dev,
-				"[DEBUG][%s] %s with [%s] Secondary port(%d) is in alive\r\n",
-				LOG_TAG, __func__, lvds->data->name,
+				lvds->dev,
+				"[ERROR][%s:%s] %s Secondary port(%d) is in alive\r\n",
+				LOG_TAG, lvds->data->name, __func__,
 				lvds->tcc_lvds_hw.port_sub);
 		}
 	}
 	dev_err(
 		lvds->dev,
-		"[DEBUG][%s] %s with [%s] lvds - lcdc-mux-select: %d\r\n",
-		LOG_TAG, __func__, lvds->data->name,
+		"[ERROR][%s:%s] %s lvds - lcdc-mux-select: %d\r\n",
+		LOG_TAG, lvds->data->name, __func__,
 		lvds->tcc_lvds_hw.lcdc_mux_id);
+
+	/* Version */
+	lvds->major = DRIVER_MAJOR;
+	lvds->minor = DRIVER_MINOR;
+	lvds->patchlevel = DRIVER_PATCH;
+	lvds->date =  kstrdup(DRIVER_DATE, GFP_KERNEL);
+
+	dev_info(lvds->dev, "Initialized %s %d.%d.%d %s for %s\n",
+		lvds->data->name, lvds->major, lvds->minor,
+		lvds->patchlevel, lvds->date,
+		lvds->dev ? dev_name(lvds->dev) : "unknown device");
 	return 0;
 
 err_put_dev:
@@ -685,11 +749,30 @@ static int panel_lvds_resume(struct device *dev)
 	dev_dbg(dev, "[DEBUG][%s] %s \r\n", LOG_TAG, __func__);
 
 	/* Set pin status to defualt */
-	if (lvds->lvds_pins.default0 != NULL) {
-		pinctrl_select_state(
-			lvds->lvds_pins.p, lvds->lvds_pins.default0);
+	if (
+		panel_tcc_pin_select_state(
+			lvds->lvds_pins.p,
+			lvds->lvds_pins.default0) < 0) {
+		dev_warn(lvds->dev,
+			"[WARN][%s:%s] %s failed set pinctrl to default0\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 	}
-
+	if (
+		panel_tcc_pin_select_state(
+			lvds->lvds_pins.p,
+			lvds->lvds_pins.pwr_off) < 0) {
+		dev_warn(lvds->dev,
+			"[WARN][%s:%s] %s failed set pinctrl to pwr_off\r\n",
+			LOG_TAG, lvds->data->name, __func__);
+	}
+	if (
+		panel_tcc_pin_select_state(
+			lvds->lvds_pins.p,
+			lvds->lvds_pins.blk_off) < 0) {
+		dev_warn(lvds->dev,
+			"[WARN][%s:%s] %s failed set pinctrl to blk_off\r\n",
+			LOG_TAG, lvds->data->name, __func__);
+	}
 	return 0;
 }
 static const struct dev_pm_ops panel_lvds_pm_ops = {
