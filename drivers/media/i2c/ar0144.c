@@ -243,9 +243,9 @@ static int ar0144_s_stream(struct v4l2_subdev *sd, int enable)
 	return ret;
 }
 
-static int ar0144_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *parm)
+static int ar0144_g_frame_interval(struct v4l2_subdev *sd,
+	struct v4l2_subdev_frame_interval *interval)
 {
-	struct v4l2_captureparm *cp	= &parm->parm.capture;
 	struct ar0144		*dev	= NULL;
 
 	dev = to_state(sd);
@@ -254,45 +254,27 @@ static int ar0144_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *parm)
 		return -EINVAL;
 	}
 
-	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
-	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
-		return -EINVAL;
-	}
-
-	cp->capability = V4L2_CAP_TIMEPERFRAME;
-	cp->timeperframe.numerator = 1;
-	cp->timeperframe.denominator = dev->framerate;
-	logd("capability: %u, framerate: %u / %u\n",
-		cp->capability,
-		cp->timeperframe.numerator,
-		cp->timeperframe.denominator);
+	interval->pad = 0;
+	interval->interval.numerator = 1;
+	interval->interval.denominator = dev->framerate;
 
 	return 0;
 }
 
-static int ar0144_s_parm(struct v4l2_subdev *sd,
-	struct v4l2_streamparm *parm)
+static int ar0144_s_frame_interval(struct v4l2_subdev *sd,
+	struct v4l2_subdev_frame_interval *interval)
 {
-	struct v4l2_captureparm *cp	= &parm->parm.capture;
 	struct ar0144		*dev	= NULL;
 
 	dev = to_state(sd);
 	if (!dev) {
 		loge("Failed to get video source object by subdev\n");
-		return -EINVAL;
-	}
-
-	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
-	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
 		return -EINVAL;
 	}
 
 	/* set framerate with i2c setting if supported */
 
-	cp->capability = V4L2_CAP_TIMEPERFRAME;
-	dev->framerate = cp->timeperframe.denominator;
+	dev->framerate = interval->interval.denominator;
 
 	return 0;
 }
@@ -383,8 +365,8 @@ static const struct v4l2_subdev_core_ops ar0144_core_ops = {
 
 static const struct v4l2_subdev_video_ops ar0144_video_ops = {
 	.s_stream		= ar0144_s_stream,
-	.g_parm			= ar0144_g_parm,
-	.s_parm			= ar0144_s_parm,
+	.g_frame_interval	= ar0144_g_frame_interval,
+	.s_frame_interval	= ar0144_s_frame_interval,
 };
 
 static const struct v4l2_subdev_pad_ops ar0144_pad_ops = {
@@ -470,6 +452,9 @@ int ar0144_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		loge("Failed to register subdevice\n");
 	else
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
+
+	/* init framerate */
+	dev->framerate = DEFAULT_FRAMERATE;
 
 	/* init regmap */
 	dev->regmap = devm_regmap_init_i2c(client, &ar0144_regmap);

@@ -332,7 +332,7 @@ int cxd5700_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
 	}
 
-	logd("name: %s, addr: 0x%x, client: 0x%p\n",
+	logd("name: %s, addr: 0x%x, client: 0x%px\n",
 		client->name, (client->addr)<<1, client);
 
 	mutex_init(&dev->lock);
@@ -346,6 +346,9 @@ int cxd5700_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		loge("Failed to register subdevice\n");
 	else
 		logi("%s is registered as a v4l2 sub device.\n", dev->sd.name);
+
+	/* init framerate */
+	dev->framerate = DEFAULT_FRAMERATE;
 
 	/* init regmap */
 	dev->regmap = devm_regmap_init_i2c(client, &cxd5700_regmap);
