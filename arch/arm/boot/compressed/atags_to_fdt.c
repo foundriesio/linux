@@ -69,9 +69,8 @@ static uint32_t get_cell_size(const void *fdt)
 	const uint32_t *size_len;
 
 	size_len = getprop(fdt, "/memory", "#size-cells", &len);
-	if (!size_len) {
+	if (!size_len)
 		size_len = getprop(fdt, "/", "#size-cells", &len);
-	}
 #else
 	const uint32_t *size_len =  getprop(fdt, "/", "#size-cells", &len);
 #endif
