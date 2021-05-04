@@ -294,8 +294,8 @@ typedef struct _tcc_video_out_info {
 
 	float mAspectratio;
 
-	unsigned int pCurrOut[2][3]; // PA/VA , Y/Cb/Cr
-	unsigned int pMVCInfo[2][3]; // PA/VA , Y/Cb/Cr
+	unsigned long pCurrOut[2][3]; // PA/VA , Y/Cb/Cr
+	unsigned long pMVCInfo[2][3]; // PA/VA , Y/Cb/Cr
 
 	CropInfo     stCropInfo;
 	StrideInfo   stStride;

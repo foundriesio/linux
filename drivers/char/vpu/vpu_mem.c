@@ -37,6 +37,22 @@
 #include <video/tcc/tccfb_ioctrl.h>
 #include <video/tcc/tcc_vsync_ioctl.h>
 
+#include <linux/dma-buf.h>
+#include <linux/dma-mapping.h>
+#include <linux/err.h>
+#include <linux/export.h>
+
+struct tcc_dma_buf_priv {
+    struct dma_buf *buf;    // dma-buf handle structure
+    dma_addr_t phys;        // physical address
+    size_t size;            // allocation size
+    void *virt;             // virtual address
+};
+
+struct tcc_dma_buf_data {
+    int dmabuf_fd;
+};
+
 #if defined(CONFIG_TCC_MEM)
 extern int set_displaying_index(unsigned long arg);
 extern int get_displaying_index(int nInst);
@@ -52,6 +68,12 @@ extern int tcc_video_last_frame(void *pVSyncDisp,
 				struct tcc_lcdc_image_update *lastUpdated,
 				unsigned int type);
 #endif
+
+#define vpu_dma_printk //printk
+#define VPU_PRINT_LEVEL KERN_DEBUG
+
+static int tcc_mem_create_dma_buf(stVpuPhysInfo *pmap_info);
+static int tcc_mem_release_dma_buf(int fd);
 
 long vmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
@@ -124,6 +146,35 @@ long vmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		break;
 #endif
+	case TCC_VIDEO_CREATE_DMA_BUF:
+		{
+			stVpuPhysInfo pmap_info;
+			if (copy_from_user((void *)&pmap_info,
+				(const void *)arg,
+				sizeof(stVpuPhysInfo)))	{
+				ret = -EFAULT;
+			} else {
+				ret = tcc_mem_create_dma_buf(&pmap_info);
+				if (copy_to_user((stVpuPhysInfo *)arg,
+					&pmap_info,
+					sizeof(stVpuPhysInfo)))	{
+					ret = -EFAULT;
+				}
+			}
+		}
+		break;
+	case TCC_VIDEO_RELEASE_DMA_BUF:
+		{
+			int fd;
+			if (copy_from_user((void *)&fd,
+				(void *)arg,
+				sizeof(int))) {
+				ret = -EFAULT;
+			} else {
+				ret = tcc_mem_release_dma_buf(fd);
+			}
+		}
+		break;
 
 	default:
 		V_DBG(VPU_DBG_ERROR,
@@ -134,6 +185,276 @@ long vmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	return ret;
 }
+
+static int tcc_dma_buf_attach(struct dma_buf *buf,
+						struct device *dev,
+						struct dma_buf_attachment *attach)
+{
+	return 0;
+}
+
+static void tcc_dma_buf_detach(struct dma_buf *buf,
+						struct dma_buf_attachment *attach)
+{
+}
+
+static struct sg_table *tcc_dma_buf_map(struct dma_buf_attachment *attach,
+						enum dma_data_direction dir)
+{
+	struct tcc_dma_buf_priv *dma_buf_priv = attach->dmabuf->priv;
+	struct sg_table *sgt = NULL;
+	if (WARN_ON(dir == DMA_NONE || !dma_buf_priv)) {
+		V_DBG(VPU_DBG_ERROR,
+			"%s %d dir(%d) dma_buf_priv=%d dmabuf=%p\n",
+			__func__,__LINE__,dir,dma_buf_priv,attach->dmabuf);
+		return ERR_PTR(-EINVAL);
+	}
+
+	sgt = kmalloc(sizeof(*sgt), GFP_KERNEL);
+	if (sgt) {
+		if (sg_alloc_table(sgt, 1, GFP_KERNEL))	{
+			V_DBG(VPU_DBG_ERROR,
+				"%s %d sg_alloc_table() failed \n",__func__,__LINE__);
+			kfree(sgt);
+			sgt = NULL;
+		} else {
+			sg_dma_address(sgt->sgl) = dma_buf_priv->phys;
+			sg_dma_len(sgt->sgl) = dma_buf_priv->size;
+		}
+	} else {
+		V_DBG(VPU_DBG_ERROR,"%s %d \n",__func__,__LINE__);
+	}
+
+    return sgt;
+}
+
+static void tcc_dma_buf_unmap(struct dma_buf_attachment *attach,
+						struct sg_table *sgt,
+						enum dma_data_direction dir)
+{
+	if(sgt)	{
+		sg_free_table(sgt);
+		kfree(sgt);
+	}
+}
+
+static void tcc_dma_buf_release(struct dma_buf *buf)
+{
+	struct tcc_dma_buf_priv *dma_buf_priv;
+	if(buf) {
+		dma_buf_priv = buf->priv;
+		#if 1
+		if(dma_buf_priv) {
+			kfree(dma_buf_priv);
+		}
+		#endif
+		buf->priv = NULL;
+	} else {
+		V_DBG(VPU_DBG_ERROR,"%s %d buf is null\n",__func__,__LINE__);
+	}
+}
+
+static int tcc_dma_buf_begin_cpu_access(struct dma_buf *buf,
+						enum dma_data_direction direction)
+{
+	return 0;
+}
+
+static int tcc_dma_buf_end_cpu_access(struct dma_buf *buf,
+						enum dma_data_direction direction)
+{
+	return 0;
+}
+
+static void *tcc_dma_buf_kmap(struct dma_buf *buf, unsigned long page)
+{
+	return NULL;
+}
+
+static void tcc_dma_buf_kunmap(struct dma_buf *buf,
+						unsigned long page,
+						void *vaddr)
+{
+}
+
+static void *tcc_dma_buf_kmap_atomic(struct dma_buf *buf,
+						unsigned long page_num)
+{
+	return NULL;
+}
+
+static void tcc_dma_buf_vm_open(struct vm_area_struct *vma)
+{
+}
+
+static void tcc_dma_buf_vm_close(struct vm_area_struct *vma)
+{
+}
+
+static int tcc_dma_buf_vm_fault(struct vm_fault *vmf)
+{
+	return 0;
+}
+
+static const struct vm_operations_struct tcc_dma_buf_vm_ops = {
+	.open = tcc_dma_buf_vm_open,
+	.close = tcc_dma_buf_vm_close,
+	.fault = tcc_dma_buf_vm_fault,
+};
+
+static int tcc_dma_buf_mmap(struct dma_buf *buf,
+						struct vm_area_struct *vma)
+{
+	int ret = -EINVAL;
+	if(vma && buf) 	{
+		struct tcc_dma_buf_priv *dma_buf_priv = buf->priv;
+		if(dma_buf_priv) {
+			pgprot_t prot = vm_get_page_prot(vma->vm_flags);
+
+			vma->vm_flags |= VM_IO | VM_PFNMAP | VM_DONTEXPAND | VM_DONTDUMP;
+			vma->vm_ops = &tcc_dma_buf_vm_ops;
+			vma->vm_private_data = dma_buf_priv;
+			vma->vm_page_prot = pgprot_writecombine(prot);
+
+			ret = remap_pfn_range(vma, vma->vm_start,
+								dma_buf_priv->phys >> PAGE_SHIFT,
+								vma->vm_end - vma->vm_start,
+								vma->vm_page_prot);
+		} else {
+			V_DBG(VPU_DBG_ERROR,
+				"%s %d buf %p , vma %p.. dma_buf_priv is null\n",
+				__func__,__LINE__,buf,vma);
+		}
+	} else {
+		V_DBG(VPU_DBG_ERROR,
+			"%s %d Invalid argument buf %p , vma %p\n"
+			,__func__,__LINE__,buf,vma);
+	}
+	return ret;
+}
+
+static const struct dma_buf_ops vpu_dma_buf_ops = {
+	.attach = tcc_dma_buf_attach,
+	.detach = tcc_dma_buf_detach,
+	.map_dma_buf = tcc_dma_buf_map,
+	.unmap_dma_buf = tcc_dma_buf_unmap,
+	.release = tcc_dma_buf_release,
+	.mmap = tcc_dma_buf_mmap,
+	.begin_cpu_access = tcc_dma_buf_begin_cpu_access,
+	.end_cpu_access = tcc_dma_buf_end_cpu_access,
+	.map = tcc_dma_buf_kmap,
+	.unmap = tcc_dma_buf_kunmap,
+	.map_atomic = tcc_dma_buf_kmap_atomic
+};
+
+#define TEST_VERSION "2021.0504"
+
+static int tcc_mem_create_dma_buf(stVpuPhysInfo *pmap_info)
+{
+	int ret = 0;
+	struct tcc_dma_buf_priv *dma_buf_priv = NULL;
+
+	dma_buf_priv = kzalloc(sizeof(struct tcc_dma_buf_priv), GFP_KERNEL);
+	if (dma_buf_priv) {
+
+		/* Telechips specific code for get the reserved memory */
+		dma_buf_priv->phys = (dma_addr_t)pmap_info->phys;
+		dma_buf_priv->size = (size_t)pmap_info->size;
+		/* This allocates virtual address */
+		dma_buf_priv->virt = ioremap_nocache(dma_buf_priv->phys, dma_buf_priv->size);
+
+		if (!dma_buf_priv->virt) {
+			V_DBG(VPU_DBG_ERROR,
+				"%s %d phys:0x%lx size:0x%lx.. ioremap_nocache() failed \n",
+				__func__,__LINE__,pmap_info->phys,pmap_info->size);
+			ret = -ENOMEM;
+			goto free_object;
+		}
+
+		struct dma_buf_export_info export_info = {
+			.exp_name = "vpu_dma_exp",
+			.owner = THIS_MODULE,
+			.ops = &vpu_dma_buf_ops,
+			.size = dma_buf_priv->size,
+			.flags = O_CLOEXEC | O_RDWR,
+			.priv = dma_buf_priv,
+		};
+		dma_buf_priv->buf = dma_buf_export(&export_info);
+
+		if(dma_buf_priv->buf) {
+			if(IS_ERR(dma_buf_priv->buf))
+			{
+				V_DBG(VPU_DBG_ERROR,
+					"%s %d phys:0x%lx size:0x%lx.. IS_ERR(buf)\n",
+					__func__,__LINE__,pmap_info->phys,pmap_info->size);
+				ret = PTR_ERR(dma_buf_priv->buf);
+				goto free_object;
+			} else {
+				/* get the dma-buf fd for pass to target device through userspace */
+				pmap_info->fd = dma_buf_fd(dma_buf_priv->buf, O_CLOEXEC);
+				if (pmap_info->fd < 0) {
+					V_DBG(VPU_DBG_ERROR,
+						"%s %d phys:0x%lx size:0x%lx.. dma_buf_fd(buf)\n",
+						__func__,__LINE__,pmap_info->phys,pmap_info->size);
+					dma_buf_put(dma_buf_priv->buf);
+					goto free_object;
+				} else {
+					ret = 0;
+				}
+			}
+		} else {
+			V_DBG(VPU_DBG_ERROR,
+				"%s %d phys:0x%lx size:0x%lx.. dma_buf_export() failed\n",
+				__func__,__LINE__,pmap_info->phys,pmap_info->size);
+			goto free_object;
+		}
+	} else {
+		V_DBG(VPU_DBG_ERROR,
+			"%s %d phys:0x%lx size:0x%lx.. kzalloc() failed\n",
+			__func__,__LINE__,pmap_info->phys,pmap_info->size);
+	}
+
+    return ret;
+
+free_object:
+	if(dma_buf_priv) {
+		dma_buf_priv->virt = NULL;
+		kfree(dma_buf_priv);
+		dma_buf_priv = NULL;
+	}
+    return ret;
+}
+
+static int tcc_mem_release_dma_buf(int fd)
+{
+	struct dma_buf *dmabuf = NULL;
+	struct tcc_dma_buf_priv *dma_buf_priv = NULL;
+
+	dmabuf = dma_buf_get(fd);
+	if (IS_ERR_OR_NULL(dmabuf)) {
+		V_DBG(VPU_DBG_ERROR,
+			"%s %d fd %d, IS_ERR_OR_NULL(dmabuf) \n",
+			__func__,__LINE__,fd);
+		return -EINVAL;
+	}
+
+	dma_buf_priv = dmabuf->priv;
+	if(dma_buf_priv) {
+		/* Unmap virtual address */
+		if (dma_buf_priv->virt)	{
+			iounmap(dma_buf_priv->virt);
+		}
+
+		dma_buf_put(dma_buf_priv->buf);
+	} else {
+		V_DBG(VPU_DBG_ERROR,
+			"%s %d fd %d, dma_buf_priv is null\n",
+			__func__,__LINE__,fd);
+	}
+
+	return 0;
+}
+
 
 #ifdef CONFIG_COMPAT
 static long vmem_compat_ioctl(struct file *file, unsigned int cmd,

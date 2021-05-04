@@ -25,7 +25,9 @@
 #define TCC_VIDEO_GET_DISPLAYING_IDX        0x13
 #define TCC_VIDEO_SET_DISPLAYED_BUFFER_ID   0x14
 #define TCC_VIDEO_GET_DISPLAYED_BUFFER_ID   0x15
-
+#define TCC_VIDEO_CREATE_DMA_BUF            0x16
+#define TCC_VIDEO_RELEASE_DMA_BUF           0x17
+#define TCC_VIDEO_CREATE_DMA_BUF_2          0x18
 #define TCC_8925S_IS_XX_CHIP                0x20
 
 //for DolbyVision
@@ -64,6 +66,12 @@ typedef struct {
 	unsigned int height;
 	unsigned int size;
 } stIonBuff_info;
+
+typedef struct{
+	unsigned long phys;        // physical address
+	unsigned long size;        // allocation size
+	int fd;
+} stVpuPhysInfo;
 
 extern int range_is_allowed(unsigned long pfn, unsigned long size);
 extern int set_displaying_index(unsigned long arg);
