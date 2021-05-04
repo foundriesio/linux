@@ -392,9 +392,9 @@ static int adv7182_s_stream(struct v4l2_subdev *sd, int enable)
 	return ret;
 }
 
-static int adv7182_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *parm)
+static int adv7182_g_frame_interval(struct v4l2_subdev *sd,
+	struct v4l2_subdev_frame_interval *interval)
 {
-	struct v4l2_captureparm *cp	= &parm->parm.capture;
 	struct adv7182		*dev	= NULL;
 
 	dev = to_state(sd);
@@ -403,27 +403,21 @@ static int adv7182_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *parm)
 		return -EINVAL;
 	}
 
-	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
-	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
+	if (interval->pad != 0) {
+		logd("pad(%u) is wrong\n", interval->pad);
 		return -EINVAL;
 	}
 
-	cp->capability = V4L2_CAP_TIMEPERFRAME;
-	cp->timeperframe.numerator = 1;
-	cp->timeperframe.denominator = dev->framerate;
-	logd("capability: %u, framerate: %u / %u\n",
-		cp->capability,
-		cp->timeperframe.numerator,
-		cp->timeperframe.denominator);
+	interval->pad = 0;
+	interval->interval.numerator = 1;
+	interval->interval.denominator = dev->framerate;
 
 	return 0;
 }
 
-static int adv7182_s_parm(struct v4l2_subdev *sd,
-	struct v4l2_streamparm *parm)
+static int adv7182_s_frame_interval(struct v4l2_subdev *sd,
+	struct v4l2_subdev_frame_interval *interval)
 {
-	struct v4l2_captureparm *cp	= &parm->parm.capture;
 	struct adv7182		*dev	= NULL;
 
 	dev = to_state(sd);
@@ -432,16 +426,14 @@ static int adv7182_s_parm(struct v4l2_subdev *sd,
 		return -EINVAL;
 	}
 
-	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
-	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
+	if (interval->pad != 0) {
+		logd("pad(%u) is wrong\n", interval->pad);
 		return -EINVAL;
 	}
 
 	/* set framerate with i2c setting if supported */
 
-	cp->capability = V4L2_CAP_TIMEPERFRAME;
-	dev->framerate = cp->timeperframe.denominator;
+	dev->framerate = interval->interval.denominator;
 
 	return 0;
 }
@@ -562,8 +554,8 @@ static const struct v4l2_subdev_core_ops adv7182_v4l2_subdev_core_ops = {
 static const struct v4l2_subdev_video_ops adv7182_v4l2_subdev_video_ops = {
 	.g_input_status		= adv7182_g_input_status,
 	.s_stream		= adv7182_s_stream,
-	.g_parm			= adv7182_g_parm,
-	.s_parm			= adv7182_s_parm,
+	.g_frame_interval	= adv7182_g_frame_interval,
+	.s_frame_interval	= adv7182_s_frame_interval,
 	.g_dv_timings		= adv7182_g_dv_timings,
 	.g_mbus_config		= adv7182_g_mbus_config,
 };
@@ -621,7 +613,7 @@ int adv7182_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
 	}
 
-	logd("name: %s, addr: 0x%x, client: 0x%p\n",
+	logd("name: %s, addr: 0x%x, client: 0x%px\n",
 		client->name, (client->addr)<<1, client);
 
 	/* parse the device tree */

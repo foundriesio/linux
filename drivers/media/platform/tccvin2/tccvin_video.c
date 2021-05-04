@@ -1872,7 +1872,7 @@ static int32_t tccvin_video_subdevs_s_power(struct tccvin_streaming *stream,
 	return ret;
 }
 
-static int32_t tccvin_video_subdevs_set_fmt(struct tccvin_streaming *stream)
+int32_t tccvin_video_subdevs_set_fmt(struct tccvin_streaming *stream)
 {
 	struct tccvin_device		*dev		= NULL;
 	int32_t				idx		= 0;
@@ -1964,7 +1964,7 @@ static int32_t tccvin_video_subdevs_load_fw(struct tccvin_streaming *stream)
 	return ret;
 }
 
-static int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
+int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
 {
 	struct tccvin_device		*dev		= NULL;
 	struct v4l2_subdev		*subdev		= NULL;
@@ -2119,100 +2119,6 @@ static int32_t tccvin_video_subdevs_s_stream(struct tccvin_streaming *stream,
 	return ret;
 }
 
-int32_t tccvin_video_subdevs_streamon(struct tccvin_streaming *stream)
-{
-	WARN_ON(IS_ERR_OR_NULL(stream));
-
-	/*
-	 * step 1
-	 * v4l2 sub dev - s_power
-	 */
-	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
-	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_SUBDEV)) {
-		/* set power */
-		tccvin_video_subdevs_s_power(stream, 1);
-	}
-
-	/*
-	 * step 2
-	 * get fmt of first subdev in image pipeline
-	 * and set the other subdevices using fmt ofr first subdev
-	 */
-	tccvin_video_subdevs_set_fmt(stream);
-
-	/*
-	 * step 3
-	 * v4l2 sub dev - init
-	 */
-	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
-	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_SUBDEV)) {
-		/* init */
-		tccvin_video_subdevs_init(stream, 1);
-	}
-
-	/*
-	 * step 4
-	 * load fw subdev call is only for ISP in SoC.
-	 */
-	tccvin_video_subdevs_load_fw(stream);
-
-	/*
-	 * step 5
-	 * call g_dv_timings, get_fmt and g_mbus_config of subdevice
-	 * which is in front of video-in
-	 */
-	tccvin_video_subdevs_get_config(stream);
-
-	/*
-	 * step 6
-	 * call start stream of all subdevs
-	 */
-	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
-	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_SUBDEV)) {
-		/* start stream */
-		tccvin_video_subdevs_s_stream(stream, 1);
-	}
-
-	/* return ret; */
-	return 0;
-}
-
-int32_t tccvin_video_subdevs_streamoff(struct tccvin_streaming *stream)
-{
-	int32_t				ret		= 0;
-
-	WARN_ON(IS_ERR_OR_NULL(stream));
-
-	switch (stream->is_handover_needed) {
-	case V4L2_CAP_CTRL_SKIP_NONE:
-		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_NONE\n");
-		break;
-	case V4L2_CAP_CTRL_SKIP_ALL:
-		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_ALL\n");
-		break;
-	case V4L2_CAP_CTRL_SKIP_SUBDEV:
-		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_SUBDEV\n");
-		break;
-	case V4L2_CAP_CTRL_SKIP_DEV:
-		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_DEV\n");
-		break;
-	default:
-		loge("HANDOVER - handover(%u) is wrong\n");
-		break;
-	}
-
-	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
-	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_SUBDEV)) {
-		tccvin_video_subdevs_s_stream(stream, 0);
-
-		tccvin_video_subdevs_init(stream, 0);
-
-		tccvin_video_subdevs_s_power(stream, 0);
-	}
-
-	return ret;
-}
-
 int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 {
 	int32_t				ret		= 0;
@@ -2236,14 +2142,24 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_DEV\n");
 		break;
 	default:
-		loge("HANDOVER - handover(%u) is wrong\n");
+		loge("HANDOVER - handover(%d) is wrong\n",
+			stream->is_handover_needed);
 		break;
 	}
 
-	ret = tccvin_video_subdevs_streamon(stream);
-	if (ret < 0) {
-		loge("to start v4l2 sub devices\n");
-		return -1;
+	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
+	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_SUBDEV)) {
+		/* v4l2-subdev - s_power */
+		tccvin_video_subdevs_s_power(stream, 1);
+
+		/* v4l2-subdev - init */
+		tccvin_video_subdevs_init(stream, 1);
+
+		/* v4l2-subdev - load_fw */
+		tccvin_video_subdevs_load_fw(stream);
+
+		/* v4l2-subdev - s_stream */
+		tccvin_video_subdevs_s_stream(stream, 1);
 	}
 
 	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
@@ -2281,6 +2197,25 @@ int32_t tccvin_video_streamoff(struct tccvin_streaming *stream)
 
 	WARN_ON(IS_ERR_OR_NULL(stream));
 
+	switch (stream->is_handover_needed) {
+	case V4L2_CAP_CTRL_SKIP_NONE:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_NONE\n");
+		break;
+	case V4L2_CAP_CTRL_SKIP_ALL:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_ALL\n");
+		break;
+	case V4L2_CAP_CTRL_SKIP_SUBDEV:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_SUBDEV\n");
+		break;
+	case V4L2_CAP_CTRL_SKIP_DEV:
+		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_DEV\n");
+		break;
+	default:
+		loge("HANDOVER - handover(%d) is wrong\n",
+			stream->is_handover_needed);
+		break;
+	}
+
 	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
 	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_DEV)) {
 		ret = tccvin_stop_stream(stream);
@@ -2304,10 +2239,16 @@ int32_t tccvin_video_streamoff(struct tccvin_streaming *stream)
 		tccvin_reset_vioc_path(stream);
 	}
 
-	ret = tccvin_video_subdevs_streamoff(stream);
-	if (ret < 0) {
-		loge("to stop v4l2 sub devices\n");
-		return -1;
+	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
+	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_SUBDEV)) {
+		/* v4l2-subdev - s_stream */
+		tccvin_video_subdevs_s_stream(stream, 0);
+
+		/* v4l2-subdev - init */
+		tccvin_video_subdevs_init(stream, 0);
+
+		/* v4l2-subdev - s_power */
+		tccvin_video_subdevs_s_power(stream, 0);
 	}
 
 	return ret;
@@ -2367,7 +2308,8 @@ int32_t tccvin_s_handover(struct tccvin_streaming *stream,
 		logi("HANDOVER - V4L2_CAP_CTRL_SKIP_DEV\n");
 		break;
 	default:
-		loge("HANDOVER - handover(%u) is wrong\n");
+		loge("HANDOVER - handover(%d) is wrong\n",
+			stream->is_handover_needed);
 		ret = -1;
 		break;
 	}

@@ -274,6 +274,7 @@ int tccvin_async_bound(struct v4l2_async_notifier *notifier,
 	/* dev->subdevs[dev->bounded_subdevs] = subdev; */
 	tccvin_add_subdev_list(subdev);
 	dev->bounded_subdevs++;
+	logi("dev->bounded_subdevs: %d\n", dev->bounded_subdevs);
 
 #if defined(CONFIG_VIDEO_TCCVIN2_DIAG)
 	ret = tccvin_diag_cif_port(subdev);
@@ -300,6 +301,18 @@ int tccvin_async_complete(struct v4l2_async_notifier *notifier)
 		loge("FAIL - register subdev nodes\n");
 		goto error;
 	}
+
+	/*
+	 * get fmt of first subdev in image pipeline
+	 * and set the other subdevices using fmt ofr first subdev
+	 */
+	tccvin_video_subdevs_set_fmt(dev->stream);
+
+	/*
+	 * call g_dv_timings, get_fmt and g_mbus_config of subdevice
+	 * which is in front of video-in
+	 */
+	tccvin_video_subdevs_get_config(dev->stream);
 
 	/* Parse the Video Class control descriptor. */
 	if (tccvin_parse_control(dev) < 0) {

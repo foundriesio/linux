@@ -317,25 +317,6 @@ struct tccvin_fh {
 	enum tccvin_handle_state state;
 };
 
-struct tccvin_dmabuf_heap {
-	struct gen_pool *pool;
-	struct device *dev;
-	phys_addr_t base;
-	size_t size;
-};
-
-struct tccvin_dmabuf_alloc_data {
-	size_t len;
-	unsigned int flags;
-	__s32 fd;
-};
-
-struct tccvin_dmabuf_phys_data {
-	__s32 fd;
-	phys_addr_t paddr;
-	size_t len;
-};
-
 /* ------------------------------------------------------------------------
  * Debugging, printing and logging
  */
@@ -405,6 +386,10 @@ extern int tccvin_create_timestamp(struct device *dev);
 extern unsigned int tccvin_count_supported_formats(void);
 extern struct tccvin_format *tccvin_format_by_index(int index);
 extern struct tccvin_format *tccvin_format_by_fcc(const __u32 fcc);
+extern int32_t tccvin_video_subdevs_set_fmt(struct tccvin_streaming *stream);
+extern int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream);
+extern void tccvin_get_default_rect(struct tccvin_streaming *stream,
+	struct v4l2_rect *rect, __u32 type);
 extern int tccvin_video_init(struct tccvin_streaming *stream);
 extern int tccvin_video_deinit(struct tccvin_streaming *stream);
 extern int tccvin_video_streamon(struct tccvin_streaming *stream);
@@ -413,19 +398,4 @@ extern void tccvin_check_path_status(struct tccvin_streaming *stream,
 	int *status);
 extern int32_t tccvin_s_handover(struct tccvin_streaming *stream,
 	int32_t *is_handover_needed);
-extern int tccvin_allocated_dmabuf(struct tccvin_streaming *stream, int count);
-extern int tccvin_set_buffer_address(struct tccvin_streaming *stream,
-	struct v4l2_buffer *buf);
-
-/* Use dmabuf functions */
-extern struct tccvin_dmabuf_heap *tccvin_dmabuf_heap_create(
-	struct tccvin_streaming *stream);
-extern int tccvin_dmabuf_alloc(struct tccvin_dmabuf_heap *heap, size_t size,
-	unsigned int flags);
-extern void tccvin_dmabuf_dmabuf_release(struct dma_buf *dmabuf);
-extern int tccvin_dmabuf_phys(struct platform_device *pdev, int fd,
-	phys_addr_t *addr, size_t *len);
-extern long tccvin_dmabuf_g_phys(struct tccvin_fh *fh, struct v4l2_buffer *buf);
-extern void tccvin_get_default_rect(struct tccvin_streaming *stream,
-				    struct v4l2_rect *rect, __u32 type);
 #endif

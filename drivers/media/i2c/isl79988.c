@@ -158,8 +158,8 @@ struct v4l2_mbus_config isl79988_mbus_config = {
 };
 
 struct v4l2_mbus_framefmt isl79988_mbus_framefmt = {
-	.width		= WIDTH,
-	.height		= HEIGHT,
+	.width		= DEFAULT_WIDTH,
+	.height		= DEFAULT_HEIGHT,
 	.code		= MEDIA_BUS_FMT_UYVY8_2X8,
 };
 
@@ -360,9 +360,9 @@ static int isl79988_s_stream(struct v4l2_subdev *sd, int enable)
 	return ret;
 }
 
-static int isl79988_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *parm)
+static int isl79988_g_frame_interval(struct v4l2_subdev *sd,
+	struct v4l2_subdev_frame_interval *interval)
 {
-	struct v4l2_captureparm *cp	= &parm->parm.capture;
 	struct isl79988		*dev	= NULL;
 
 	dev = to_state(sd);
@@ -371,27 +371,21 @@ static int isl79988_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *parm)
 		return -EINVAL;
 	}
 
-	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
-	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
+	if (interval->pad != 0) {
+		logd("pad(%u) is wrong\n", interval->pad);
 		return -EINVAL;
 	}
 
-	cp->capability = V4L2_CAP_TIMEPERFRAME;
-	cp->timeperframe.numerator = 1;
-	cp->timeperframe.denominator = dev->framerate;
-	logd("capability: %u, framerate: %u / %u\n",
-		cp->capability,
-		cp->timeperframe.numerator,
-		cp->timeperframe.denominator);
+	interval->pad = 0;
+	interval->interval.numerator = 1;
+	interval->interval.denominator = dev->framerate;
 
 	return 0;
 }
 
-static int isl79988_s_parm(struct v4l2_subdev *sd,
-	struct v4l2_streamparm *parm)
+static int isl79988_s_frame_interval(struct v4l2_subdev *sd,
+	struct v4l2_subdev_frame_interval *interval)
 {
-	struct v4l2_captureparm *cp	= &parm->parm.capture;
 	struct isl79988		*dev	= NULL;
 
 	dev = to_state(sd);
@@ -400,16 +394,14 @@ static int isl79988_s_parm(struct v4l2_subdev *sd,
 		return -EINVAL;
 	}
 
-	if ((parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
-	    (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-		loge("type is not V4L2_BUF_TYPE_VIDEO_CAPTURE_XXX\n");
+	if (interval->pad != 0) {
+		logd("pad(%u) is wrong\n", interval->pad);
 		return -EINVAL;
 	}
 
 	/* set framerate with i2c setting if supported */
 
-	cp->capability = V4L2_CAP_TIMEPERFRAME;
-	dev->framerate = cp->timeperframe.denominator;
+	dev->framerate = interval->interval.denominator;
 
 	return 0;
 }
@@ -530,8 +522,8 @@ static const struct v4l2_subdev_core_ops isl79988_v4l2_subdev_core_ops = {
 static const struct v4l2_subdev_video_ops isl79988_v4l2_subdev_video_ops = {
 	.g_input_status		= isl79988_g_input_status,
 	.s_stream		= isl79988_s_stream,
-	.g_parm			= isl79988_g_parm,
-	.s_parm			= isl79988_s_parm,
+	.g_frame_interval	= isl79988_g_frame_interval,
+	.s_frame_interval	= isl79988_s_frame_interval,
 	.g_dv_timings		= isl79988_g_dv_timings,
 	.g_mbus_config		= isl79988_g_mbus_config
 };

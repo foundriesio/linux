@@ -909,7 +909,6 @@ static int max96712_set_alias(struct v4l2_subdev *sd,
 				unsigned int target_fwdcc,
 				short src, short dst)
 {
-	struct max96712 *dev = to_dev(sd);
 	struct i2c_client *client = 0;
 	unsigned char buf[3] = {0,};
 	unsigned short backup_addr = 0;
@@ -1130,8 +1129,7 @@ static int max96712_get_fmt(struct v4l2_subdev *sd,
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&format->format,
-		(const void *)&dev->fmt,
+	memcpy((void *)&format->format, (const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -1147,8 +1145,7 @@ static int max96712_set_fmt(struct v4l2_subdev *sd,
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&dev->fmt,
-		(const void *)&format->format,
+	memcpy((void *)&dev->fmt, (const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);

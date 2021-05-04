@@ -48,8 +48,8 @@
 	pr_info("[INFO][%s] %s - "	fmt, LOG_TAG, __func__, ##__VA_ARGS__)
 
 /*
- * This object contains essential v4l2 objects such as sub-device and
- * ctrl_handler
+ * This object contains essential v4l2 objects
+ * such as sub-device and ctrl_handler
  */
 struct max9275 {
 	struct v4l2_subdev		sd;
@@ -70,11 +70,11 @@ const struct reg_sequence max9275_reg_defaults[] = {
 };
 
 static const struct regmap_config max9275_regmap = {
-	.reg_bits	= 8,
-	.val_bits	= 8,
+	.reg_bits		= 8,
+	.val_bits		= 8,
 
-	.max_register	= 0xFF,
-	.cache_type	= REGCACHE_NONE,
+	.max_register		= 0xFF,
+	.cache_type		= REGCACHE_NONE,
 };
 
 /*
@@ -150,8 +150,7 @@ static int max9275_get_fmt(struct v4l2_subdev *sd,
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&format->format,
-		(const void *)&dev->fmt,
+	memcpy((void *)&format->format, (const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -167,8 +166,7 @@ static int max9275_set_fmt(struct v4l2_subdev *sd,
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&dev->fmt,
-		(const void *)&format->format,
+	memcpy((void *)&dev->fmt, (const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);

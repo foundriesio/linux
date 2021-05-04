@@ -318,6 +318,7 @@ static int tccvin_v4l2_get_frameinterval(struct tccvin_streaming *stream,
 	struct v4l2_streamparm *streamparm)
 {
 	struct v4l2_subdev *subdev = NULL;
+	struct v4l2_subdev_frame_interval interval;
 	int32_t n_subdev = 0;
 	int32_t idx_subdev = 0;
 	int ret = 0;
@@ -325,10 +326,13 @@ static int tccvin_v4l2_get_frameinterval(struct tccvin_streaming *stream,
 	n_subdev = stream->dev->bounded_subdevs;
 	logd("The number of subdevs is %d\n", n_subdev);
 
+	memset(&interval, 0, sizeof(interval));
+
 	for (idx_subdev = 0; idx_subdev < n_subdev; idx_subdev++) {
 		subdev = stream->dev->linked_subdevs[idx_subdev].sd;
 
-		ret = v4l2_subdev_call(subdev, video, g_parm, streamparm);
+		ret = v4l2_subdev_call(subdev,
+			video, g_frame_interval, &interval);
 		logd("v4l2_subdev_call, ret: %d\n", ret);
 		switch (ret) {
 		case -ENODEV:
@@ -344,6 +348,8 @@ static int tccvin_v4l2_get_frameinterval(struct tccvin_streaming *stream,
 			ret = -EINVAL;
 			break;
 		default:
+			streamparm->parm.capture.timeperframe =
+				interval.interval;
 			break;
 		}
 	}
@@ -355,6 +361,7 @@ static int tccvin_v4l2_set_frameinterval(struct tccvin_streaming *stream,
 	struct v4l2_streamparm *streamparm)
 {
 	struct v4l2_subdev *subdev = NULL;
+	struct v4l2_subdev_frame_interval interval;
 	int32_t n_subdev = 0;
 	int32_t idx_subdev = 0;
 	int ret = 0;
@@ -362,10 +369,13 @@ static int tccvin_v4l2_set_frameinterval(struct tccvin_streaming *stream,
 	n_subdev = stream->dev->bounded_subdevs;
 	logd("The number of subdevs is %d\n", n_subdev);
 
+	interval.interval = streamparm->parm.capture.timeperframe;
+
 	for (idx_subdev = 0; idx_subdev < n_subdev; idx_subdev++) {
 		subdev = stream->dev->linked_subdevs[idx_subdev].sd;
 
-		ret = v4l2_subdev_call(subdev, video, s_parm, streamparm);
+		ret = v4l2_subdev_call(subdev,
+			video, s_frame_interval, &interval);
 		logd("v4l2_subdev_call, ret: %d\n", ret);
 		switch (ret) {
 		case -ENODEV:

@@ -209,8 +209,7 @@ static int max96705_get_fmt(struct v4l2_subdev *sd,
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&format->format,
-		(const void *)&dev->fmt,
+	memcpy((void *)&format->format, (const void *)&dev->fmt,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
@@ -226,8 +225,7 @@ static int max96705_set_fmt(struct v4l2_subdev *sd,
 
 	mutex_lock(&dev->lock);
 
-	memcpy((void *)&dev->fmt,
-		(const void *)&format->format,
+	memcpy((void *)&dev->fmt, (const void *)&format->format,
 		sizeof(struct v4l2_mbus_framefmt));
 
 	mutex_unlock(&dev->lock);
