@@ -37,7 +37,6 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/clk.h>
 #include <linux/device.h>
 #include <linux/dma-mapping.h>
 #include <linux/of_device.h>
@@ -746,12 +745,6 @@ static int __dwc2_lowlevel_hw_enable(struct dwc2_hsotg *hsotg)
 	if (ret)
 		return ret;
 #endif
-	if (hsotg->clk) {
-		ret = clk_prepare_enable(hsotg->clk);
-		if (ret)
-			return ret;
-	}
-
 	if (hsotg->uphy) {
 		ret = usb_phy_init(hsotg->uphy);
 	} else if (hsotg->plat && hsotg->plat->phy_init) {
@@ -808,8 +801,6 @@ static int __dwc2_lowlevel_hw_disable(struct dwc2_hsotg *hsotg)
 	if (ret)
 		return ret;
 
-	if (hsotg->clk)
-		clk_disable_unprepare(hsotg->clk);
 #if defined(CONFIG_USB_DWC2_TCC)
 	ret = dwc2_tcc_vbus_ctrl(hsotg, 0);
 #else
@@ -949,12 +940,6 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 		 */
 		if (phy_get_bus_width(hsotg->phy) == 8)
 			hsotg->phyif = GUSBCFG_PHYIF8;
-	}
-	/* Clock */
-	hsotg->clk = devm_clk_get(hsotg->dev, "otg");
-	if (IS_ERR(hsotg->clk)) {
-		hsotg->clk = NULL;
-		dev_err(hsotg->dev, "[ERROR][USB] cannot get otg clock\n");
 	}
 #if defined(CONFIG_USB_DWC2_TCC)
 	/* TCC vbus */

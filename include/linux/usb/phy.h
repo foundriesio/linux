@@ -155,8 +155,6 @@ struct usb_phy {
 	 * manually detect the charger type.
 	 */
 	enum usb_charger_type (*charger_detect)(struct usb_phy *x);
-	/* control iso top */
-	int (*set_phy_isol)(struct usb_phy *x, int on);
 
 	void __iomem		*base;
 	enum usb_otg_state  state;

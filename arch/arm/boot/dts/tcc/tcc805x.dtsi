@@ -2312,8 +2312,6 @@
 		compatible = "telechips,tcc_ehci_phy";
 		reg = <0x0 0x11DA0010 0x0 0x30>;
 		interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
-		resets = <&hsiobus_rst HSIOBUS_USB20H>;
 		status = "disabled";
 	};
 
@@ -2322,7 +2320,6 @@
 		reg = <0x0 0x11A00000 0x0 0x108>,
 		      <0x0 0x11DA0010 0x0 0x54>;
 		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
 		telechips,ehci_phy = <&ehci_phy>;
 		status = "disabled";
 	};
@@ -2332,15 +2329,12 @@
 		reg = <0x0 0x11A80000 0x0 0x60>,
 		      <0x0 0x11DA0010 0x0 0x54>;
 		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
 		status = "disabled";
 	};
 
 	dwc_otg_phy: dwc_otg_phy@11DA0100 {
 		compatible = "telechips,tcc_dwc_otg_phy";
 		reg = <0x0 0x11DA0100 0x0 0x30>;
-		clocks = <&clk_hsio HSIOBUS_DWC_OTG /*&clk_isoip_top ISOIP_TOP_U20DH*/>;
-		resets = <&hsiobus_rst HSIOBUS_DWC_OTG>;
 		status = "disabled";
 	};
 
@@ -2348,8 +2342,6 @@
 		compatible = "telechips,tcc_ehci_phy";
 		reg = <0x0 0x11DA00DC 0x0 0x20>;
 		interrupts = <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_hsio HSIOBUS_DWC_OTG /*&clk_isoip_top ISOIP_TOP_U20DH*/>;
-		resets = <&hsiobus_rst HSIOBUS_DWC_OTG>;
 		mux_port;
 		status = "disabled";
 	};
@@ -2360,8 +2352,6 @@
 		      <0x0 0x11900000 0x0 0x108>,
 		      <0x0 0x11940000 0x0 0x60>;
 		interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_hsio HSIOBUS_USB20H>;
-		clock-names = "otg";
 		phy = <&dwc_otg_phy>;
 		phy-names = "usb2-phy";
 		telechips,mhst_phy = <&mhst_phy>;
@@ -2373,13 +2363,11 @@
 		reg = <0x0 0x11D90000 0x0 0x48>,
 		      <0x0 0x11DA00EC 0x0 0x4>;
 		interrupts = <GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH>;
-	/*	clocks = <&clk_isoip_top ISOIP_TOP_U30>;*/
 		status = "disabled";
 	};
 
 	dwc3: dwc3_platform {
 		compatible = "telechips,tcc-dwc3";
-		clocks = <&clk_fbus FBUS_HSIO>;
 		telechips,dwc3_phy = <&dwc3_phy>;
 		#address-cells = <1>;
 		#size-cells = <1>;
