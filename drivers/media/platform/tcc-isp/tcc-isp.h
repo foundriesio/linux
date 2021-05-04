@@ -110,6 +110,8 @@ struct tcc_isp_state {
 
 	struct clk *clock;
 	u32 clk_frequency;
+
+	unsigned int mdelay_to_output;
 };
 
 #endif

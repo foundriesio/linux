@@ -696,7 +696,7 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 		goto err;
 	}
 
-	logi(&(state->pdev->dev), "isp base addr is %px\n", state->isp_base);
+	logd(&(state->pdev->dev), "isp base addr is %px\n", state->isp_base);
 
 	/* Get mem base address */
 	mem_res = platform_get_resource_byname(pdev,
@@ -708,7 +708,7 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 		loge(&(state->pdev->dev), "Fail parsing mem_base\n");
 		goto err;
 	}
-	logi(&(state->pdev->dev), "mem base addr is %px\n", state->mem_base);
+	logd(&(state->pdev->dev), "mem base addr is %px\n", state->mem_base);
 
 	/*
 	 * Get CFG base address
@@ -717,7 +717,7 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 	if (IS_ERR((const void *)state->cfg_base))
 		return PTR_ERR((const void *)state->cfg_base);
 
-	logi(&(state->pdev->dev), "cfg base addr is %px\n", state->cfg_base);
+	logd(&(state->pdev->dev), "cfg base addr is %px\n", state->cfg_base);
 
 #ifdef USE_ISP_UART
 	/* Get UART pinctrl */
@@ -731,7 +731,8 @@ static int tcc_isp_parse_dt(struct platform_device *pdev,
 
 	of_property_read_u32_index(node,
 		"mem_share", 0, &(state->mem_share));
-	logi(&(state->pdev->dev), "mem_share %d\n", state->mem_share);
+	logi(&(state->pdev->dev), "%s mem_share\n",
+		state->mem_share ? "enable" : "disable");
 err:
 
 	return ret;
@@ -880,6 +881,12 @@ static int tcc_isp_s_stream(struct v4l2_subdev *sd, int enable)
 	if (enable) {
 		/* enable mcu */
 		tcc_isp_mcu_enable(state, ON);
+		if (state->mdelay_to_output) {
+			logi(&(state->pdev->dev),
+				"delay %dms\n", state->mdelay_to_output);
+			usleep_range(state->mdelay_to_output * 1000,
+				    (state->mdelay_to_output * 1000) + 5000);
+		}
 	} else {
 		/* disable mcu */
 		tcc_isp_mcu_enable(state, OFF);
@@ -1020,6 +1027,56 @@ static const struct v4l2_subdev_ops tcc_isp_ops = {
 
 static const struct of_device_id tcc_isp_of_match[];
 
+static ssize_t mdelay_to_output_show(struct device *dev,
+				   struct device_attribute *attr,
+				   char *buf)
+{
+	struct tcc_isp_state *state;
+	ssize_t ret = 0;
+
+	state = platform_get_drvdata(to_platform_device(dev));
+	if (state == NULL) {
+		pr_err("Fail - tcc_isp_state pointer\n");
+		ret = -ENODEV;
+		goto end;
+	}
+
+end:
+	return ret ? ret : sprintf(buf, "%d\n", state->mdelay_to_output);
+}
+
+static ssize_t mdelay_to_output_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	unsigned int val;
+	struct tcc_isp_state *state;
+	ssize_t ret = 0;
+
+	state = platform_get_drvdata(to_platform_device(dev));
+	if (state == NULL) {
+		pr_err("Fail - tcc_isp_state pointer\n");
+		ret = -ENODEV;
+		goto end;
+	}
+
+	if (kstrtouint(buf, NULL, &val)) {
+		loge(&(state->pdev->dev), "Fail - read data from attribute\n");
+		ret = -EINVAL;
+		goto end;
+	}
+
+	logi(&(state->pdev->dev), "set mdelay_to_output (%d)\n", val);
+
+	state->mdelay_to_output = val;
+
+end:
+	return ret ? ret : count;
+}
+
+static DEVICE_ATTR(mdelay_to_output, S_IRUGO | S_IWUSR,
+	mdelay_to_output_show, mdelay_to_output_store);
+
 static int tcc_isp_probe(struct platform_device *pdev)
 {
 	struct tcc_isp_state *state;
@@ -1073,18 +1130,27 @@ static int tcc_isp_probe(struct platform_device *pdev)
 	if (ret) {
 		loge(&(state->pdev->dev),
 				"Failed to register subdevice\n");
-		goto err;
+		goto err_async_register_subdev;
 	}
 	logi(&(state->pdev->dev),
 		"%s is registered as a v4l2 sub device.\n",
 		state->sd.name);
 
+	ret = device_create_file(&(state->pdev->dev), &dev_attr_mdelay_to_output);
+	if (ret < 0) {
+		loge(&(state->pdev->dev), "Fail create attribute\n");
+		goto err_attr;
+	}
+
 	logi(&(state->pdev->dev), "Success proving tcc-isp-%d\n", pdev->id);
 	goto end;
+
+err_attr:
+	v4l2_async_unregister_subdev(&(state->sd));
+err_async_register_subdev:
+	tcc_isp_exit_controls(state);
 err:
 end:
-	logi(&(state->pdev->dev), "%s out\n", __func__);
-
 	return ret;
 }
 
@@ -1095,6 +1161,7 @@ static int tcc_isp_remove(struct platform_device *pdev)
 
 	logi(&(state->pdev->dev), "%s in\n", __func__);
 
+	device_remove_file(&(state->pdev->dev), &dev_attr_mdelay_to_output);
 	tcc_isp_exit_controls(state);
 
 	logi(&(state->pdev->dev), "%s out\n", __func__);

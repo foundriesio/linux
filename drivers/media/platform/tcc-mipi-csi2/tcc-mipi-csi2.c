@@ -990,12 +990,12 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 	 * Get MIPI CSI-2 base address
 	 */
 	mem_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "csi");
-	logi(&(state->pdev->dev), "mem_res = %px\n", mem_res);
+	logd(&(state->pdev->dev), "mem_res = %px\n", mem_res);
 	state->csi_base = devm_ioremap_resource(dev, mem_res);
 	if (IS_ERR((const void *)state->csi_base))
 		return PTR_ERR((const void *)state->csi_base);
 
-	logi(&(state->pdev->dev), "csi base addr is %px\n", state->csi_base);
+	logd(&(state->pdev->dev), "csi base addr is %px\n", state->csi_base);
 
 #if defined(CONFIG_ARCH_TCC805X)
 	/*
@@ -1005,7 +1005,7 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 	if (IS_ERR((const void *)state->ckc_base))
 		return PTR_ERR((const void *)state->ckc_base);
 
-	logi(&(state->pdev->dev), "ckc base addr is %px\n", state->ckc_base);
+	logd(&(state->pdev->dev), "ckc base addr is %px\n", state->ckc_base);
 
 	/*
 	 * Get CFG base address
@@ -1014,7 +1014,7 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 	if (IS_ERR((const void *)state->cfg_base))
 		return PTR_ERR((const void *)state->cfg_base);
 
-	logi(&(state->pdev->dev), "cfg base addr is %px\n", state->cfg_base);
+	logd(&(state->pdev->dev), "cfg base addr is %px\n", state->cfg_base);
 
 	/*
 	 * Get mipi_chmux_X selection
@@ -1046,7 +1046,7 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 		goto err;
 	}
 
-	logi(&(state->pdev->dev), "csi irq number is %d\n", state->irq);
+	logd(&(state->pdev->dev), "csi irq number is %d\n", state->irq);
 
 #if defined(CONFIG_ARCH_TCC803X)
 	// ddi config
@@ -1059,7 +1059,7 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 	} else {
 		state->ddicfg_base =
 			(void __iomem *)of_iomap(ddicfg_node, 0);
-		logi(&(state->pdev->dev), "ddicfg addr: %p\n",
+		logd(&(state->pdev->dev), "ddicfg addr: %p\n",
 			state->ddicfg_base);
 	}
 #endif
@@ -1369,8 +1369,6 @@ static int tcc_mipi_csi2_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	int ret = 0;
 
-	logi(&(pdev->dev), "%s in\n", __func__);
-
 	state = devm_kzalloc(dev, sizeof(*state), GFP_KERNEL);
 	if (WARN_ON(state == NULL)) {
 		ret = -ENOMEM;
@@ -1468,8 +1466,6 @@ e_clkput:
 #endif
 err:
 end:
-	logi(&(state->pdev->dev), "%s out\n", __func__);
-
 	return ret;
 }
 
