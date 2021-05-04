@@ -1,15 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * rcar_du_crtc.c  --  R-Car Display Unit CRTCs
- *
- * Copyright (C) 2016 Laurent Pinchart
- * Copyright (C) 2016 Renesas Electronics Corporation
- *
- * Contact: Laurent Pinchart (laurent.pinchart@ideasonboard.com)
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Copyright (c) 2019 - present Telechips.co and/or its affiliates.
  */
 
 #include <linux/backlight.h>
@@ -35,33 +26,37 @@
 
 #include <linux/backlight.h>
 
+#include "panel-tcc.h"
 
 #define LOG_DPV14_TAG "DRM_DPV14"
 
-//#define CONFIG_DRM_TCC_CTRL_BACKLIGHT
+#define DRIVER_DATE	"20210504"
+#define DRIVER_MAJOR	1
+#define DRIVER_MINOR	0
+#define DRIVER_PATCH	0
 
-struct lvds_match_data {
-	char* name;
+struct dp_match_data {
+	char *name;
 };
 
-static const struct lvds_match_data pane_dpv14_0 = {
+static const struct dp_match_data pane_dpv14_0 = {
 	.name = "DP-PANEL-0",
 };
 
-static const struct lvds_match_data pane_dpv14_1 = {
+static const struct dp_match_data pane_dpv14_1 = {
 	.name = "DP-PANEL-1",
 };
 
-static const struct lvds_match_data pane_dpv14_2 = {
+static const struct dp_match_data pane_dpv14_2 = {
 	.name = "DP-PANEL-2",
 };
 
-static const struct lvds_match_data pane_dpv14_3 = {
+static const struct dp_match_data pane_dpv14_3 = {
 	.name = "DP-PANEL-3",
 };
 
 
-struct Panel_Pins_t {
+struct dp_pins {
 	struct pinctrl *p;
 	struct pinctrl_state *pwr_port;
 	struct pinctrl_state *pwr_on;
@@ -71,133 +66,162 @@ struct Panel_Pins_t {
 	struct pinctrl_state *pwr_off;
 };
 
-struct Panel_Dpv14_Param_t {
-	struct drm_panel			stDrm_Panel;
-	struct device				*dev;
-	struct videomode			video_mode;
+struct panel_dp14 {
+	struct drm_panel panel;
+	struct device *dev;
+	struct videomode video_mode;
 
-#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
-	struct backlight_device		*backlight;
-#endif
+	#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
+	struct backlight_device *backlight;
+	#endif
 
-	struct gpio_desc			*enable_gpio;
-	struct gpio_desc			*reset_gpio;
+	struct dp_match_data *data;
+	struct dp_pins dp_pins;
 
-	struct lvds_match_data		*data;
-	struct Panel_Pins_t			stPanel_Pins;
+	/* Version ---------------------*/
+	/** @major: driver major number */
+	int major;
+	/** @minor: driver minor number */
+	int minor;
+	/** @patchlevel: driver patch level */
+	int patchlevel;
+	/** @date: driver date */
+	char *date;
 };
 
-
-static inline struct Panel_Dpv14_Param_t *To_DP_Drv_Panel(struct drm_panel *pstPanel)
+static inline struct panel_dp14 *to_dp_drv_panel(struct drm_panel *drm_panel)
 {
-	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param;
+	struct panel_dp14 *dp14 =
+		container_of(drm_panel, struct panel_dp14, panel);
 
-	pstPanel_Dpv14_Param = container_of(pstPanel, struct Panel_Dpv14_Param_t, stDrm_Panel);
-
-	return (pstPanel_Dpv14_Param);
+	return dp14;
 }
 
-static int panel_dpv14_disable(struct drm_panel *pstPanel)
+static int panel_dpv14_disable(struct drm_panel *drm_panel)
 {
-	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param = To_DP_Drv_Panel(pstPanel);
+	struct panel_dp14	*dp14 = to_dp_drv_panel(drm_panel);
 
-	pr_info("[INFO][%s:%s]To %s \r\n", LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
-#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
-	if (pstPanel_Dpv14_Param->backlight)
-	{
-		pstPanel_Dpv14_Param->backlight->props.power = FB_BLANK_POWERDOWN;
-		pstPanel_Dpv14_Param->backlight->props.state |= BL_CORE_FBBLANK;
-		backlight_update_status(pstPanel_Dpv14_Param->backlight);
+	dev_info(dp14->dev, "[INFO][%s:%s] To %s \r\n",
+		LOG_DPV14_TAG, __func__, dp14->data->name);
+	#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
+	if (dp14->backlight) {
+		dp14->backlight->props.power = FB_BLANK_POWERDOWN;
+		dp14->backlight->props.state |= BL_CORE_FBBLANK;
+		backlight_update_status(dp14->backlight);
 	}
-#else
-	if (pstPanel_Dpv14_Param->stPanel_Pins.blk_off != NULL) {
-		pinctrl_select_state(pstPanel_Dpv14_Param->stPanel_Pins.p, pstPanel_Dpv14_Param->stPanel_Pins.blk_off);
-	} else {
-		pr_warning("[WARN][%s:%s]%s blk_off func ptr is NULL \r\n",	LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
+	#else
+	if (
+		panel_tcc_pin_select_state(
+			dp14->dp_pins.p,
+			dp14->dp_pins.blk_off) < 0) {
+		dev_warn(dp14->dev,
+			"[WARN][%s:%s]%s failed set pinctrl to blk_off\r\n",
+			LOG_DPV14_TAG, __func__,
+			dp14->data->name);
 	}
-#endif
+	#endif
+	if (
+		panel_tcc_pin_select_state(
+			dp14->dp_pins.p,
+			dp14->dp_pins.pwr_off) < 0) {
+		dev_warn(dp14->dev,
+			"[WARN][%s:%s]%s failed set pinctrl to pwr_off\r\n",
+			LOG_DPV14_TAG, __func__,
+			dp14->data->name);
+	}
+	return 0;
+}
 
-	if (pstPanel_Dpv14_Param->stPanel_Pins.pwr_off != NULL) {
-		pinctrl_select_state(pstPanel_Dpv14_Param->stPanel_Pins.p, pstPanel_Dpv14_Param->stPanel_Pins.pwr_off);
-	} else {
-		pr_warning("[WARN][%s:%s]%s pwr_off func ptr is NULL \r\n",	LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
+static int panel_dpv14_enable(struct drm_panel *drm_panel)
+{
+	struct panel_dp14	*dp14 = to_dp_drv_panel(drm_panel);
+
+	dev_info(
+		dp14->dev,
+		"[INFO][%s:%s]To %s..\r\n",
+		LOG_DPV14_TAG, __func__, dp14->data->name);
+
+	#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
+	if (dp14->backlight) {
+		dp14->backlight->props.state &= ~BL_CORE_FBBLANK;
+		dp14->backlight->props.power = FB_BLANK_UNBLANK;
+		backlight_update_status(dp14->backlight);
+	}
+	#else
+	if (
+		panel_tcc_pin_select_state(
+			dp14->dp_pins.p,
+			dp14->dp_pins.blk_on) < 0) {
+		dev_warn(dp14->dev,
+			"[WARN][%s:%s]%s failed set pinctrl to blk_on\r\n",
+			LOG_DPV14_TAG, __func__,
+			dp14->data->name);
+	}
+	#endif
+
+	return 0;
+}
+
+static int panel_dpv14_unprepare(struct drm_panel *drm_panel)
+{
+	struct panel_dp14 *dp14 = to_dp_drv_panel(drm_panel);
+
+	dev_info(dp14->dev,
+		"[INFO][%s:%s]To %s.. \r\n", LOG_DPV14_TAG, __func__,
+		dp14->data->name);
+
+	return 0;
+}
+
+static int panel_dpv14_prepare(struct drm_panel *drm_panel)
+{
+	struct panel_dp14	*dp14 = to_dp_drv_panel(drm_panel);
+
+	dev_info(
+		dp14->dev,
+		"[INFO][%s:%s]To %s.. \r\n",
+		LOG_DPV14_TAG, __func__, dp14->data->name);
+
+	if (
+		panel_tcc_pin_select_state(
+			dp14->dp_pins.p,
+			dp14->dp_pins.pwr_on) < 0) {
+		dev_warn(dp14->dev,
+			"[WARN][%s:%s]%s failed set pinctrl to pwr_on\r\n",
+			LOG_DPV14_TAG, __func__,
+			dp14->data->name);
+	}
+	if (
+		panel_tcc_pin_select_state(
+			dp14->dp_pins.p,
+			dp14->dp_pins.reset_off) < 0) {
+		dev_warn(dp14->dev,
+			"[WARN][%s:%s]%s failed set pinctrl to reset_off\r\n",
+			LOG_DPV14_TAG, __func__,
+			dp14->data->name);
 	}
 
 	return 0;
 }
 
-static int panel_dpv14_enable(struct drm_panel *pstPanel)
+static int panel_dpv14_get_modes(struct drm_panel *drm_panel)
 {
-	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param = To_DP_Drv_Panel(pstPanel);
-
-	pr_info("[INFO][%s:%s]To %s..\r\n", LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
-
-#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
-	if (pstPanel_Dpv14_Param->backlight) {
-		pstPanel_Dpv14_Param->backlight->props.state &= ~BL_CORE_FBBLANK;
-		pstPanel_Dpv14_Param->backlight->props.power = FB_BLANK_UNBLANK;
-		backlight_update_status(pstPanel_Dpv14_Param->backlight);
-	}
-#else
-	if (pstPanel_Dpv14_Param->stPanel_Pins.blk_on != NULL) {
-		pinctrl_select_state(pstPanel_Dpv14_Param->stPanel_Pins.p, pstPanel_Dpv14_Param->stPanel_Pins.blk_on);
-	} else {
-		pr_warning("[WARN][%s:%s]%s blk_on func ptr is NULL \r\n",	LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
-	}
-#endif
-
-	return 0;
-}
-
-
-static int panel_dpv14_unprepare(struct drm_panel *pstPanel)
-{
-	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param = To_DP_Drv_Panel(pstPanel);
-
-	pr_info("[INFO][%s:%s]To %s.. \r\n", LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
-
-	return 0;
-}
-
-static int panel_dpv14_prepare(struct drm_panel *pstPanel)
-{
-	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param = To_DP_Drv_Panel(pstPanel);
-
-	pr_info("[INFO][%s:%s]To %s.. \r\n", LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
-
-	if (pstPanel_Dpv14_Param->stPanel_Pins.pwr_on != NULL) {
-		pinctrl_select_state(pstPanel_Dpv14_Param->stPanel_Pins.p, pstPanel_Dpv14_Param->stPanel_Pins.pwr_on);
-	} else  {
-		pr_warning("[WARN][%s:%s]%s pwr func ptr is NULL \r\n", LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
-	}
-
-	if (pstPanel_Dpv14_Param->stPanel_Pins.reset_off != NULL) {
-		pinctrl_select_state(pstPanel_Dpv14_Param->stPanel_Pins.p, pstPanel_Dpv14_Param->stPanel_Pins.reset_off);
-	} else  {
-		pr_warning("[WARN][%s:%s]%s reset off func ptr is NULL \r\n",	LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
-	}
-
-	return 0;
-}
-
-static int panel_dpv14_get_modes(struct drm_panel *pstPanel)
-{
-	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param = To_DP_Drv_Panel(pstPanel);
-	struct drm_connector 		*connector = pstPanel_Dpv14_Param->stDrm_Panel.connector;
-	struct drm_display_mode 	*mode;
+	struct panel_dp14 *dp14 = to_dp_drv_panel(drm_panel);
+	struct drm_connector *connector = dp14->panel.connector;
+	struct drm_display_mode *mode;
 	struct edid *edid;
 	int count = 0;
 
-	mode = drm_mode_create(pstPanel_Dpv14_Param->stDrm_Panel.drm);
+	mode = drm_mode_create(dp14->panel.drm);
 	if (!mode)
 		goto out;
-	if(!connector)
+	if (!connector)
 		goto out;
 	edid = kzalloc(EDID_LENGTH, GFP_KERNEL);
 	if (!edid)
 		goto out;
 
-	drm_display_mode_from_videomode(&pstPanel_Dpv14_Param->video_mode, mode);
+	drm_display_mode_from_videomode(&dp14->video_mode, mode);
 
 	if (tcc_make_edid_from_display_mode(edid, mode))
 		goto out_free_edid;
@@ -206,8 +230,7 @@ static int panel_dpv14_get_modes(struct drm_panel *pstPanel)
 	drm_edid_to_eld(connector, edid);
 
 out_free_edid:
-	if (edid)
-		kfree(edid);
+	kfree(edid);
 out:
 	return count;
 }
@@ -220,209 +243,228 @@ static const struct drm_panel_funcs panel_dpv14_funcs = {
 	.get_modes = panel_dpv14_get_modes,
 };
 
-static int panel_dpv14_parse_dt(struct Panel_Dpv14_Param_t *pstPanel_Dpv14_Param)
+static int panel_dpv14_parse_dt(struct panel_dp14 *dp14)
 {
-	struct device_node *dn = pstPanel_Dpv14_Param->dev->of_node;
+	struct device_node *dn = dp14->dev->of_node;
 	struct device_node *np;
-	int 	iRetVal = -ENODEV;
+	int iret_val = -ENODEV;
 
 	np = of_get_child_by_name(dn, "display-timings");
 	if (np != NULL) {
 		of_node_put(np);
-		iRetVal = of_get_videomode(
-			dn, &pstPanel_Dpv14_Param->video_mode,
+		iret_val = of_get_videomode(
+			dn, &dp14->video_mode,
 			OF_USE_NATIVE_MODE);
-		if (iRetVal < 0) {
-			pr_err(
-				"[ERROR][%s:%s]failed to get of_get_videomode\r\n",
-				LOG_DPV14_TAG, __func__);
+		if (iret_val < 0) {
+			dev_err(
+				dp14->dev,
+				"[ERROR][%s:%s] %s failed to get of_get_videomode\r\n",
+				LOG_DPV14_TAG, dp14->data->name, __func__);
 			goto err_parse_dt;
 		}
 	} else {
-		pr_err(
-			"[ERROR][%s:%s]failed to get display-timings property\r\n",
-			LOG_DPV14_TAG, __func__);
+		dev_err(
+			dp14->dev,
+			"[ERROR][%s:%s] %s failed to get display-timings property\r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
 	}
 
 	/* pinctrl */
-	pstPanel_Dpv14_Param->stPanel_Pins.p =
-		devm_pinctrl_get(pstPanel_Dpv14_Param->dev);
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.p)) {
-		pr_info(
-			"[INFO][%s:%s] There is no pinctrl - May be this panel controls backlight using serializer\r\n",
-			LOG_DPV14_TAG, __func__);
-		pstPanel_Dpv14_Param->stPanel_Pins.p = NULL;
+	dp14->dp_pins.p =
+		devm_pinctrl_get(dp14->dev);
+	if (IS_ERR(dp14->dp_pins.p)) {
+		dev_info(dp14->dev,
+			"[INFO][%s:%s] %s There is no pinctrl - May be this panel controls backlight using serializer\r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
+		dp14->dp_pins.p = NULL;
 
 		goto err_parse_dt;
 	}
 
-	pstPanel_Dpv14_Param->stPanel_Pins.pwr_port =
+	dp14->dp_pins.pwr_port =
 		pinctrl_lookup_state(
-			pstPanel_Dpv14_Param->stPanel_Pins.p, "default");
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_port)) {
-		pr_warning(
-			"[WARN][%s:%s] failed to find pwr_port\r\n",
-			LOG_DPV14_TAG, __func__);
-		pstPanel_Dpv14_Param->stPanel_Pins.pwr_port = NULL;
+			dp14->dp_pins.p, "default");
+	if (IS_ERR(dp14->dp_pins.pwr_port)) {
+		dev_warn(dp14->dev,
+			"[WARN][%s:%s] %s failed to find pwr_port\r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
+		dp14->dp_pins.pwr_port = NULL;
 
 		goto err_parse_dt;
 	}
 
-	pstPanel_Dpv14_Param->stPanel_Pins.pwr_on =
-		pinctrl_lookup_state(pstPanel_Dpv14_Param->stPanel_Pins.p, "power_on");
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_on)) {
-		pr_warning(
-			"[WARN][%s:%s]failed to find power_on \r\n",
-			LOG_DPV14_TAG, __func__);
-		pstPanel_Dpv14_Param->stPanel_Pins.pwr_on = NULL;
+	dp14->dp_pins.pwr_on =
+		pinctrl_lookup_state(dp14->dp_pins.p, "power_on");
+	if (IS_ERR(dp14->dp_pins.pwr_on)) {
+		dev_warn(dp14->dev,
+			"[WARN][%s:%s] %sfailed to find power_on \r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
+		dp14->dp_pins.pwr_on = NULL;
 	}
 
-	pstPanel_Dpv14_Param->stPanel_Pins.reset_off =
+	dp14->dp_pins.reset_off =
 		pinctrl_lookup_state(
-			pstPanel_Dpv14_Param->stPanel_Pins.p, "reset_off" );
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.reset_off)) {
-		pr_warning(
-			"[WARN][%s:%s]failed to find reset_off \r\n",
-			LOG_DPV14_TAG, __func__);
-		pstPanel_Dpv14_Param->stPanel_Pins.reset_off = NULL;
+			dp14->dp_pins.p, "reset_off");
+	if (IS_ERR(dp14->dp_pins.reset_off)) {
+		dev_warn(dp14->dev,
+			"[WARN][%s:%s] %s failed to find reset_off \r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
+		dp14->dp_pins.reset_off = NULL;
 	}
 
-	pstPanel_Dpv14_Param->stPanel_Pins.blk_on =
+	dp14->dp_pins.blk_on =
 		pinctrl_lookup_state(
-			pstPanel_Dpv14_Param->stPanel_Pins.p, "blk_on");
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.blk_on)) {
-		pr_warning(
-			"[WARN][%s:%s]failed to find blk_on \r\n",
-			LOG_DPV14_TAG, __func__);
-		pstPanel_Dpv14_Param->stPanel_Pins.blk_on = NULL;
+			dp14->dp_pins.p, "blk_on");
+	if (IS_ERR(dp14->dp_pins.blk_on)) {
+		dev_warn(dp14->dev,
+			"[WARN][%s:%s] %s failed to find blk_on \r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
+		dp14->dp_pins.blk_on = NULL;
 	}
 
-	pstPanel_Dpv14_Param->stPanel_Pins.blk_off =
+	dp14->dp_pins.blk_off =
 		pinctrl_lookup_state(
-			pstPanel_Dpv14_Param->stPanel_Pins.p, "blk_off");
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.blk_off)) {
-		pr_warning(
-			"[WARN][%s:%s]failed to find blk_off \r\n",
-			LOG_DPV14_TAG, __func__);
-		pstPanel_Dpv14_Param->stPanel_Pins.blk_off = NULL;
+			dp14->dp_pins.p, "blk_off");
+	if (IS_ERR(dp14->dp_pins.blk_off)) {
+		dev_warn(dp14->dev,
+			"[WARN][%s:%s] %s failed to find blk_off \r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
+		dp14->dp_pins.blk_off = NULL;
 	}
 
-	pstPanel_Dpv14_Param->stPanel_Pins.pwr_off =
+	dp14->dp_pins.pwr_off =
 		pinctrl_lookup_state(
-			pstPanel_Dpv14_Param->stPanel_Pins.p, "power_off");
-	if (IS_ERR(pstPanel_Dpv14_Param->stPanel_Pins.pwr_off)) {
-		pr_warning(
-			"[WARN][%s:%s]failed to find power_off \r\n",
-			LOG_DPV14_TAG, __func__);
-		pstPanel_Dpv14_Param->stPanel_Pins.pwr_off = NULL;
+			dp14->dp_pins.p, "power_off");
+	if (IS_ERR(dp14->dp_pins.pwr_off)) {
+		dev_warn(dp14->dev,
+			"[WARN][%s:%s] %s failed to find power_off \r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
+		dp14->dp_pins.pwr_off = NULL;
 	}
 
-#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
-	np = of_parse_phandle(pstPanel_Dpv14_Param->dev->of_node, "backlight", 0);
+	#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
+	np = of_parse_phandle(dp14->dev->of_node, "backlight", 0);
 	if (np != NULL) {
-		pstPanel_Dpv14_Param->backlight = of_find_backlight_by_node(np);
+		dp14->backlight = of_find_backlight_by_node(np);
 		of_node_put(np);
 
-		if (!pstPanel_Dpv14_Param->backlight){ //backlight node is not valid
-			pr_err("[ERROR][%s:%s]backlight driver not valid\n", LOG_DPV14_TAG, __func__);
-		}
-		else{
-			pr_info("[INFO][%s:%s]External backlight driver : max brightness[%d]\n",
-			LOG_DPV14_TAG, __func__,
-			pstPanel_Dpv14_Param->backlight->props.max_brightness);
-		}
+		if (!dp14->backlight) //backlight node is not valid
+			dev_err(
+				dp14->dev,
+				"[ERROR][%s:%s] %s backlight driver not valid\n",
+				LOG_DPV14_TAG, dp14->data->name, __func__);
+		else
+			dev_info(
+				dp14->dev,
+				"[INFO][%s:%s] %s External backlight driver : max brightness[%d]\n",
+				LOG_DPV14_TAG, dp14->data->name, __func__,
+				dp14->backlight->props.max_brightness);
 	} else {
-		pr_info("[INFO][%s:%s] Use pinctrl backlight...\n", LOG_DPV14_TAG, __func__);
+		dev_info(
+			dp14->dev,
+			"[INFO][%s:%s] %s Use pinctrl backlight...\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
 	}
-#else
-	pr_info("[INFO][%s:%s] Use pinctrl backlight\n", LOG_DPV14_TAG, __func__);
-#endif
+	#else
+	dev_info(
+		dp14->dev,
+		"[INFO][%s:%s] %s Use pinctrl backlight\n",
+		LOG_DPV14_TAG, dp14->data->name, __func__);
+	#endif
 
 err_parse_dt:
-	return iRetVal;
+	return iret_val;
 }
 
 static int panel_dpv14_probe(struct platform_device *pdev)
 {
-	int				iRetVal;
-	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param;
+	int iret_val;
+	struct panel_dp14 *dp14;
 
-	pstPanel_Dpv14_Param = devm_kzalloc(&pdev->dev, sizeof(*pstPanel_Dpv14_Param), GFP_KERNEL);
-	if (!pstPanel_Dpv14_Param)
-	{
-		pr_err(	"[ERROR][%s:%s] failed to alloc device context\r\n", LOG_DPV14_TAG, __func__);
-		iRetVal = -ENODEV;
+	dp14 = devm_kzalloc(&pdev->dev, sizeof(*dp14), GFP_KERNEL);
+	if (!dp14) {
+		iret_val = -ENODEV;
 		goto err_init;
 	}
 
-	pstPanel_Dpv14_Param->dev = &pdev->dev;
-
-	iRetVal = panel_dpv14_parse_dt(pstPanel_Dpv14_Param);
-	if (iRetVal < 0)
-	{
-		pr_err("[ERROR][%s:%s]%s-> failed to parse device tree\r\n", LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
-		iRetVal = -ENODEV;
+	dp14->dev = &pdev->dev;
+	dp14->data =
+		(struct dp_match_data *)of_device_get_match_data(&pdev->dev);
+	if (!dp14->data) {
+		dev_err(
+			dp14->dev,
+			"[ERROR][%s:unknown] %s failed to find match_data from device tree\r\n",
+			LOG_DPV14_TAG, __func__);
+		iret_val = -ENODEV;
 		goto err_free_mem;
 	}
-
-	pstPanel_Dpv14_Param->data = (struct lvds_match_data*)of_device_get_match_data(&pdev->dev);
-	if (pstPanel_Dpv14_Param->data == NULL)
-	{
-		pr_err("[ERROR][%s:%s]%s-> failed to find match_data from device tree\r\n", LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
-		iRetVal = -ENODEV;
+	iret_val = panel_dpv14_parse_dt(dp14);
+	if (iret_val < 0) {
+		dev_err(
+			dp14->dev,
+			"[ERROR][%s:%s] %s failed to parse device tree\r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
+		iret_val = -ENODEV;
 		goto err_free_mem;
 	}
 
 	/* Register the panel. */
-	drm_panel_init(&pstPanel_Dpv14_Param->stDrm_Panel);
+	drm_panel_init(&dp14->panel);
 
-	pstPanel_Dpv14_Param->stDrm_Panel.dev	= pstPanel_Dpv14_Param->dev;
-	pstPanel_Dpv14_Param->stDrm_Panel.funcs	= &panel_dpv14_funcs;
+	dp14->panel.dev	= dp14->dev;
+	dp14->panel.funcs = &panel_dpv14_funcs;
 
-	iRetVal = drm_panel_add(&pstPanel_Dpv14_Param->stDrm_Panel);
-	if (iRetVal < 0)
-	{
-		pr_err("[ERROR][%s:%s]%s-> failed to drm_panel_init\r\n",	LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
+	iret_val = drm_panel_add(&dp14->panel);
+	if (iret_val < 0) {
+		dev_err(dp14->dev,
+			"[ERROR][%s:%s] %s failed to drm_panel_init\r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
 		goto err_put_dev;
 	}
+	dev_set_drvdata(dp14->dev, dp14);
 
-	dev_set_drvdata(pstPanel_Dpv14_Param->dev, pstPanel_Dpv14_Param);
+	/* Version */
+	dp14->major = DRIVER_MAJOR;
+	dp14->minor = DRIVER_MINOR;
+	dp14->patchlevel = DRIVER_PATCH;
+	dp14->date =  kstrdup(DRIVER_DATE, GFP_KERNEL);
 
-	pr_info("[INFO][%s:%s] Name as %s \r\n", LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
-
+	dev_info(dp14->dev, "Initialized %s %d.%d.%d %s for %s\n",
+		dp14->data->name, dp14->major, dp14->minor,
+		dp14->patchlevel, dp14->date,
+		dp14->dev ? dev_name(dp14->dev) : "unknown device");
 	return 0;
 
 err_put_dev:
 	#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
-	put_device(&pstPanel_Dpv14_Param->backlight->dev);
+	put_device(&dp14->backlight->dev);
 	#endif
 err_free_mem:
-	kfree(pstPanel_Dpv14_Param);
+	kfree(dp14);
 err_init:
-	return iRetVal;
+	return iret_val;
 }
 
 static int panel_dpv14_remove(struct platform_device *pdev)
 {
-	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param = dev_get_drvdata(&pdev->dev);
+	struct panel_dp14	*dp14 = dev_get_drvdata(&pdev->dev);
 
-	devm_pinctrl_put(pstPanel_Dpv14_Param->stPanel_Pins.p);
+	devm_pinctrl_put(dp14->dp_pins.p);
 
-	drm_panel_detach(&pstPanel_Dpv14_Param->stDrm_Panel);
-	drm_panel_remove(&pstPanel_Dpv14_Param->stDrm_Panel);
+	drm_panel_detach(&dp14->panel);
+	drm_panel_remove(&dp14->panel);
 
-	panel_dpv14_disable(&pstPanel_Dpv14_Param->stDrm_Panel);
+	panel_dpv14_disable(&dp14->panel);
 
-#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
-	if (pstPanel_Dpv14_Param->backlight)
-	{
-		put_device(&pstPanel_Dpv14_Param->backlight->dev);
-	}
-#endif
+	#if defined(CONFIG_DRM_TCC_CTRL_BACKLIGHT)
+	if (dp14->backlight)
+		put_device(&dp14->backlight->dev);
+	#endif
 
-	kfree(pstPanel_Dpv14_Param);
+	kfree(dp14);
 	return 0;
 }
+
 
 static const struct of_device_id panel_dpv14_of_table[] = {
 	{ .compatible = "telechips,drm-lvds-dpv14-0",
@@ -445,27 +487,50 @@ MODULE_DEVICE_TABLE(of, panel_dpv14_of_table);
 #ifdef CONFIG_PM
 static int panel_dpv14_suspend(struct device *dev)
 {
-	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param = dev_get_drvdata(dev);
+	struct panel_dp14	*dp14 = dev_get_drvdata(dev);
 
-	pr_info("[INFO][%s:%s]To %s \r\n", LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
+	dev_info(
+		dp14->dev,
+		"[INFO][%s:%s] %s \r\n",
+		LOG_DPV14_TAG, dp14->data->name, __func__);
 
 	return 0;
 }
 static int panel_dpv14_resume(struct device *dev)
 {
-	struct Panel_Dpv14_Param_t	*pstPanel_Dpv14_Param = dev_get_drvdata(dev);
+	struct panel_dp14	*dp14 = dev_get_drvdata(dev);
 
-	pr_info("[INFO][%s:%s]To %s \r\n", LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
+	dev_err(
+		dp14->dev,
+		"[INFO][%s:%s] %s \r\n",
+		LOG_DPV14_TAG, dp14->data->name, __func__);
 
-	if (pstPanel_Dpv14_Param->stPanel_Pins.pwr_port != NULL) 	/* Set pin status to defualt */
-	{
-		pinctrl_select_state(pstPanel_Dpv14_Param->stPanel_Pins.p, pstPanel_Dpv14_Param->stPanel_Pins.pwr_port);
+	if (
+		panel_tcc_pin_select_state(
+			dp14->dp_pins.p,
+			dp14->dp_pins.pwr_port) < 0) {
+		dev_warn(
+			dp14->dev,
+			"[WARN][%s:%s] %s failed set pinctrl to pwr_port\r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
 	}
-	else
-	{
-		pr_warning("[WARN][%s:%s]%s pwr off func ptr is NULL \r\n",	LOG_DPV14_TAG, __func__, pstPanel_Dpv14_Param->data->name);
+	if (
+		panel_tcc_pin_select_state(
+			dp14->dp_pins.p,
+			dp14->dp_pins.pwr_off) < 0) {
+		dev_warn(
+			dp14->dev,
+			"[WARN][%s:%s] %s failed set pinctrl to pwr_off\r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
 	}
-
+	if (
+		panel_tcc_pin_select_state(
+			dp14->dp_pins.p,
+			dp14->dp_pins.blk_off) < 0) {
+		dev_warn(dp14->dev,
+			"[WARN][%s:%s] %s failed set pinctrl to blk_off\r\n",
+			LOG_DPV14_TAG, dp14->data->name, __func__);
+	}
 	return 0;
 }
 static const struct dev_pm_ops panel_dpv14_pm_ops = {
@@ -486,6 +551,5 @@ static struct platform_driver panel_dpv14_driver = {
 };
 module_platform_driver(panel_dpv14_driver);
 
-MODULE_AUTHOR("Laurent Pinchart <laurent.pinchart@ideasonboard.com>");
-MODULE_DESCRIPTION("LVDS Panel Driver");
+MODULE_DESCRIPTION("Display Port Panel Driver");
 MODULE_LICENSE("GPL");
