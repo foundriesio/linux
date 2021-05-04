@@ -1119,7 +1119,6 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 		if (buf != NULL) {
 			switch (buf->buf.vb2_buf.memory) {
 			case VB2_MEMORY_MMAP:
-			case V4L2_MEMORY_DMABUF:
 				npln = buf->buf.vb2_buf.num_planes;
 				for (idxpln = 0; idxpln < npln; idxpln++) {
 					addr[idxpln] =
@@ -1321,7 +1320,6 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 
 		switch (stream->next_buf->buf.vb2_buf.memory) {
 		case VB2_MEMORY_MMAP:
-		case VB2_MEMORY_DMABUF:
 			npln = stream->next_buf->buf.vb2_buf.num_planes;
 			for (idxpln = 0; idxpln < npln; idxpln++) {
 				/* get address */
@@ -2376,34 +2374,3 @@ int32_t tccvin_s_handover(struct tccvin_streaming *stream,
 
 	return ret;
 }
-
-int32_t tccvin_allocated_dmabuf(struct tccvin_streaming *stream, int32_t count)
-{
-	struct vb2_queue		*q		= NULL;
-	struct tccvin_dmabuf_heap	*heap		= NULL;
-	struct tccvin_dmabuf_alloc_data	data;
-	int32_t				idxBuf		= 0;
-	int32_t				ret		= 0;
-
-	WARN_ON(IS_ERR_OR_NULL(stream));
-
-	q		= &stream->queue.queue;
-	heap		= tccvin_dmabuf_heap_create(stream);
-
-	for (idxBuf = 0; idxBuf < count; idxBuf++) {
-		data.len = q->bufs[idxBuf]->planes[0].length;
-		data.fd = tccvin_dmabuf_alloc(heap, data.len, 0);
-
-		if (data.fd < 0) {
-			loge("Fail allocated memory by dmabuf method\n");
-			ret = -EFAULT;
-		} else {
-			q->bufs[idxBuf]->planes[0].m.fd = data.fd;
-			logd("Successfully allocated - index: %d, fd: %d\n",
-				idxBuf, data.fd);
-		}
-	}
-
-	return ret;
-}
-

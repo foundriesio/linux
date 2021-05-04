@@ -760,14 +760,6 @@ static int tccvin_ioctl_reqbufs(struct file *file, void *fh,
 		tccvin_dismiss_privileges(handle);
 	}
 
-	if (rb->memory == V4L2_MEMORY_DMABUF) {
-		ret = tccvin_allocated_dmabuf(stream, rb->count);
-		if (ret < 0) {
-			loge("fail to allocated dmabuf\n");
-			return ret;
-		}
-	}
-
 	return 0;
 }
 

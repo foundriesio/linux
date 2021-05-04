@@ -99,7 +99,6 @@ static int tccvin_queue_setup(struct vb2_queue *vq,
 		/* the number of default planes is 3 */
 		*nplanes = stream->cur_format->num_planes;
 	}
-	logd("nplanes: %u\n", *nplanes);
 
 	tccvin_get_imagesize(stream->cur_frame->width,
 		stream->cur_frame->height,
@@ -314,13 +313,8 @@ int tccvin_queue_buffer(struct tccvin_video_queue *queue,
 	struct v4l2_buffer *buf)
 {
 	int ret;
-	struct vb2_buffer *vb;
 
 	mutex_lock(&queue->mutex);
-	if (buf->memory == V4L2_MEMORY_DMABUF) {
-		vb = queue->queue.bufs[buf->index];
-		vb->state = VB2_BUF_STATE_PREPARED;
-	}
 	ret = vb2_qbuf(&queue->queue, buf);
 	mutex_unlock(&queue->mutex);
 
@@ -415,40 +409,4 @@ int tccvin_queue_is_allocated(struct tccvin_video_queue *queue)
 	mutex_unlock(&queue->mutex);
 
 	return allocated;
-}
-
-struct tccvin_buffer *tccvin_queue_next_buffer(struct tccvin_video_queue *queue,
-					       struct tccvin_buffer *buf)
-{
-	struct tccvin_buffer *nextbuf;
-	unsigned long flags;
-
-	if ((queue->flags & TCCVIN_QUEUE_DROP_CORRUPTED) && buf->error) {
-		buf->error = 0;
-		buf->state = TCCVIN_BUF_STATE_QUEUED;
-		buf->bytesused = 0;
-		vb2_set_plane_payload(&buf->buf.vb2_buf, 0, 0);
-		return buf;
-	}
-
-	spin_lock_irqsave(&queue->irqlock, flags);
-	list_del(&buf->queue);
-	if (!list_empty(&queue->irqqueue)) {
-		nextbuf = list_first_entry(&queue->irqqueue,
-			struct tccvin_buffer, queue);
-		logd("buf[%d] type: 0x%08x, memory: 0x%08x\n",
-			nextbuf->buf.vb2_buf.index, nextbuf->buf.vb2_buf.type,
-			nextbuf->buf.vb2_buf.memory);
-	} else {
-		nextbuf = NULL;
-		logd("nextbuf == NULL\n");
-	}
-	spin_unlock_irqrestore(&queue->irqlock, flags);
-
-	buf->state = buf->error ?
-		TCCVIN_BUF_STATE_ERROR : TCCVIN_BUF_STATE_DONE;
-	vb2_set_plane_payload(&buf->buf.vb2_buf, 0, buf->bytesused);
-	vb2_buffer_done(&buf->buf.vb2_buf, VB2_BUF_STATE_DONE);
-
-	return nextbuf;
 }
