@@ -9,7 +9,6 @@
 #include <linux/of.h>
 #include <linux/usb/phy.h>
 #include <linux/usb/otg.h>
-#include <linux/clk.h>
 #include <linux/of_gpio.h>
 #include "../dwc3/core.h"
 #include "../dwc3/io.h"
@@ -45,7 +44,6 @@ struct tcc_dwc3_device {
 	void __iomem *ref_base;
 #endif
 	struct usb_phy phy;
-	struct clk *phy_clk;
 
 	int32_t vbus_gpio_num;
 	ulong vbus_gpio_flag;
@@ -701,14 +699,8 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 
 		mdelay(10);
 
-		if (clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
-			dev_err(dwc3_phy_dev->dev, "[ERROR][USB] can't do xhci phy clk enable\n");
-		}
-
 		is_suspend = 0;
 	} else if ((on_off == (int32_t)OFF) && (is_suspend == 0)) {
-		clk_disable_unprepare(dwc3_phy_dev->phy_clk);
-
 		// USB 3.0 PHY Power down
 		dev_info(dwc3_phy_dev->dev, "[INFO][USB] dwc3 tcc: PHY power down\n");
 		USBPHYCFG->U30_PCFG0 |= (Hw25 | Hw24);
@@ -720,10 +712,6 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 	} else if ((on_off == (int32_t)PHY_RESUME) && (is_suspend != 0)) {
 		USBPHYCFG->U30_PCFG0 &= ~(Hw25 | Hw24);
 		dev_info(dwc3_phy_dev->dev, "[INFO][USB] dwc3 tcc: PHY power up\n");
-
-		if (clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
-			dev_err(dwc3_phy_dev->dev, "[ERROR][USB] can't do xhci phy clk enable\n");
-		}
 
 		is_suspend = 0;
 	} else {
@@ -914,13 +902,8 @@ static int32_t dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 #endif
 		mdelay(10);
 
-		if (clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
-			dev_err(dwc3_phy_dev->dev, "[ERROR][USB] can't do xhci phy clk enable\n");
-		}
-
 		is_suspend = 0;
 	} else if ((on_off == (int32_t)OFF) && (is_suspend == 0)) {
-		clk_disable_unprepare(dwc3_phy_dev->phy_clk);
 		// USB 3.0 PHY Power down
 		dev_info(dwc3_phy_dev->dev, "[INFO][USB] dwc3 tcc: PHY power down\n");
 		USBPHYCFG->U30_PCFG0 |= (Hw25 | Hw24);
@@ -935,10 +918,6 @@ static int32_t dwc3_tcc_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 		USBPHYCFG->U30_PCFG0 &= ~(Hw25 | Hw24);
 
 		mdelay(10);
-
-		if (clk_prepare_enable(dwc3_phy_dev->phy_clk) != 0) {
-			dev_err(dwc3_phy_dev->dev, "[ERROR][USB] can't do xhci phy clk enable\n");
-		}
 	} else {
 		/* Nothing to do */
 	}

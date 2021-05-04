@@ -9,7 +9,6 @@
 #include <linux/of.h>
 #include <linux/usb/phy.h>
 #include <linux/usb/otg.h>
-#include <linux/clk.h>
 #include <linux/of_gpio.h>
 #include <dt-bindings/gpio/gpio.h>
 #include "../dwc_otg/v3.20a/driver/tcc_otg_regs.h"
@@ -47,8 +46,6 @@ struct tcc_dwc_otg_device {
 	struct device *dev;
 	void __iomem *base;
 	struct usb_phy phy;
-	struct clk *hclk;
-	struct clk *phy_clk;
 	int32_t vbus_gpio_num;
 	ulong vbus_gpio_flag;
 };
@@ -232,7 +229,6 @@ static int32_t tcc_dwc_otg_phy_init(struct usb_phy *phy)
 	dwc_otg_pcfg = (struct dwc_otg_phy_reg *)dwc_otg_phy_dev->base;
 
 	dev_info(dwc_otg_phy_dev->dev, "[INFO][USB] dwc_otg PHY init\n");
-	clk_reset(dwc_otg_phy_dev->hclk, 1);
 #if defined(CONFIG_TCC_DWC_OTG_HOST_MUX) || defined(CONFIG_USB_DWC2_TCC_MUX)
 	/* get otg control cfg register */
 	mux_cfg_val = readl(&dwc_otg_pcfg->otgmux);
@@ -345,7 +341,6 @@ static int32_t tcc_dwc_otg_phy_init(struct usb_phy *phy)
 	dev_info(dwc_otg_phy_dev->dev, "[INFO][USB] pcfg1: 0x%x txvrt: 0x%x\n",
 			dwc_otg_pcfg->pcfg1, CONFIG_USB_HS_DC_VOLTAGE_LEVEL);
 #endif
-	clk_reset(dwc_otg_phy_dev->hclk, 0);
 
 	if (phy->otg != NULL) {
 		phy->otg->c_mode = (int32_t)USBPHY_MODE_RESET;
@@ -473,20 +468,6 @@ static int32_t tcc_dwc_otg_create_phy(struct device *dev,
 
 	if (phy_dev->phy.otg == NULL) {
 		return -ENOMEM;
-	}
-
-	// HCLK
-	phy_dev->hclk = of_clk_get(dev->of_node, 0);
-
-	if (IS_ERR(phy_dev->hclk)) {
-		phy_dev->hclk = NULL;
-	}
-
-	// PHY CLK
-	phy_dev->phy_clk = of_clk_get(dev->of_node, 1);
-
-	if (IS_ERR(phy_dev->phy_clk)) {
-		phy_dev->phy_clk = NULL;
 	}
 
 	phy_dev->dev				= dev;

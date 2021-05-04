@@ -13,7 +13,6 @@
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/module.h>
-#include <linux/clk.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/of_gpio.h>
@@ -155,8 +154,6 @@ struct dwc3_tcc {
 	struct platform_device *usb3_phy;	//this is dummy, maybe
 	struct usb_phy *dwc3_phy;	//our dwc3's phy structure
 	struct device *dev;
-	struct clk *hclk;
-	struct clk *phy_clk;
 
 	int32_t usb3en_ctrl_able;
 	int32_t host_en_gpio;
@@ -1042,25 +1039,6 @@ static int32_t dwc3_tcc_new_probe(struct platform_device *pdev)
 	tcc->regs = devm_ioremap(&pdev->dev, res->start, res->end - res->start);
 #endif
 
-	tcc->hclk = of_clk_get(pdev->dev.of_node, 0);
-	if (IS_ERR(tcc->hclk)) {
-		dev_err(dev, "[ERROR][USB] couldn't get h_clock\n");
-		return -EINVAL;
-	}
-	ret = clk_prepare_enable(tcc->hclk);
-	if (ret != 0) {
-		return ret;
-	}
-#if 0
-	tcc->phy_clk = of_clk_get(pdev->dev.of_node, 1);
-	if (IS_ERR(tcc->phy_clk)) {
-		dev_err(dev, "[ERROR][USB] couldn't get phy_clock\n");
-		return -EINVAL;
-	}
-	ret = clk_prepare_enable(tcc->phy_clk);
-	if (ret)
-		return ret;
-#endif
 	//===============================================
 	// Check Host enable pin
 	//===============================================
@@ -1240,7 +1218,6 @@ populate_err:
 	platform_device_unregister(tcc->usb3_phy);
 	dwc3_tcc_power_ctrl(tcc, OFF);
 gpios_err:
-	clk_disable_unprepare(tcc->hclk);
 	return ret;
 }
 #endif
@@ -1276,36 +1253,8 @@ static int32_t dwc3_tcc_new_remove(struct platform_device *pdev)
 	platform_device_unregister(tcc->usb2_phy);
 	platform_device_unregister(tcc->usb3_phy);
 
-	clk_disable_unprepare(tcc->hclk);
 	dwc3_tcc_vbus_ctrl(tcc, OFF);
 	dwc3_tcc_power_ctrl(tcc, OFF);
-	return 0;
-}
-#endif
-
-#if 0
-static int32_t dwc3_tcc_remove(struct platform_device *pdev)
-{
-	struct dwc3_tcc *tcc = platform_get_drvdata(pdev);
-	struct dwc3_tcc_data *pdata = pdev->dev.platform_data;
-
-	clk_disable_unprepare(tcc->phy_clk);
-
-	clk_disable_unprepare(tcc->hclk);
-
-	device_remove_file(&pdev->dev, &dev_attr_vbus);
-#if defined(DWC3_SQ_TEST_MODE)
-	device_remove_file(&pdev->dev, &dev_attr_phydump);
-#endif
-	dwc3_tcc_free_dt(tcc);
-
-	platform_device_unregister(tcc->dwc3);
-
-	if (pdata && pdata->phy_exit)
-		pdata->phy_exit(pdev, pdata->phy_type);
-
-	platform_set_drvdata(pdev, NULL);
-
 	return 0;
 }
 #endif
@@ -1323,20 +1272,12 @@ static int32_t dwc3_tcc_suspend(struct device *dev)
 	dwc3_tcc_vbus_ctrl(tcc, OFF);
 	dwc3_tcc_power_ctrl(tcc, OFF);
 
-	if (tcc->hclk != NULL) {
-		clk_disable_unprepare(tcc->hclk);
-	}
-
 	return 0;
 }
 
 static int32_t dwc3_tcc_resume(struct device *dev)
 {
 	struct dwc3_tcc *tcc = platform_get_drvdata(to_platform_device(dev));
-
-	if (tcc->hclk != NULL) {
-		clk_prepare_enable(tcc->hclk);
-	}
 
 	dwc3_tcc_power_ctrl(tcc, ON);
 	dwc3_tcc_vbus_ctrl(tcc, tcc->vbus_pm_status);

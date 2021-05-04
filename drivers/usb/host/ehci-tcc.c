@@ -17,8 +17,6 @@
  * more details.
  */
 
-#include <linux/clk.h>
-#include <linux/clk-provider.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
@@ -70,13 +68,6 @@ struct tcc_ehci_hcd {
 
 	int32_t vbus_source_ctrl;
 	struct regulator *vbus_source;
-
-	struct clk *hclk;
-	struct clk *pclk;
-	struct clk *phy_clk;
-	uint32_t core_clk_rate;
-	uint32_t core_clk_rate_phy;
-	struct clk *isol;
 
 	struct tcc_usb_phy *phy;
 	struct usb_phy *transceiver;
@@ -144,47 +135,6 @@ static void tcc_ehci_phy_ctrl(struct tcc_ehci_hcd *tcc_ehci, int32_t on_off)
 		phy->set_phy_state(phy, on_off);
 		ehci_phy_set = 1;
 	}
-}
-
-int32_t tcc_ehci_clk_ctrl(struct tcc_ehci_hcd *tcc_ehci, int32_t on_off)
-{
-	if (tcc_ehci == NULL) {
-		return -ENODEV;
-	}
-
-	if (on_off == ON) {
-		if (tcc_ehci->hclk != NULL) {
-			if (clk_prepare_enable(tcc_ehci->hclk) != 0) {
-				dev_err(tcc_ehci->dev,
-						"[ERROR][USB] can't do usb 2.0 hclk clock enable\n");
-				return -1;
-			}
-		}
-
-		if (tcc_ehci->pclk != NULL) {
-			if (clk_prepare_enable(tcc_ehci->pclk) != 0) {
-				dev_err(tcc_ehci->dev,
-						"[ERROR][USB] can't do usb 2.0 hclk clock enable\n");
-				return -1;
-			}
-
-			clk_set_rate(tcc_ehci->pclk, tcc_ehci->core_clk_rate);
-		}
-	} else {
-		if (tcc_ehci->hclk) {
-			if (__clk_is_enabled(tcc_ehci->hclk)) {
-				clk_disable_unprepare(tcc_ehci->hclk);
-			}
-		}
-
-		if (tcc_ehci->pclk) {
-			if (__clk_is_enabled(tcc_ehci->pclk)) {
-				clk_disable_unprepare(tcc_ehci->pclk);
-			}
-		}
-	}
-
-	return 0;
 }
 
 static char *ehci_pcfg1_display(uint32_t old_reg, uint32_t new_reg, char *str)
@@ -558,14 +508,12 @@ static int32_t tcc_ehci_suspend(struct device *dev)
 	defined(CONFIG_ARCH_TCC802X) || defined(CONFIG_ARCH_TCC803X) ||	\
 	defined(CONFIG_ARCH_TCC805X)
 	tcc_ehci_phy_ctrl(tcc_ehci, OFF);
-	tcc_ehci_clk_ctrl(tcc_ehci, OFF);
 	tcc_ehci_vbus_ctrl(tcc_ehci, OFF);
 	tcc_ehci_power_ctrl(tcc_ehci, OFF);
 #else
 #if !defined(CONFIG_USB_OHCI_HCD) && !defined(CONFIG_USB_OHCI_HCD_MODULE)
 	tcc_ehci_phy_ctrl(tcc_ehci, OFF);
 #endif
-	tcc_ehci_clk_ctrl(tcc_ehci, OFF);
 #if !defined(CONFIG_USB_OHCI_HCD) && !defined(CONFIG_USB_OHCI_HCD_MODULE)
 	tcc_ehci_vbus_ctrl(tcc_ehci, OFF);
 #endif
@@ -588,7 +536,6 @@ static int32_t tcc_ehci_resume(struct device *dev)
 	tcc_ehci_power_ctrl(tcc_ehci, ON);
 	tcc_ehci_phy_ctrl(tcc_ehci, ON);
 	tcc_ehci_vbus_ctrl(tcc_ehci, ON);
-	tcc_ehci_clk_ctrl(tcc_ehci, ON);
 	tcc_ehci_phy_init(tcc_ehci);
 #else
 	tcc_ehci_power_ctrl(tcc_ehci, ON);
@@ -596,7 +543,6 @@ static int32_t tcc_ehci_resume(struct device *dev)
 	tcc_ehci_phy_ctrl(tcc_ehci, ON);
 	tcc_ehci_vbus_ctrl(tcc_ehci, ON);
 #endif
-	tcc_ehci_clk_ctrl(tcc_ehci, ON);
 #if !defined(CONFIG_USB_OHCI_HCD) && !defined(CONFIG_USB_OHCI_HCD_MODULE)
 	tcc_ehci_phy_init(tcc_ehci);
 #endif
@@ -707,8 +653,6 @@ static int32_t ehci_tcc_drv_probe(struct platform_device *pdev)
 	hcd->rsrc_len = res->end - res->start + 1U;
 	hcd->regs = devm_ioremap(&pdev->dev, res->start, hcd->rsrc_len);
 
-	tcc_ehci_clk_ctrl(tcc_ehci, ON);
-
 	/* USB HS Phy Enable */
 	tcc_ehci_phy_ctrl(tcc_ehci, ON);
 
@@ -771,7 +715,6 @@ static int32_t ehci_tcc_drv_probe(struct platform_device *pdev)
 	return retval;
 
 fail_add_hcd:
-	tcc_ehci_clk_ctrl(tcc_ehci, OFF);
 fail_request_resource:
 	usb_put_hcd(hcd);
 fail_create_hcd:
@@ -796,7 +739,6 @@ static int32_t __exit ehci_tcc_drv_remove(struct platform_device *pdev)
 	usb_put_hcd(hcd);
 
 	tcc_ehci_phy_ctrl(tcc_ehci, OFF);
-	tcc_ehci_clk_ctrl(tcc_ehci, OFF);
 	tcc_ehci_vbus_ctrl(tcc_ehci, OFF);
 	tcc_ehci_power_ctrl(tcc_ehci, OFF);
 
@@ -887,35 +829,6 @@ static int32_t tcc_ehci_parse_dt(struct platform_device *pdev,
 	} else {
 		tcc_ehci->vbus_source_ctrl = 0;
 	}
-
-	tcc_ehci->hclk = of_clk_get(pdev->dev.of_node, 0);
-
-	if (IS_ERR(tcc_ehci->hclk)) {
-		tcc_ehci->hclk = NULL;
-	}
-
-	tcc_ehci->isol = of_clk_get(pdev->dev.of_node, 1);
-
-	if (IS_ERR(tcc_ehci->isol)) {
-		tcc_ehci->isol = NULL;
-	}
-
-	tcc_ehci->pclk = of_clk_get(pdev->dev.of_node, 2);
-
-	if (IS_ERR(tcc_ehci->pclk)) {
-		tcc_ehci->pclk = NULL;
-	}
-
-	tcc_ehci->phy_clk = of_clk_get(pdev->dev.of_node, 3);
-
-	if (IS_ERR(tcc_ehci->phy_clk)) {
-		tcc_ehci->phy_clk = NULL;
-	}
-
-	of_property_read_u32(pdev->dev.of_node, "clock-frequency",
-			&tcc_ehci->core_clk_rate);
-	of_property_read_u32(pdev->dev.of_node, "clock-frequency-phy",
-			&tcc_ehci->core_clk_rate_phy);
 
 	// Check TPL Support
 	if (of_usb_host_tpl_support(pdev->dev.of_node)) {

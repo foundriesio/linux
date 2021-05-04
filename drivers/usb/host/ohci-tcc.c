@@ -25,7 +25,6 @@
  * This file is licenced under the GPL.
  */
 
-#include <linux/clk.h>
 #include <linux/device.h>
 #include <linux/signal.h>
 #include <linux/platform_device.h>
@@ -73,10 +72,6 @@ struct tcc_ohci_hcd {
 	int32_t vbus_source_ctrl;
 	struct regulator *vbus_source;
 
-	struct clk *hclk;
-
-	uint32_t core_clk_rate;
-
 	/* USB PHY */
 	void __iomem *phy_regs;         /* device memory/io */
 	resource_size_t phy_rsrc_start; /* memory/io resource start */
@@ -120,30 +115,6 @@ static ssize_t ohci_tpl_support_store(struct device *dev,
 
 DEVICE_ATTR(ohci_tpl_support, 0644,
 		ohci_tpl_support_show, ohci_tpl_support_store);
-
-int32_t tcc_ohci_clk_ctrl(struct tcc_ohci_hcd *tcc_ohci, int32_t on_off)
-{
-	if (tcc_ohci == NULL) {
-		return -ENODEV;
-	}
-
-	if (on_off == ON) {
-		if (clk_prepare_enable(tcc_ohci->hclk) != 0) {
-			dev_err(tcc_ohci->dev, "[ERROR][USB] can't do usb 2.0 hclk clock enable\n");
-
-			return -1;
-		}
-	} else {
-		if (tcc_ohci->hclk != NULL) {
-			clk_disable_unprepare(tcc_ohci->hclk);
-		} else {
-			/* Nothing to do */
-		}
-	}
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(tcc_ohci_clk_ctrl);
 
 int32_t tcc_ohci_vbus_ctrl(struct tcc_ohci_hcd *tcc_ohci, int32_t on_off)
 {
@@ -391,8 +362,6 @@ static int32_t usb_hcd_tcc_probe(const struct hc_driver *driver,
 	/* TPL Support Set */
 	hcd->tpl_support = tcc_ohci->hcd_tpl_support;
 
-	tcc_ohci_clk_ctrl(tcc_ohci, ON);
-
 	/* USB HOST Power Enable */
 	if (tcc_ohci_vbus_ctrl(tcc_ohci, ON) != 0) {
 		pr_err("[ERROR][USB] ohci-tcc: USB HOST VBUS failed\n");
@@ -516,7 +485,6 @@ static int32_t tcc_ohci_suspend(struct device *dev)
 	!defined(CONFIG_ARCH_TCC899X) &&				\
 	!defined(CONFIG_ARCH_TCC803X) && !defined(CONFIG_ARCH_TCC901X)
 	tcc_ohci_phy_ctrl(tcc_ohci, OFF);
-	tcc_ohci_clk_ctrl(tcc_ohci, OFF);
 	tcc_ohci_vbus_ctrl(tcc_ohci, OFF);
 #endif
 
@@ -535,7 +503,6 @@ static int32_t tcc_ohci_resume(struct device *dev)
 	!defined(CONFIG_ARCH_TCC901X) && !defined(CONFIG_ARCH_TCC805X)
 	tcc_ohci_phy_ctrl(tcc_ohci, ON);
 	tcc_ohci_vbus_ctrl(tcc_ohci, ON);
-	tcc_ohci_clk_ctrl(tcc_ohci, ON);
 #if !defined(CONFIG_ARCH_TCC898X) && !defined(CONFIG_ARCH_TCC899X) &&	\
 	!defined(CONFIG_ARCH_TCC803X) &&				\
 	!defined(CONFIG_ARCH_TCC901X) && !defined(CONFIG_ARCH_TCC805X)
@@ -609,11 +576,6 @@ static int32_t tcc_ohci_parse_dt(struct platform_device *pdev,
 		tcc_ohci->vbus_source_ctrl = 0;
 		err = 0;
 	}
-
-	tcc_ohci->hclk = of_clk_get(pdev->dev.of_node, 0);
-
-	if (IS_ERR(tcc_ohci->hclk))
-		tcc_ohci->hclk = NULL;
 
 	// Check TPL Support
 	if (of_usb_host_tpl_support(pdev->dev.of_node)) {

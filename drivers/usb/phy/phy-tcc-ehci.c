@@ -9,8 +9,6 @@
 #include <linux/of.h>
 #include <linux/usb/phy.h>
 #include <linux/usb/otg.h>
-#include <linux/clk.h>
-#include <linux/clk-provider.h>
 #include <linux/of_gpio.h>
 #include <dt-bindings/gpio/gpio.h>
 #include "../host/tcc-hcd.h"
@@ -34,8 +32,6 @@ struct tcc_ehci_device {
 	struct device *dev;
 	void __iomem *base;	/* Phy base address */
 	struct usb_phy phy;
-	struct clk *hclk;
-	struct clk *isol;
 	int32_t mux_port;
 	int32_t vbus_gpio_num;
 	ulong vbus_gpio_flag;
@@ -69,31 +65,6 @@ static void __iomem *tcc_ehci_get_base(struct usb_phy *phy)
 	}
 
 	return phy_dev->base;
-}
-
-/*
- * TOP Isolateion Control function
- */
-static int32_t tcc_ehci_phy_isolation(struct usb_phy *phy, int32_t on_off)
-{
-	struct tcc_ehci_device *phy_dev =
-		container_of(phy, struct tcc_ehci_device, phy);
-
-	if ((phy_dev == NULL) || (phy_dev->isol == NULL)) {
-		return -1;
-	}
-
-	if (on_off == ON) {
-		if (clk_prepare_enable(phy_dev->isol) != 0) {
-			dev_err(phy_dev->dev, "[ERROR][USB] can't do usb 2.0 phy enable\n");
-		}
-	} else if (on_off == OFF) {
-		clk_disable_unprepare(phy_dev->isol);
-	} else {
-		dev_err(phy_dev->dev, "[INFO][USB] bad argument\n");
-	}
-
-	return 0;
 }
 
 /*
@@ -385,12 +356,6 @@ static int32_t tcc_ehci_phy_init(struct usb_phy *phy)
 		writel(mux_cfg_val, phy->otg->mux_cfg_addr);
 	}
 
-	if (!__clk_is_enabled(ehci_phy_dev->hclk)) {
-		clk_enable(ehci_phy_dev->hclk);
-	}
-
-	clk_reset(ehci_phy_dev->hclk, 1);
-
 	// Reset PHY Registers
 #if defined(CONFIG_ARCH_TCC899X) || defined(CONFIG_ARCH_TCC803X) ||	\
 	defined(CONFIG_ARCH_TCC901X) ||	defined(CONFIG_ARCH_TCC805X)
@@ -455,8 +420,6 @@ static int32_t tcc_ehci_phy_init(struct usb_phy *phy)
 	writel(readl(&ehci_pcfg->pcfg4) | Hw30, &ehci_pcfg->pcfg4);
 	// Set DP/DM (pull down)
 	writel(readl(&ehci_pcfg->pcfg4) | 0x1400U, &ehci_pcfg->pcfg4);
-
-	clk_reset(ehci_phy_dev->hclk, 0);
 
 	// Wait Phy Valid Interrupt
 	i = 0;
@@ -669,18 +632,6 @@ static int32_t tcc_ehci_create_phy(struct device *dev,
 		(of_find_property(dev->of_node,
 			"mux_port", NULL) != NULL) ? 1 : 0;
 
-	// HCLK
-	phy_dev->hclk = of_clk_get(dev->of_node, 0);
-	if (IS_ERR(phy_dev->hclk)) {
-		phy_dev->hclk = NULL;
-	}
-
-	// isol
-	phy_dev->isol = of_clk_get(dev->of_node, 1);
-	if (IS_ERR(phy_dev->isol)) {
-		phy_dev->isol = NULL;
-	}
-
 	phy_dev->dev			  = dev;
 
 	phy_dev->phy.dev		  = phy_dev->dev;
@@ -688,7 +639,6 @@ static int32_t tcc_ehci_create_phy(struct device *dev,
 	phy_dev->phy.state		  = OTG_STATE_UNDEFINED;
 	phy_dev->phy.type		  = USB_PHY_TYPE_USB2;
 	phy_dev->phy.init		  = tcc_ehci_phy_init;
-	phy_dev->phy.set_phy_isol	  = tcc_ehci_phy_isolation;
 	phy_dev->phy.set_phy_state	  = tcc_ehci_phy_state_set;
 	phy_dev->phy.set_phy_mux_sel	  = tcc_ehci_phy_mux_sel;
 	phy_dev->phy.set_vbus_resource	  = tcc_ehci_phy_set_vbus_resource;
