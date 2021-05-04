@@ -7304,9 +7304,11 @@ static __init void vmx_set_cpu_caps(void)
 	if (!vmx_xsaves_supported())
 		kvm_cpu_cap_clear(X86_FEATURE_XSAVES);
 
-	/* CPUID 0x80000001 */
-	if (!cpu_has_vmx_rdtscp())
+	/* CPUID 0x80000001 and 0x7 (RDPID) */
+	if (!cpu_has_vmx_rdtscp()) {
 		kvm_cpu_cap_clear(X86_FEATURE_RDTSCP);
+		kvm_cpu_cap_clear(X86_FEATURE_RDPID);
+	}
 
 	if (vmx_waitpkg_supported())
 		kvm_cpu_cap_check_and_set(X86_FEATURE_WAITPKG);
