@@ -1012,7 +1012,8 @@ static int tcp_packet(struct nf_conn *ct,
 
 		if (index == TCP_RST_SET
 		    && (ct->proto.tcp.seen[!dir].flags & IP_CT_TCP_FLAG_MAXACK_SET)
-		    && before(ntohl(th->seq), ct->proto.tcp.seen[!dir].td_maxack)) {
+		    && before(ntohl(th->seq), ct->proto.tcp.seen[!dir].td_maxack)
+		    && !tn->tcp_be_liberal) {
 			/* Invalid RST  */
 			spin_unlock_bh(&ct->lock);
 			if (LOG_INVALID(net, IPPROTO_TCP))
