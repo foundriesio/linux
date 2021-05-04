@@ -569,3 +569,6 @@
 	status = "okay";
 };
 
+&gmac {
+	phyrst-gpio = <&gpc 15 0>; /* Marvell phy 88Q212x phy reset gpio */
+};
