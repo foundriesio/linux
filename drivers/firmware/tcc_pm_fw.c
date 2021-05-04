@@ -78,9 +78,8 @@ static ssize_t application_ready_show(struct kobject *kobj,
 {
 	struct pm_fw_drvdata *drvdata = get_pm_fw_drvdata();
 
-	if (drvdata == NULL) {
+	if (drvdata == NULL)
 		return sprintf(buf, "-1\n");
-	}
 
 	return sprintf(buf, "%d\n", drvdata->application_ready ? 1 : 0);
 }
@@ -93,14 +92,12 @@ static ssize_t application_ready_store(struct kobject *kobj,
 	struct tcc_mbox_data msg;
 	s32 ret;
 
-	if (drvdata == NULL) {
+	if (drvdata == NULL)
 		return (ssize_t)count;
-	}
 
-	if (drvdata->application_ready) {
-		/* Ignore duplicated application ready events */
+	/* Ignore duplicated application ready events */
+	if (drvdata->application_ready)
 		return (ssize_t)count;
-	}
 
 	update_bit_field_val(&drvdata->boot_reason);
 
@@ -134,13 +131,11 @@ static ssize_t boot_reason_show(struct kobject *kobj,
 {
 	struct pm_fw_drvdata *drvdata = get_pm_fw_drvdata();
 
-	if (drvdata == NULL) {
+	if (drvdata == NULL)
 		return sprintf(buf, "-1\n");
-	}
 
-	if (drvdata->boot_reason.val == 0) {
+	if (drvdata->boot_reason.val == 0)
 		update_bit_field_val(&drvdata->boot_reason);
-	}
 
 	return sprintf(buf, "%u\n", drvdata->boot_reason.val);
 }
@@ -167,11 +162,8 @@ static const struct attribute_group pwrstr_group = {
 
 static s32 pm_fw_power_sysfs_init(void)
 {
-	s32 ret;
-
-	if (power_kobj == NULL) {
+	if (power_kobj == NULL)
 		return -EINVAL;
-	}
 
 	return sysfs_create_group(power_kobj, &pwrstr_group);
 }
@@ -187,16 +179,14 @@ static s32 pmic_ctrl_str_mode(struct pmic *pmic, u32 enter)
 	s32 i;
 	s32 ret;
 
-	if (pmic == NULL) {
-		/* No PMIC to control (e.g. subcore doesn't control PMIC) */
+	/* No PMIC to control (e.g. subcore doesn't control PMIC) */
+	if (pmic == NULL)
 		return 0;
-	}
 
 #if defined(CONFIG_MFD_DA9062)
 	map = pmic->da9062_regmap;
-	if (map == NULL) {
+	if (map == NULL)
 		return 0;
-	}
 
 	/*
 	 * Keep BUCK1/LDO2 on in power-down for STR support.
@@ -205,16 +195,14 @@ static s32 pmic_ctrl_str_mode(struct pmic *pmic, u32 enter)
 	ret = regmap_update_bits(map, DA9062AA_BUCK1_CONT,
 				 DA9062AA_BUCK1_CONF_MASK,
 				 enter << DA9062AA_BUCK1_CONF_SHIFT);
-	if (ret < 0) {
+	if (ret < 0)
 		return ret;
-	}
 
 	ret = regmap_update_bits(map, DA9062AA_LDO2_CONT,
 				 DA9062AA_LDO2_CONF_MASK,
 				 enter << DA9062AA_LDO2_CONF_SHIFT);
-	if (ret < 0) {
+	if (ret < 0)
 		return ret;
-	}
 
 	/*
 	 * S/W Workaround for power sequence issue (DA9062)
@@ -222,19 +210,16 @@ static s32 pmic_ctrl_str_mode(struct pmic *pmic, u32 enter)
 	 * - Enable IRQ for SYS_EN
 	 */
 	ret = regmap_update_bits(map, DA9062AA_WAIT, 0xff, 0x96);
-	if (ret < 0) {
+	if (ret < 0)
 		return ret;
-	}
 
 	ret = regmap_update_bits(map, DA9062AA_ID_32_31, 0xff, 0x03);
-	if (ret < 0) {
+	if (ret < 0)
 		return ret;
-	}
 
 	ret = regmap_update_bits(map, DA9062AA_IRQ_MASK_C, 0x10, 0x00);
-	if (ret < 0) {
+	if (ret < 0)
 		return ret;
-	}
 #endif
 #if defined(CONFIG_REGULATOR_DA9121)
 	/*
@@ -244,39 +229,32 @@ static s32 pmic_ctrl_str_mode(struct pmic *pmic, u32 enter)
 	 */
 	for (i = 0; i < 2; i++) {
 		map = pmic->da9131_regmap[i];
-		if (map == NULL) {
+		if (map == NULL)
 			return 0;
-		}
 
 		ret = regmap_update_bits(map, 0x20, 0xff, 0x49);
-		if (ret < 0) {
+		if (ret < 0)
 			return ret;
-		}
 
 		ret = regmap_update_bits(map, 0x21, 0xff, 0x49);
-		if (ret < 0) {
+		if (ret < 0)
 			return ret;
-		}
 
 		ret = regmap_update_bits(map, 0x28, 0xff, 0x49);
-		if (ret < 0) {
+		if (ret < 0)
 			return ret;
-		}
 
 		ret = regmap_update_bits(map, 0x29, 0xff, 0x49);
-		if (ret < 0) {
+		if (ret < 0)
 			return ret;
-		}
 
 		ret = regmap_update_bits(map, 0x13, 0xff, 0x08);
-		if (ret < 0) {
+		if (ret < 0)
 			return ret;
-		}
 
 		ret = regmap_update_bits(map, 0x15, 0xff, 0x08);
-		if (ret < 0) {
+		if (ret < 0)
 			return ret;
-		}
 	}
 #endif
 	return 0;
@@ -288,9 +266,8 @@ static int pm_fw_pm_notifier_call(struct notifier_block *nb,
 	struct pm_fw_drvdata *drvdata = get_pm_fw_drvdata();
 	s32 ret = 0;
 
-	if (drvdata == NULL) {
+	if (drvdata == NULL)
 		return -ENODEV;
-	}
 
 	switch (action) {
 	case PM_SUSPEND_PREPARE:
@@ -306,9 +283,8 @@ static int pm_fw_pm_notifier_call(struct notifier_block *nb,
 		break;
 	}
 
-	if (ret < 0) {
+	if (ret < 0)
 		pm_fw_err(&drvdata->pdev->dev, "set PMIC for STR mode", ret);
-	}
 
 	return ret;
 }
@@ -327,14 +303,9 @@ static void pm_fw_pm_notifier_free(struct notifier_block *nb)
 
 static s32 pm_fw_boot_reason_init(struct bit_field *reason, struct device *dev)
 {
-	struct device_node *np = dev->of_node;
-	u32 prop[3];
-	s32 ret;
-
 	reason->reg = ioremap(PMU_MICOM_USSTATUS, sizeof(u32));
-	if (reason->reg == NULL) {
+	if (reason->reg == NULL)
 		return -ENOMEM;
-	}
 
 	update_bit_field_val(reason);
 
@@ -354,10 +325,8 @@ static void pm_fw_event_listener(struct mbox_client *client, void *message)
 	u32 message_type = 0;
 	s32 ret;
 
-	if ((client == NULL) || (msg == NULL)) {
-		/* Never be happened, but check for just in case ... */
+	if ((client == NULL) || (msg == NULL))
 		return;
-	}
 
 	message_type = msg->cmd[0] & 0xFFU;
 
@@ -366,11 +335,10 @@ static void pm_fw_event_listener(struct mbox_client *client, void *message)
 
 	ret = kobject_uevent_env(&(client->dev->kobj), KOBJ_CHANGE, envp);
 
-	if (ret != 0) {
+	if (ret != 0)
 		pm_fw_err(client->dev, "set uevent env", ret);
-	} else {
+	else
 		pm_fw_info(client->dev, "PM_EVENT env updated");
-	}
 }
 
 static s32 pm_fw_mbox_init(struct mbox_chan **ch, struct device *dev)
@@ -382,14 +350,12 @@ static s32 pm_fw_mbox_init(struct mbox_chan **ch, struct device *dev)
 	s32 ret;
 
 	ret = of_property_read_string(np, "mbox-names", &mbox_name);
-	if (ret != 0) {
+	if (ret != 0)
 		return ret;
-	}
 
 	cl = devm_kzalloc(dev, sizeof(struct mbox_client), GFP_KERNEL);
-	if (cl == NULL) {
+	if (cl == NULL)
 		return -ENOMEM;
-	}
 
 	cl->dev = dev;
 	cl->tx_block = (bool)true;
@@ -412,10 +378,8 @@ static void pm_fw_mbox_free(struct mbox_chan *ch, struct device *dev)
 {
 	struct mbox_client *cl;
 
-	if (ch == NULL) {
-		/* XXX: Should not happen */
+	if (ch == NULL)
 		return;
-	}
 
 	cl = ch->cl;
 
