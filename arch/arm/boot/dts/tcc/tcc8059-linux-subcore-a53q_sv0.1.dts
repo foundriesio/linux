@@ -2509,7 +2509,7 @@
                                 freq_max_cluster0 = <950>;
                         };
                 };
-
+	};
 };
 
 &a53_sc_mbox {
