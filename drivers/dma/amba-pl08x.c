@@ -3068,6 +3068,19 @@ out_no_pl08x:
 	return ret;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int pl08x_str_resume(struct device *dev)
+{
+	struct pl08x_driver_data *pl08x = dev_get_drvdata(dev);
+
+	pl08x_ensure_on(pl08x);
+
+	return 0;
+}
+#endif
+
+static SIMPLE_DEV_PM_OPS(pl08x_dev_pm_ops, NULL, pl08x_str_resume);
+
 /* PL080 has 8 channels and the PL080 have just 2 */
 static struct vendor_data vendor_pl080 = {
 	.config_offset = PL080_CH_CONFIG,
@@ -3146,6 +3159,7 @@ MODULE_DEVICE_TABLE(amba, pl08x_ids);
 
 static struct amba_driver pl08x_amba_driver = {
 	.drv.name	= DRIVER_NAME,
+	.drv.pm		= &pl08x_dev_pm_ops,
 	.id_table	= pl08x_ids,
 	.probe		= pl08x_probe,
 };
