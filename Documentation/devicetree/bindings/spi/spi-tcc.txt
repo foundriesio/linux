@@ -43,9 +43,16 @@ Optional properties:
 			If the region of DMA address is out of the range that you set in device tree,
 			GPSB Send 0 and cannot read the data.
 - spi-slave		: Empty property indicating the SPI controller is used in slave mode.
-
+- prd-enable		: Capture at every even-numbered order edge of SCK.
+- sdoe-enable		: SDO is driven only when CS signal tells active.
+- write-threshold	: Transmit FIFO threshold for interrupt/DMA request.
+- read-threshold	: Receive FIFO threshold for interrupt/DMA request.
 
 Optional properties (master mode only):
+- recovery-time		: Increase recovery-time.
+- hold-time		: Increase hold-time.
+- setup-time		: Increase setup-time.
+Note: Please refer the Full/Chip Specification for more detail.
 - ctf-mode-disable	: boolean, If the property is exist, GPSB transfer in single mode.
 			for more detail in "TCCxxxx Common BSP-User Guide for Driver" Document.
 - cs-gpios		: gpios chip select.
@@ -56,7 +63,6 @@ with max(cs-gpios > hw cs).
 So if for example the controller has 2 CS lines, and the cs-gpios
 property looks like this:
 cs-gpios = <&gpg 8 0>,<&gpa 30 0>;
-
 
 Optional subnodes:
 	Subnodes are use to represent the SPI slave devices connected to the SPI
