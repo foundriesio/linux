@@ -231,6 +231,8 @@ static int32_t tcc_dwc_otg_phy_init(struct usb_phy *phy)
 	dev_info(dwc_otg_phy_dev->dev, "[INFO][USB] dwc_otg PHY init\n");
 #if defined(CONFIG_TCC_DWC_OTG_HOST_MUX) || defined(CONFIG_USB_DWC2_TCC_MUX)
 	/* get otg control cfg register */
+	writel(0x0, &dwc_otg_pcfg->otgmux);
+	udelay(10);
 	mux_cfg_val = readl(&dwc_otg_pcfg->otgmux);
 	BITSET(mux_cfg_val,
 			TCC_MUX_OPSEL | TCC_MUX_O_SELECT | TCC_MUX_H_SELECT);
