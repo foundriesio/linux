@@ -1171,7 +1171,7 @@ static int tcc_pinctrl_probe(struct platform_device *pdev)
 	pctl->nbanks = 0;
 	gpio_np = of_find_node_by_name(node, "pinctrl_gpio");
 	for_each_child_of_node(gpio_np, np) {
-			++pctl->nbanks;
+		++pctl->nbanks;
 	}
 
 
