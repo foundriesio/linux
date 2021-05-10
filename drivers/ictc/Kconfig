@@ -2,3 +2,9 @@ config ICTC
 	bool "ICTC driver"
 	depends on ARCH_TCC803X=y || ARCH_TCC805X=y
 	default n
+	help
+	    Telechips ICTC driver
+	    ICTC stands for input capture time counter.
+	    It receives PDM signal as input and generates
+	    interrupts related to the signal to give a chance
+	    to do something.
