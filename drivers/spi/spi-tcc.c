@@ -491,6 +491,13 @@ static void tcc_spi_hwinit(struct tcc_spi *tccspi)
 		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE,
 				TCC_GPSB_MODE_CTF);
 	}
+
+	if (tccspi->pd->sdoe) {
+		/* Set SDOE */
+		TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_EVTCTRL,
+				TCC_GPSB_EVTCTRL_SDOE);
+	}
+
 	/* Set Tx and Rx FIFO threshold for interrupt/DMA request */
 	TCC_GPSB_BITCSET(tccspi->base + TCC_GPSB_INTEN,
 			TCC_GPSB_INTEN_CFGRTH_MASK,
@@ -1652,6 +1659,12 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 		pd->prd = (bool)false;
 	}
 
+	if (of_property_read_bool(np, "sdoe-enable")) {
+		pd->sdoe = (bool)true;
+	} else {
+		pd->sdoe = (bool)false;
+	}
+
 	if (of_property_read_bool(np, "recovery-time")) {
 		pd->recovery_time = (bool)true;
 	} else {
@@ -1693,10 +1706,11 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 	}
 
 
-	dev_info(dev, "[INFO][SPI] GPSB %s ctf mode: %d, prd: %d, Tx threshold: %d, Rx threshold: %d\n",
+	dev_info(dev, "[INFO][SPI] GPSB %s CTF mode: %d, PRD: %d, SDOE: %d, Tx threshold: %d, Rx threshold: %d\n",
 			pd->is_slave ? "Slave":"Master",
 			pd->ctf,
 			pd->prd,
+			pd->sdoe,
 			pd->cfgwth,
 			pd->cfgrth);
 	if (!pd->is_slave) {

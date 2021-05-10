@@ -332,6 +332,9 @@ struct tcc_spi_pl_data {
 	/* Capture trigger of GSCK for GSDI */
 	bool prd;
 
+	/* Output Enable Control for GSDO */
+	bool sdoe;
+
 	/* TRE */
 	bool recovery_time;
 	/* THL */
