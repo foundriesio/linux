@@ -3885,7 +3885,7 @@ void f2fs_free_dic(struct decompress_io_ctx *dic);
 void f2fs_decompress_end_io(struct page **rpages,
 			unsigned int cluster_size, bool err, bool verity);
 int f2fs_init_compress_ctx(struct compress_ctx *cc);
-void f2fs_destroy_compress_ctx(struct compress_ctx *cc);
+void f2fs_destroy_compress_ctx(struct compress_ctx *cc, bool reuse);
 void f2fs_init_compress_info(struct f2fs_sb_info *sbi);
 #else
 static inline bool f2fs_is_compressed_page(struct page *page) { return false; }
