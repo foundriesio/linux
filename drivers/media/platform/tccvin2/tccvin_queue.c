@@ -1,5 +1,5 @@
 /*
- *      uvc_queue.c  --  USB Video Class driver - Buffers management
+ *      tccvin_queue.c  --  Telechips Video-Input Path Driver
  *
  *      Copyright (C) 2005-2010
  *          Laurent Pinchart (laurent.pinchart@ideasonboard.com)

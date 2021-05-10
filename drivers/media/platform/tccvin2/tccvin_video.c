@@ -1,5 +1,5 @@
 /*
- *      uvc_video.c  --  USB Video Class driver - Video handling
+ *      tccvin_video.c  --  Telechips Video-Input Path Driver
  *
  *      Copyright (C) 2005-2010
  *          Laurent Pinchart (laurent.pinchart@ideasonboard.com)
@@ -721,8 +721,6 @@ static int32_t tccvin_set_vin(struct tccvin_streaming *vdev)
 	void __iomem			*vin		= NULL;
 
 	struct tccvin_vs_info		*vs_info	= NULL;
-	struct v4l2_dv_timings		*dv_timings	= NULL;
-	struct v4l2_bt_timings		*bt_timings	= NULL;
 	struct v4l2_rect		*crop_rect	= NULL;
 	struct v4l2_rect		*crop_bound	= NULL;
 
@@ -754,8 +752,6 @@ static int32_t tccvin_set_vin(struct tccvin_streaming *vdev)
 	vin		= VIOC_VIN_GetAddress(vdev->cif.vioc_path.vin);
 
 	vs_info		= &vdev->vs_info;
-	dv_timings	= &vdev->dv_timings;
-	bt_timings	= &dv_timings->bt;
 	crop_rect	= &vdev->rect_crop;
 	crop_bound	= &vdev->rect_bound;
 
@@ -764,16 +760,16 @@ static int32_t tccvin_set_vin(struct tccvin_streaming *vdev)
 	gen_field_en	= vs_info->gen_field_en;
 	de_low		= vs_info->de_low;
 	field_low	= vs_info->field_low;
-	vs_low		= !!(bt_timings->polarities & V4L2_DV_VSYNC_POS_POL);
-	hs_low		= !!(bt_timings->polarities & V4L2_DV_HSYNC_POS_POL);
+	vs_low		= vs_info->vs_low;
+	hs_low		= vs_info->hs_low;
 	pxclk_pol	= vs_info->pclk_polarity;
 	vs_mask		= vs_info->vs_mask;
 	hsde_connect_en	= vs_info->hsde_connect_en;
 	intpl_en	= vs_info->intpl_en;
+	interlaced	= vs_info->interlaced;
 	conv_en		= vs_info->conv_en;
-	interlaced	= !!(bt_timings->interlaced & V4L2_DV_INTERLACED);
-	width		= bt_timings->width;
-	height		= bt_timings->height >> interlaced;
+	width		= vs_info->width;
+	height		= vs_info->height >> interlaced;
 #if	defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || \
 	defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	stream_enable	= vs_info->stream_enable;
@@ -785,19 +781,19 @@ static int32_t tccvin_set_vin(struct tccvin_streaming *vdev)
 	logd("VIN: 0x%px, Source Size - width: %d, height: %d\n",
 		vin, width, height);
 
-	logd("data_order:	%d\n", data_order);
-	logd("data_format:	%d\n", data_format);
-	logd("gen_field_en:	%d\n", gen_field_en);
-	logd("de_low:	%d\n", de_low);
-	logd("vs_mask:		%d\n", vs_mask);
-	logd("hsde_connect_en:	%d\n", hsde_connect_en);
-	logd("intpl_en:		%d\n", intpl_en);
-	logd("interlaced:	%d\n", interlaced);
-	logd("conv_en:		%d\n", conv_en);
+	logi("%20s: %d\n", "data_order",	data_order);
+	logi("%20s: %d\n", "data_format",	data_format);
+	logi("%20s: %d\n", "gen_field_en",	gen_field_en);
+	logi("%20s: %d\n", "de_low",		de_low);
+	logi("%20s: %d\n", "vs_mask",		vs_mask);
+	logi("%20s: %d\n", "hsde_connect_en",	hsde_connect_en);
+	logi("%20s: %d\n", "intpl_en",		intpl_en);
+	logi("%20s: %d\n", "interlaced",	interlaced);
+	logi("%20s: %d\n", "conv_en",		conv_en);
 #if	defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || \
 	defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
-	logd("stream_enable:	%d\n", stream_enable);
-	logd("flush_vsync:	%d\n", flush_vsync);
+	logi("%20s: %d\n", "stream_enable",	stream_enable);
+	logi("%20s: %d\n", "flush_vsync",	flush_vsync);
 #endif	/* defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) || \
 	 * defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 	 */
@@ -1986,8 +1982,14 @@ int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
 	} else {
 		logd("width: %d, height: %d\n",
 			timings->bt.width, timings->bt.height);
+		/* size */
+		stream->vs_info.height		= timings->bt.height;
+		stream->vs_info.width		= timings->bt.width;
+
 		logd("interalced: %d\n",	timings->bt.interlaced);
-		logd("polarities: 0x%08x\n",	timings->bt.polarities);
+		/* interlaced */
+		stream->vs_info.interlaced	=
+			(timings->bt.interlaced & V4L2_DV_INTERLACED) ? 1 : 0;
 	}
 
 	logi("call %s get_fmt\n", subdev->name);
@@ -2032,23 +2034,37 @@ int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
 	if (ret != 0) {
 		logd("subdev_call(pad, g_mbus_config) is wrong\n");
 	} else {
-		logi("mbus_config.type: 0x%08x\n",
-			stream->mbus_config.type);
+		logi("mbus_config - type: 0x%08x, flags: 0x%08x\n",
+			stream->mbus_config.type, stream->mbus_config.flags);
+
+		/* data_active */
+		stream->vs_info.de_low	=
+			(stream->mbus_config.flags &
+				V4L2_MBUS_DATA_ACTIVE_HIGH) ?
+				DE_ACTIVE_HIGH : DE_ACTIVE_LOW;
+
+		/* vs active */
+		stream->vs_info.vs_low		=
+			(stream->mbus_config.flags &
+				V4L2_MBUS_VSYNC_ACTIVE_HIGH) ?
+				VS_ACTIVE_HIGH : VS_ACTIVE_LOW;
+
+		/* hs active */
+		stream->vs_info.hs_low		=
+			(stream->mbus_config.flags &
+				V4L2_MBUS_HSYNC_ACTIVE_HIGH) ?
+				HS_ACTIVE_HIGH : HS_ACTIVE_LOW;
+
+		/* pclk_sample */
+		stream->vs_info.pclk_polarity	=
+			(stream->mbus_config.flags &
+				V4L2_MBUS_PCLK_SAMPLE_RISING) ?
+				PCLK_ACTIVE_HIGH : PCLK_ACTIVE_LOW;
+
 		/* conv_en */
 		stream->vs_info.conv_en		=
 			(stream->mbus_config.type ==
 				V4L2_MBUS_BT656) ? 1 : 0;
-
-		logi("mbus_config.flags: 0x%08x\n",
-			stream->mbus_config.flags);
-		/* pclk_sample */
-		stream->vs_info.pclk_polarity	=
-			(stream->mbus_config.flags &
-				V4L2_MBUS_PCLK_SAMPLE_RISING) ? 1 : 0;
-		/* data_active */
-		stream->vs_info.de_low	=
-			(stream->mbus_config.flags &
-				V4L2_MBUS_DATA_ACTIVE_HIGH) ? 1 : 0;
 	}
 
 	return ret;

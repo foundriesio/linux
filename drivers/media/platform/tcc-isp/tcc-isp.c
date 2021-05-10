@@ -35,24 +35,31 @@
 #define DEFAULT_HEIGHT		0x8000
 
 struct v4l2_dv_timings tcc_isp_dv_timings = {
-	.type = V4L2_DV_BT_656_1120,
-	.bt = {
-		.width = DEFAULT_WIDTH,
-		.height = DEFAULT_HEIGHT,
-		.interlaced = V4L2_DV_PROGRESSIVE,
-		.polarities = V4L2_DV_VSYNC_POS_POL,
+	.type			= V4L2_DV_BT_656_1120,
+	.bt			= {
+		.width			= DEFAULT_WIDTH,
+		.height			= DEFAULT_HEIGHT,
+		.interlaced		= V4L2_DV_PROGRESSIVE,
+		/* IMPORTANT
+		 * The below field "polarities" is not used
+		 * becasue polarities for vsync and hsync are supported only.
+		 * So, use flags of "struct v4l2_mbus_config".
+		 */
+		.polarities		= 0,
 	},
 };
 
 struct v4l2_mbus_config isp_mbus_config = {
-	.type	= V4L2_MBUS_PARALLEL,
-	.flags	=
-		V4L2_MBUS_DATA_ACTIVE_LOW	|
-		V4L2_MBUS_PCLK_SAMPLE_FALLING	|
+	.type			= V4L2_MBUS_PARALLEL,
+	/* de: high, vs: high, hs: high, pclk: high */
+	.flags			=
+		V4L2_MBUS_DATA_ACTIVE_HIGH	|
 		V4L2_MBUS_VSYNC_ACTIVE_LOW	|
-		V4L2_MBUS_HSYNC_ACTIVE_LOW	|
+		V4L2_MBUS_HSYNC_ACTIVE_HIGH	|
+		V4L2_MBUS_PCLK_SAMPLE_RISING	|
 		V4L2_MBUS_MASTER,
 };
+
 /*
  * Helper functions for reflection
  */

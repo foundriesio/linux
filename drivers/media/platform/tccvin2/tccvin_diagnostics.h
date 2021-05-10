@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0 */
+
 #ifndef _TCCVIN_DIAGNOSTICS_H_
 #define _TCCVIN_DIAGNOSTICS_H_
 

@@ -1,5 +1,5 @@
 /*
- *      uvc_v4l2.c  --  USB Video Class driver - V4L2 API
+ *      tccvin_v4l2.c  --  Telechips Video-Input Path Driver
  *
  *      Copyright (C) 2005-2010
  *          Laurent Pinchart (laurent.pinchart@ideasonboard.com)

@@ -34,6 +34,15 @@
 #define FMT_RGB444_24BIT   (9)
 #define FMT_SD_PROG        (12) // NOT USED
 
+#define DE_ACTIVE_HIGH		(0)
+#define DE_ACTIVE_LOW		(1)
+#define VS_ACTIVE_HIGH		(0)
+#define VS_ACTIVE_LOW		(1)
+#define HS_ACTIVE_HIGH		(0)
+#define HS_ACTIVE_LOW		(1)
+#define PCLK_ACTIVE_HIGH	(0)
+#define PCLK_ACTIVE_LOW		(1)
+
 #define EXT_PORT0 (0)
 #define EXT_PORT1 (1)
 #define EXT_PORT2 (2)

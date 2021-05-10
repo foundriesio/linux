@@ -136,12 +136,17 @@ static u32 code_to_csi_dt(u32 mbus_code)
 }
 
 struct v4l2_dv_timings tcc_mipi_csi2_dv_timings = {
-	.type = V4L2_DV_BT_656_1120,
-	.bt = {
-		.width = DEFAULT_WIDTH,
-		.height = DEFAULT_HEIGHT,
-		.interlaced = V4L2_DV_PROGRESSIVE,
-		.polarities = 0,/* V4L2_DV_HSYNC_POS_POL */
+	.type			= V4L2_DV_BT_656_1120,
+	.bt			= {
+		.width			= DEFAULT_WIDTH,
+		.height			= DEFAULT_HEIGHT,
+		.interlaced		= V4L2_DV_PROGRESSIVE,
+		/* IMPORTANT
+		 * The below field "polarities" is not used
+		 * becasue polarities for vsync and hsync are supported only.
+		 * So, use flags of "struct v4l2_mbus_config".
+		 */
+		.polarities		= 0,
 	},
 };
 
@@ -150,12 +155,13 @@ static u32 tcc_mipi_csi2_codes[] = {
 };
 
 struct v4l2_mbus_config mipi_csi2_mbus_config = {
-	.type	= V4L2_MBUS_PARALLEL,
-	.flags	=
-		V4L2_MBUS_DATA_ACTIVE_LOW	|
-		V4L2_MBUS_PCLK_SAMPLE_FALLING	|
-		V4L2_MBUS_VSYNC_ACTIVE_LOW	|
-		V4L2_MBUS_HSYNC_ACTIVE_LOW	|
+	.type			= V4L2_MBUS_PARALLEL,
+	/* de: high, vs: high, hs: high, pclk: high */
+	.flags			=
+		V4L2_MBUS_DATA_ACTIVE_HIGH	|
+		V4L2_MBUS_VSYNC_ACTIVE_HIGH	|
+		V4L2_MBUS_HSYNC_ACTIVE_HIGH	|
+		V4L2_MBUS_PCLK_SAMPLE_RISING	|
 		V4L2_MBUS_MASTER,
 };
 /*

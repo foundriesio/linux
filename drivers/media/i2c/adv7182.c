@@ -145,11 +145,12 @@ static u32 adv7182_codes[] = {
 
 struct v4l2_mbus_config adv7182_mbus_config = {
 	.type		= V4L2_MBUS_BT656,
+	/* de: high, vs: high, hs: low, pclk: high */
 	.flags		=
-		V4L2_MBUS_DATA_ACTIVE_LOW	|
-		V4L2_MBUS_PCLK_SAMPLE_FALLING	|
-		V4L2_MBUS_VSYNC_ACTIVE_LOW	|
+		V4L2_MBUS_DATA_ACTIVE_HIGH	|
+		V4L2_MBUS_VSYNC_ACTIVE_HIGH	|
 		V4L2_MBUS_HSYNC_ACTIVE_LOW	|
+		V4L2_MBUS_PCLK_SAMPLE_RISING	|
 		V4L2_MBUS_MASTER,
 };
 

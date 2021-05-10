@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0 */
+
 #ifndef _TCCVIN_VIDEO_H_
 #define _TCCVIN_VIDEO_H_
 
@@ -146,21 +147,27 @@ enum preview_method {
 
 struct tccvin_vs_info {
 	/* VIN_CTRL */
-	unsigned int		data_order;
-	unsigned int		data_format;
-	unsigned int		stream_enable;
-	unsigned int		gen_field_en;
-	unsigned int		de_low;
-	unsigned int		pclk_polarity;
-	unsigned int		field_low;
-	unsigned int		vs_mask;
-	unsigned int		hsde_connect_en;
-	unsigned int		intpl_en;
-	unsigned int		interlaced;
-	unsigned int		conv_en;
+	unsigned int		data_order;		// [22:20]
+	unsigned int		data_format;		// [19:16]
+	unsigned int		stream_enable;		// [14]
+	unsigned int		gen_field_en;		// [13]
+	unsigned int		de_low;			// [12]
+	unsigned int		field_low;		// [11]
+	unsigned int		vs_low;			// [10]
+	unsigned int		hs_low;			// [ 9]
+	unsigned int		pclk_polarity;		// [ 8]
+	unsigned int		vs_mask;		// [ 6]
+	unsigned int		hsde_connect_en;	// [ 4]
+	unsigned int		intpl_en;		// [ 3]
+	unsigned int		interlaced;		// [ 2]
+	unsigned int		conv_en;		// [ 1]
 
 	/* VIN_MISC */
-	unsigned int		flush_vsync;
+	unsigned int		flush_vsync;		// [16]
+
+	/* VIN_SIZE */
+	unsigned int		height;			// [31:16]
+	unsigned int		width;			// [15: 0]
 };
 
 struct tccvin_entity {

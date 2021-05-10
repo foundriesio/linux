@@ -1,5 +1,5 @@
 /*
- *      uvc_driver.c  --  USB Video Class driver
+ *      tccvin_driver.c  --  Telechips Video-Input Path Driver
  *
  *      Copyright (C) 2005-2010
  *          Laurent Pinchart (laurent.pinchart@ideasonboard.com)

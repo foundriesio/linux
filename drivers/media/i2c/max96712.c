@@ -1215,7 +1215,7 @@ int max96712_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
 	}
 
-	logd("name: %s, addr: 0x%x, client: 0x%p\n",
+	logd("name: %s, addr: 0x%x, client: 0x%px\n",
 		client->name, (client->addr)<<1, client);
 
 	mutex_init(&dev->lock);

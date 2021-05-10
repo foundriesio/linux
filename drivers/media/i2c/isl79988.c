@@ -149,11 +149,12 @@ static u32 isl79988_codes[] = {
 
 struct v4l2_mbus_config isl79988_mbus_config = {
 	.type		= V4L2_MBUS_BT656,
+	/* de: high, vs: high, hs: low, pclk: high */
 	.flags		=
 		V4L2_MBUS_DATA_ACTIVE_LOW	|
-		V4L2_MBUS_PCLK_SAMPLE_FALLING	|
 		V4L2_MBUS_VSYNC_ACTIVE_LOW	|
 		V4L2_MBUS_HSYNC_ACTIVE_LOW	|
+		V4L2_MBUS_PCLK_SAMPLE_FALLING	|
 		V4L2_MBUS_MASTER,
 };
 
@@ -581,7 +582,7 @@ int isl79988_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		memcpy(dev, (const void *)dev_id->data, sizeof(*dev));
 	}
 
-	logd("name: %s, addr: 0x%x, client: 0x%p\n",
+	logd("name: %s, addr: 0x%x, client: 0x%px\n",
 		client->name, (client->addr)<<1, client);
 
 	/* parse the device tree */
