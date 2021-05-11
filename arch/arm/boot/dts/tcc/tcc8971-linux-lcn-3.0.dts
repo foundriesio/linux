@@ -810,7 +810,7 @@
 		};
 	};
 
-	videoinput@0 {
+	videoinput0 {
 		status = "okay";
 		cifport         = <&cifport             4>;
 		use_pgl		= <0>;

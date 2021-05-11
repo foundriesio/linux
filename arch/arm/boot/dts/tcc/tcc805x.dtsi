@@ -1087,7 +1087,7 @@
         };
 
 	/* vioc_mgr for A72 */
-	vioc_mgr0: vioc_mgr@0 {
+	vioc_mgr0: vioc_mgr0 {
 		compatible = "telechips,vioc_mgr";
 		device-name ="vioc_mgr_main";
 		mbox-names ="main-vioc";
@@ -3134,7 +3134,7 @@
 		status = "disabled";
 	};
 
-	videoinput0: videoinput@0 {
+	videoinput0: videoinput0 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		cifport		= <&cifport		0>;
@@ -3149,7 +3149,7 @@
 		status		= "disabled";
 	};
 
-	videoinput1: videoinput@1 {
+	videoinput1: videoinput1 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		cifport		= <&cifport		1>;
@@ -3164,7 +3164,7 @@
 		status		= "disabled";
 	};
 
-	videoinput2: videoinput@2 {
+	videoinput2: videoinput2 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		cifport		= <&cifport		2>;
@@ -3179,7 +3179,7 @@
 		status		= "disabled";
 	};
 
-	videoinput3: videoinput@3 {
+	videoinput3: videoinput3 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		cifport		= <&cifport		3>;
@@ -3194,7 +3194,7 @@
 		status		= "disabled";
 	};
 
-	videoinput4: videoinput@4 {
+	videoinput4: videoinput4 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		cifport		= <&cifport		5>;
@@ -3204,7 +3204,7 @@
 		status		= "disabled";
 	};
 
-	videoinput5: videoinput@5 {
+	videoinput5: videoinput5 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		cifport		= <&cifport		6>;
@@ -3214,7 +3214,7 @@
 		status		= "disabled";
 	};
 
-	videoinput6: videoinput@6 {
+	videoinput6: videoinput6 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		cifport		= <&cifport		7>;
@@ -3224,7 +3224,7 @@
 		status		= "disabled";
 	};
 
-	videoinput7: videoinput@7 {
+	videoinput7: videoinput7 {
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi DDIBUS_VIOC>;
 		cifport		= <&cifport		8>;

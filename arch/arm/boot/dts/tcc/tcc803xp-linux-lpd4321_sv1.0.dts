@@ -211,7 +211,7 @@
 		status = "disabled";
 	};
 
-	vioc_mgr@0 {
+	vioc_mgr0 {
 		status = "okay";
 	};
 	tcc-gpio-sample {

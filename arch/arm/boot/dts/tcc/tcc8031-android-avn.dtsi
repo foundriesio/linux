@@ -944,7 +944,7 @@
 	}; /* pmic da9063 */
 
 #if 0
-	videosource0: videodecoder_isl79988 {
+	videosource0: videodecoder_isl79988@44 {
 		compatible	= "intersil,isl79988";
 		pinctrl-names	= "idle", "active";
 		cifport		= <0>;
@@ -954,7 +954,7 @@
 		reg		= <0x44>;	// 0x88 >> 1
 	};
 #else
-	isl79988: isl79988 {
+	isl79988: isl79988@44 {
 		status		= "okay";
 		compatible	= "intersil,isl79988";
 		pinctrl-names	= "default";
@@ -970,7 +970,7 @@
 		};
 	};
 #endif
-	videosource1: deserializer_max9286 {
+	videosource1: deserializer_max9286@48 {
 		compatible	= "maxim,max9286";
 		cifport		= <5>;
 		pwd-gpios	= <&gpg 5 1>;

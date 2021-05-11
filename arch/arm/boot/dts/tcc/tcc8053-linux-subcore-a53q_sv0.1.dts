@@ -1847,7 +1847,7 @@
 		status = "okay";
 	};
 
-	videoinput0: videoinput@0 {
+	videoinput0: videoinput0 {
 		status		= "okay";
 		compatible	= "telechips,video-input";
 		cifport		= <&cifport		0>;
@@ -1872,7 +1872,7 @@
 		};
 	};
 
-	videoinput1: videoinput@1 {
+	videoinput1: videoinput1 {
 		status		= "disabled";
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi		DDIBUS_VIOC>;
@@ -1887,7 +1887,7 @@
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
 	};
 
-	videoinput2: videoinput@2 {
+	videoinput2: videoinput2 {
 		status		= "disabled";
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi		DDIBUS_VIOC>;
@@ -1902,7 +1902,7 @@
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
 	};
 
-	videoinput3: videoinput@3 {
+	videoinput3: videoinput3 {
 		status		= "disabled";
 		compatible	= "telechips,video-input";
 		clocks		= <&clk_ddi		DDIBUS_VIOC>;
@@ -1917,7 +1917,7 @@
 		fifo		= <&vioc_fifo		VIOC_FIFO0>;
 	};
 
-	videoinput4: videoinput@4 {
+	videoinput4: videoinput4 {
 		status		= "okay";
 		compatible	= "telechips,video-input";
 		cifport		= <&cifport		5>;
@@ -1937,7 +1937,7 @@
 		};
 	};
 
-	videoinput5: videoinput@5 {
+	videoinput5: videoinput5 {
 		status		= "okay";
 		compatible	= "telechips,video-input";
 		cifport		= <&cifport		6>;
@@ -1957,7 +1957,7 @@
 		};
 	};
 
-	videoinput6: videoinput@6 {
+	videoinput6: videoinput6 {
 		status		= "okay";
 		compatible	= "telechips,video-input";
 		cifport		= <&cifport		7>;
@@ -1977,7 +1977,7 @@
 		};
 	};
 
-	videoinput7: videoinput@7 {
+	videoinput7: videoinput7 {
 		status		= "okay";
 		compatible	= "telechips,video-input";
 		cifport		= <&cifport		8>;
@@ -2103,7 +2103,7 @@
         };
 
 	/* vioc_mgr for A53 */
-	vioc_mgr0: vioc_mgr@0 {
+	vioc_mgr0: vioc_mgr0 {
 		compatible = "telechips,vioc_mgr";
 		device-name ="vioc_mgr_sub";
 		mbox-names ="sub-vioc";

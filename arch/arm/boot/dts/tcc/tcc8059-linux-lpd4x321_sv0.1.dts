@@ -69,7 +69,7 @@
 		regulator-always-on;
 	};
 
-        vioc_mgr@0 {
+        vioc_mgr0 {
                 status = "okay";
         };
 
