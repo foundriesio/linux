@@ -754,9 +754,9 @@ u8   Drm_Addition_Get_Lane_Status( const u8 link_status[DP_LINK_STATUS_SIZE],	in
 bool Drm_Addition_Get_Clock_Recovery_Status( const u_int8_t link_status[DP_LINK_STATUS_SIZE],			      int iNumOfLanes );
 bool Drm_Addition_Get_Channel_EQ_Status( const u_int8_t link_status[DP_LINK_STATUS_SIZE],			  int iNumOfLanes );
 int  Drm_Addition_Calculate_PBN_mode( int clock, int bpp );
-bool Drm_Addition_Parse_Sideband_Link_Address( struct drm_dp_sideband_msg_rx *raw, 					           struct drm_dp_sideband_msg_reply_body *repmsg );
+int32_t Drm_Addition_Parse_Sideband_Link_Address( struct drm_dp_sideband_msg_rx *raw, 					           struct drm_dp_sideband_msg_reply_body *repmsg );
 void Drm_Addition_Encode_Sideband_Msg_Hdr( struct drm_dp_sideband_msg_hdr *hdr,    				   u_int8_t *buf, int *len );
-bool Drm_Addition_Decode_Sideband_Msg_Hdr( struct drm_dp_sideband_msg_hdr *hdr, 					   u_int8_t *buf, int buflen, u_int8_t *hdrlen );
+int32_t Drm_Addition_Decode_Sideband_Msg_Hdr( struct drm_dp_sideband_msg_hdr *hdr, 					   u_int8_t *buf, int buflen, u_int8_t *hdrlen );
 void Drm_Addition_Encode_SideBand_Msg_CRC( u_int8_t *msg, u_int8_t len );
 void Drm_Addition_Parse_Sideband_Connection_Status_Notify( struct drm_dp_sideband_msg_rx *raw,							         struct drm_dp_sideband_msg_req_body *msg );
 

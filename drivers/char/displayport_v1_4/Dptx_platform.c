@@ -17,7 +17,7 @@
 static struct Dptx_Params *pstHandle;
 
 
-bool Dptx_Platform_Init_Params( struct Dptx_Params	*pstDptx, struct device	*pstParentDev )
+int32_t Dptx_Platform_Init_Params( struct Dptx_Params	*pstDptx, struct device	*pstParentDev )
 {
 	u8		ucStream_Index;
 
@@ -49,7 +49,7 @@ bool Dptx_Platform_Init_Params( struct Dptx_Params	*pstDptx, struct device	*pstP
 		if( pstDptx->paucEdidBuf_Entry[ucStream_Index] == NULL ) 
 		{
 			dptx_err("failed to alloc EDID memory" );
-			return ( DPTX_RETURN_FAIL );
+			return DPTX_RETURN_ENOMEM;
 		}
 
 		memset( pstDptx->paucEdidBuf_Entry[ucStream_Index], 0, DPTX_EDID_BUFLEN );
@@ -59,7 +59,7 @@ bool Dptx_Platform_Init_Params( struct Dptx_Params	*pstDptx, struct device	*pstP
 	if( pstDptx->pucEdidBuf == NULL ) 
 	{
 		dptx_err("failed to alloc EDID memory" );
-		return ( DPTX_RETURN_FAIL );
+		return DPTX_RETURN_ENOMEM;
 	}
 
 	pstDptx->uiTCC805X_Revision = get_chip_rev();
@@ -72,63 +72,64 @@ bool Dptx_Platform_Init_Params( struct Dptx_Params	*pstDptx, struct device	*pstP
 		Dptx_Platform_Get_MuxSelect( pstDptx );
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Init( struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Init( struct Dptx_Params	*pstDptx )
 {	
-	bool				bRetVal, bPLL_LockStatus;
+	bool	bPLL_LockStatus;
+	int32_t	iRetVal;
 
-	bRetVal = Dptx_Platform_Set_PLL_Divisor( pstDptx );
-	if( bRetVal == DPTX_RETURN_FAIL )
+	iRetVal = Dptx_Platform_Set_PLL_Divisor( pstDptx );
+	if( iRetVal !=  DPTX_RETURN_NO_ERROR )
 	{
 		dptx_err("from Dptx_Platform_Set_PLL_Divisor()" );
-		return (DPTX_RETURN_FAIL);
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Platform_Get_PLLLock_Status( pstDptx, &bPLL_LockStatus );
-	if( bRetVal == DPTX_RETURN_FAIL )
+	iRetVal = Dptx_Platform_Get_PLLLock_Status( pstDptx, &bPLL_LockStatus );
+	if( iRetVal !=  DPTX_RETURN_NO_ERROR )
 	{
 		dptx_err("from Dptx_Platform_Get_PLLLock_Status()" );
-		return (DPTX_RETURN_FAIL);
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Platform_Set_PLL_ClockSource( pstDptx, (u8)DPTX_CLKCTRL0_PLL_DIVIDER_OUTPUT );
-	if( bRetVal == DPTX_RETURN_FAIL )
+	iRetVal = Dptx_Platform_Set_PLL_ClockSource( pstDptx, (u8)DPTX_CLKCTRL0_PLL_DIVIDER_OUTPUT );
+	if( iRetVal !=  DPTX_RETURN_NO_ERROR )
 	{
 		dptx_err("from Dptx_Platform_Set_PLL_ClockSource()" );
-		return (DPTX_RETURN_FAIL);
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Platform_Set_RegisterBank( pstDptx, (enum PHY_LINK_RATE)pstDptx->ucMax_Rate );
-	if( bRetVal == DPTX_RETURN_FAIL )
+	iRetVal = Dptx_Platform_Set_RegisterBank( pstDptx, (enum PHY_LINK_RATE)pstDptx->ucMax_Rate );
+	if( iRetVal !=  DPTX_RETURN_NO_ERROR )
 	{
 		dptx_err("from Dptx_Platform_Set_RegisterBank()" );
-		return (DPTX_RETURN_FAIL);
+		return iRetVal;
 	}
 
 	pstHandle = pstDptx;
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Deinit( struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Deinit( struct Dptx_Params	*pstDptx )
 {
 	Dptx_Platform_Free_Handle( pstDptx );
 
 	pstHandle = NULL;
 
-	return (DPTX_RETURN_SUCCESS);
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Set_ProtectRegister_PW( struct Dptx_Params	*pstDptx, u32 uiProtect_Cfg_PW )
+int32_t Dptx_Platform_Set_ProtectRegister_PW( struct Dptx_Params	*pstDptx, u32 uiProtect_Cfg_PW )
 {
 	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiProtect_RegAddr_Offset + DP_PORTECT_CFG_PW_OK ), (u32)uiProtect_Cfg_PW );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Set_ProtectRegister_CfgAccess( struct Dptx_Params	*pstDptx, bool bAccessable )
+int32_t Dptx_Platform_Set_ProtectRegister_CfgAccess( struct Dptx_Params	*pstDptx, bool bAccessable )
 {
 	if( bAccessable )
 	{
@@ -139,10 +140,10 @@ bool Dptx_Platform_Set_ProtectRegister_CfgAccess( struct Dptx_Params	*pstDptx, b
 		Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiProtect_RegAddr_Offset + DP_PORTECT_CFG_ACCESS ), (u32)DP_PORTECT_CFG_NOT_ACCESSABLE );
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Set_ProtectRegister_CfgLock( struct Dptx_Params	*pstDptx, bool bAccessable )
+int32_t Dptx_Platform_Set_ProtectRegister_CfgLock( struct Dptx_Params	*pstDptx, bool bAccessable )
 {
 	if( bAccessable )
 	{
@@ -153,10 +154,10 @@ bool Dptx_Platform_Set_ProtectRegister_CfgLock( struct Dptx_Params	*pstDptx, boo
 		Dptx_Reg_Writel( pstDptx, (u32)( pstDptx->uiProtect_RegAddr_Offset + DP_PORTECT_CFG_LOCK ), (u32)DP_PORTECT_CFG_LOCKED );
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Set_PLL_Divisor(	struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Set_PLL_Divisor(	struct Dptx_Params	*pstDptx )
 {
 	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_PLLCON ), 0x00000FC0 );
 	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_PLLMON ), 0x00008800 );
@@ -169,10 +170,10 @@ bool Dptx_Platform_Set_PLL_Divisor(	struct Dptx_Params	*pstDptx )
 	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_PLLPMS ), 0x05026403 );
 	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_PLLPMS ), 0x85026403 );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Set_PLL_ClockSource( struct Dptx_Params	*pstDptx, u8 ucClockSource )
+int32_t Dptx_Platform_Set_PLL_ClockSource( struct Dptx_Params	*pstDptx, u8 ucClockSource )
 {
 	u32		uiRegMap_Val = 0;
 
@@ -183,10 +184,10 @@ bool Dptx_Platform_Set_PLL_ClockSource( struct Dptx_Params	*pstDptx, u8 ucClockS
 	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKCTRL2 ), uiRegMap_Val );
 	Dptx_Reg_Writel( pstDptx, ( pstDptx->uiCKC_RegAddr_Offset + DPTX_CKC_CFG_CLKCTRL3 ), uiRegMap_Val );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Get_PLLLock_Status( struct Dptx_Params	*pstDptx, bool *pbPll_Locked )
+int32_t Dptx_Platform_Get_PLLLock_Status( struct Dptx_Params	*pstDptx, bool *pbPll_Locked )
 {
 	bool	bPllLock;
 	u8		ucCount = 0;
@@ -213,10 +214,10 @@ bool Dptx_Platform_Get_PLLLock_Status( struct Dptx_Params	*pstDptx, bool *pbPll_
 
 	*pbPll_Locked = bPllLock;
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_LINK_RATE eLinkRate )
+int32_t Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_LINK_RATE eLinkRate )
 {
 	u32		uiReg_R_data, uiReg_W_data;
 	/*
@@ -305,13 +306,14 @@ bool Dptx_Platform_Set_RegisterBank(	struct Dptx_Params	*pstDptx, enum PHY_LINK_
 			break;
 		default:
 			dptx_err("Invalid PHY rate %d\n", eLinkRate);
+			return DPTX_RETURN_EINVAL;
 			break;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Set_APAccess_Mode( struct Dptx_Params *pstDptx )
+int32_t Dptx_Platform_Set_APAccess_Mode( struct Dptx_Params *pstDptx )
 {
 	u32			uiRegMap_R_ApbSel, uiRegMap_W_ApbSel;
 
@@ -321,10 +323,10 @@ bool Dptx_Platform_Set_APAccess_Mode( struct Dptx_Params *pstDptx )
 
 	dptx_dbg("Register access...Reg[0x%x]:0x%08x -> 0x%08x",( pstDptx->pioMIC_SubSystem_BaseAddr + DPTX_APB_SEL_REG ), uiRegMap_R_ApbSel, uiRegMap_W_ApbSel );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Set_PMU_ColdReset_Release(	struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Set_PMU_ColdReset_Release( struct Dptx_Params *pstDptx )
 {
 	u32		uiRegMap_R_HsmRst_Msk, uiRegMap_W_HsmRst_Msk;
 
@@ -338,10 +340,10 @@ bool Dptx_Platform_Set_PMU_ColdReset_Release(	struct Dptx_Params	*pstDptx )
 		dptx_dbg("DP Cold reset mask release...0x%08x -> 0x%08x", uiRegMap_R_HsmRst_Msk, uiRegMap_W_HsmRst_Msk);
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Set_PHY_StandardLane_PinConfig( struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Set_PHY_StandardLane_PinConfig( struct Dptx_Params *pstDptx )
 {
 	u32		uiRegMap_R_Reg24, uiRegMap_W_Reg24;
 
@@ -355,10 +357,10 @@ bool Dptx_Platform_Set_PHY_StandardLane_PinConfig( struct Dptx_Params	*pstDptx )
 					( pstDptx->bPHY_Lane_Reswap ) ? "On":"Off",
 					(u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_R_Reg24, uiRegMap_W_Reg24 );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Get_PHY_StandardLane_PinConfig( struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Get_PHY_StandardLane_PinConfig( struct Dptx_Params *pstDptx )
 {
 	u32		uiRegMap_R_Reg24;
 
@@ -366,10 +368,10 @@ bool Dptx_Platform_Get_PHY_StandardLane_PinConfig( struct Dptx_Params	*pstDptx )
 
 	pstDptx->bPHY_Lane_Reswap = ( uiRegMap_R_Reg24 & STD_EN_MASK ) ? true:false;
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Set_SDMBypass_Ctrl( struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Set_SDMBypass_Ctrl( struct Dptx_Params *pstDptx )
 {
 	u32		uiRegMap_R_Reg24, uiRegMap_W_Reg24;
 
@@ -383,10 +385,10 @@ bool Dptx_Platform_Set_SDMBypass_Ctrl( struct Dptx_Params	*pstDptx )
 					( pstDptx->bSDM_Bypass ) ? "On":"Off",
 					(u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_R_Reg24, uiRegMap_W_Reg24 );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Get_SDMBypass_Ctrl( struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Get_SDMBypass_Ctrl( struct Dptx_Params	*pstDptx )
 {
 	u32			uiRegMap_R_Reg24;
 
@@ -394,10 +396,10 @@ bool Dptx_Platform_Get_SDMBypass_Ctrl( struct Dptx_Params	*pstDptx )
 
 	pstDptx->bSDM_Bypass = ( uiRegMap_R_Reg24 & SDM_BYPASS_MASK ) ? true:false;
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Set_SRVCBypass_Ctrl( struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Set_SRVCBypass_Ctrl( struct Dptx_Params *pstDptx )
 {
 	u32		uiRegMap_R_Reg24, uiRegMap_W_Reg24;
 
@@ -411,10 +413,10 @@ bool Dptx_Platform_Set_SRVCBypass_Ctrl( struct Dptx_Params	*pstDptx )
 					( pstDptx->bSRVC_Bypass ) ? "On":"Off",
 					(u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_R_Reg24, uiRegMap_W_Reg24 );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Get_SRVCBypass_Ctrl( struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Get_SRVCBypass_Ctrl( struct Dptx_Params	*pstDptx )
 {
 	u32			uiRegMap_R_Reg24;
 
@@ -422,10 +424,10 @@ bool Dptx_Platform_Get_SRVCBypass_Ctrl( struct Dptx_Params	*pstDptx )
 
 	pstDptx->bSRVC_Bypass = ( uiRegMap_R_Reg24 & SRVC_BYPASS_MASK ) ? true:false;
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Set_MuxSelect( struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Set_MuxSelect( struct Dptx_Params	*pstDptx )
 {
 	u8		ucRegMap_MuxSel_Shift = 0;
 	u8		ucDP_Index;
@@ -435,7 +437,7 @@ bool Dptx_Platform_Set_MuxSelect( struct Dptx_Params	*pstDptx )
 	if( pstDptx->ucNumOfPorts >= PHY_INPUT_STREAM_MAX )
 	{
 		dptx_err("The number of ports( %d ) is larger than maximum(%d)", pstDptx->ucNumOfPorts, PHY_INPUT_STREAM_MAX );
-		return ( DPTX_RETURN_FAIL );
+		return DPTX_RETURN_ENODEV;
 	}
 
 	for( ucDP_Index = 0; ucDP_Index < pstDptx->ucNumOfPorts; ucDP_Index++ )
@@ -472,10 +474,10 @@ bool Dptx_Platform_Set_MuxSelect( struct Dptx_Params	*pstDptx )
 			(u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_R_Reg24, uiRegMap_W_Reg24, pstDptx->aucMuxInput_Index[ucDP_Index], ucDP_Index );
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Platform_Get_MuxSelect( struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Get_MuxSelect( struct Dptx_Params	*pstDptx )
 {
 	u8		ucRegMap_MuxSel_Shift = 0;
 	u8		ucDP_Index;
@@ -513,11 +515,11 @@ bool Dptx_Platform_Get_MuxSelect( struct Dptx_Params	*pstDptx )
 					(u32)( pstDptx->uiRegBank_RegAddr_Offset + DP_REGISTER_BANK_REG_24 ), uiRegMap_R_Reg24, pstDptx->aucMuxInput_Index[ucDP_Index], ucDP_Index );
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 
-bool Dptx_Platform_Set_ClkPath_To_XIN(	struct Dptx_Params	*pstDptx )
+int32_t Dptx_Platform_Set_ClkPath_To_XIN( struct Dptx_Params *pstDptx )
 {
 	u32			uiRegMap_PLLPMS;
 
@@ -540,11 +542,11 @@ bool Dptx_Platform_Set_ClkPath_To_XIN(	struct Dptx_Params	*pstDptx )
 
 	dptx_dbg("Clk path to XIN...Reg[0x%x] -> 0x%08x", (u32)( pstDptx->uiCKC_RegAddr_Offset + DP_REGISTER_BANK_REG_4 ), uiRegMap_PLLPMS);
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 
-bool Dptx_Platform_Free_Handle( struct Dptx_Params	*pstDptx_Handle )
+int32_t Dptx_Platform_Free_Handle( struct Dptx_Params	*pstDptx_Handle )
 {
 	u8		ucStream_Index;
 
@@ -568,7 +570,7 @@ bool Dptx_Platform_Free_Handle( struct Dptx_Params	*pstDptx_Handle )
 		kfree( pstDptx_Handle );
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 void Dptx_Platform_Set_Device_Handle( struct Dptx_Params	*pstDptx )

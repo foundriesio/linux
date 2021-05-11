@@ -23,7 +23,7 @@
 #define	PHY_NUM_OF_4_LANE					4
 
 
-static bool dptx_core_check_vendor_id( struct Dptx_Params *pstDptx )
+static int32_t dptx_core_check_vendor_id( struct Dptx_Params *pstDptx )
 {
 	u32				uiDptx_id;
 
@@ -31,80 +31,71 @@ static bool dptx_core_check_vendor_id( struct Dptx_Params *pstDptx )
 	if( uiDptx_id != (u32)(( DPTX_ID_DEVICE_ID << DPTX_ID_DEVICE_ID_SHIFT ) | DPTX_ID_VENDOR_ID ))
 	{
 		dptx_err("Invalid DPTX Id : 0x%x<->0x%x ", uiDptx_id, (( DPTX_ID_DEVICE_ID << DPTX_ID_DEVICE_ID_SHIFT ) | DPTX_ID_VENDOR_ID ) );
-		return( DPTX_RETURN_FAIL );
+		return DPTX_RETURN_EINVAL;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Link_Power_On( struct Dptx_Params *pstDptx )
+int32_t Dptx_Core_Link_Power_On( struct Dptx_Params *pstDptx )
 {
-	bool				bRetVal;
+	int32_t	iRetVal;
 
-	bRetVal = Dptx_Core_Set_PHY_PowerState( pstDptx, PHY_POWER_ON );	
-	if( bRetVal == DPTX_RETURN_FAIL )
-	{
-		dptx_err("from Dptx_Core_Set_PHY_PowerState()");
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Core_Set_PHY_PowerState( pstDptx, PHY_POWER_ON );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Core_Get_PHY_BUSY_Status( pstDptx, pstDptx->ucMax_Lanes );
-	if( bRetVal ==  DPTX_RETURN_FAIL )
-	{
-		dptx_err("from Dptx_Core_Get_PHY_BUSY_Status()");
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Core_Get_PHY_BUSY_Status( pstDptx, pstDptx->ucMax_Lanes );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Init_Params( struct Dptx_Params *pstDptx )
+int32_t Dptx_Core_Init_Params( struct Dptx_Params *pstDptx )
 {
-	bool		bRetVal;
+	int32_t	iRetVal;
 	
-	bRetVal = Dptx_Core_Get_PHY_NumOfLanes( pstDptx, &pstDptx->ucMax_Lanes );
-	if( bRetVal )
-	{
+	iRetVal = Dptx_Core_Get_PHY_NumOfLanes( pstDptx, &pstDptx->ucMax_Lanes );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
 		pstDptx->ucMax_Lanes = (u8)PHY_LANE_4;
 	}
+
 	pstDptx->stDptxLink.ucNumOfLanes = pstDptx->ucMax_Lanes;
 
-	bRetVal = Dptx_Core_Get_PHY_Rate( pstDptx, &pstDptx->ucMax_Rate );
-	if( bRetVal )
-	{
+	iRetVal = Dptx_Core_Get_PHY_Rate( pstDptx, &pstDptx->ucMax_Rate );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
 		pstDptx->ucMax_Rate  = (u8)LINK_RATE_HBR3;
 	}
 	pstDptx->stDptxLink.ucLinkRate  = (u8)pstDptx->ucMax_Rate;
 
-	bRetVal = Dptx_Core_Get_Stream_Mode( pstDptx, &pstDptx->bMultStreamTransport );
-	if( bRetVal )
-	{
+	iRetVal = Dptx_Core_Get_Stream_Mode( pstDptx, &pstDptx->bMultStreamTransport );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
 		pstDptx->bMultStreamTransport = false;
 	}
 
-	bRetVal = Dptx_Core_Get_PHY_SSC( pstDptx, &pstDptx->bSpreadSpectrum_Clock );
-	if( bRetVal )
-	{
+	iRetVal = Dptx_Core_Get_PHY_SSC( pstDptx, &pstDptx->bSpreadSpectrum_Clock );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
 		pstDptx->bSpreadSpectrum_Clock = true;
 	}
 	
 //	dptx_info("Stream mode = %s, NumOfLanes = %d, Max. rates = %d, SSC = %s", pstDptx->bMultStreamTransport ? "MST":"SST", pstDptx->stDptxLink.ucNumOfLanes, pstDptx->stDptxLink.ucLinkRate, ( pstDptx->bSpreadSpectrum_Clock ) ? "On":"Off" );
 	
-	return ( DPTX_RETURN_SUCCESS );	
+	return DPTX_RETURN_NO_ERROR;
 }
 
 /* Initialize the DP TX core and put it in a known state. */
-bool Dptx_Core_Init( struct Dptx_Params *pstDptx )
+int32_t Dptx_Core_Init( struct Dptx_Params *pstDptx )
 {
-	bool		bRetVal;
-	char		aucVerStr[15];
-	u32			uiDptx_Version, uiRegMap_HPD_IEN, uiRegMap_HDCP_INTR, uiRegMap_TYPEC_CTRL, uiRegMap_Cctl;
+	char	aucVerStr[15];
+	int32_t	iRetVal;
+	u32	uiDptx_Version, uiRegMap_HPD_IEN, uiRegMap_HDCP_INTR, uiRegMap_TYPEC_CTRL, uiRegMap_Cctl;
 
-	bRetVal = dptx_core_check_vendor_id( pstDptx ); 
-	if( bRetVal == DPTX_RETURN_FAIL )
-	{
-		dptx_err("from dptx_core_check_vendor_id()");
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = dptx_core_check_vendor_id( pstDptx ); 
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
 	Dptx_Core_Disable_Global_Intr( pstDptx );
@@ -186,17 +177,16 @@ bool Dptx_Core_Init( struct Dptx_Params *pstDptx )
 
 	Dptx_Reg_Writel( pstDptx, DPTX_CCTL, uiRegMap_Cctl);
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-
 /* Disable the core in preparation for module shutdown. */
-bool Dptx_Core_Deinit( struct Dptx_Params *pstDptx )
+int32_t Dptx_Core_Deinit( struct Dptx_Params *pstDptx )
 {
 	Dptx_Core_Disable_Global_Intr( pstDptx );
 	Dptx_Core_Soft_Reset( pstDptx, DPTX_SRST_CTRL_ALL );	/* #define DPTX_SRST_CTRL_ALL ( DPTX_SRST_CTRL_CONTROLLER | DPTX_SRST_CTRL_HDCP | DPTX_SRST_CTRL_AUDIO_SAMPLER |	 DPTX_SRST_CTRL_AUX ) */
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 /* Synopsys -> Initializes the PHY layer of the core. This needs to be called whenever the PHY layer is reset. */
@@ -295,7 +285,7 @@ void Dptx_Core_Disable_Global_Intr( struct Dptx_Params *pstDptx )
 	Dptx_Reg_Writel( pstDptx, DPTX_IEN, uiIntEnable );
 }
 
-bool Dptx_Core_Clear_General_Interrupt( struct Dptx_Params *pstDptx, u32 uiClear_Bits )
+int32_t Dptx_Core_Clear_General_Interrupt( struct Dptx_Params *pstDptx, u32 uiClear_Bits )
 {
 	u32		ucRegMap_GeneralIntr;
 
@@ -333,36 +323,32 @@ bool Dptx_Core_Clear_General_Interrupt( struct Dptx_Params *pstDptx, u32 uiClear
 
 	Dptx_Reg_Writel( pstDptx, DPTX_ISTS, ucRegMap_GeneralIntr );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Set_PHY_SSC( struct Dptx_Params *pstDptx, bool bSink_Supports_SSC )
+int32_t Dptx_Core_Set_PHY_SSC( struct Dptx_Params *pstDptx, bool bSink_Supports_SSC )
 {
-	bool			bRetVal;
-	u32				uiRegMap_PhyIfCtrl;
+	int32_t	iRetVal;
+	u32	uiRegMap_PhyIfCtrl;
 
-	bRetVal = Dptx_Core_Set_PHY_PowerState( pstDptx, PHY_POWER_DOWN_REF_CLOCK );
-	if( bRetVal ==  DPTX_RETURN_FAIL )
-	{
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Core_Set_PHY_PowerState( pstDptx, PHY_POWER_DOWN_REF_CLOCK );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Core_Get_PHY_BUSY_Status( pstDptx, pstDptx->ucMax_Lanes );
-	if( bRetVal ==  DPTX_RETURN_FAIL )
-	{
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Core_Get_PHY_BUSY_Status( pstDptx, pstDptx->ucMax_Lanes );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Core_Set_PHY_PowerState( pstDptx, PHY_POWER_DOWN_PHY_CLOCK );/* Synopsys - Enables SSC should be called during hot plug -> Move phy to P3 state and programs SSC */
-	if( bRetVal ==  DPTX_RETURN_FAIL )
-	{
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Core_Set_PHY_PowerState( pstDptx, PHY_POWER_DOWN_PHY_CLOCK );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Core_Get_PHY_BUSY_Status( pstDptx, pstDptx->ucMax_Lanes );
-	if( bRetVal ==  DPTX_RETURN_FAIL )
-	{
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Core_Get_PHY_BUSY_Status( pstDptx, pstDptx->ucMax_Lanes );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
 	/*
@@ -400,23 +386,20 @@ bool Dptx_Core_Set_PHY_SSC( struct Dptx_Params *pstDptx, bool bSink_Supports_SSC
 
 	Dptx_Reg_Writel( pstDptx, DPTX_PHYIF_CTRL, uiRegMap_PhyIfCtrl );
 
-	bRetVal = Dptx_Core_Set_PHY_PowerState( pstDptx, PHY_POWER_ON );/* Move to Powered on as x0 */
-	if( bRetVal ==	DPTX_RETURN_FAIL )
-	{
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Core_Set_PHY_PowerState( pstDptx, PHY_POWER_ON );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Core_Get_PHY_BUSY_Status( pstDptx, pstDptx->ucMax_Lanes );
-	if( bRetVal ==  DPTX_RETURN_FAIL )
-	{
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Core_Get_PHY_BUSY_Status( pstDptx, pstDptx->ucMax_Lanes );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
-	/* It's couple with Dptx_Core_Get_PHY_BUSY_Status() */
 	
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Get_PHY_SSC( struct Dptx_Params *pstDptx, bool *pbSSC_Enabled )
+int32_t Dptx_Core_Get_PHY_SSC( struct Dptx_Params *pstDptx, bool *pbSSC_Enabled )
 {
 	u32				uiRegMap_PhyIfCtrl;
 	
@@ -431,13 +414,13 @@ bool Dptx_Core_Get_PHY_SSC( struct Dptx_Params *pstDptx, bool *pbSSC_Enabled )
 		*pbSSC_Enabled = true;
 	}
 	
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Get_Sink_SSC_Capability( struct Dptx_Params *pstDptx, bool *pbSSC_Profiled )
+int32_t Dptx_Core_Get_Sink_SSC_Capability( struct Dptx_Params *pstDptx, bool *pbSSC_Profiled )
 {
-	bool	bRetVal;
-	u8		ucDCDPValue;
+	u8	ucDCDPValue;
+	int32_t	iRetVal;
 	
 	/*
 	 * DP_MAX_DOWNSPREAD[00003]: SSC( Spread-Spectrum Clock )
@@ -446,27 +429,24 @@ bool Dptx_Core_Get_Sink_SSC_Capability( struct Dptx_Params *pstDptx, bool *pbSSC
 	 *		  			     spread-spectrum techniques are methods by which a signal (e.g., an electrical, electromagnetic, or acoustic signal)	generated with a particular bandwidth is deliberately spread in the frequency domain, 
 	 *					     resulting in a signal with a wider bandwidth.
 	 */
-	bRetVal = Dptx_Aux_Read_DPCD( pstDptx, DP_MAX_DOWNSPREAD, &ucDCDPValue );
-	if( bRetVal ==  DPTX_RETURN_FAIL )
-	{
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Aux_Read_DPCD( pstDptx, DP_MAX_DOWNSPREAD, &ucDCDPValue );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	if( ucDCDPValue & SINK_TDOWNSPREAD_MASK )
-	{
+	if(ucDCDPValue & SINK_TDOWNSPREAD_MASK) {
 		dptx_dbg("SSC enable on the sink side" );
 		*pbSSC_Profiled = true;
 	}
-	else
-	{
+	else {
 		dptx_dbg("SSC disabled on the sink side" );  
 		*pbSSC_Profiled = false;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Get_Stream_Mode( struct Dptx_Params *pstDptx, bool *pbMST_Mode )
+int32_t Dptx_Core_Get_Stream_Mode( struct Dptx_Params *pstDptx, bool *pbMST_Mode )
 {
 	u32		uiRegMap_Cctl;
 
@@ -491,10 +471,10 @@ bool Dptx_Core_Get_Stream_Mode( struct Dptx_Params *pstDptx, bool *pbMST_Mode )
 		*pbMST_Mode = false;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Get_PHY_NumOfLanes( struct Dptx_Params *pstDptx, u8 *pucNumOfLanes )
+int32_t Dptx_Core_Get_PHY_NumOfLanes( struct Dptx_Params *pstDptx, u8 *pucNumOfLanes )
 {
 	u8		ucNumOfLanes;
 	u32		uiRagMap_PhyIfCtrl;
@@ -528,10 +508,10 @@ bool Dptx_Core_Get_PHY_NumOfLanes( struct Dptx_Params *pstDptx, u8 *pucNumOfLane
 
 	*pucNumOfLanes = ( 1 << ucNumOfLanes );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Set_PHY_NumOfLanes( struct Dptx_Params *pstDptx, u8 ucNumOfLanes )
+int32_t Dptx_Core_Set_PHY_NumOfLanes( struct Dptx_Params *pstDptx, u8 ucNumOfLanes )
 {
 	u8		ucPHY_Lanes;
 	u32		uiRegMap_PhyIfCtrl;
@@ -551,7 +531,7 @@ bool Dptx_Core_Set_PHY_NumOfLanes( struct Dptx_Params *pstDptx, u8 ucNumOfLanes 
 			break;
 		default:
 			dptx_err("Invalid number of lanes -> %d lanes", (u32)ucNumOfLanes);
-			return ( DPTX_RETURN_FAIL );
+			return DPTX_RETURN_EINVAL;
 			break;
 	}
 
@@ -584,10 +564,10 @@ bool Dptx_Core_Set_PHY_NumOfLanes( struct Dptx_Params *pstDptx, u8 ucNumOfLanes 
 
 	Dptx_Reg_Writel( pstDptx, DPTX_PHYIF_CTRL, uiRegMap_PhyIfCtrl );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Set_PHY_PowerState( struct Dptx_Params *pstDptx, enum PHY_POWER_STATE ePowerState )
+int32_t Dptx_Core_Set_PHY_PowerState( struct Dptx_Params *pstDptx, enum PHY_POWER_STATE ePowerState )
 {
 	u32			uiRegMap_PhyIfCtrl;
 
@@ -629,13 +609,13 @@ bool Dptx_Core_Set_PHY_PowerState( struct Dptx_Params *pstDptx, enum PHY_POWER_S
 			break;
 		default:
 			dptx_err( "Invalid power state: %d \n", (u32)ePowerState );
-			return ( DPTX_RETURN_FAIL );
+			return DPTX_RETURN_EINVAL;
 			break;
 	}
 
 	Dptx_Reg_Writel( pstDptx, DPTX_PHYIF_CTRL, uiRegMap_PhyIfCtrl );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 
@@ -643,7 +623,7 @@ bool Dptx_Core_Set_PHY_PowerState( struct Dptx_Params *pstDptx, enum PHY_POWER_S
 	Synopsys -> If the Synopsys Combo PHY is used, the software must first program PHY_POWERDOWN to 2 or 3 first and 
 				watiting for PHYBUSY to clear. Afterwards, rate can be changed along with PHY_POWERDOWN
 */
-bool Dptx_Core_Set_PHY_Rate( struct Dptx_Params *pstDptx, enum PHY_LINK_RATE eRate )
+int32_t Dptx_Core_Set_PHY_Rate( struct Dptx_Params *pstDptx, enum PHY_LINK_RATE eRate )
 {
 	u32		uiPhyIfCtrl;
 
@@ -678,10 +658,10 @@ bool Dptx_Core_Set_PHY_Rate( struct Dptx_Params *pstDptx, enum PHY_LINK_RATE eRa
 
 	Dptx_Reg_Writel( pstDptx, DPTX_PHYIF_CTRL, uiPhyIfCtrl );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Get_PHY_Rate( struct Dptx_Params *pstDptx, u8 *pucPHY_Rate )
+int32_t Dptx_Core_Get_PHY_Rate( struct Dptx_Params *pstDptx, u8 *pucPHY_Rate )
 {
 	u32			UiRegMap_PHY_IF_Ctrl, uiRate;
 
@@ -690,10 +670,10 @@ bool Dptx_Core_Get_PHY_Rate( struct Dptx_Params *pstDptx, u8 *pucPHY_Rate )
 
 	*pucPHY_Rate = uiRate;
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Get_PHY_BUSY_Status( struct Dptx_Params *pstDptx, u8 ucNumOfLanes )
+int32_t Dptx_Core_Get_PHY_BUSY_Status( struct Dptx_Params *pstDptx, u8 ucNumOfLanes )
 {
 	u32			uiRegMap_PhyIfCtrl, uiBitMask = 0, uiCount = 0;;
 
@@ -732,6 +712,7 @@ bool Dptx_Core_Get_PHY_BUSY_Status( struct Dptx_Params *pstDptx, u8 ucNumOfLanes
 			break;
 		default:
 			dptx_err("Invalid number of lanes %d", (u32)ucNumOfLanes);
+			return DPTX_RETURN_EINVAL;
 			break;
 	}
 
@@ -747,17 +728,18 @@ bool Dptx_Core_Get_PHY_BUSY_Status( struct Dptx_Params *pstDptx, u8 ucNumOfLanes
 		if( uiCount == MAX_NUM_OF_LOOP_PHY_STATUS )
 		{
 			dptx_err( "PHY BUSY timed out" );
-			return ( DPTX_RETURN_FAIL );
+			return DPTX_RETURN_ENODEV;
 		}
 
 		mdelay( 1 );/* Register map mentions appropriate thimeout is 100ms */
 	}while( uiCount++ < MAX_NUM_OF_LOOP_PHY_STATUS );
 
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
+	
 }
 
-bool Dptx_Core_Set_PHY_PreEmphasis( struct Dptx_Params *pstDptx,  			        unsigned int iLane_Index, enum PHY_PRE_EMPHASIS_LEVEL ePreEmphasisLevel )
+int32_t Dptx_Core_Set_PHY_PreEmphasis( struct Dptx_Params *pstDptx,  			        unsigned int iLane_Index, enum PHY_PRE_EMPHASIS_LEVEL ePreEmphasisLevel )
 {
 	u32		uiRegMap_PhyTxEQ;
 
@@ -773,7 +755,7 @@ bool Dptx_Core_Set_PHY_PreEmphasis( struct Dptx_Params *pstDptx,  			        uns
 	if( iLane_Index > (u32)PHY_LANE_ID_3 )
 	{
 		dptx_err("Invalid lane %d ", iLane_Index );
-		return ( DPTX_RETURN_FAIL );
+		return DPTX_RETURN_EINVAL;
 	}
 	if( ePreEmphasisLevel > (u32)PRE_EMPHASIS_LEVEL_3 )
 	{
@@ -787,10 +769,10 @@ bool Dptx_Core_Set_PHY_PreEmphasis( struct Dptx_Params *pstDptx,  			        uns
 
 	Dptx_Reg_Writel( pstDptx, DPTX_PHY_TX_EQ, uiRegMap_PhyTxEQ );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Set_PHY_VSW( struct Dptx_Params *pstDptx, unsigned int iLane_Index, enum PHY_VOLTAGE_SWING_LEVEL eVoltageSwingLevel )
+int32_t Dptx_Core_Set_PHY_VSW( struct Dptx_Params *pstDptx, unsigned int iLane_Index, enum PHY_VOLTAGE_SWING_LEVEL eVoltageSwingLevel )
 {
 	u32			uiRegMap_PhyTxEQ;
 
@@ -807,7 +789,7 @@ bool Dptx_Core_Set_PHY_VSW( struct Dptx_Params *pstDptx, unsigned int iLane_Inde
 	if( iLane_Index > (u32)PHY_LANE_ID_3 )
 	{
 		dptx_err("Invalid lane %d ", iLane_Index );
-		return ( DPTX_RETURN_FAIL );
+		return DPTX_RETURN_EINVAL;
 	}
 
 	if( eVoltageSwingLevel > VOLTAGE_SWING_LEVEL_3 )
@@ -822,10 +804,10 @@ bool Dptx_Core_Set_PHY_VSW( struct Dptx_Params *pstDptx, unsigned int iLane_Inde
 
 	Dptx_Reg_Writel( pstDptx, DPTX_PHY_TX_EQ, uiRegMap_PhyTxEQ );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Set_PHY_Pattern( struct Dptx_Params *pstDptx, u32 uiPattern )
+int32_t Dptx_Core_Set_PHY_Pattern( struct Dptx_Params *pstDptx, u32 uiPattern )
 {
 	u32			uiPhyTPSSelection = 0;
 
@@ -857,10 +839,10 @@ bool Dptx_Core_Set_PHY_Pattern( struct Dptx_Params *pstDptx, u32 uiPattern )
 	
 	Dptx_Reg_Writel( pstDptx, DPTX_PHYIF_CTRL, uiPhyTPSSelection );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Enable_PHY_XMIT( struct Dptx_Params *pstDptx, u32 iNumOfLanes )
+int32_t Dptx_Core_Enable_PHY_XMIT( struct Dptx_Params *pstDptx, u32 iNumOfLanes )
 {
 	u32			uiRegMap_PhyIfCtrl, uiBitMask = 0;
 
@@ -911,10 +893,10 @@ bool Dptx_Core_Enable_PHY_XMIT( struct Dptx_Params *pstDptx, u32 iNumOfLanes )
 
 	Dptx_Reg_Writel( pstDptx, DPTX_PHYIF_CTRL, uiRegMap_PhyIfCtrl );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_Disable_PHY_XMIT( struct Dptx_Params *pstDptx, u32 iNumOfLanes )
+int32_t Dptx_Core_Disable_PHY_XMIT( struct Dptx_Params *pstDptx, u32 iNumOfLanes )
 {
 	u32			uiRegMap_PhyIfCtrl, 	uiBitMask = 0;
 
@@ -944,10 +926,10 @@ bool Dptx_Core_Disable_PHY_XMIT( struct Dptx_Params *pstDptx, u32 iNumOfLanes )
 
 	Dptx_Reg_Writel( pstDptx, DPTX_PHYIF_CTRL, uiRegMap_PhyIfCtrl );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_PHY_Rate_To_Bandwidth( struct Dptx_Params *pstDptx, u8 ucRate, u8 *pucBandWidth )
+int32_t Dptx_Core_PHY_Rate_To_Bandwidth( struct Dptx_Params *pstDptx, u8 ucRate, u8 *pucBandWidth )
 {
 	switch( ucRate ) 
 	{
@@ -965,14 +947,14 @@ bool Dptx_Core_PHY_Rate_To_Bandwidth( struct Dptx_Params *pstDptx, u8 ucRate, u8
 			break;
 		default:
 			dptx_err("Invalid rate %d ", (u32)ucRate);
-			return ( DPTX_RETURN_FAIL );
+			return DPTX_RETURN_EINVAL;
 			break;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Core_PHY_Bandwidth_To_Rate( struct Dptx_Params *pstDptx, u8 ucBandWidth, u8 *pucRate )
+int32_t Dptx_Core_PHY_Bandwidth_To_Rate( struct Dptx_Params *pstDptx, u8 ucBandWidth, u8 *pucRate )
 {
 	switch( ucBandWidth ) 
 	{
@@ -990,11 +972,11 @@ bool Dptx_Core_PHY_Bandwidth_To_Rate( struct Dptx_Params *pstDptx, u8 ucBandWidt
 			break;
 		default:
 			dptx_err("Invalid link rate -> %d ", (u32)ucBandWidth);
-			return ( DPTX_RETURN_FAIL );
+			return DPTX_RETURN_EINVAL;
 			break;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 

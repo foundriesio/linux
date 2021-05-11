@@ -76,7 +76,7 @@ static int dpv14_api_attach_drm( u8 ucDP_Index )
 	pstDrm_encoder = pstDptx_drm_context->pstDrm_encoder;
 	pstDptx_drm_context->sttcc_drm_dp_callbacks.attach( pstDrm_encoder, (int)ucDP_Index, (int)0 );
 
-	return ( 0 );
+	return 0;
 }
 
 static int dpv14_api_detach_drm( u8 ucDP_Index )
@@ -101,7 +101,7 @@ static int dpv14_api_detach_drm( u8 ucDP_Index )
 	pstDrm_encoder = pstDptx_drm_context->pstDrm_encoder;
 	pstDptx_drm_context->sttcc_drm_dp_callbacks.detach( pstDrm_encoder, (int)ucDP_Index, (int)0 );
 
-	return ( 0 );
+	return 0;
 }
 
 
@@ -115,7 +115,7 @@ int tcc_dp_register_drm( struct drm_encoder *encoder, struct tcc_drm_dp_callback
 	if( !pstHandle )
 	{
 		dptx_err("Failed to get DP handle" );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	for( ucDP_Index = 0; ucDP_Index < PHY_INPUT_STREAM_MAX; ucDP_Index++ )
@@ -138,7 +138,7 @@ int tcc_dp_register_drm( struct drm_encoder *encoder, struct tcc_drm_dp_callback
 	if( encoder == NULL )
 	{
 		dptx_err("drm encoder ptr is NULL");
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	dptx_notice("DP %d is registered by DRM", ucDP_Index);
@@ -158,7 +158,7 @@ int tcc_dp_unregister_drm( void )
 
 	memset( &stDptx_drm_context[PHY_INPUT_STREAM_0], 0, sizeof(struct Dptx_drm_context_t) * PHY_INPUT_STREAM_MAX );
 
-	return ( 0 );
+	return 0;
 }
 EXPORT_SYMBOL( tcc_dp_unregister_drm );
 
@@ -171,20 +171,20 @@ int dpv14_api_get_hpd_state( int dp_id, unsigned char *hpd_state )
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
 	{
 		dptx_err("Invalid dp id as %d", dp_id );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	if( hpd_state == NULL )
 	{
 		dptx_err("drm hpd buffer ptr is NULL");
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
 		dptx_err("Failed to get handle" );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	Dptx_Intr_Get_HotPlug_Status(pstHandle, &ucHPD_State);
@@ -211,26 +211,26 @@ int dpv14_api_get_hpd_state( int dp_id, unsigned char *hpd_state )
 
 int dpv14_api_get_edid( int dp_id, unsigned char *edid, int buf_length )
 {
-	bool				bRetVal;
-	u8					*pucEDID_Buf;
+	u8 *pucEDID_Buf;
+	int32_t	iRetVal;
 	struct Dptx_Params 	*pstHandle;
 
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
 	{
 		dptx_err("Invalid dp id as %d", dp_id );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 	if( edid == NULL )
 	{
 		dptx_err("drm edid buffer ptr is NULL");
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
 		dptx_err("Failed to get handle" );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	pucEDID_Buf = pstHandle->paucEdidBuf_Entry[dp_id];
@@ -239,16 +239,16 @@ int dpv14_api_get_edid( int dp_id, unsigned char *edid, int buf_length )
 		dptx_err("DP %d EDID buffer is not available", dp_id );
 
 		memset( edid, 0, buf_length );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
-	bRetVal = Dptx_Edid_Verify_BaseBlk_Data( pucEDID_Buf );
-	if( bRetVal == DPTX_API_RETURN_FAIL )
+	iRetVal = Dptx_Edid_Verify_BaseBlk_Data( pucEDID_Buf );
+	if( iRetVal != DPTX_RETURN_NO_ERROR )
 	{
 		dptx_err("DP %d EDID data is not valid", dp_id );
 
 		memset( edid, 0, buf_length );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	if( buf_length < (int)DPTX_EDID_BUFLEN )
@@ -260,13 +260,13 @@ int dpv14_api_get_edid( int dp_id, unsigned char *edid, int buf_length )
 		memcpy( edid, pucEDID_Buf, DPTX_EDID_BUFLEN );
 	}
 
-	return ( 0 );
+	return 0;
 }
 
 int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_detailed_timing )
 {
-	bool					bRetVal;
-	bool					bVStream_Enabled;
+	bool bVStream_Enabled;
+	int32_t 	iRetVal;
 	struct Dptx_Params 	*pstHandle;
 	struct Dptx_Dtd_Params	stDtd_Params;
 	struct Dptx_Dtd_Params	stDtd_Params_Configured;
@@ -274,20 +274,20 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
 	{
 		dptx_err("Invalid dp id as %d", dp_id );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	if( dptx_detailed_timing == NULL )
 	{
 		dptx_err("drm timing buffer ptr is NULL");
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
 		dptx_err("Failed to get handle" );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	stDtd_Params.pixel_repetition_input = (u16)dptx_detailed_timing->pixel_repetition_input;
@@ -332,14 +332,14 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 				dptx_info("		H Sync plus W(%d), V Sync plus W(%d) ", (u32)dptx_detailed_timing->h_sync_pulse_width, (u32)dptx_detailed_timing->v_sync_pulse_width );
 				dptx_info("		H Sync Polarity(%d), V Sync Polarity(%d)", (u32)dptx_detailed_timing->h_sync_polarity, (u32)dptx_detailed_timing->v_sync_polarity );
 
-				return ( 0 );
+				return 0;
 		}
 	}
 
-	bRetVal = Dptx_Avgen_Set_Video_Detailed_Timing( pstHandle, (u8)dp_id, &stDtd_Params );
-	if( bRetVal == DPTX_API_RETURN_FAIL ) 
+	iRetVal = Dptx_Avgen_Set_Video_Detailed_Timing( pstHandle, (u8)dp_id, &stDtd_Params );
+	if( iRetVal != DPTX_RETURN_NO_ERROR )
 	{
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	dptx_info("[Detailed timing from DRM] : Video timing of DP %d is being aconfigured ", dp_id);
@@ -351,36 +351,36 @@ int dpv14_api_set_video_timing( int dp_id, struct dptx_detailed_timing_t *dptx_d
 	dptx_info("		H Sync plus W(%d), V Sync plus W(%d) ", (u32)dptx_detailed_timing->h_sync_pulse_width, (u32)dptx_detailed_timing->v_sync_pulse_width );
 	dptx_info("		H Sync Polarity(%d), V Sync Polarity(%d)", (u32)dptx_detailed_timing->h_sync_polarity, (u32)dptx_detailed_timing->v_sync_polarity );
 
-	return ( 0 );
+	return 0;
 }
 
 int dpv14_api_set_video_stream_enable( int dp_id, unsigned char enable )
 {
-	bool				bRetVal;
+	int32_t	iRetVal;
 	struct Dptx_Params 	*pstHandle;
 
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
 	{
 		dptx_err("Invalid dp id as %d", dp_id );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
 		dptx_err("Failed to get handle" );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	dptx_info("Set DP %d video %s...", dp_id, enable ? "enable":"disable" );
 
-	bRetVal = Dptx_Avgen_Set_Video_Stream_Enable( pstHandle, (bool)enable, (u8)dp_id );
-	if( bRetVal == DPTX_API_RETURN_FAIL ) 
+	iRetVal = Dptx_Avgen_Set_Video_Stream_Enable( pstHandle, (bool)enable, (u8)dp_id );
+	if( iRetVal != DPTX_RETURN_NO_ERROR ) 
 	{
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
-	return ( 0 );
+	return 0;
 }
 
 int dpv14_api_set_audio_stream_enable( int dp_id, unsigned char enable )
@@ -390,14 +390,14 @@ int dpv14_api_set_audio_stream_enable( int dp_id, unsigned char enable )
 	if(( dp_id >= PHY_INPUT_STREAM_MAX ) || ( dp_id < PHY_INPUT_STREAM_0 ))
 	{
 		dptx_err("Invalid dp id as %d", dp_id );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	pstHandle = Dptx_Platform_Get_Device_Handle();
 	if( !pstHandle )
 	{
 		dptx_err("Failed to get handle" );
-		return ( -ENODEV );
+		return -ENODEV;
 	}
 
 	dptx_info("Set DP %d audio %s...", dp_id, enable ? "enable":"disable" );
@@ -424,7 +424,7 @@ int32_t tcc_dp_identify_lcd_mux_configuration(uint32_t dp_id, uint8_t lcd_mux_in
 		return ENODEV;
 	}
 
-	iRetVal = (int)Dptx_Platform_Get_MuxSelect(pstHandle);
+	iRetVal = Dptx_Platform_Get_MuxSelect(pstHandle);
 	if (iRetVal != 0) {
 		return ENODEV;
 	}
