@@ -417,6 +417,8 @@ static int ehci_platform_remove(struct platform_device *dev)
 	struct ehci_platform_priv *priv = hcd_to_ehci_priv(hcd);
 	int clk, rst;
 
+	device_remove_file(&dev->dev, &dev_attr_testmode);
+
 	usb_remove_hcd(hcd);
 
 	if (pdata->power_off)
