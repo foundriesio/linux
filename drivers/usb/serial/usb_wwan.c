@@ -174,8 +174,6 @@ static int set_serial_info(struct usb_serial_port *port,
 		if ((close_delay != port->port.close_delay) ||
 		    (closing_wait != port->port.closing_wait))
 			retval = -EPERM;
-		else
-			retval = -EOPNOTSUPP;
 	} else {
 		port->port.close_delay  = close_delay;
 		port->port.closing_wait = closing_wait;
