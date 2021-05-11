@@ -1,11 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  *
- * (C) COPYRIGHT 2014-2016, 2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2014-2020 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,10 +17,7 @@
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
  *
- * SPDX-License-Identifier: GPL-2.0
- *
  */
-
 
 /*
  * Register-based HW access backend specific definitions
@@ -62,9 +60,6 @@ struct slot_rb {
 /**
  * struct kbase_backend_data - GPU backend specific data for HW access layer
  * @slot_rb:			Slot ringbuffers
- * @rmu_workaround_flag:	When PRLAM-8987 is present, this flag determines
- *				whether slots 0/1 or slot 2 are currently being
- *				pulled from
  * @scheduling_timer:		The timer tick used for rescheduling jobs
  * @timer_running:		Is the timer running? The runpool_mutex must be
  *				held whilst modifying this.
@@ -81,13 +76,12 @@ struct slot_rb {
  * The hwaccess_lock (a spinlock) must be held when accessing this structure
  */
 struct kbase_backend_data {
+#if !MALI_USE_CSF
 	struct slot_rb slot_rb[BASE_JM_MAX_NR_SLOTS];
-
-	bool rmu_workaround_flag;
-
 	struct hrtimer scheduling_timer;
 
 	bool timer_running;
+#endif
 	bool suspend_timer;
 
 	atomic_t reset_gpu;
@@ -97,13 +91,16 @@ struct kbase_backend_data {
 /* kbase_prepare_to_reset_gpu has been called */
 #define KBASE_RESET_GPU_PREPARED        1
 /* kbase_reset_gpu has been called - the reset will now definitely happen
- * within the timeout period */
+ * within the timeout period
+ */
 #define KBASE_RESET_GPU_COMMITTED       2
 /* The GPU reset process is currently occuring (timeout has expired or
- * kbasep_try_reset_gpu_early was called) */
+ * kbasep_try_reset_gpu_early was called)
+ */
 #define KBASE_RESET_GPU_HAPPENING       3
 /* Reset the GPU silently, used when resetting the GPU as part of normal
- * behavior (e.g. when exiting protected mode). */
+ * behavior (e.g. when exiting protected mode).
+ */
 #define KBASE_RESET_GPU_SILENT          4
 	struct workqueue_struct *reset_workq;
 	struct work_struct reset_work;

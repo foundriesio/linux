@@ -1,5 +1,4 @@
 /*
- * linux/drivers/char/tcc_screen_share.c
  *
  * Copyright (c) 2017 Telechips, Inc.
  *
@@ -95,12 +94,13 @@ int kbase_platform_dvfs_event(struct kbase_device *kbdev, u32 utilisation,
 			maliDvfsCurrentStep = nextStep;
 
 			if (kbdev->clock && kbdev->regulator)
-				dev_dbg(kbdev->dev, 
-				  "%s setting %d, utilisation:%d, curstep:%d,"
-				  " nextstep:%d, getrate:%d, getvoltage:%d\n",
-				   __func__,
+				dev_dbg(kbdev->dev,
+				  "%s setting %d, utilisation:%d, curstep:%d,",
+				  __func__,
 				  gpu_dvfs_table[nextStep].gpu_freq,
-				  utilisation, currStep,
+				  utilisation, currStep);
+				dev_dbg(kbdev->dev,
+				  " nextstep:%d, getrate:%d, getvoltage:%d\n",
 				  nextStep, clk_get_rate(kbdev->clock),
 				  regulator_get_voltage(kbdev->regulator));
 

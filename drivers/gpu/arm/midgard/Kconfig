@@ -1,11 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0
 #
-# (C) COPYRIGHT 2019 Telechips Inc.
-# (C) COPYRIGHT 2012-2019 ARM Limited. All rights reserved.
+# (C) COPYRIGHT 2017-2021 Telechips Inc.
+# (C) COPYRIGHT 2012-2021 ARM Limited. All rights reserved.
 #
 # This program is free software and is provided to you under the terms of the
 # GNU General Public License version 2 as published by the Free Software
 # Foundation, and any use by you of this program is subject to the terms
-# of such GNU licence.
+# of such GNU license.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, you can access it online at
 # http://www.gnu.org/licenses/gpl-2.0.html.
-#
-# SPDX-License-Identifier: GPL-2.0
 #
 #
 
@@ -31,6 +30,13 @@ menuconfig MALI_MIDGARD
 
 	  To compile this driver as a module, choose M here:
 	  this will generate a single module, called mali_kbase.
+
+config MALI_CSF_SUPPORT
+	bool "Mali CSF based GPU support"
+	depends on MALI_MIDGARD=m
+	default n
+	help
+	  Enables support for CSF based GPUs.
 
 config MALI_GATOR_SUPPORT
 	bool "Enable Streamline tracing support"
@@ -50,6 +56,7 @@ config MALI_MIDGARD_DVFS
 config MALI_MIDGARD_ENABLE_TRACE
 	bool "Enable kbase tracing"
 	depends on MALI_MIDGARD
+	default y if MALI_DEBUG
 	default n
 	help
 	  Enables tracing in kbase.  Trace log available through
@@ -70,6 +77,7 @@ config MALI_DMA_FENCE
 	bool "DMA_BUF fence support for Mali"
 	depends on MALI_MIDGARD && DMA_SHARED_BUFFER
 	default y
+
 	help
 	  Support DMA_BUF fences for Mali.
 
@@ -84,6 +92,17 @@ config MALI_PLATFORM_NAME
 	  Enter the name of the desired platform configuration directory to
 	  include in the build. 'platform/$(MALI_PLATFORM_NAME)/Kbuild' must
 	  exist.
+
+config MALI_ARBITER_SUPPORT
+	bool "Enable arbiter support for Mali"
+	depends on MALI_MIDGARD
+	default n
+	help
+	  Enable support for the arbiter interface in the driver.
+	  This allows an external arbiter to manage driver access
+	  to GPU hardware in a virtualized environment
+
+	  If unsure, say N.
 
 # MALI_EXPERT configuration options
 
@@ -157,6 +176,7 @@ config MALI_ERROR_INJECT
 config MALI_SYSTEM_TRACE
 	bool "Enable system event tracing support"
 	depends on MALI_MIDGARD && MALI_EXPERT
+	default y if MALI_DEBUG
 	default n
 	help
 	  Choose this option to enable system trace events for each
@@ -218,6 +238,10 @@ config MALI_DMA_BUF_LEGACY_COMPAT
 	  maintenance where MALI_DMA_BUF_MAP_ON_DEMAND would do the mapping,
 	  including a cache flush.
 
+	  This option might work-around issues related to missing cache
+	  flushes in other drivers. This only has an effect for clients using
+	  UK 11.18 or older. For later UK versions it is not possible.
+
 config MALI_HW_ERRATA_1485982_NOT_AFFECTED
 	bool "Disable workaround for BASE_HW_ISSUE_GPU2017_1336"
 	depends on MALI_MIDGARD && MALI_EXPERT
@@ -241,6 +265,14 @@ config MALI_HW_ERRATA_1485982_USE_CLOCK_ALTERNATIVE
 	  tree using the property, opp-mali-errata-1485982. Otherwise the
 	  slowest clock will be selected.
 
+config MALI_GEM5_BUILD
+	bool "Enable build of Mali kernel driver for GEM5"
+	depends on MALI_MIDGARD
+	default n
+	help
+	  This option is to do a Mali GEM5 build.
+	  If unsure, say N.
+
 # Instrumentation options.
 
 config MALI_JOB_DUMP
@@ -253,16 +285,63 @@ config MALI_JOB_DUMP
 	  minimal overhead when not in use. Enable only if you know what
 	  you are doing.
 
-config MALI_PRFCNT_SET_SECONDARY
-	bool "Use secondary set of performance counters"
+choice
+	prompt "Performance counters set"
+	default MALI_PRFCNT_SET_PRIMARY
 	depends on MALI_MIDGARD && MALI_EXPERT
-	default n
+
+config MALI_PRFCNT_SET_PRIMARY
+	bool "Primary"
+	depends on MALI_MIDGARD && MALI_EXPERT
+	help
+	  Select this option to use primary set of performance counters.
+
+config MALI_PRFCNT_SET_SECONDARY
+	bool "Secondary"
+	depends on MALI_MIDGARD && MALI_EXPERT
 	help
 	  Select this option to use secondary set of performance counters. Kernel
 	  features that depend on an access to the primary set of counters may
 	  become unavailable. Enabling this option will prevent power management
 	  from working optimally and may cause instrumentation tools to return
 	  bogus results.
+
+	  If unsure, use MALI_PRFCNT_SET_PRIMARY.
+
+config MALI_PRFCNT_SET_TERTIARY
+	bool "Tertiary"
+	depends on MALI_MIDGARD && MALI_EXPERT
+	help
+	  Select this option to use tertiary set of performance counters. Kernel
+	  features that depend on an access to the primary set of counters may
+	  become unavailable. Enabling this option will prevent power management
+	  from working optimally and may cause instrumentation tools to return
+	  bogus results.
+
+	  If unsure, use MALI_PRFCNT_SET_PRIMARY.
+
+endchoice
+
+config MALI_PRFCNT_SET_SELECT_VIA_DEBUG_FS
+	bool "Allow runtime selection of performance counters set via debugfs"
+	depends on MALI_MIDGARD && MALI_EXPERT && DEBUG_FS
+	default n
+	help
+	  Select this option to make the secondary set of performance counters
+	  available at runtime via debugfs. Kernel features that depend on an
+	  access to the primary set of counters may become unavailable.
+
+	  If no runtime debugfs option is set, the build time counter set
+	  choice will be used.
+
+	  This feature is unsupported and unstable, and may break at any time.
+	  Enabling this option will prevent power management from working
+	  optimally and may cause instrumentation tools to return bogus results.
+
+	  No validation is done on the debugfs input. Invalid input could cause
+	  performance counter errors. Valid inputs are the values accepted by
+	  the SET_SELECT bits of the PRFCNT_CONFIG register as defined in the
+	  architecture specification.
 
 	  If unsure, say N.
 

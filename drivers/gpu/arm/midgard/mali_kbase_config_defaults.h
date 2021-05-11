@@ -1,11 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  *
- * (C) COPYRIGHT 2013-2019 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2013-2021 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,14 +17,10 @@
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
  *
- * SPDX-License-Identifier: GPL-2.0
- *
  */
 
 /**
- * @file mali_kbase_config_defaults.h
- *
- * Default values for configuration settings
+ * DOC: Default values for configuration settings
  *
  */
 
@@ -32,27 +29,6 @@
 
 /* Include mandatory definitions per platform */
 #include <mali_kbase_config_platform.h>
-
-/**
-* Boolean indicating whether the driver is configured to be secure at
-* a potential loss of performance.
-*
-* This currently affects only r0p0-15dev0 HW and earlier.
-*
-* On r0p0-15dev0 HW and earlier, there are tradeoffs between security and
-* performance:
-*
-* - When this is set to true, the driver remains fully secure,
-* but potentially loses performance compared with setting this to
-* false.
-* - When set to false, the driver is open to certain security
-* attacks.
-*
-* From r0p0-00rel0 and onwards, there is no security loss by setting
-* this to false, and no performance loss by setting it to
-* true.
-*/
-#define DEFAULT_SECURE_BUT_LOSS_OF_PERFORMANCE false
 
 enum {
 	/**
@@ -109,29 +85,38 @@ enum {
 };
 
 /**
- * Default period for DVFS sampling
+ * Default period for DVFS sampling (can be overridden by platform header)
  */
+#ifndef DEFAULT_PM_DVFS_PERIOD
 #define DEFAULT_PM_DVFS_PERIOD 100 /* 100ms */
+#endif
 
 /**
  * Power Management poweroff tick granuality. This is in nanoseconds to
- * allow HR timer support.
+ * allow HR timer support (can be overridden by platform header).
  *
  * On each scheduling tick, the power manager core may decide to:
  * -# Power off one or more shader cores
  * -# Power off the entire GPU
  */
+#ifndef DEFAULT_PM_GPU_POWEROFF_TICK_NS
 #define DEFAULT_PM_GPU_POWEROFF_TICK_NS (400000) /* 400us */
+#endif
 
 /**
  * Power Manager number of ticks before shader cores are powered off
+ * (can be overridden by platform header).
  */
+#ifndef DEFAULT_PM_POWEROFF_TICK_SHADER
 #define DEFAULT_PM_POWEROFF_TICK_SHADER (2) /* 400-800us */
+#endif
 
 /**
- * Default scheduling tick granuality
+ * Default scheduling tick granuality (can be overridden by platform header)
  */
+#ifndef DEFAULT_JS_SCHEDULING_PERIOD_NS
 #define DEFAULT_JS_SCHEDULING_PERIOD_NS    (100000000u) /* 100ms */
+#endif
 
 /**
  * Default minimum number of scheduling ticks before jobs are soft-stopped.
@@ -210,6 +195,25 @@ enum {
  * overridden by defining GPU_FREQ_KHZ_MAX in the platform file.
  */
 #define DEFAULT_GPU_FREQ_KHZ_MAX (5000)
+
+/**
+ * Default timeout for task execution on an endpoint
+ *
+ * Number of GPU clock cycles before the driver terminates a task that is
+ * making no forward progress on an endpoint (e.g. shader core).
+ * Value chosen is equivalent to the time after which a job is hard stopped
+ * which is 5 seconds (assuming the GPU is usually clocked at ~500 MHZ).
+ */
+#define DEFAULT_PROGRESS_TIMEOUT ((u64)5 * 500 * 1024 * 1024)
+
+/**
+ * Default threshold at which to switch to incremental rendering
+ *
+ * Fraction of the maximum size of an allocation that grows on GPU page fault
+ * that can be used up before the driver switches to incremental rendering,
+ * in 256ths. 0 means disable incremental rendering.
+ */
+#define DEFAULT_IR_THRESHOLD (192)
 
 #endif /* _KBASE_CONFIG_DEFAULTS_H_ */
 

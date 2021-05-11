@@ -1,11 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  *
- * (C) COPYRIGHT 2011-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2011-2018, 2020-2021 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,15 +17,10 @@
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
  *
- * SPDX-License-Identifier: GPL-2.0
- *
  */
 
-
-
 /**
- * @file mali_kbase_gpuprops_types.h
- * Base kernel property query APIs
+ * DOC: Base kernel property query APIs
  */
 
 #ifndef _KBASE_GPUPROPS_TYPES_H_
@@ -60,6 +56,8 @@ struct kbase_gpuprops_regdump {
 	u32 stack_present_lo;
 	u32 stack_present_hi;
 	u32 coherency_features;
+	u32 gpu_features_lo;
+	u32 gpu_features_hi;
 };
 
 struct kbase_gpu_cache_props {
@@ -89,7 +87,7 @@ struct kbase_gpu_props {
 	struct kbase_gpu_mmu_props mmu;
 
 	/* Properties shared with userspace */
-	base_gpu_props props;
+	struct base_gpu_props props;
 
 	u32 prop_buffer_size;
 	void *prop_buffer;

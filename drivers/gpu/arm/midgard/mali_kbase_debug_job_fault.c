@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  *
- * (C) COPYRIGHT 2012-2016, 2018-2019 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2012-2016, 2018-2020 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +16,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
- *
- * SPDX-License-Identifier: GPL-2.0
  *
  */
 
@@ -518,23 +517,24 @@ void kbase_debug_job_fault_dev_term(struct kbase_device *kbdev)
 /*
  *  Initialize the relevant data structure per context
  */
-void kbase_debug_job_fault_context_init(struct kbase_context *kctx)
+int kbase_debug_job_fault_context_init(struct kbase_context *kctx)
 {
 
 	/* We need allocate double size register range
 	 * Because this memory will keep the register address and value
 	 */
 	kctx->reg_dump = vmalloc(0x4000 * 2);
-	if (kctx->reg_dump == NULL)
-		return;
-
-	if (kbase_debug_job_fault_reg_snapshot_init(kctx, 0x4000) == false) {
-		vfree(kctx->reg_dump);
-		kctx->reg_dump = NULL;
+	if (kctx->reg_dump != NULL) {
+		if (kbase_debug_job_fault_reg_snapshot_init(kctx, 0x4000) ==
+		    false) {
+			vfree(kctx->reg_dump);
+			kctx->reg_dump = NULL;
+		}
+		INIT_LIST_HEAD(&kctx->job_fault_resume_event_list);
+		atomic_set(&kctx->job_fault_count, 0);
 	}
-	INIT_LIST_HEAD(&kctx->job_fault_resume_event_list);
-	atomic_set(&kctx->job_fault_count, 0);
 
+	return 0;
 }
 
 /*
