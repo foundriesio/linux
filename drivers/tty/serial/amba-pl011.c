@@ -66,8 +66,8 @@
 #endif
 
 #if defined(CONFIG_PM_SLEEP) \
-	&&(defined(CONFIG_ARCH_TCC805X)||defined(CONFIG_ARCH_TCC803X)) \
-	&&(!defined(CONFIG_TCC803X_CA7S))
+	&& (defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC803X)) \
+	&& (!defined(CONFIG_TCC803X_CA7S))
 #include <linux/of_address.h>
 #endif
 
@@ -1312,7 +1312,7 @@ static void pl011_dma_shutdown(struct uart_amba_port *uap)
 		dmaengine_terminate_all(uap->dmarx.chan);
 		/* Clean up the RX DMA */
 		if (uap->dmarx.poll_rate)
-		    del_timer_sync(&uap->dmarx.timer);
+			del_timer_sync(&uap->dmarx.timer);
 		pl011_sgbuf_free(uap->dmarx.chan, &uap->dmarx.sgbuf_a, DMA_FROM_DEVICE);
 		pl011_sgbuf_free(uap->dmarx.chan, &uap->dmarx.sgbuf_b, DMA_FROM_DEVICE);
 		uap->using_rx_dma = false;
@@ -2737,8 +2737,8 @@ static int pl011_setup_port(struct device *dev, struct uart_amba_port *uap,
 {
 	void __iomem *base;
 #if defined(CONFIG_PM_SLEEP) \
-	&&(defined(CONFIG_ARCH_TCC805X)||defined(CONFIG_ARCH_TCC803X)) \
-	&&(!defined(CONFIG_TCC803X_CA7S))
+	&& (defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC803X)) \
+	&& (!defined(CONFIG_TCC803X_CA7S))
 	int ret;
 #endif
 
@@ -2759,29 +2759,32 @@ static int pl011_setup_port(struct device *dev, struct uart_amba_port *uap,
 	spin_lock_init(&uap->dma_rx_lock);
 #endif
 #if defined(CONFIG_PM_SLEEP) \
-	&&(defined(CONFIG_ARCH_TCC805X)||defined(CONFIG_ARCH_TCC803X)) \
-	&&(!defined(CONFIG_TCC803X_CA7S))
-	ret = of_property_read_u32_index(dev->of_node, "config-reg", 0, &uap->port.phy_config_reg);
-	if (ret){
-		printk(KERN_ERR "[ERROR][PL011] no configuration address \n");
+	&& (defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC803X)) \
+	&& (!defined(CONFIG_TCC803X_CA7S))
+	ret = of_property_read_u32_index(dev->of_node, "config-reg", 0,
+		&uap->port.phy_config_reg);
+	if (ret) {
+		pr_err("[ERROR][PL011] no configuration address\n");
 		return ret;
-        }
+	}
 
-	ret = of_property_read_u32_index(dev->of_node, "config-reg", 1, &uap->port.phy_config_reg_size);
-	if (ret){
-		printk(KERN_ERR "[ERROR][PL011] no configuration address size \n");
+	ret = of_property_read_u32_index(dev->of_node, "config-reg", 1,
+		&uap->port.phy_config_reg_size);
+	if (ret) {
+		pr_err("[ERROR][PL011] no configuration address size\n");
 		return ret;
-        }
+	}
 
-	uap->port.config_reg = ioremap(uap->port.phy_config_reg, uap->port.phy_config_reg_size);
-	if(uap->port.config_reg == NULL)
+	uap->port.config_reg = ioremap(uap->port.phy_config_reg,
+		uap->port.phy_config_reg_size);
+
+	if (uap->port.config_reg == NULL)
 		return -ENOMEM;
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-        uap->port.sc_np = of_parse_phandle(dev->of_node, "sc-firmware", 0);
-        if(uap->port.sc_np == NULL) {
-                printk(KERN_ERR "[ERROR][PL011] no SC node\n");
-        }
+	uap->port.sc_np = of_parse_phandle(dev->of_node, "sc-firmware", 0);
+	if (uap->port.sc_np == NULL)
+		pr_err("[ERROR][PL011] no SC node\n");
 #endif
 #endif
 	spin_lock_init(&uap->port.lock);
@@ -2818,84 +2821,107 @@ static int pl011_register_port(struct uart_amba_port *uap)
 	return ret;
 }
 
-static void tcc_set_uart_port_cfg( struct uart_amba_port *uap, struct device *dev)
+static void tcc_set_uart_port_cfg(struct uart_amba_port *uap,
+	struct device *dev)
 {
-#if (defined(CONFIG_ARCH_TCC805X)||defined(CONFIG_ARCH_TCC803X)) \
-	&&(!defined(CONFIG_TCC803X_CA7S))
-    struct device_node *np;
-    int node_detect = 0;
-    long cfg_num_len, i;
-    unsigned int offset_reg;
-    const char *orin_pinctrl_name;
-    char *pinctrl_name = 0, *string_temp = 0;
-    char cfg_id_string[3];
-    unsigned long cfg_id;
-    unsigned int reg_val;
+#if (defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC803X)) \
+	&& (!defined(CONFIG_TCC803X_CA7S))
+	struct device_node *np;
+	int node_detect = 0;
+	long cfg_num_len, i;
+	unsigned int offset_reg;
+	const char *orin_pinctrl_name;
+	char *pinctrl_name = 0, *string_temp = 0;
+	char cfg_id_string[3];
+	unsigned long cfg_id;
+	unsigned int reg_val;
+	int ret;
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-    const struct tcc_sc_fw_handle *sc_fw_handle;
+	const struct tcc_sc_fw_handle *sc_fw;
 #endif
 
-    np = of_parse_phandle(dev->of_node, "pinctrl-0", 0);
-    orin_pinctrl_name = of_node_full_name(np);
-    node_detect = strcmp(orin_pinctrl_name, "<no-node>");
+	np = of_parse_phandle(dev->of_node, "pinctrl-0", 0);
+	orin_pinctrl_name = of_node_full_name(np);
+	node_detect = strcmp(orin_pinctrl_name, "<no-node>");
 
-    if(node_detect != 0)
-    {
-        /* strip /pinctrl@142000000/uart */
-        pinctrl_name = strstr(orin_pinctrl_name, "uart");
-        if(pinctrl_name == NULL)
-        {
-            printk(KERN_ERR "[ERROR][PL011] port configuration error : failed to parse configuration number\n");
-        } else {
-            pinctrl_name+=4;
-            string_temp = strstr(pinctrl_name, "_");
-            if(string_temp == NULL)
-            {
-                printk(KERN_ERR "[ERROR][PL011] port configuration error : failed to parse configuration number\n");
-            } else {
-                cfg_num_len = string_temp - pinctrl_name;
+	if (node_detect != 0) {
+		/* strip /pinctrl@142000000/uart */
+		pinctrl_name = strstr(orin_pinctrl_name, "uart");
+		if (pinctrl_name == NULL) {
+			pr_err("[ERROR][PL011] port configuration error : failed to parse configuration number\n");
+		} else {
+			pinctrl_name += 4;
+			string_temp = strstr(pinctrl_name, "_");
+			if (string_temp == NULL) {
+				pr_err("[ERROR][PL011] port configuration error : failed to parse configuration number\n");
+			} else {
+				cfg_num_len = string_temp - pinctrl_name;
 
-                for(i=0; i<cfg_num_len; i++){
-                    cfg_id_string[i] = *(pinctrl_name+i);
-                }
-                cfg_id_string[cfg_num_len]='\0';
-                cfg_id = simple_strtoul((const char*)cfg_id_string, NULL, 10);
-                offset_reg = (uap->port.line/4u)*0x4u;
+				for (i = 0; i < cfg_num_len; i++)
+					cfg_id_string[i] = *(pinctrl_name+i);
+
+				cfg_id_string[cfg_num_len] = '\0';
+				ret = kstrtoul((const char *)cfg_id_string,
+					10, (unsigned long *)&cfg_id);
+				if (ret != 0)
+					pr_err("[ERROR][PL011] kstroul fail\n"
+						);
+				offset_reg = (uap->port.line/4u)*0x4u;
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 
-                sc_fw_handle = tcc_sc_fw_get_handle(uap->port.sc_np);
+				sc_fw =
+				    tcc_sc_fw_get_handle(uap->port.sc_np);
 
-                if(sc_fw_handle == NULL) {
+				if (sc_fw == NULL) {
 
-                    printk(KERN_ERR "[ERROR][PL011] no SC firmware handle\n");
+					pr_err("[ERROR][PL011] no SC firmware handle\n");
 
-                    reg_val = readl_relaxed(uap->port.config_reg+offset_reg);
-                    reg_val = reg_val&~((unsigned int)0xFF<<((uap->port.line%4u)*8u));
-                    reg_val = reg_val|((unsigned int)cfg_id<<((uap->port.line%4u)*8u));
+					reg_val =
+					    readl_relaxed(uap->port.config_reg
+						    +offset_reg);
+					reg_val =
+					    reg_val&~(0xFF<<
+						    ((uap->port.line%4u)*8u));
+					reg_val =
+					    reg_val|((unsigned int)cfg_id<<
+						    ((uap->port.line%4u)*8u));
 
-                    writel_relaxed(reg_val, uap->port.config_reg+offset_reg);
+					writel_relaxed(reg_val,
+						uap->port.config_reg+
+						offset_reg);
 
-                } else {
+				} else {
 
-                    sc_fw_handle->ops.gpio_ops->request_gpio(sc_fw_handle, uap->port.phy_config_reg+offset_reg, ((uap->port.line%4u)*8u), 8u, (unsigned int)cfg_id);
+					sc_fw->ops.gpio_ops->request_gpio(
+						sc_fw,
+						uap->port.phy_config_reg+
+						offset_reg,
+						((uap->port.line%4u)*8u), 8u,
+						(unsigned int)cfg_id);
 
-                }
+				}
 
 #else
 
-                reg_val = readl_relaxed(uap->port.config_reg+offset_reg);
-                reg_val = reg_val&~(0xFF<<((uap->port.line%4)*8));
-                reg_val = reg_val|(cfg_id<<((uap->port.line%4)*8));
+				reg_val =
+				    readl_relaxed(uap->port.config_reg+
+					    offset_reg);
+				reg_val =
+				    reg_val&~(0xFF<<((uap->port.line%4)*8));
+				reg_val =
+				    reg_val|(cfg_id<<((uap->port.line%4)*8));
 
-                writel_relaxed(reg_val, uap->port.config_reg+offset_reg);
+				writel_relaxed(reg_val,
+					uap->port.config_reg+offset_reg);
 
 #endif
-            }
-        }
-    } else {
-        printk(KERN_ERR "[ERROR][PL011] port configuration error : %s\n", pinctrl_name);
-    }
+			}
+		}
+	} else {
+		pr_err("[ERROR][PL011] port configuration error : %s\n",
+		    pinctrl_name);
+	}
 #endif
 
 }
