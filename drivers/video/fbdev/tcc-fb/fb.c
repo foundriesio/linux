@@ -65,12 +65,14 @@
 #include <video/tcc/vioc_global.h>
 #include <video/tcc/tcc_scaler_ioctrl.h>
 #include <video/tcc/tcc_attach_ioctrl.h>
+#include <linux/uaccess.h>
+
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
 #include <video/tcc/vioc_pvric_fbdc.h>
 #define FBDC_ALIGNED(w, mul) (((unsigned int)w + (mul - 1)) & ~(mul - 1))
 #endif
 
-#define FB_VERSION "1.0.1"
+#define FB_VERSION "1.0.3"
 #define FB_BUF_MAX_NUM (3)
 #define BYTE_TO_PAGES(range) (((range) + (PAGE_SIZE - 1)) >> PAGE_SHIFT)
 
@@ -112,6 +114,13 @@ struct fb_dp_device {
 	unsigned int FbUpdateType;
 	unsigned int FbLayerOrder;
 	unsigned int FbWdmaPath;	// 0: Display device path, 1: Wdma path
+	/*
+	 * fb_no_pixel_alphablend
+	 *  This variable indicates whether disable or enable pixel alpha blend
+	 *  If it is set to 1, fb disabled pixel-alphablend function even if
+	 *  rdma format is RGB888.
+	 */
+	unsigned int fb_no_pixel_alphablend;
 	struct clk *vioc_clock;		// vioc blcok clock
 	struct clk *ddc_clock;		// display blcok clock
 	struct fb_vioc_block ddc_info;  // display controller address
@@ -659,7 +668,11 @@ static void fbX_m2m_activate_var(
 			VIOC_RDMA_SetImageAlphaSelect(
 				par->pdata.rdma_info.virt_addr, 1);
 			VIOC_RDMA_SetImageAlphaEnable(
-				par->pdata.rdma_info.virt_addr, 1);
+				par->pdata.rdma_info.virt_addr,
+				par->pdata.fb_no_pixel_alphablend ? 0 : 1);
+		} else {
+			VIOC_RDMA_SetImageAlphaEnable(
+				par->pdata.rdma_info.virt_addr, 0);
 		}
 		VIOC_RDMA_SetImageY2REnable(par->pdata.rdma_info.virt_addr, 0);
 		VIOC_RDMA_SetImageR2YEnable(par->pdata.rdma_info.virt_addr, 0);
@@ -827,12 +840,15 @@ static void fbX_activate_var(
 #endif
 		VIOC_RDMA_SetImageBase(
 			par->pdata.rdma_info.virt_addr, dma_addr, 0, 0);
-
 	if (format == VIOC_IMG_FMT_ARGB8888) {
 		VIOC_RDMA_SetImageAlphaSelect(
 			par->pdata.rdma_info.virt_addr, 1);
 		VIOC_RDMA_SetImageAlphaEnable(
-			par->pdata.rdma_info.virt_addr, 1);
+			par->pdata.rdma_info.virt_addr,
+			par->pdata.fb_no_pixel_alphablend ? 0 : 1);
+	} else {
+		VIOC_RDMA_SetImageAlphaEnable(
+			par->pdata.rdma_info.virt_addr, 0);
 	}
 	VIOC_RDMA_SetImageY2REnable(par->pdata.rdma_info.virt_addr, 0);
 	VIOC_RDMA_SetImageR2YEnable(par->pdata.rdma_info.virt_addr, 0);
@@ -911,7 +927,7 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		+ (var->xres * var->yoffset * (var->bits_per_pixel / 8));
 #endif
 	dev_dbg(info->dev,
-		"[INF][FBX] %s: fb%d addr:0x%08x - %s updateType:0x%x yoffset:%d reserved:%d\n",
+		"[INF][FBX] %s: fb%d addr:0x%08x - %s updateType:0x%x\n",
 		__func__, info->node, dma_addr,
 		var->activate == FB_ACTIVATE_VBL ? "VBL" : "NOPE",
 		par->pdata.FbUpdateType);
@@ -1033,6 +1049,49 @@ static int fbX_blank(int blank, struct fb_info *info)
 
 	pm_runtime_put_sync(info->dev);
 #endif
+
+	return ret;
+}
+
+static int tsvfb_ioctl(
+	struct fb_info *info, unsigned int cmd, unsigned long arg)
+{
+	struct fbX_par *par = info->par;
+	int ret;
+
+	switch (cmd) {
+	case FBIOSET_NO_PIXELALPHABLEND:
+		{
+			unsigned int no_pixel_alphablend;
+
+			dev_dbg(
+				info->dev,
+				"[INF][FBX] %s: FBIOSET_NO_PIXELALPHABLEND is 0x%lx\n",
+				__func__, info->node,
+				FBIOSET_NO_PIXELALPHABLEND);
+			if (
+				copy_from_user(
+					&no_pixel_alphablend,
+					(void __user *)arg,
+					sizeof(unsigned int))) {
+				dev_err(
+				info->dev,
+				"[ERROR][FBX] %s: FBIOSET_NO_PIXELALPHABLEND - Failed get user data\n",
+				__func__);
+				ret =  -EFAULT;
+				break;
+			}
+			par->pdata.fb_no_pixel_alphablend = no_pixel_alphablend;
+			ret = fbX_pan_display(&info->var, info);
+		}
+		break;
+	default:
+		dev_err(
+			info->dev,
+			"[ERROR][FBX] %s: ioctl: Unknown [%u/0x%X]\n",
+			__func__, cmd, cmd);
+		ret = -ENODEV;
+	}
 
 	return ret;
 }
@@ -1283,6 +1342,7 @@ static struct fb_ops fb_ops = {
 	.fb_copyarea = cfb_copyarea,
 	.fb_imageblit = cfb_imageblit,
 	.fb_pan_display = fbX_pan_display,
+	.fb_ioctl = tsvfb_ioctl,
 #ifdef CONFIG_DMA_SHARED_BUFFER
 	.fb_dmabuf_export = new_tccfb_dmabuf_export,
 #endif

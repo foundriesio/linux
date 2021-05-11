@@ -38,6 +38,7 @@
 #ifdef CONFIG_DMA_SHARED_BUFFER
 #define FBIOGET_DMABUF		_IOR('F', 0x21, struct fb_dmabuf_export)
 #endif
+#define FBIOSET_NO_PIXELALPHABLEND _IOW('F', 0x30, unsigned int)
 
 #define FB_TYPE_PACKED_PIXELS		0	/* Packed Pixels	*/
 #define FB_TYPE_PLANES			1	/* Non interleaved planes */
