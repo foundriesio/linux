@@ -228,7 +228,7 @@ static int tcc_overlay_display_shared_screen(
 			(buffer_cfg.fmt >= TCC_LCDC_IMG_FMT_YUV420ITL0
 			&& buffer_cfg.fmt <= TCC_LCDC_IMG_FMT_YUV422ITL1)){
 			pr_err("[ERR][OVERLAY] This format %d is not supported by RDMA id %d.\n",
-				buffer_cfg.cfg.format, get_vioc_index(overlay_drv->rdma[layer].id));
+				buffer_cfg.fmt, get_vioc_index(overlay_drv->rdma[layer].id));
 			return -1;
 		}
 	}
