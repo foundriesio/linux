@@ -155,10 +155,13 @@ long vmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				ret = -EFAULT;
 			} else {
 				ret = tcc_mem_create_dma_buf(&pmap_info);
-				if (copy_to_user((stVpuPhysInfo *)arg,
-					&pmap_info,
-					sizeof(stVpuPhysInfo)))	{
-					ret = -EFAULT;
+				if (!ret) {
+					if (copy_to_user((stVpuPhysInfo *)arg,
+						&pmap_info,
+						sizeof(stVpuPhysInfo)))	{
+						tcc_mem_release_dma_buf(pmap_info.fd);
+						ret = -EFAULT;
+					}
 				}
 			}
 		}
