@@ -105,8 +105,8 @@ static int tccvin_diag_cif_port_pinctrl(struct device *dev,
 
 			/* get_group_pins function is not NULL */
 			if (pctlops->get_group_pins) {
-				unsigned int		group		= 0;
-				char			group_name[64]	= "";
+				unsigned int		grp		= 0;
+				char			grp_name[64]	= "";
 				char			pins_name[64]	= "";
 				const unsigned int	*pins		= NULL;
 				unsigned int		num_pins	= 0;
@@ -114,16 +114,16 @@ static int tccvin_diag_cif_port_pinctrl(struct device *dev,
 				unsigned long		expected_func	= 0;
 				unsigned long		current_func	= 0;
 
-				group	= setting->data.mux.group;
+				grp	= setting->data.mux.group;
 
 				/* get pin group name */
-				sprintf(group_name, "%s",
+				sprintf(grp_name, "%s",
 					pctlops->get_group_name(pctldev,
-						group));
+						grp));
 
 				/* get the pin list */
 				ret = pctlops->get_group_pins(pctldev,
-					group, &pins, &num_pins);
+					grp, &pins, &num_pins);
 
 				/* get the pin function to use */
 				expected_func =
@@ -149,7 +149,7 @@ static int tccvin_diag_cif_port_pinctrl(struct device *dev,
 
 					/* get an offset of the pin */
 					tcc_pin_to_reg(pctl,
-						pctl->groups[group].pins[idxPin],
+						pctl->groups[grp].pins[idxPin],
 						&reg, &offset);
 
 					/* get the register address */
@@ -166,15 +166,17 @@ static int tccvin_diag_cif_port_pinctrl(struct device *dev,
 					 * the same as
 					 * the expected function value
 					 */
-					logi("**** group name: %-20s - gpio: %s[%3d], func: %lu -> %lu\n",
-						group_name,
+					logi("%-20s.%s[%3d], func: %lu->%lu\n",
+						grp_name,
 						pins_name, pins[idxPin],
-						expected_func, current_func);
+						expected_func,
+						current_func);
 					if (expected_func != current_func) {
-						loge("**** group name: %-20s - gpio: %s[%3d], func: %lu -> %lu\n",
-							group_name,
+						loge("exp(%lu) != cur(%lu)\n",
+							grp_name,
 							pins_name, pins[idxPin],
-							expected_func, current_func);
+							expected_func,
+							current_func);
 						ret = -1;
 					}
 				}
