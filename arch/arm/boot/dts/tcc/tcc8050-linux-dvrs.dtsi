@@ -942,7 +942,7 @@
 					remote-endpoint	= <&max9286_out>;
 #else
 					remote-endpoint	= <&max96712_out>;
-#endif//defined(USE_FHD_VIDEOSOURCES)
+#endif//!defined(USE_FHD_VIDEOSOURCES)
 					io-direction	= "input";
 					num-channel = <4>;
 
@@ -955,12 +955,14 @@
 					interleave-mode = <3>;
 					//hs-settle = <2>; // for mcnex ispless 1ch
 					//hs-settle = <19>; // for sekonix ispless 4ch
+#if !defined(USE_FHD_VIDEOSOURCES)
 					hs-settle = <17>; // for HD 4ch
-					//hs-settle = <37>; // for FHD 4ch
+#else
+					hs-settle = <37>; // for FHD 4ch
+#endif//!defined(USE_FHD_VIDEOSOURCES)
 					data-lanes = <1 2 3 4>;
 				};
 			};
-
 			port@1 {
 				reg = <1>;
 				mipi_csi2_0_out0: endpoint {
@@ -1042,6 +1044,7 @@
 		isp3-bypass = <1>;
 	};
 
+#if defined(USE_TELECHIPS_ISP)
 	isp0@1bc80000 {
 		status = "okay";
 /* for isp mcu debugging
@@ -1145,6 +1148,7 @@
 			};
 		};
 	};
+#endif//defined(USE_TELECHIPS_ISP)
 
 	videoinput0 {
 		status		= "disabled";
@@ -1153,7 +1157,6 @@
 			videoinput0_in: endpoint {
 				remote-endpoint	= <&adv7182_out>;
 				io-direction	= "input";
-				bus-type	= <0>;
 				stream-enable	= <0>;	// VIN_CTRL.SE
 				flush-vsync	= <0>;	// VIN_MISC.FVS
 			};
@@ -1163,12 +1166,10 @@
 	videoinput4 {
 		status		= "okay";
 		cifport		= <&cifport		5>;
-
 		port {
 			videoinput4_in: endpoint {
 				remote-endpoint	= <&mipi_csi2_0_out0>;
 				io-direction	= "input";
-				bus-type	= <0>;
 				stream-enable	= <1>;	// VIN_CTRL.SE
 				flush-vsync	= <1>;	// VIN_MISC.FVS
 			};
@@ -1178,12 +1179,10 @@
 	videoinput5 {
 		status		= "okay";
 		cifport		= <&cifport		6>;
-
 		port {
 			videoinput5_in: endpoint {
 				remote-endpoint	= <&mipi_csi2_0_out1>;
 				io-direction	= "input";
-				bus-type	= <0>;
 				stream-enable	= <1>;	// VIN_CTRL.SE
 				flush-vsync	= <1>;	// VIN_MISC.FVS
 			};
@@ -1193,12 +1192,10 @@
 	videoinput6 {
 		status		= "okay";
 		cifport		= <&cifport		7>;
-
 		port {
 			videoinput6_in: endpoint {
 				remote-endpoint	= <&mipi_csi2_0_out2>;
 				io-direction	= "input";
-				bus-type	= <0>;
 				stream-enable	= <1>;	// VIN_CTRL.SE
 				flush-vsync	= <1>;	// VIN_MISC.FVS
 			};
@@ -1208,12 +1205,10 @@
 	videoinput7 {
 		status		= "okay";
 		cifport		= <&cifport		8>;
-
 		port {
 			videoinput7_in: endpoint {
 				remote-endpoint	= <&mipi_csi2_0_out3>;
 				io-direction	= "input";
-				bus-type	= <0>;
 				stream-enable	= <1>;	// VIN_CTRL.SE
 				flush-vsync	= <1>;	// VIN_MISC.FVS
 			};

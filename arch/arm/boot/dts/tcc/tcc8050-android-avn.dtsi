@@ -968,7 +968,7 @@
 				remote-endpoint	= <&max9286_out>;
 #else
 				remote-endpoint	= <&max96712_out>;
-#endif//defined(USE_FHD_VIDEOSOURCES)
+#endif//!defined(USE_FHD_VIDEOSOURCES)
 				io-direction	= "input";
 				num-channel = <4>;
 
@@ -981,8 +981,11 @@
 				interleave-mode = <3>;
 				//hs-settle = <2>; // for mcnex ispless 1ch
 				//hs-settle = <19>; // for sekonix ispless 4ch
+#if !defined(USE_FHD_VIDEOSOURCES)
 				hs-settle = <17>; // for HD 4ch
-				//hs-settle = <37>; // for FHD 4ch
+#else
+				hs-settle = <37>; // for FHD 4ch
+#endif//!defined(USE_FHD_VIDEOSOURCES)
 				data-lanes = <1 2 3 4>;
 			};
 		};

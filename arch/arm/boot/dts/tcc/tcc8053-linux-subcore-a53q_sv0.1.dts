@@ -17,6 +17,12 @@
 #include <dt-bindings/pmap/tcc805x/pmap-tcc805x-linux-ivi-subcore-a53q.h>
 #include <dt-bindings/display/tcc805x-lvds.h>
 
+//#define USE_FHD_VIDEOSOURCES
+#if !defined(USE_FHD_VIDEOSOURCES)
+//#define ENABLE_SENSOR_CONTROL
+#endif//!defined(USE_FHD_VIDEOSOURCES)
+//#define USE_TELECHIPS_ISP
+
 / {
 	compatible = "telechips,tcc805x";
 	interrupt-parent = <&gic>;
@@ -1343,8 +1349,11 @@
 			port@0 {
 				reg = <0>;
 				mipi_csi2_0_in: endpoint {
+#if !defined(USE_FHD_VIDEOSOURCES)
 					remote-endpoint	= <&max9286_out>;
-					//remote-endpoint	= <&max96712_out>;
+#else
+					remote-endpoint	= <&max96712_out>;
+#endif//!defined(USE_FHD_VIDEOSOURCES)
 					io-direction	= "input";
 					num-channel = <4>;
 
@@ -1357,17 +1366,22 @@
 					interleave-mode = <3>;
 					//hs-settle = <2>; // for mcnex ispless 1ch
 					//hs-settle = <19>; // for sekonix ispless 4ch
+#if !defined(USE_FHD_VIDEOSOURCES)
 					hs-settle = <17>; // for HD 4ch
-					//hs-settle = <37>; // for FHD 4ch
+#else
+					hs-settle = <37>; // for FHD 4ch
+#endif//!defined(USE_FHD_VIDEOSOURCES)
 					data-lanes = <1 2 3 4>;
 				};
 			};
-
 			port@1 {
 				reg = <1>;
 				mipi_csi2_0_out0: endpoint {
-					//remote-endpoint = <&isp0_in>;
+#if defined(USE_TELECHIPS_ISP)
+					remote-endpoint = <&isp0_in>;
+#else
 					remote-endpoint	= <&videoinput4_in>;
+#endif//defined(USE_TELECHIPS_ISP)
 					io-direction	= "output";
 					channel		= <0>;
 					/*
@@ -1450,6 +1464,7 @@
 		isp3-bypass = <1>;
 	};
 
+#if defined(USE_TELECHIPS_ISP)
 #if 0
 	/* only for TCC805X ES(TCS CV8050C-618) */
 	isp_iommu: isp_iommu {
@@ -1582,6 +1597,7 @@
 			};
 		};
 	};
+#endif//defined(USE_TELECHIPS_ISP)
 
 	fbdisplay: fbdisplay@12000000 {
 		compatible = "telechips,vioc-fb";
@@ -4321,13 +4337,15 @@
 };
 
 &i2c7 {
+	#address-cells = <1>;
+	#size-cells = <0>;
 	status = "okay";
-	port-mux = <12>; /* [0]SCL [1]SDA */
+	port-mux = <12>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c12_bus>;
 
 	/* video decoder using parallel interface output */
-	adv7182: adv7182 {
+	adv7182: adv7182@21 {
 		status		= "okay";
 		compatible	= "adi,adv7182";
 		pinctrl-names	= "default";
@@ -4343,14 +4361,16 @@
 		};
 	};
 
+#if !defined(USE_FHD_VIDEOSOURCES)
+#if defined(ENABLE_SENSOR_CONTROL)
 	/*
 	 * ISPless camera module.
 	 * mcnex(for ecarx demo) camera module: max96701, max9286
 	 * sekonix(for mobis svm) camera module: max96701, max96712
 	 */
-	ar0147: ar0147 {
+	ar0147: ar0147@10 {
 		/* Camera Image Sensor */
-		status		= "disabled";
+		status		= "okay";
 		compatible	= "onnn,ar0147";
 		reg		= <0x10>;
 		port {
@@ -4360,8 +4380,10 @@
 			};
 		};
 	};
+#endif//defined(ENABLE_SENSOR_CONTROL)
+
 	/* HD camera module & max9286 using MIPI CSI2 output */
-	max96701: max96701 {
+	max96701: max96701@40 {
 		/* serializer */
 		status		= "okay";
 		compatible	= "maxim,max96701";
@@ -4369,13 +4391,15 @@
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
+#if defined(ENABLE_SENSOR_CONTROL)
 			port@0 {
 				reg = <0>;
 				max96701_in: endpoint {
-					//remote-endpoint = <&ar0147_out>;
-					//io-direction	= "input";
+					remote-endpoint = <&ar0147_out>;
+					io-direction	= "input";
 				};
 			};
+#endif//defined(ENABLE_SENSOR_CONTROL)
 			port@1 {
 				reg = <1>;
 				max96701_out: endpoint {
@@ -4386,7 +4410,7 @@
 		};
 	};
 
-	max9286: max9286 {
+	max9286: max9286@48 {
 		/* deserializer */
 		status		= "okay";
 		compatible	= "maxim,max9286";
@@ -4412,6 +4436,7 @@
 					channel		= <0>;
 				};
 			};
+#if 0
 			port@1 {
 				reg = <1>;
 				max9286_in1: endpoint {
@@ -4436,6 +4461,7 @@
 					channel		= <3>;
 				};
 			};
+#endif
 			port@4 {
 				reg = <4>;
 				max9286_out: endpoint {
@@ -4445,27 +4471,19 @@
 			};
 		};
 	};
+#else
 
 	/* FHD camera module & max96712 using MIPI CSI2 output */
-	cxd5700: cxd5700 {
+	cxd5700: cxd5700@18 {
 		/* ISP of camera module */
-		status		= "disabled";
+		status		= "okay";
 		compatible	= "sony,cxd5700";
 		reg		= <0x18>;
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
-#if 0
 			port@0 {
 				reg = <0>;
-				cxd5700_in: endpoint {
-					remote-endpoint = <&cis>;
-					io-direction	= "input";
-				};
-			};
-#endif
-			port@1 {
-				reg = <1>;
 				cxd5700_out: endpoint {
 					remote-endpoint = <&max9275_in>;
 					io-direction	= "output";
@@ -4474,9 +4492,9 @@
 		};
 	};
 
-	max9275: max9275 {
+	max9275: max9275@40 {
 		/* serializer */
-		status		= "disabled";
+		status		= "okay";
 		compatible	= "maxim,max9275";
 		reg		= <0x40>;
 		ports {
@@ -4499,9 +4517,9 @@
 		};
 	};
 
-	max96712: max96712 {
+	max96712: max96712@2a {
 		/* deserializer */
-		status		= "disabled";
+		status		= "okay";
 		compatible	= "maxim,max96712";
 		pwd-gpios	= <&gpg 5 1>;
 		intb-gpios	= <&gph 11 1>;
@@ -4524,6 +4542,7 @@
 					channel		= <0>;
 				};
 			};
+#if 0
 			port@1 {
 				reg = <1>;
 				max96712_in1: endpoint {
@@ -4548,6 +4567,7 @@
 					channel		= <3>;
 				};
 			};
+#endif
 			port@4 {
 				reg = <4>;
 				max96712_out: endpoint {
@@ -4557,6 +4577,7 @@
 			};
 		};
 	};
+#endif//!defined(USE_FHD_VIDEOSOURCES)
 };
 
 &gpsb0 {
