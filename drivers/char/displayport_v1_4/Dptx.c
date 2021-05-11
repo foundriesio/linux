@@ -217,22 +217,21 @@ static int32_t Dpv14_Tx_Probe( struct platform_device *pdev)
 
 	Dptx_Platform_Set_Device_Handle( pstDptx );
 
-	bRetVal = Dptx_Platform_Init_Params( pstDptx, &pdev->dev );
-	if( bRetVal )
+	iRetVal = Dptx_Platform_Init_Params( pstDptx, &pdev->dev );
+	if( iRetVal !=  DPTX_RETURN_NO_ERROR )
 	{
 		dptx_err("from Dptx_Platform_Init_Params()");
 		return -ENODEV;
 	}
 
-	bRetVal = Dptx_Core_Init_Params( pstDptx );
-	if( bRetVal )
-	{
+	iRetVal = Dptx_Core_Init_Params( pstDptx );
+	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		dptx_err("from Dptx_Core_Init_Params()");
 		return -ENODEV;
 	}
 	
-	bRetVal = Dptx_Avgen_Init_Video_Params( pstDptx, auiPeri_Pixel_Clock );
-	if( bRetVal )
+	iRetVal = Dptx_Avgen_Init_Video_Params( pstDptx, auiPeri_Pixel_Clock );
+	if( iRetVal !=  DPTX_RETURN_NO_ERROR )
 	{
 		dptx_err("from Dptx_Avgen_Init_Video_Params()");
 		return -ENODEV;
@@ -247,23 +246,24 @@ static int32_t Dpv14_Tx_Probe( struct platform_device *pdev)
 
 	Dptx_Core_Disable_Global_Intr( pstDptx );
 
-	bRetVal = (bool)devm_request_threaded_irq(	&pdev->dev,
+	iRetVal = devm_request_threaded_irq(	&pdev->dev,
 													pstDptx->uiHPD_IRQ,
 													Dptx_Intr_IRQ,
 													Dptx_Intr_Threaded_IRQ,
 													IRQF_SHARED | IRQ_LEVEL,
 													"Dpv14_Tx",
 													pstDptx );
-	if( bRetVal ) 
+	if( iRetVal !=  DPTX_RETURN_NO_ERROR )
 	{
 		dptx_err("from devm_request_threaded_irq()");
 		return -ENODEV;
 	}
 
 	iRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &ucHotPlugged );
-	if( iRetVal != 0 )
+	if(iRetVal !=  DPTX_RETURN_NO_ERROR )
 	{
 		dptx_err("from Dptx_Intr_Get_HotPlug_Status()");
+		ucHotPlugged = (uint8_t)HPD_STATUS_UNPLUGGED;
 	}
 
 	pstDptx->eLast_HPDStatus = ( ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED ) ? HPD_STATUS_PLUGGED : HPD_STATUS_UNPLUGGED;
@@ -300,66 +300,62 @@ static int32_t Dpv14_Tx_Probe( struct platform_device *pdev)
 
 	Dptx_Ext_Proc_Interface_Init( pstDptx );
 
-	return 0;
+	return DPTX_RETURN_NO_ERROR;
 }
 
 
 static int Dpv14_Tx_Remove(struct platform_device *pstDev)
 {
-	bool	bRetVal;
-	struct Dptx_Params		*pstDptx;
+	int32_t	iRetVal;
+	struct Dptx_Params *pstDptx;
 	
 	dptx_dbg("");
 	dptx_dbg("****************************************");
-    dptx_dbg("Remove: DP V1.4 driver ");
-    dptx_dbg("****************************************");
+        dptx_dbg("Remove: DP V1.4 driver ");
+        dptx_dbg("****************************************");
 	dptx_dbg("");
 
 	pstDptx = platform_get_drvdata( pstDev );
 	
-	bRetVal = Dptx_Core_Deinit( pstDptx );
-	if( bRetVal )
-	{
+	iRetVal = Dptx_Core_Deinit( pstDptx );
+	if(iRetVal != DPTX_RETURN_NO_ERROR) {
 		dptx_err("from Dptx_Core_Deinit()");
 	}
 
-	bRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
-	if( bRetVal )
-	{
-		dptx_err("from Dptx_Core_Deinit()");
+	iRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
+	if(iRetVal != DPTX_RETURN_NO_ERROR) {
+		dptx_err("from Dptx_Intr_Handle_HotUnplug()");
 	}
 
 	mutex_destroy( &pstDptx->Mutex );
 
-	return 0;
+	return DPTX_RETURN_NO_ERROR;
 }
 
 
 int Dpv14_Tx_Suspend_T( struct Dptx_Params	*pstDptx )
 {
-	bool	bRetVal;
+	int32_t	iRetVal;
 
 	dptx_info("*** PM Suspend Test ***");
 
-	bRetVal = Dptx_Core_Deinit( pstDptx );
-	if( bRetVal )
-	{
+	iRetVal = (int32_t)Dptx_Core_Deinit( pstDptx );
+	if(iRetVal != DPTX_RETURN_NO_ERROR) {
 		dptx_err("from Dptx_Core_Deinit()");
 	}
 
-	bRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
-	if( bRetVal )
+	iRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
+	if( iRetVal != DPTX_RETURN_NO_ERROR ) 
 	{
-		dptx_err("from Dptx_Core_Deinit()");
+		dptx_err("from Dptx_Intr_Handle_HotUnplug()");
 	}
 
-	return ( 0 );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 int Dpv14_Tx_Resume_T( struct Dptx_Params	*pstDptx )
 {
-	bool	bRetVal;
-	uint8_t ucHotPlugged;
+	uint8_t ucHotPlugged, ucMSTAct_Flag = 0;
 	int32_t iRetVal;
 	struct Dptx_Video_Params	*pstVideoParams;
 
@@ -381,6 +377,8 @@ int Dpv14_Tx_Resume_T( struct Dptx_Params	*pstDptx )
 
 	Dptx_Platform_Set_PMU_ColdReset_Release( pstDptx );
 	Dptx_Platform_Set_APAccess_Mode( pstDptx );
+
+Re_Init_DP:
 	Dptx_Platform_Set_ClkPath_To_XIN( pstDptx );
 
 	if( pstDptx->uiTCC805X_Revision == TCC805X_REVISION_CS )
@@ -391,21 +389,18 @@ int Dpv14_Tx_Resume_T( struct Dptx_Params	*pstDptx )
 		Dptx_Platform_Set_MuxSelect( pstDptx );
 	}
 
-	bRetVal = Dptx_Platform_Init( pstDptx );
-	if( bRetVal )
-	{
+	iRetVal = Dptx_Platform_Init( pstDptx );
+	if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		return -ENODEV;
 	}
 
-	bRetVal = Dptx_Core_Init( pstDptx );
-	if( bRetVal )
-	{
+	iRetVal = Dptx_Core_Init( pstDptx );
+	if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		return -ENODEV;
 	}
 
 	iRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &ucHotPlugged );
-	if( iRetVal != 0 )
-	{
+	if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		return -ENODEV;
 	}
 
@@ -413,27 +408,55 @@ int Dpv14_Tx_Resume_T( struct Dptx_Params	*pstDptx )
 
 	if( ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED )
 	{
-		bRetVal = Dptx_Link_Perform_BringUp( pstDptx, pstDptx->bMultStreamTransport );
-		if( bRetVal == DPTX_RETURN_SUCCESS )
-		{
-			Dptx_Link_Perform_Training(pstDptx, pstDptx->ucMax_Rate, pstDptx->ucMax_Lanes );
+		iRetVal = Dptx_Link_Perform_BringUp( pstDptx, pstDptx->bMultStreamTransport );
+		if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+			return -ENODEV;
+		}
+		
+		iRetVal = Dptx_Link_Perform_Training(pstDptx, pstDptx->ucMax_Rate, pstDptx->ucMax_Lanes );
+		if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+			return -ENODEV;
+		}
 
-			if( pstDptx->bMultStreamTransport  )
-			{
-				Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, pstDptx->bSideBand_MSG_Supported );
+		if(pstDptx->bMultStreamTransport) {
+			iRetVal = Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, pstDptx->bSideBand_MSG_Supported );
+			if(iRetVal == DPTX_RETURN_MST_ACT_TIMEOUT) {
+				if(ucMSTAct_Flag == 0) {
+					ucMSTAct_Flag = 1;
+					
+					dptx_info("\n==== Re-initialize DP Link === \n");
+					
+					iRetVal = (int32_t)Dptx_Core_Deinit( pstDptx );
+					if(iRetVal != DPTX_RETURN_NO_ERROR) {
+						return iRetVal;
+					}
+
+					iRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
+					if(iRetVal != DPTX_RETURN_NO_ERROR) {
+						return iRetVal;
+					}
+
+					goto Re_Init_DP;
+				}
+				else {
+					dptx_err("CCTL.ACT timeout...");
+				}
+			}
+			else if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+				return -ENODEV;
 			}
 		}
 	}
 
-	return 0;
+	return DPTX_RETURN_NO_ERROR;
 }
 
 
 #if defined(CONFIG_PM)
 static int Dpv14_Tx_Suspend( struct platform_device *pdev, pm_message_t state )
 {
-	bool	bRetVal;
-	struct Dptx_Params		*pstDptx;
+	int32_t	iRetVal;
+	struct Dptx_Params *pstDptx;
 	
 	dptx_dbg("");
 	dptx_dbg("****************************************");
@@ -443,28 +466,26 @@ static int Dpv14_Tx_Suspend( struct platform_device *pdev, pm_message_t state )
 
 	pstDptx = platform_get_drvdata( pdev );
 	
-	bRetVal = Dptx_Core_Deinit( pstDptx );
-	if( bRetVal ) 
-	{
+	iRetVal = Dptx_Core_Deinit( pstDptx );
+	if(iRetVal != DPTX_RETURN_NO_ERROR) {
 		dptx_err("from Dptx_Core_Deinit()");
 	}
 
-	bRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
-	if( bRetVal ) 
+	iRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
+	if( iRetVal != DPTX_RETURN_NO_ERROR )
 	{
-		dptx_err("from Dptx_Core_Deinit()");
+		dptx_err("from Dptx_Intr_Handle_HotUnplug()");
 	}
 
-	return 0;
+	return DPTX_RETURN_NO_ERROR;
 }
 
 static int Dpv14_Tx_Resume( struct platform_device *pdev )
 {
-	bool	bRetVal;
-	uint8_t ucHotPlugged;
+	uint8_t ucHotPlugged, ucMSTAct_Flag = 0;
 	int32_t	iRetVal;
-	struct Dptx_Params		*pstDptx;
-	struct Dptx_Video_Params	*pstVideoParams;
+	struct Dptx_Params *pstDptx;
+	struct Dptx_Video_Params *pstVideoParams;
 
 	dptx_dbg("");
 	dptx_dbg("****************************************");
@@ -488,12 +509,15 @@ static int Dpv14_Tx_Resume( struct platform_device *pdev )
 				pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_0], pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_1], 
 				pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_2], pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_3] );
 
-	if(pstDptx->bSerDes_Reset_STR) {
-			Dptx_Max968XX_Reset( pstDptx );
+	if( pstDptx->bSerDes_Reset_STR ) 
+	{
+		Dptx_Max968XX_Reset( pstDptx );
 	}
 
 	Dptx_Platform_Set_PMU_ColdReset_Release( pstDptx );
 	Dptx_Platform_Set_APAccess_Mode( pstDptx );
+
+Re_Init_DP:
 	Dptx_Platform_Set_ClkPath_To_XIN( pstDptx );
 
 	if(pstDptx->uiTCC805X_Revision == TCC805X_REVISION_CS) {
@@ -503,35 +527,67 @@ static int Dpv14_Tx_Resume( struct platform_device *pdev )
 		Dptx_Platform_Set_MuxSelect( pstDptx );
 	}
 
-	bRetVal = Dptx_Platform_Init( pstDptx );
-	if(bRetVal) {
+	iRetVal = Dptx_Platform_Init( pstDptx );
+	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		return -ENODEV;
 	}
 
-	bRetVal = Dptx_Core_Init( pstDptx );
-	if(bRetVal) {
+	iRetVal = Dptx_Core_Init( pstDptx );
+	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		return -ENODEV;
 	}
 
 	iRetVal = Dptx_Intr_Get_HotPlug_Status(pstDptx, &ucHotPlugged);
-	if(iRetVal != 0) {
+	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		return -ENODEV;
 	}
 
 	pstDptx->eLast_HPDStatus = (enum HPD_Detection_Status)ucHotPlugged;
 
-	if(ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED) {
-		bRetVal = Dptx_Link_Perform_BringUp( pstDptx, pstDptx->bMultStreamTransport );
-		if(bRetVal == DPTX_RETURN_SUCCESS) {
-			Dptx_Link_Perform_Training(pstDptx, pstDptx->ucMax_Rate, pstDptx->ucMax_Lanes );
+	if( ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED )
+	{
+		iRetVal = Dptx_Link_Perform_BringUp( pstDptx, pstDptx->bMultStreamTransport );
+		if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+			return -ENODEV;
+		}
+		
+		iRetVal = Dptx_Link_Perform_Training( pstDptx, pstDptx->ucMax_Rate, pstDptx->ucMax_Lanes );
+		if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+			return -ENODEV;
+		}
 
-			if(pstDptx->bMultStreamTransport) {
-				Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, pstDptx->bSideBand_MSG_Supported );
+		if( pstDptx->bMultStreamTransport )
+		{
+			iRetVal = Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, pstDptx->bSideBand_MSG_Supported );
+			if(iRetVal == DPTX_RETURN_MST_ACT_TIMEOUT) {
+				if(ucMSTAct_Flag == 0) {
+					ucMSTAct_Flag = 1;
+					
+					dptx_info("\n==== Re-initialize DP Link === \n");
+
+					iRetVal = Dptx_Core_Deinit( pstDptx );
+					if(iRetVal != DPTX_RETURN_NO_ERROR) {
+						return iRetVal;
+					}
+
+					iRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
+					if(iRetVal != DPTX_RETURN_NO_ERROR) {
+						return iRetVal;
+					}
+
+					goto Re_Init_DP;
+				}
+				else {
+					dptx_err("CCTL.ACT timeout...");
+				}
+			}
+			else if(iRetVal !=  DPTX_RETURN_NO_ERROR){
+				return -ENODEV;
 			}
 		}
 	}
 
-	return 0;
+	return DPTX_RETURN_NO_ERROR;
 }
 #endif
 

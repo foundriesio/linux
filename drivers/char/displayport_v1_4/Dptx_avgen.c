@@ -27,7 +27,7 @@
 
 #define AUDIO_INFOFREAME_HEADER				0x481B8400
 
-static bool dptx_avgen_set_video_sampler( struct Dptx_Params *pstDptx, u8 ucStream_Index )	
+static int32_t dptx_avgen_set_video_sampler( struct Dptx_Params *pstDptx, u8 ucStream_Index )	
 {
 	u8							ucVideoMapping = 0;
 	u32							uiRegMap_VidSampleCtrl;
@@ -63,7 +63,7 @@ static bool dptx_avgen_set_video_sampler( struct Dptx_Params *pstDptx, u8 ucStre
 			else
 			{
 				dptx_err( "Invalid bpc = %d ", pstVideoParams->ucBitPerComponent );
-				return ( DPTX_RETURN_FAIL );
+				return DPTX_RETURN_EINVAL;
 			}
 			break;
 		case PIXEL_ENCODING_TYPE_YCBCR422:
@@ -74,7 +74,7 @@ static bool dptx_avgen_set_video_sampler( struct Dptx_Params *pstDptx, u8 ucStre
 			else
 			{
 				dptx_err( "Invalid bpc = %d ", pstVideoParams->ucBitPerComponent );
-				return ( DPTX_RETURN_FAIL );
+				return DPTX_RETURN_EINVAL;
 			}
 			break;	
 			
@@ -86,12 +86,12 @@ static bool dptx_avgen_set_video_sampler( struct Dptx_Params *pstDptx, u8 ucStre
 			else
 			{
 				dptx_err( "Invalid bpc = %d ", pstVideoParams->ucBitPerComponent );
-				return ( DPTX_RETURN_FAIL );
+				return DPTX_RETURN_EINVAL;
 			}
 			break;
 		default:
 			dptx_err( "Invalid encoding type = %d ", (u32)pstVideoParams->ucPixel_Encoding );
-			return ( DPTX_RETURN_FAIL );
+			return DPTX_RETURN_EINVAL;
 			break;
 	}
 
@@ -100,10 +100,10 @@ static bool dptx_avgen_set_video_sampler( struct Dptx_Params *pstDptx, u8 ucStre
 
 	Dptx_Reg_Writel( pstDptx, DPTX_VSAMPLE_CTRL_N( ucStream_Index ), uiRegMap_VidSampleCtrl );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-static bool dptx_avgen_set_video_config( struct Dptx_Params *pstDptx, u8 ucStream_Index )	
+static int32_t dptx_avgen_set_video_config( struct Dptx_Params *pstDptx, u8 ucStream_Index )	
 {
 	u32							uiVideo_Code, uiRegMap_VidConfig = 0;
 	struct Dptx_Video_Params	*pstVideoParams = &pstDptx->stVideoParams;
@@ -221,11 +221,11 @@ static bool dptx_avgen_set_video_config( struct Dptx_Params *pstDptx, u8 ucStrea
 	Dptx_Reg_Writel( pstDptx, DPTX_VIDEO_CONFIG5_N( ucStream_Index ), uiRegMap_VidConfig );
 }
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 
-static bool dptx_avgen_set_video_msa( struct Dptx_Params *pstDptx, u8 ucStream_Index )
+static int32_t dptx_avgen_set_video_msa( struct Dptx_Params *pstDptx, u8 ucStream_Index )
 {
 	u8							ucBpc_Mapping = 0, ucColorimetry_Mapping = 0;
 	u32							uiRegMap_Msa1 = 0, uiRegMap_Msa2, uiRegMap_Msa3;
@@ -290,7 +290,7 @@ static bool dptx_avgen_set_video_msa( struct Dptx_Params *pstDptx, u8 ucStream_I
 			break;	
 		default:
 			dptx_err("Invalid encoding type = 0x%x ", pstVideoParams->ucPixel_Encoding );
-			return ( DPTX_RETURN_FAIL );
+			return DPTX_RETURN_EINVAL;
 			break;
 	}
 
@@ -304,7 +304,7 @@ static bool dptx_avgen_set_video_msa( struct Dptx_Params *pstDptx, u8 ucStream_I
 			else
 			{
 				dptx_err( "Invalid bpc = %d ", pstVideoParams->ucBitPerComponent );
-				return ( DPTX_RETURN_FAIL );
+				return DPTX_RETURN_EINVAL;
 			}
 			break;
 		case PIXEL_ENCODING_TYPE_YCBCR422: /* 001: 8bpc, 010: 10bpc, 011: 12bpc, 100: 16bpc */
@@ -316,12 +316,12 @@ static bool dptx_avgen_set_video_msa( struct Dptx_Params *pstDptx, u8 ucStream_I
 			else
 			{
 				dptx_err( "Invalid bpc = %d ", pstVideoParams->ucBitPerComponent );
-				return ( DPTX_RETURN_FAIL );
+				return DPTX_RETURN_EINVAL;
 			}
 			break;	
 		default:
 			dptx_err("Invalid encoding type = 0x%x ", pstVideoParams->ucPixel_Encoding );
-			return ( DPTX_RETURN_FAIL );
+			return DPTX_RETURN_EINVAL;
 			break;	
 	}
 
@@ -345,10 +345,10 @@ static bool dptx_avgen_set_video_msa( struct Dptx_Params *pstDptx, u8 ucStream_I
 	Dptx_Reg_Writel( pstDptx, DPTX_VIDEO_MSA3_N( ucStream_Index ), uiRegMap_Msa3 );
 }
 	
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-static bool dptx_avgen_set_video_hblank_interval( struct Dptx_Params *pstDptx, u8 ucStream_Index )	
+static int32_t dptx_avgen_set_video_hblank_interval( struct Dptx_Params *pstDptx, u8 ucStream_Index )	
 {
 	u32							uiRegMap_VidHblankInterval;
 	u32							uiLink_Clock, uiHBlank_Interval;
@@ -379,7 +379,7 @@ static bool dptx_avgen_set_video_hblank_interval( struct Dptx_Params *pstDptx, u
 			break;
 		default:
 			dptx_err( "Invalid rate 0x%x ", pstDptx->stDptxLink.ucLinkRate );
-			return ( DPTX_RETURN_FAIL );
+			return DPTX_RETURN_EINVAL;
 	}
 
 	/* It needs to check MST => "For MST mode, the programmed value should be ( Hblank / 16 ) * average_byte_per_tu * link_clk / pixel_clk" */ 
@@ -399,7 +399,7 @@ static bool dptx_avgen_set_video_hblank_interval( struct Dptx_Params *pstDptx, u
 
 	Dptx_Reg_Writel( pstDptx, DPTX_VIDEO_HBLANK_INTERVAL_N( ucStream_Index ), uiRegMap_VidHblankInterval );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 static void dptx_avgen_active_audio_channels(struct Dptx_Params *dptx, uint8_t ucStream_Index, uint8_t ucNumOfChannels, uint8_t ucEnable)
@@ -474,16 +474,16 @@ static void dptx_avgen_active_audio_channels(struct Dptx_Params *dptx, uint8_t u
 	Dptx_Reg_Writel( dptx, uiReg_Offset, uiRegMap_EnableAudioChannels );
 }
 
-static bool dptx_avgen_config_video_input( struct Dptx_Params *pstDptx, u8 ucStream_Index )
+static int32_t dptx_avgen_config_video_input( struct Dptx_Params *pstDptx, u8 ucStream_Index )
 {
-	bool 						bRetVal;
+	int	iRetVal;
 	struct Dptx_Video_Params	*pstVideoParams = &pstDptx->stVideoParams;
 	struct Dptx_Dtd_Params		*pstDtd = &pstVideoParams->stDtdParams[ucStream_Index];
 
-	bRetVal = dptx_avgen_set_video_sampler( pstDptx, ucStream_Index );
-	if( bRetVal == DPTX_RETURN_FAIL )
+	iRetVal = dptx_avgen_set_video_sampler( pstDptx, ucStream_Index );
+	if( iRetVal != DPTX_RETURN_NO_ERROR )
 	{
-		return ( DPTX_RETURN_FAIL );
+		return iRetVal;
 	}
 
 {	/* Configure DPTX_VSAMPLE_POLARITY_CTRL register 
@@ -506,25 +506,25 @@ static bool dptx_avgen_config_video_input( struct Dptx_Params *pstDptx, u8 ucStr
 	Dptx_Reg_Writel( pstDptx, DPTX_VSAMPLE_POLARITY_CTRL_N( ucStream_Index ), uiRegMap_VidPolarityCtrl );
 
 }
-	bRetVal = dptx_avgen_set_video_config( pstDptx, ucStream_Index );
-	if( bRetVal == DPTX_RETURN_FAIL )
+	iRetVal = dptx_avgen_set_video_config( pstDptx, ucStream_Index );
+	if( iRetVal != DPTX_RETURN_NO_ERROR )
 	{
-		return ( DPTX_RETURN_FAIL );
+		return iRetVal;
 	}
 
-	bRetVal = dptx_avgen_set_video_msa( pstDptx, ucStream_Index );
-	if( bRetVal == DPTX_RETURN_FAIL )
+	iRetVal = dptx_avgen_set_video_msa( pstDptx, ucStream_Index );
+	if( iRetVal != DPTX_RETURN_NO_ERROR )
 	{
-		return ( DPTX_RETURN_FAIL );
+		return iRetVal;
 	}
 
-	bRetVal = dptx_avgen_set_video_hblank_interval( pstDptx, ucStream_Index );
-	if( bRetVal == DPTX_RETURN_FAIL )
+	iRetVal = dptx_avgen_set_video_hblank_interval( pstDptx, ucStream_Index );
+	if( iRetVal != DPTX_RETURN_NO_ERROR )
 	{
-		return ( DPTX_RETURN_FAIL );
+		return iRetVal;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 static void dptx_avgen_reset_dtd( struct Dptx_Dtd_Params *pstDtd )
@@ -546,10 +546,10 @@ static void dptx_avgen_reset_dtd( struct Dptx_Dtd_Params *pstDtd )
 	pstDtd->h_sync_polarity			= 0;
 }
 
-bool Dptx_Avgen_Init_Video_Params( struct Dptx_Params *pstDptx, u32 uiPeri_Pixel_Clock[PHY_INPUT_STREAM_MAX] )
+int32_t Dptx_Avgen_Init_Video_Params( struct Dptx_Params *pstDptx, u32 uiPeri_Pixel_Clock[PHY_INPUT_STREAM_MAX] )
 {
-	bool						bRetVal;
-	u8							ucStream_Index;
+	u8	ucStream_Index;
+	int32_t	iRetVal;
 	struct Dptx_Video_Params	*pstVideoParams = &pstDptx->stVideoParams;
 
 	pstVideoParams->ucMultiPixel		= (u8)MULTI_PIXEL_TYPE_SINGLE;
@@ -560,40 +560,33 @@ bool Dptx_Avgen_Init_Video_Params( struct Dptx_Params *pstDptx, u32 uiPeri_Pixel
 	pstVideoParams->ucPixel_Encoding	= (u8)PIXEL_ENCODING_TYPE_RGB;
 	pstVideoParams->uiRefresh_Rate		= (u32)VIDEO_REFRESH_RATE_60_00HZ;
 
-	bRetVal = Dptx_Avgen_Get_Video_NumOfStreams( pstDptx, &pstDptx->ucNumOfStreams );
-	if( bRetVal )
-	{
+	iRetVal = Dptx_Avgen_Get_Video_NumOfStreams( pstDptx, &pstDptx->ucNumOfStreams );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
 		dptx_err("from Dptx_Avgen_Get_Video_NumOfStreams()");
-		return ( DPTX_RETURN_FAIL );
+		return iRetVal;
 	}
 
 	if( pstDptx->ucNumOfStreams == 0 )
 	{
 		dptx_warn("DP was not enabled");
-		return ( DPTX_RETURN_SUCCESS );
+		return DPTX_RETURN_NO_ERROR;
 	}
 
-	bRetVal = Dptx_Avgen_Get_Pixel_Mode( pstDptx, (u8)PHY_INPUT_STREAM_0, &pstVideoParams->ucMultiPixel  );
-	if( bRetVal )
-	{
-		dptx_err("from Dptx_Avgen_Get_Pixel_Mode()");
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Avgen_Get_Pixel_Mode( pstDptx, (u8)PHY_INPUT_STREAM_0, &pstVideoParams->ucMultiPixel );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Avgen_Get_Video_PixelEncoding_Type( pstDptx, (u8)PHY_INPUT_STREAM_0, &pstVideoParams->ucPixel_Encoding );
-	if( bRetVal )
-	{
-		dptx_err("from Dptx_Avgen_Get_Video_PixelEncoding_Type()");
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Avgen_Get_Video_PixelEncoding_Type( pstDptx, (u8)PHY_INPUT_STREAM_0, &pstVideoParams->ucPixel_Encoding );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
 	for( ucStream_Index = 0; ucStream_Index < pstDptx->ucNumOfStreams; ucStream_Index++ )
 	{
-		bRetVal = Dptx_Avgen_Get_VIC_From_Dtd( pstDptx, ucStream_Index,      &pstVideoParams->auiVideo_Code[ucStream_Index] );
-		if( bRetVal )
-		{
-			dptx_err("from Dptx_Avgen_Get_VIC_From_Dtd()");
-			continue;
+		iRetVal = Dptx_Avgen_Get_VIC_From_Dtd( pstDptx, ucStream_Index, &pstVideoParams->auiVideo_Code[ucStream_Index] );
+		if (iRetVal != DPTX_RETURN_NO_ERROR) {
+			return iRetVal;
 		}
 	}
 
@@ -609,18 +602,18 @@ bool Dptx_Avgen_Init_Video_Params( struct Dptx_Params *pstDptx, u32 uiPeri_Pixel
 				pstVideoParams->auiVideo_Code[0], pstVideoParams->auiVideo_Code[1], pstVideoParams->auiVideo_Code[2], pstVideoParams->auiVideo_Code[3],
 				pstVideoParams->uiPeri_Pixel_Clock[0], pstVideoParams->uiPeri_Pixel_Clock[1], pstVideoParams->uiPeri_Pixel_Clock[2], pstVideoParams->uiPeri_Pixel_Clock[3] );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Avgen_Set_Video_Detailed_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index, struct Dptx_Dtd_Params *pstDtd_Params )
+int32_t Dptx_Avgen_Set_Video_Detailed_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index, struct Dptx_Dtd_Params *pstDtd_Params )
 {
-	bool						bRetVal;
+	int32_t	iRetVal;
 	struct Dptx_Video_Params	*pstVideoParams = &pstDptx->stVideoParams;
 
 	if( ucStream_Index >= PHY_INPUT_STREAM_MAX )
 	{
 		dptx_err( "Invalid stream index(%d) ", ucStream_Index );
-		return ( DPTX_RETURN_FAIL );
+		return DPTX_RETURN_EINVAL;
 	}
 
 	memcpy( &pstVideoParams->stDtdParams[ucStream_Index], pstDtd_Params, sizeof( struct Dptx_Dtd_Params ) );
@@ -632,30 +625,30 @@ bool Dptx_Avgen_Set_Video_Detailed_Timing( struct Dptx_Params *pstDptx, u8 ucStr
 	dptx_dbg("DTD format: %s", pstVideoParams->ucVideo_Format == VIDEO_FORMAT_CEA_861 ? "CEA_861":"Others" );
 	dptx_dbg("Pixel Clk: %d", pstVideoParams->stDtdParams[ucStream_Index].uiPixel_Clock);
 
-	bRetVal = Dptx_Avgen_Calculate_Video_Average_TU_Symbols(	pstDptx,
+	iRetVal = Dptx_Avgen_Calculate_Video_Average_TU_Symbols(	pstDptx,
 																	pstDptx->stDptxLink.ucNumOfLanes, 
 																	pstDptx->stDptxLink.ucLinkRate, 
 																	pstVideoParams->ucBitPerComponent, 
 																	pstVideoParams->ucPixel_Encoding, 
 																	pstVideoParams->stDtdParams[ucStream_Index].uiPixel_Clock,
 																	ucStream_Index );
-	if( bRetVal == DPTX_RETURN_FAIL )
+	if( iRetVal != DPTX_RETURN_NO_ERROR )
 	{
-		return ( DPTX_RETURN_FAIL );
+		return iRetVal;
 	}
 
 	Dptx_Avgen_Set_Video_Stream_Enable( pstDptx, false, ucStream_Index );
 
-	bRetVal = dptx_avgen_config_video_input( pstDptx, (u8)ucStream_Index );
-	if( bRetVal == DPTX_RETURN_FAIL )
+	iRetVal = dptx_avgen_config_video_input( pstDptx, (u8)ucStream_Index );
+	if( iRetVal != DPTX_RETURN_NO_ERROR )
 	{
-		return ( DPTX_RETURN_FAIL );
+		return iRetVal;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Avgen_Set_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool bEnable_Stream, u8 ucStream_Index )
+int32_t Dptx_Avgen_Set_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool bEnable_Stream, u8 ucStream_Index )
 {
 	u32				uiRegMap_VSampleCtrl;
 
@@ -687,10 +680,10 @@ bool Dptx_Avgen_Set_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool bEnab
 
 	Dptx_Reg_Writel( pstDptx, DPTX_VSAMPLE_CTRL_N( ucStream_Index ), uiRegMap_VSampleCtrl );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Avgen_Get_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool *pbEnable_Stream, u8 ucStream_Index )
+int32_t Dptx_Avgen_Get_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool *pbEnable_Stream, u8 ucStream_Index )
 {
 	u32				uiRegMap_VSampleCtrl;
 
@@ -698,38 +691,39 @@ bool Dptx_Avgen_Get_Video_Stream_Enable( struct Dptx_Params *pstDptx, bool *pbEn
 
 	*pbEnable_Stream = (bool)( uiRegMap_VSampleCtrl & DPTX_VSAMPLE_CTRL_STREAM_EN );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Avgen_Set_Video_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index )
+int32_t Dptx_Avgen_Set_Video_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index )
 {
-	bool	bRetVal;
+	int32_t	iRetVal;
 
 	Dptx_Avgen_Set_Video_Stream_Enable( pstDptx, false, ucStream_Index );
 
-	bRetVal = dptx_avgen_config_video_input( pstDptx, (u8)ucStream_Index );
-	if( bRetVal == DPTX_RETURN_FAIL )
+	iRetVal = dptx_avgen_config_video_input( pstDptx, (u8)ucStream_Index );
+	if( iRetVal != DPTX_RETURN_NO_ERROR )
 	{
-		return ( DPTX_RETURN_FAIL );
+		return iRetVal;
 	}
 
 	Dptx_Avgen_Set_Video_Stream_Enable( pstDptx, true, ucStream_Index );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Avgen_Get_Video_NumOfStreams( struct Dptx_Params *pstDptx, u8 *pucEnabled_Streams )
+int32_t Dptx_Avgen_Get_Video_NumOfStreams( struct Dptx_Params *pstDptx, u8 *pucEnabled_Streams )
 {
-	bool	bRetVal, bEnabled_Stream;
-	u8		ucStreamIndex; 
-	u8		ucEnabled_StreamCnt = 0;
+	bool	bEnabled_Stream;
+	u8	ucStreamIndex; 
+	u8	ucEnabled_StreamCnt = 0;
+	int32_t	iRetVal;
 
 	for( ucStreamIndex = 0; ucStreamIndex < PHY_INPUT_STREAM_MAX; ucStreamIndex++ )
 	{
-		bRetVal = Dptx_Avgen_Get_Video_Stream_Enable( pstDptx, &bEnabled_Stream, ucStreamIndex );
-		if( bRetVal == DPTX_RETURN_FAIL )
+		iRetVal = Dptx_Avgen_Get_Video_Stream_Enable( pstDptx, &bEnabled_Stream, ucStreamIndex );
+		if( iRetVal != DPTX_RETURN_NO_ERROR )
 		{
-			return ( DPTX_RETURN_FAIL );
+			return iRetVal;
 		}
 			
 		if( bEnabled_Stream )
@@ -740,10 +734,10 @@ bool Dptx_Avgen_Get_Video_NumOfStreams( struct Dptx_Params *pstDptx, u8 *pucEnab
 
 	*pucEnabled_Streams = ucEnabled_StreamCnt;
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Avgen_Get_Pixel_Mode( struct Dptx_Params *pstDptx, u8 ucStream_Index, u8 *pucPixelMode )
+int32_t Dptx_Avgen_Get_Pixel_Mode( struct Dptx_Params *pstDptx, u8 ucStream_Index, u8 *pucPixelMode )
 {
 	u32							uiRegMap_VidSampleCtrl;
 
@@ -751,10 +745,10 @@ bool Dptx_Avgen_Get_Pixel_Mode( struct Dptx_Params *pstDptx, u8 ucStream_Index, 
 
 	*pucPixelMode = (u8)( ( uiRegMap_VidSampleCtrl & DPTX_VSAMPLE_CTRL_MULTI_PIXEL_MASK ) >> DPTX_VSAMPLE_CTRL_MULTI_PIXEL_SHIFT );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Avgen_Get_Video_PixelEncoding_Type( struct Dptx_Params *pstDptx, u8 ucStream_Index, u8 *pucPixel_Encoding )
+int32_t Dptx_Avgen_Get_Video_PixelEncoding_Type( struct Dptx_Params *pstDptx, u8 ucStream_Index, u8 *pucPixel_Encoding )
 {
 	u8							ucColorimetry_Mapping = 0;
 	u32 						uiRegMap_Msa2;
@@ -787,10 +781,10 @@ bool Dptx_Avgen_Get_Video_PixelEncoding_Type( struct Dptx_Params *pstDptx, u8 uc
 		*pucPixel_Encoding = (u8)PIXEL_ENCODING_TYPE_RGB;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Avgen_Get_Video_Configured_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index, struct Dptx_Dtd_Params	*pstDtd )
+int32_t Dptx_Avgen_Get_Video_Configured_Timing( struct Dptx_Params *pstDptx, u8 ucStream_Index, struct Dptx_Dtd_Params	*pstDtd )
 {
 	u32 	uiRegMap_VidConfig1, uiRegMap_VidConfig2, uiRegMap_VidConfig3, uiRegMap_VidConfig4;
 	u32		uiRegMap_VidPolarityCtrl; 
@@ -846,10 +840,10 @@ bool Dptx_Avgen_Get_Video_Configured_Timing( struct Dptx_Params *pstDptx, u8 ucS
 	pstDtd->v_sync_offset = (( uiRegMap_VidConfig4 & DPTX_VIDEO_V_FRONTE_PORCH_MASK ) >> DPTX_VIDEO_V_FRONT_PORCH_SHIFT );
 	pstDtd->v_sync_pulse_width = (( uiRegMap_VidConfig4 & DPTX_VIDEO_V_SYNC_WIDTH_MASK ) >> DPTX_VIDEO_V_SYNC_WIDTH_SHIFT );
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx, int iNumOfLane, int iLinkRate, int iBpc, int iEncodingType, int iPixel_Clock, u8 ucStream_Index )
+int32_t Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx, int iNumOfLane, int iLinkRate, int iBpc, int iEncodingType, int iPixel_Clock, u8 ucStream_Index )
 {
 	int							iLink_Rate, iLink_Clock, iColor_Depth, iT1 = 0, iT2 = 0;
 	int							iH_AverageSymbol_Per_TU, iAverageSymbol_Per_TU, iTransfer_Unit_Fraction;
@@ -876,7 +870,7 @@ bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx,
 			break;
 		default:    
 			dptx_err("Invalid rate param = %d", iLinkRate );
-			return ( DPTX_RETURN_FAIL );
+			return DPTX_RETURN_EINVAL;
 			break;
 	}
 
@@ -894,12 +888,12 @@ bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx,
 			else
 			{
 				dptx_err("Invalid encoding type(%d)", iEncodingType);
-				return ( DPTX_RETURN_FAIL );
+				return DPTX_RETURN_EINVAL;
 			}
 			break;
 		default:
 			dptx_err("Invalid Bpc(%d)", iBpc);
-			return ( DPTX_RETURN_FAIL );
+			return DPTX_RETURN_EINVAL;
 			break;
 	}
 
@@ -919,7 +913,7 @@ bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx,
 	if( iAverageSymbol_Per_TU > DPTX_MAX_LINK_SYMBOLS ) 
 	{
 		dptx_err("iTransfer_Unit(%d) > DPTX_MAX_LINK_SYMBOLS", iAverageSymbol_Per_TU);
-		return ( DPTX_RETURN_FAIL );
+		return DPTX_RETURN_ENODEV;
 	}
 
 	iTransfer_Unit_Fraction = ( ( iH_AverageSymbol_Per_TU / 100 ) - ( iAverageSymbol_Per_TU * 10 ) ); // ( 24340 / 100 ) - ( 24 * 10 ) = 243 - 240 = '3'
@@ -965,12 +959,12 @@ bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx,
 				else
 				{
 					dptx_err("Invalid encoding type(%d)", iEncodingType);
-					return ( DPTX_RETURN_FAIL );
+					return DPTX_RETURN_EINVAL;
 				}
 				break;
 			default:
 				dptx_err( "Invalid param iBpc = %d", iBpc );
-				return ( DPTX_RETURN_FAIL );
+				return DPTX_RETURN_EINVAL;
 				break;
 		}
 
@@ -1046,7 +1040,7 @@ bool Dptx_Avgen_Calculate_Video_Average_TU_Symbols( struct Dptx_Params *pstDptx,
 		dptx_info(" -.Init thresh: %d",	pstVideoParams->ucInit_Threshold );
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 void Dptx_Avgen_Configure_Audio(struct Dptx_Params *pstDptx, uint8_t ucStream_Index, struct Dptx_Audio_Params *pstAudioParams)
@@ -1401,18 +1395,17 @@ void Dptx_Avgen_Enable_Audio_Timestamp(struct Dptx_Params *pstDptx, uint8_t ucSt
 	Dptx_Reg_Writel(pstDptx, uiReg_Offset, uiRegMap_AudEnableTimestamp);
 }
 
-bool Dptx_Avgen_Get_VIC_From_Dtd( struct Dptx_Params *pstDptx, u8 ucStream_Index, u32 *puiVideo_Code )
+int32_t Dptx_Avgen_Get_VIC_From_Dtd( struct Dptx_Params *pstDptx, u8 ucStream_Index, u32 *puiVideo_Code )
 {
-	bool	bRetVal;
-	u32		uiVideoCode;
+	int32_t	iRetVal;
+	u32	uiVideoCode;
 	struct Dptx_Dtd_Params	stDtd_Params;
 	struct Dptx_Dtd_Params	stDtd_Timing;
 
-	bRetVal = Dptx_Avgen_Get_Video_Configured_Timing( pstDptx, ucStream_Index, &stDtd_Timing );
-	if( bRetVal == DPTX_RETURN_FAIL )
+	iRetVal = Dptx_Avgen_Get_Video_Configured_Timing( pstDptx, ucStream_Index, &stDtd_Timing );
+	if( iRetVal != DPTX_RETURN_NO_ERROR )
 	{
-		dptx_err("from  Dptx_Avgen_Get_Video_Configured_Timing()" );
-		return ( DPTX_RETURN_FAIL );
+		return iRetVal;
 	}
 
 /*
@@ -1428,8 +1421,8 @@ bool Dptx_Avgen_Get_VIC_From_Dtd( struct Dptx_Params *pstDptx, u8 ucStream_Index
 
 	for( uiVideoCode = 0; uiVideoCode < (u32)DP_CUSTOM_MAX_DTD_VIC;  uiVideoCode++ )
 	{
-		bRetVal = Dptx_Avgen_Fill_Dtd( &stDtd_Params, uiVideoCode, 60000, (u8)VIDEO_FORMAT_CEA_861 );
-		if( bRetVal == DPTX_RETURN_SUCCESS )
+		iRetVal = Dptx_Avgen_Fill_Dtd( &stDtd_Params, uiVideoCode, 60000, (u8)VIDEO_FORMAT_CEA_861 );
+		if( iRetVal == DPTX_RETURN_NO_ERROR )
 		{
 			if(( stDtd_Params.interlaced		== stDtd_Timing.interlaced ) && 
 				( stDtd_Params.h_sync_polarity	== stDtd_Timing.h_sync_polarity ) && 
@@ -1452,13 +1445,13 @@ bool Dptx_Avgen_Get_VIC_From_Dtd( struct Dptx_Params *pstDptx, u8 ucStream_Index
 	if( uiVideoCode == DP_CUSTOM_MAX_DTD_VIC )
 	{
 		dptx_err("Not found VIC from dtd " );
-		return ( DPTX_RETURN_FAIL );
+		return DPTX_RETURN_EINVAL;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Avgen_Fill_Dtd(             struct Dptx_Dtd_Params *pstDtd, u32 uiVideo_Code, u32 uiRefreshRate, u8 ucVideoFormat )
+int32_t Dptx_Avgen_Fill_Dtd(             struct Dptx_Dtd_Params *pstDtd, u32 uiVideo_Code, u32 uiRefreshRate, u8 ucVideoFormat )
 {
 	dptx_avgen_reset_dtd( pstDtd );
 
@@ -3095,7 +3088,7 @@ bool Dptx_Avgen_Fill_Dtd(             struct Dptx_Dtd_Params *pstDtd, u32 uiVide
 				break;
 			default:
 				//dptx_err("Invalid video code = %d ", uiVideo_Code );
-				return ( DPTX_RETURN_FAIL  );
+				return DPTX_RETURN_EINVAL;
 		}
 	} 
 	else if( ucVideoFormat == VIDEO_FORMAT_VESA_CVT ) 
@@ -3376,7 +3369,7 @@ bool Dptx_Avgen_Fill_Dtd(             struct Dptx_Dtd_Params *pstDtd, u32 uiVide
 				break;
 			default:
 				//dptx_err("Invalid video code = %d \n", uiVideo_Code );
-				return ( DPTX_RETURN_FAIL  );
+				return DPTX_RETURN_EINVAL;
 		}
 	} 
 	else if( ucVideoFormat == VIDEO_FORMAT_VESA_DMT ) 
@@ -3881,15 +3874,15 @@ bool Dptx_Avgen_Fill_Dtd(             struct Dptx_Dtd_Params *pstDtd, u32 uiVide
 				break;
 			default:
 				//dptx_err("Invalid video code = %d ", uiVideo_Code );
-				return ( DPTX_RETURN_FAIL  );
+				return DPTX_RETURN_EINVAL;
 		}
 	}
 	else
 	{
 		dptx_err("Invalid video format = %d \n", ucVideoFormat );
-		return ( DPTX_RETURN_FAIL  );
+		return DPTX_RETURN_EINVAL;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 

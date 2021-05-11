@@ -413,7 +413,7 @@ static int of_parse_serdes_dt( struct Max968xx_dev		*pstDev )
 	pstDev->ucEVB_Type = (unsigned char)uiEVB_Type;
 	pstDev->bSer_LaneSwap = (bool)uiLane_Swap;
 
-	return (0);
+	return DPTX_RETURN_NO_ERROR;
 }
 
 static int Dptx_Max968XX_I2C_Write( struct i2c_client *client, unsigned short usRegAdd, unsigned char ucValue )
@@ -432,12 +432,12 @@ static int Dptx_Max968XX_I2C_Write( struct i2c_client *client, unsigned short us
 	if( iRW_Len != ( SER_DES_I2C_REG_ADD_LEN + SER_DES_I2C_DATA_LEN ) ) 
 	{
 		dptx_err("i2c device %s: error to write register address as 0x%x.. w len %d !!!!", client->name, client->addr, iRW_Len );
-		return -EIO;
+		return DPTX_RETURN_ENODEV;
 	}
 
 	dptx_dbg("Write I2C Dev 0x%x: Reg address 0x%x -> 0x%x", ( client->addr << 1 ), usRegAdd, ucValue );
 
-	return (0);
+	return DPTX_RETURN_NO_ERROR;
 }
 
 static unsigned char Dptx_Max968XX_Convert_DevAdd_To_Index( unsigned char ucI2C_DevAdd )
@@ -457,10 +457,15 @@ static unsigned char Dptx_Max968XX_Convert_DevAdd_To_Index( unsigned char ucI2C_
 	return (ucElements);
 }
 
-bool Dptx_Max968XX_Get_TopologyState( u8 *pucNumOfPluggedPorts )
+int32_t Dptx_Max968XX_Get_TopologyState( u8 *pucNumOfPluggedPorts )
 {
 	u8						ucElements;
 	struct Max968xx_dev		*pstMax968xx_dev;
+
+	if (pucNumOfPluggedPorts == NULL) {
+		dptx_info("pucNumOfPluggedPorts == NULL");
+		return DPTX_RETURN_EINVAL;
+	}
 
 	for( ucElements = (u8)DES_INPUT_INDEX_0; ucElements < SER_DES_INPUT_INDEX_MAX; ucElements++ )
 	{
@@ -474,14 +479,16 @@ bool Dptx_Max968XX_Get_TopologyState( u8 *pucNumOfPluggedPorts )
 	if( ucElements == (u8)SER_DES_INPUT_INDEX_MAX )
 	{
 		*pucNumOfPluggedPorts = 0;
-		return ( DPTX_RETURN_FAIL );
+
+		dptx_info("No SerDes is connected");
+		return DPTX_RETURN_NO_ERROR;
 	}
 	else
 	{
 		*pucNumOfPluggedPorts = ( ucElements - 1 );
 	}
 
-	return (DPTX_RETURN_SUCCESS);
+	return DPTX_RETURN_NO_ERROR;
 }
 
 /* B190164 - Update SerDes Register for Touch Init */
@@ -512,7 +519,7 @@ bool Touch_Max968XX_update_reg(struct Dptx_Params *pstDptx)
 	return (bool)false;
 }
 
-bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
+int32_t Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
 {
 	unsigned char	ucSerDes_Index;
 	unsigned char	ucSER_Revision_Num = 0, ucDES_Revision_Num = 0, ucRW_Data, ucEVB_Tpye;
@@ -617,7 +624,7 @@ bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
 		}
 
 		iRetVal = Dptx_Max968XX_I2C_Write( pstMax968xx_dev->pstClient, pstSERDES_Reg_Info[uiElements].uiReg_Addr, ucRW_Data );
-		if( iRetVal )
+		if( iRetVal != DPTX_RETURN_NO_ERROR )
 		{
 			continue;
 		}
@@ -631,7 +638,7 @@ bool Dptx_Max968XX_Reset( struct Dptx_Params *pstDptx )
 
 	dptx_info("\n[%s:%d]SerDes I2C Resister update is successfully done !!!.. written %d registers \n", __func__, __LINE__, uiElements );
 
-	return (false);
+	return DPTX_RETURN_NO_ERROR;
 }
 
 static int Dptx_Max968XX_probe( struct i2c_client *client, const struct i2c_device_id *id )
@@ -704,14 +711,14 @@ static int Dptx_Max968XX_probe( struct i2c_client *client, const struct i2c_devi
 		pstMax968xx_dev->ucEVB_Type = TCC8050_SV_01;
 	}
 
-	return (0);
+	return DPTX_RETURN_NO_ERROR;
 }
 
 static int Dptx_Max968XX_remove( struct i2c_client *client)
 {
 	memset( &stMax968xx_dev[SER_INPUT_INDEX_0], 0, ( sizeof( struct Max968xx_dev ) * SER_DES_INPUT_INDEX_MAX ));
 	
-	return (0);
+	return DPTX_RETURN_NO_ERROR;
 }
 
 static const struct of_device_id max_96851_78_match[] = {

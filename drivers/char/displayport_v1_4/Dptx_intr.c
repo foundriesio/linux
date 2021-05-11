@@ -51,16 +51,16 @@ end_handler:
 
 static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHotPlugged )
 {
-	bool		bRetVal;
-	bool		bTrainingState;
-	u8			ucDP_Index;
+	bool bTrainingState;
+	u8 ucDP_Index;
+	int32_t iRetVal;
 
 	if( bHotPlugged == (bool)HPD_STATUS_UNPLUGGED )
 	{
-		bRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
-		if( bRetVal == DPTX_RETURN_FAIL )
+		iRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
+		if(iRetVal !=  DPTX_RETURN_NO_ERROR )
 		{
-			return ( ENODEV );
+			return iRetVal;
 		}
 
 		for( ucDP_Index = 0; ucDP_Index < (u8)pstDptx->ucNumOfPorts; ucDP_Index++ )
@@ -68,7 +68,7 @@ static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHo
 			if( pstDptx->pvHPD_Intr_CallBack == NULL )
 			{
 				dptx_err("HPD callback isn't registered");
-				return ( ENODEV );
+				return DPTX_RETURN_ENODEV;
 			}
 			
 			pstDptx->pvHPD_Intr_CallBack( ucDP_Index, (bool)HPD_STATUS_UNPLUGGED );
@@ -76,40 +76,36 @@ static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHo
 
 		pstDptx->ucNumOfPorts = 0;
 
-		return ( 0 );
+		return DPTX_RETURN_NO_ERROR;
 	}
-	bRetVal = Dptx_Intr_Get_Port_Composition( pstDptx, 1 );
-	if( bRetVal == DPTX_RETURN_FAIL )
-	{
-		return ( ENODEV );
+	
+	iRetVal = Dptx_Intr_Get_Port_Composition( pstDptx, 1 );
+	if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Link_Get_LinkTraining_Status( pstDptx, &bTrainingState );
-	if( bRetVal == DPTX_RETURN_FAIL )
-	{
-		return ( ENODEV );
+	iRetVal = (int32_t)Dptx_Link_Get_LinkTraining_Status( pstDptx, &bTrainingState );
+	if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
 	if( !bTrainingState )
 	{
-		bRetVal = Dptx_Link_Perform_BringUp( pstDptx, pstDptx->bMultStreamTransport );
-		if( bRetVal == DPTX_RETURN_FAIL )
-		{
-			return ( ENODEV );
+		iRetVal = Dptx_Link_Perform_BringUp( pstDptx, pstDptx->bMultStreamTransport );
+		if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+			return iRetVal;
 		}
 
-		bRetVal = Dptx_Link_Perform_Training(     pstDptx, pstDptx->ucMax_Rate, pstDptx->ucMax_Lanes );
-		if( bRetVal == DPTX_RETURN_FAIL )
-		{
-			return ( ENODEV );
+		iRetVal = Dptx_Link_Perform_Training(     pstDptx, pstDptx->ucMax_Rate, pstDptx->ucMax_Lanes );
+		if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+			return iRetVal;
 		}
 
 		if( pstDptx->bMultStreamTransport  )
 		{
-			bRetVal = Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, pstDptx->bSideBand_MSG_Supported );
-			if( bRetVal == DPTX_RETURN_FAIL )
-			{
-				return ( ENODEV );
+			iRetVal = Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, pstDptx->bSideBand_MSG_Supported );
+			if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+				return iRetVal;
 			}
 		}
 	}
@@ -119,13 +115,13 @@ static int dptx_intr_handle_drm_interface( struct Dptx_Params *pstDptx, bool bHo
 		if( pstDptx->pvHPD_Intr_CallBack == NULL )
 		{
 			dptx_err("HPD callback isn't registered");
-			return ( ENODEV );
+			return DPTX_RETURN_ENODEV;
 		}
 		
 		pstDptx->pvHPD_Intr_CallBack( ucDP_Index, (bool)HPD_STATUS_PLUGGED );
 	}
 
-	return ( 0 );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 static void dptx_intr_notify( struct Dptx_Params *pstDptx )
@@ -343,46 +339,40 @@ irqreturn_t Dptx_Intr_IRQ( int irq, void *dev )
 	return eRetVal;
 }
 
-bool Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucClear_PayloadID)
+int32_t Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucClear_PayloadID)
 {
-	bool	bRetVal;
-	bool	bMST_Supported;
-	u8	ucNumOfPluggedPorts = 0, ucDP_Index;
+	uint8_t	ucMST_Supported = 0, ucNumOfPluggedPorts = 0, ucDP_Index;
 	int32_t	iRetVal;
 
-	bRetVal = Dptx_Ext_Get_Sink_Stream_Capability( pstDptx, &bMST_Supported );
-	if( bRetVal == DPTX_RETURN_FAIL )
-	{
-		return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Ext_Get_Sink_Stream_Capability( pstDptx, &ucMST_Supported );
+	if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Edid_Read_EDID_I2C_Over_Aux( pstDptx );
-	if( bRetVal == DPTX_RETURN_SUCCESS )
-	{
-		pstDptx->bSideBand_MSG_Supported = true;
-	}
-	else
-	{
+	iRetVal = Dptx_Edid_Read_EDID_I2C_Over_Aux(pstDptx);
+	if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		pstDptx->bSideBand_MSG_Supported = false;
+	}
+	else {
+		pstDptx->bSideBand_MSG_Supported = true;
 	}
 
 	if( pstDptx->bSideBand_MSG_Supported )
 	{
-		if( bMST_Supported )
+		if( ucMST_Supported ) 
 		{
 			if( ucClear_PayloadID )
 			{
 				iRetVal = Dptx_Ext_Clear_SidebandMsg_PayloadID_Table( pstDptx );
-				if(iRetVal != 0)
+				if(iRetVal != DPTX_RETURN_NO_ERROR)
 				{
 					dptx_err("Failed to clear payload id table");
 				}
 			}
 
-			bRetVal = Dptx_Ext_Get_TopologyState( pstDptx,      &ucNumOfPluggedPorts );
-			if(bRetVal == DPTX_RETURN_FAIL)
+			iRetVal = Dptx_Ext_Get_TopologyState( pstDptx, &ucNumOfPluggedPorts );
+			if( iRetVal !=  DPTX_RETURN_NO_ERROR )
 			{
-				dptx_err("Failed to get topology...");
 				ucNumOfPluggedPorts = 1;
 			}
 		}
@@ -393,10 +383,9 @@ bool Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucClear
 
 		if( ucNumOfPluggedPorts == 1 )
 		{
-			bRetVal = Dptx_Edid_Read_EDID_I2C_Over_Aux( pstDptx );
-			if(bRetVal == DPTX_RETURN_FAIL)
+			iRetVal = Dptx_Edid_Read_EDID_I2C_Over_Aux( pstDptx );
+			if( iRetVal !=  DPTX_RETURN_NO_ERROR )
 			{
-				dptx_notice("Failed to get EDID on I2C_Over_Aux");
 				memset( pstDptx->paucEdidBuf_Entry[ucDP_Index], 0,   DPTX_EDID_BUFLEN );
 			}
 		}
@@ -404,10 +393,9 @@ bool Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucClear
 		{
 			for( ucDP_Index = 0; ucDP_Index < ucNumOfPluggedPorts; ucDP_Index++ )
 			{
-				bRetVal = Dptx_Edid_Read_EDID_Over_Sideband_Msg( pstDptx, ucDP_Index, true );
-				if(bRetVal == DPTX_RETURN_FAIL)
+				iRetVal = Dptx_Edid_Read_EDID_Over_Sideband_Msg( pstDptx, ucDP_Index );
+				if( iRetVal != DPTX_RETURN_NO_ERROR )
 				{
-					dptx_notice("Failed to get EDID from DP %d on Sideband_Msg", ucDP_Index);
 					memset( pstDptx->paucEdidBuf_Entry[ucDP_Index], 0,   DPTX_EDID_BUFLEN );
 				}
 				else
@@ -420,10 +408,9 @@ bool Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucClear
 	}
 	else
 	{
-		bRetVal = Dptx_Max968XX_Get_TopologyState( &ucNumOfPluggedPorts );
-		if( bRetVal == DPTX_RETURN_FAIL )
+		iRetVal = Dptx_Max968XX_Get_TopologyState( &ucNumOfPluggedPorts );
+		if( iRetVal != DPTX_RETURN_NO_ERROR )
 		{
-			dptx_err("Failed to get topology from SerDes");
 			ucNumOfPluggedPorts = 1;
 		}
 
@@ -438,45 +425,47 @@ bool Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucClear
 	pstDptx->ucNumOfPorts = ucNumOfPluggedPorts;
 	pstDptx->bMultStreamTransport = ( ucNumOfPluggedPorts == 1 ) ? false:true;
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Intr_Register_HPD_Callback( struct Dptx_Params *pstDptx, Dptx_HPD_Intr_Callback HPD_Intr_Callback )
+int32_t Dptx_Intr_Register_HPD_Callback( struct Dptx_Params *pstDptx, Dptx_HPD_Intr_Callback HPD_Intr_Callback )
 {
 	pstDptx->pvHPD_Intr_CallBack = HPD_Intr_Callback;
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
-bool Dptx_Intr_Handle_HotUnplug( struct Dptx_Params *pstDptx )
+int32_t Dptx_Intr_Handle_HotUnplug( struct Dptx_Params *pstDptx )
 {
-	bool			bRetVal;
+	int32_t	iRetVal;
+
+	if( pstDptx->ucMax_Lanes >= PHY_LANE_MAX )
+	{
+		dptx_err("Invalid the number of lanes : %d isn't allocated ", pstDptx->ucMax_Lanes);
+		return DPTX_RETURN_EINVAL;
+	}
 
 	pstDptx->eLast_HPDStatus = HPD_STATUS_UNPLUGGED;
 
-	bRetVal = Dptx_Core_Disable_PHY_XMIT( pstDptx, pstDptx->ucMax_Lanes );
-	if( bRetVal == DPTX_RETURN_FAIL ) 
-	{
-		 return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Core_Disable_PHY_XMIT( pstDptx, pstDptx->ucMax_Lanes );
+	if (iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Core_Set_PHY_PowerState( pstDptx, PHY_POWER_DOWN_PHY_CLOCK );
-	if( bRetVal == DPTX_RETURN_FAIL ) 
-	{
-		 return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Core_Set_PHY_PowerState( pstDptx, PHY_POWER_DOWN_PHY_CLOCK );
+	if(iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	bRetVal = Dptx_Core_Get_PHY_BUSY_Status( pstDptx, pstDptx->ucMax_Lanes );
-	if( bRetVal == DPTX_RETURN_FAIL ) 
-	{
-		 return ( DPTX_RETURN_FAIL );
+	iRetVal = Dptx_Core_Get_PHY_BUSY_Status( pstDptx, pstDptx->ucMax_Lanes );
+	if(iRetVal != DPTX_RETURN_NO_ERROR) {
+		return iRetVal;
 	}
 
-	return ( DPTX_RETURN_SUCCESS );
+	return DPTX_RETURN_NO_ERROR;
 }
 
 int32_t Dptx_Intr_Get_HotPlug_Status(struct Dptx_Params *pstDptx, uint8_t *pucHotPlug_Status)
-
 {
 	u32			uiHpdStatus;
 
@@ -491,21 +480,25 @@ int32_t Dptx_Intr_Get_HotPlug_Status(struct Dptx_Params *pstDptx, uint8_t *pucHo
 	 * -.HPD_STATE[Bit11:9]( 0: Sink is not connected, 1: HPD gets deasserted after being in the plugged state in ithis state for 2ms, 3: HPD is high and Sink is connected, 4: HPD is deasserted )
 	 */
 
-	if(pucHotPlug_Status == NULL) {
+	if( pucHotPlug_Status == NULL )
+	{
 		dptx_err("pucHotPlug_Status == NULL" );
-		return EACCES;
+		return DPTX_RETURN_EINVAL;
 	}
 	
 	uiHpdStatus = Dptx_Reg_Readl( pstDptx, DPTX_HPDSTS );
-	if(uiHpdStatus & DPTX_HPDSTS_STATUS) {
+	if( uiHpdStatus & DPTX_HPDSTS_STATUS )
+	{
 		dptx_dbg("Hot plugged -> HPD_STATUS[0x%08x]: 0x%08x", DPTX_HPDSTS, uiHpdStatus );
 		*pucHotPlug_Status = (uint8_t)HPD_STATUS_PLUGGED;
-	} else {
+	} 
+	else 
+	{
 		dptx_dbg("Hot unplugged -> HPD_STATUS[0x%08x]: 0x%08x", DPTX_HPDSTS, uiHpdStatus );
 		*pucHotPlug_Status = (uint8_t)HPD_STATUS_UNPLUGGED;
 	}
 
-	return 0;
+	return DPTX_RETURN_NO_ERROR;
 }
 
 

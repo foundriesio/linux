@@ -177,7 +177,7 @@ int Drm_Addition_Calculate_PBN_mode( int clock, int bpp )
 EXPORT_SYMBOL( Drm_Addition_Calculate_PBN_mode );
 
 
-bool Drm_Addition_Parse_Sideband_Link_Address( struct drm_dp_sideband_msg_rx *raw, 					           struct drm_dp_sideband_msg_reply_body *repmsg )
+int32_t Drm_Addition_Parse_Sideband_Link_Address( struct drm_dp_sideband_msg_rx *raw, 					           struct drm_dp_sideband_msg_reply_body *repmsg )
 {
 	int idx = 1;
 	int i;
@@ -222,11 +222,11 @@ bool Drm_Addition_Parse_Sideband_Link_Address( struct drm_dp_sideband_msg_rx *ra
 			goto fail_len;
 	}
 
-	return true;
+	return DPTX_RETURN_NO_ERROR;
 fail_len:
 	dptx_err("link address reply parse length fail %d %d\n", idx, raw->curlen);
 
-	return false;
+	return DPTX_RETURN_ENOENT;
 }
 
 
@@ -293,23 +293,23 @@ void Drm_Addition_Encode_Sideband_Msg_Hdr( struct drm_dp_sideband_msg_hdr *hdr, 
 	*len = idx;
 }
 
-bool Drm_Addition_Decode_Sideband_Msg_Hdr( struct drm_dp_sideband_msg_hdr *hdr, 					   u8 *buf, int buflen, u8 *hdrlen )
+int32_t Drm_Addition_Decode_Sideband_Msg_Hdr( struct drm_dp_sideband_msg_hdr *hdr, 					   u8 *buf, int buflen, u8 *hdrlen )
 {
 	u8 crc4;
 	u8 len;
 	int i;
 	u8 idx;
 	if (buf[0] == 0)
-		return false;
+		return DPTX_RETURN_ENOENT;
 	len = 3;
 	len += ((buf[0] & 0xf0) >> 4) / 2;
 	if (len > buflen)
-		return false;
+		return DPTX_RETURN_ENOENT;
 	crc4 = drm_addition_get_msg_header_crc4(buf, (len * 2) - 1);
 
 	if ((crc4 & 0xf) != (buf[len - 1] & 0xf)) {
 		//DRM_DEBUG_KMS("crc4 mismatch 0x%x 0x%x\n", crc4, buf[len - 1]);
-		return false;
+		return DPTX_RETURN_ENOENT;
 	}
 
 	hdr->lct = (buf[0] & 0xf0) >> 4;
@@ -326,7 +326,8 @@ bool Drm_Addition_Decode_Sideband_Msg_Hdr( struct drm_dp_sideband_msg_hdr *hdr, 
 	hdr->seqno = (buf[idx] >> 4) & 0x1;
 	idx++;
 	*hdrlen = idx;
-	return true;
+
+	return DPTX_RETURN_NO_ERROR;
 }
 
 void Drm_Addition_Parse_Sideband_Connection_Status_Notify( struct drm_dp_sideband_msg_rx *raw,							         struct drm_dp_sideband_msg_req_body *msg )
