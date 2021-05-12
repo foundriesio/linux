@@ -4294,9 +4294,16 @@ unsigned int ieee80211_get_mesh_hdrlen(struct ieee80211s_hdr *meshhdr);
  * @iftype: the virtual interface type
  * Return: 0 on success. Non-zero on error.
  */
+#ifdef __GENKSYMS__
 int ieee80211_data_to_8023_exthdr(struct sk_buff *skb, struct ethhdr *ehdr,
+				  const u8 *addr, enum nl80211_iftype iftype);
+#else
+/* new version */
+int __ieee80211_data_to_8023_exthdr(struct sk_buff *skb, struct ethhdr *ehdr,
 				  const u8 *addr, enum nl80211_iftype iftype,
 				  bool is_amsdu);
+#define ieee80211_data_to_8023_exthdr __ieee80211_data_to_8023_exthdr
+#endif
 
 /**
  * ieee80211_data_to_8023 - convert an 802.11 data frame to 802.3
