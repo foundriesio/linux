@@ -37,8 +37,6 @@
 #define UNIPRO_PCLK_PERIOD_NS 6
 #define CALCULATED_VALUE 0x4E20
 
-static unsigned int debug;
-
 static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 {
 	struct resource *mem_res;
@@ -142,7 +140,7 @@ static void encryption_setting(struct ufs_hba *hba)
 
 static int tcc_ufs_smu_setting(struct ufs_hba *hba)
 {
-	unsigned int smu_bypass = 1;
+	//unsigned int smu_bypass = 1;
 	unsigned int smu_index  = 0;
 	unsigned int desc_type  = 0;
 	unsigned int tid, sw, sr, nsw, nsr, ufk, enc, valid;
@@ -455,8 +453,6 @@ static void ufs_tcc_post_init(struct ufs_hba *hba)
 static int ufs_tcc_hce_enable_notify(struct ufs_hba *hba,
 				enum ufs_notify_change_status status)
 {
-	int ret = 0;
-
 	switch (status) {
 	case PRE_CHANGE:
 		ufs_tcc_pre_init(hba);
@@ -473,15 +469,14 @@ static int ufs_tcc_hce_enable_notify(struct ufs_hba *hba,
 
 static int ufs_tcc_link_startup_post_change(struct ufs_hba *hba)
 {
-	uint32_t  rd_data;
-	uint32_t  cport_log_en = 0;
-	uint32_t  wlu_enable = 0;
-	uint32_t  wlu_burst_len = 3;
-	uint32_t  hci_buffering_enable = 0;
+	//uint32_t  rd_data;
+	//uint32_t  cport_log_en = 0;
+	//uint32_t  wlu_enable = 0;
+	//uint32_t  wlu_burst_len = 3;
+	//uint32_t  hci_buffering_enable = 0;
 	uint32_t  axidma_rwdataburstlen = 0;
 	uint32_t  no_of_beat_burst = 7;
 	int res = 0;
-	struct ufs_tcc_host *host = ufshcd_get_variant(hba);
 
 	ufshcd_writel(hba, UTRIACR_VAL, HCI_UTRIACR);
 	ufshcd_writel(hba, UTMRLBA_LOW_VAL, HCI_UTMRLBA);

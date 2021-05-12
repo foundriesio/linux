@@ -106,7 +106,11 @@ config SCSI_UFS_TCC
 	depends on SCSI_UFSHCD_PLATFORM
 	help
 	  This selects the Telechips UFS host controller support.
+	  UFS host on Telechips needs some vendor specific configuration before
+	  accessing the hardware which includes PHY configuration and vendor
+	  specific registers.
 
+	  Select this if you have UFS controller on Telechips chipset.
 	  If unsure, say N.
 
 config SCSI_TCC_SC_UFS
@@ -114,7 +118,13 @@ config SCSI_TCC_SC_UFS
 	depends on ARCH_TCC
 	depends on TCC_SC_FW_PROTOCOL
 	help
-	  This selects the Telechips Storage Core MMC Proxy Driver.
+	  This selects the Telechips Storage Core UFS Proxy Driver.
+	  UFS contoller is controled by Storage Core Firmware.
+	  Kernel driver requests data through mailbox.
+
+	  Select this if you have UFS controller and use Storage Core Firmware
+	  on Telechips chipset.
+	  If unsure, say N.
 
 config SCSI_UFS_CRYPTO
 	bool "UFS Crypto Engine Support"
