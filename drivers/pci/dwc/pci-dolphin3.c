@@ -1,11 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * PCIe host controller driver for Telechips SoCs
- *
- * Copyright (C) 2016 Telechips Co., Ltd.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Copyright (C) Telechips Inc.
  */
 
 #include <linux/clk.h>
@@ -801,10 +796,10 @@ static s32 tcc_pcie_resume_noirq(struct device *dev)
 }
 
 static const struct dev_pm_ops tcc_pcie_pm = {
-	.suspend_noirq	= tcc_pcie_suspend_noirq,
-	.resume_noirq	= tcc_pcie_resume_noirq,
-	.freeze_noirq	= tcc_pcie_suspend_noirq,
-	.thaw_noirq	= tcc_pcie_resume_noirq,
+	.suspend    = tcc_pcie_suspend_noirq,
+	.resume     = tcc_pcie_resume_noirq,
+	.freeze     = tcc_pcie_suspend_noirq,
+	.thaw       = tcc_pcie_resume_noirq,
 };
 
 static const struct of_device_id tcc_pcie_of_match[] = {
