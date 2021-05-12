@@ -1865,8 +1865,8 @@ static inline void ufshcd_hba_capabilities(struct ufs_hba *hba)
 	hba->capabilities = ufshcd_readl(hba, REG_CONTROLLER_CAPABILITIES);
 
 	/* nutrs and nutmrs are 0 based values */
-	hba->nutrs = (hba->capabilities & MASK_TRANSFER_REQUESTS_SLOTS) + 1;
-	//hba->nutrs = 1;
+	//hba->nutrs = (hba->capabilities & MASK_TRANSFER_REQUESTS_SLOTS) + 1;
+	hba->nutrs = 1;
 	hba->nutmrs =
 	((hba->capabilities & MASK_TASK_MANAGEMENT_REQUEST_SLOTS) >> 16) + 1;
 }
@@ -2022,9 +2022,9 @@ static int ufshcd_map_sg(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	void *base_addr_virt;
 
 	cmd = lrbp->cmd;
-	dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(32));
+	//dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(32));
 	sg_segments = scsi_dma_map(cmd);
-	dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(64));
+	//dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(64));
 	if (sg_segments < 0)
 		return sg_segments;
 
@@ -2171,7 +2171,6 @@ void ufshcd_prepare_utp_scsi_cmd_upiu(
 {
 	struct utp_upiu_req *ucd_req_ptr = lrbp->ucd_req_ptr;
 	unsigned short cdb_len;
-	u32 reg;
 
 	/* command descriptor fields */
 	ucd_req_ptr->header.dword_0 = UPIU_HEADER_DWORD(
@@ -2207,7 +2206,6 @@ static void ufshcd_prepare_utp_query_req_upiu(struct ufs_hba *hba,
 	struct ufs_query *query = &hba->dev_cmd.query;
 	u16 len = be16_to_cpu(query->request.upiu_req.length);
 	u8 *descp = (u8 *)lrbp->ucd_req_ptr + GENERAL_UPIU_REQUEST_SIZE;
-	u32 reg;
 
 	/* Query request header */
 	ucd_req_ptr->header.dword_0 = UPIU_HEADER_DWORD(
@@ -2238,7 +2236,6 @@ static inline void ufshcd_prepare_utp_nop_upiu(struct ufs_hba *hba,
 				struct ufshcd_lrb *lrbp)
 {
 	struct utp_upiu_req *ucd_req_ptr = lrbp->ucd_req_ptr;
-	u32 reg;
 
 	memset(ucd_req_ptr, 0, sizeof(struct utp_upiu_req));
 
@@ -2912,7 +2909,6 @@ static int __ufshcd_query_descriptor(struct ufs_hba *hba,
 	struct ufs_query_req *request = NULL;
 	struct ufs_query_res *response = NULL;
 	int err;
-	u32 reg;
 
 	BUG_ON(!hba);
 
@@ -3102,7 +3098,7 @@ EXPORT_SYMBOL(ufshcd_map_desc_id_to_length);
  *
  * Return 0 in case of success, non-zero otherwise
  */
-static int ufshcd_read_desc_param(struct ufs_hba *hba,
+int ufshcd_read_desc_param(struct ufs_hba *hba,
 				  enum desc_idn desc_id,
 				  int desc_index,
 				  u8 param_offset,
@@ -3168,6 +3164,74 @@ static int ufshcd_read_desc_param(struct ufs_hba *hba,
 out:
 	if (is_kmalloc)
 		kfree(desc_buf);
+	return ret;
+}
+
+/**
+ * ufshcd_write_desc_param - write the specified descriptor parameter
+ * @hba: Pointer to adapter instance
+ * @desc_id: descriptor idn value
+ * @desc_index: descriptor index
+ * @param_offset: offset of the parameter to write
+ * @param_read_buf: pointer to buffer where parameter would be write
+ * @param_size: sizeof(param_write_buf)
+ *
+ * Return 0 in case of success, non-zero otherwise
+ */
+int ufshcd_write_desc_param(struct ufs_hba *hba,
+				  enum desc_idn desc_id,
+				  int desc_index,
+				  u8 param_offset,
+				  u8 *param_write_buf,
+				  u8 param_size)
+{
+	int ret;
+	u8 *desc_buf;
+	int buff_len;
+	bool is_kmalloc = true;
+
+	/* Safety check */
+	if (desc_id >= QUERY_DESC_IDN_MAX || !param_size)
+		return -EINVAL;
+
+	/* Get the max length of descriptor from structure filled up at probe
+	 * time.
+	 */
+	ret = ufshcd_map_desc_id_to_length(hba, desc_id, &buff_len);
+
+	/* Sanity checks */
+	if (ret || !buff_len) {
+		dev_err(hba->dev, "%s: Failed to get full descriptor length",
+			__func__);
+		return ret;
+	}
+
+	desc_buf = param_write_buf;
+
+	/* Request for full descriptor */
+	ret = ufshcd_query_descriptor_retry(hba, UPIU_QUERY_OPCODE_WRITE_DESC,
+					desc_id, desc_index, 0,
+					desc_buf, &buff_len);
+
+	if (ret) {
+		dev_err(hba->dev, "%s: Failed writing descriptor. desc_id %d, desc_index %d, param_offset %d, ret %d",
+			__func__, desc_id, desc_index, param_offset, ret);
+		goto out;
+	}
+
+	/* Sanity check */
+	if (desc_buf[QUERY_DESC_DESC_TYPE_OFFSET] != desc_id) {
+		dev_err(hba->dev, "%s: invalid desc_id %d in descriptor header",
+			__func__, desc_buf[QUERY_DESC_DESC_TYPE_OFFSET]);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* Check wherher we will not copy more data, than available */
+	if (is_kmalloc && param_size > buff_len)
+		param_size = buff_len;
+
+out:
 	return ret;
 }
 

@@ -1051,4 +1051,17 @@ static inline void ufshcd_vops_dbg_register_dump(struct ufs_hba *hba)
 		hba->vops->dbg_register_dump(hba);
 }
 
+int ufshcd_write_desc_param(struct ufs_hba *hba,
+				  enum desc_idn desc_id,
+				  int desc_index,
+				  u8 param_offset,
+				  u8 *param_write_buf,
+				  u8 param_size);
+
+int ufshcd_read_desc_param(struct ufs_hba *hba,
+				  enum desc_idn desc_id,
+				  int desc_index,
+				  u8 param_offset,
+				  u8 *param_read_buf,
+				  u8 param_size);
 #endif /* End of Header */

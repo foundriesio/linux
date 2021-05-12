@@ -41,6 +41,284 @@
 #include "ufshcd-pltfrm.h"
 
 #define UFSHCD_DEFAULT_LANES_PER_DIRECTION		2
+static u8 conf0_desc_buf[0x90];
+static u8 conf1_desc_buf[0x90];
+static u8 conf2_desc_buf[0x90];
+static u8 conf3_desc_buf[0x90];
+static int is_read;
+
+static ssize_t conf_write_to_storage_store(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+
+	if (!strncmp(buf, "1", 1)) {
+
+		if (is_read == 0) {
+			dev_err(dev, "Need read operation!\n");
+			goto out;
+		}
+
+		ufshcd_write_desc_param(hba, QUERY_DESC_IDN_CONFIGURATION,
+				0, 0, conf0_desc_buf, hba->desc_size.conf_desc);
+		ufshcd_write_desc_param(hba, QUERY_DESC_IDN_CONFIGURATION,
+				1, 0, conf1_desc_buf, hba->desc_size.conf_desc);
+		ufshcd_write_desc_param(hba, QUERY_DESC_IDN_CONFIGURATION,
+				2, 0, conf2_desc_buf, hba->desc_size.conf_desc);
+		ufshcd_write_desc_param(hba, QUERY_DESC_IDN_CONFIGURATION,
+				3, 0, conf3_desc_buf, hba->desc_size.conf_desc);
+	} else {
+		dev_err(dev, "example : echo 1 > conf_write_to_storage\n");
+		goto out;
+	}
+
+out:
+	return count;
+}
+static DEVICE_ATTR_WO(conf_write_to_storage);
+
+static ssize_t conf_show(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	int i;
+	int *tmp;
+	int offset = 0;
+
+	offset += sprintf(buf,
+		"====Configuration Desc Header (IDX=0)====\n");
+	offset += sprintf(buf + offset,
+		"bLength = 0x%x\n", conf0_desc_buf[0]);
+	offset += sprintf(buf + offset,
+		"bDescriptorIDN = 0x%x\n", conf0_desc_buf[1]);
+	offset += sprintf(buf + offset,
+		"bConfDescContinue = 0x%x\n", conf0_desc_buf[2]);
+	offset += sprintf(buf + offset,
+		"bBootEnable = 0x%x\n", conf0_desc_buf[3]);
+	offset += sprintf(buf + offset,
+		"bDescrAccessEn = 0x%x\n", conf0_desc_buf[4]);
+	offset += sprintf(buf + offset,
+		"bInitPowerMode = 0x%x\n", conf0_desc_buf[5]);
+	offset += sprintf(buf + offset,
+		"bHighPriorityLUN = 0x%x\n", conf0_desc_buf[6]);
+	offset += sprintf(buf + offset,
+		"bSecureRemovalType = 0x%x\n", conf0_desc_buf[7]);
+	offset += sprintf(buf + offset,
+		"bInitActiveICCLevel = 0x%x\n\n", conf0_desc_buf[8]);
+
+	for (i = 0; i < 8; i++) {
+		offset += sprintf(buf + offset,
+			"====Unit Descriptor LUN : %d====\n", i);
+		offset += sprintf(buf + offset,
+			"bLUEnable = 0x%x\n", conf0_desc_buf[0x10 + 0x10*i]);
+		offset += sprintf(buf + offset,
+			"bMemoryType = 0x%x\n",
+			conf0_desc_buf[0x10 + 0x10*i + 0x3]);
+		tmp = (int *)&conf0_desc_buf[0x10 + 0x10*i + 0x4];
+		offset += sprintf(buf + offset,
+			"bNumAllocUnits = 0x%x\n", be32_to_cpu(*tmp));
+		offset += sprintf(buf + offset,
+			"bProvisiongType = 0x%x\n\n",
+			conf0_desc_buf[0x10 + 0x10*i + 0xA]);
+	}
+
+	offset += sprintf(buf + offset,
+		"====Configuration Desc Header (IDX=1)====\n");
+	offset += sprintf(buf + offset,
+		"bLength = 0x%x\n", conf1_desc_buf[0]);
+	offset += sprintf(buf + offset,
+		"bDescriptorIDN = 0x%x\n\n", conf1_desc_buf[1]);
+
+	for (i = 0; i < 8; i++) {
+		offset += sprintf(buf + offset,
+			"====Unit Descriptor LUN : %d====\n", i + 0x8);
+		offset += sprintf(buf + offset,
+			"bLUEnable = 0x%x\n", conf1_desc_buf[0x10 + 0x10*i]);
+		offset += sprintf(buf + offset,
+			"bMemoryType = 0x%x\n",
+			conf1_desc_buf[0x10 + 0x10*i + 0x3]);
+		tmp = (int *)&conf1_desc_buf[0x10 + 0x10*i + 0x4];
+		offset += sprintf(buf + offset,
+			"bNumAllocUnits = 0x%x\n",
+			be32_to_cpu(*tmp));
+		offset += sprintf(buf + offset,
+			"bProvisiongType = 0x%x\n\n",
+			conf1_desc_buf[0x10 + 0x10*i + 0xA]);
+	}
+
+	offset += sprintf(buf + offset,
+		"====Configuration Desc Header (IDX=2)====\n");
+	offset += sprintf(buf + offset,
+		"bLength = 0x%x\n", conf1_desc_buf[0]);
+	offset += sprintf(buf + offset,
+		"bDescriptorIDN = 0x%x\n\n", conf1_desc_buf[1]);
+
+	for (i = 0; i < 8; i++) {
+		offset += sprintf(buf + offset,
+			"====Unit Descriptor LUN : %d====\n", i + 0x10);
+		offset += sprintf(buf + offset,
+			"bLUEnable = 0x%x\n", conf2_desc_buf[0x10 + 0x10*i]);
+		offset += sprintf(buf + offset,
+			"bMemoryType = 0x%x\n",
+			conf2_desc_buf[0x10 + 0x10*i + 0x3]);
+		tmp = (int *)&conf2_desc_buf[0x10 + 0x10*i + 0x4];
+		offset += sprintf(buf + offset,
+			"bNumAllocUnits = 0x%x\n", be32_to_cpu(*tmp));
+		offset += sprintf(buf + offset,
+			"bProvisiongType = 0x%x\n\n",
+			conf2_desc_buf[0x10 + 0x10*i + 0xA]);
+	}
+
+	offset += sprintf(buf + offset,
+		"====Configuration Desc Header (IDX=3)====\n");
+	offset += sprintf(buf + offset,
+		"bLength = 0x%x\n", conf1_desc_buf[0]);
+	offset += sprintf(buf + offset,
+		"bDescriptorIDN = 0x%x\n\n", conf1_desc_buf[1]);
+
+	for (i = 0; i < 8; i++) {
+		offset += sprintf(buf + offset,
+		"====Unit Descriptor LUN : %d====\n", i + 0x18);
+		offset += sprintf(buf + offset,
+		"bLUEnable = 0x%x\n", conf3_desc_buf[0x10 + 0x10*i]);
+		offset += sprintf(buf + offset,
+		"bMemoryType = 0x%x\n", conf3_desc_buf[0x10 + 0x10*i + 0x3]);
+		tmp = (int *)&conf3_desc_buf[0x10 + 0x10*i + 0x4];
+		offset += sprintf(buf + offset,
+		"bNumAllocUnits = 0x%x\n", be32_to_cpu(*tmp));
+		offset += sprintf(buf + offset,
+		"bProvisiongType = 0x%x\n\n",
+		conf3_desc_buf[0x10 + 0x10*i + 0xA]);
+	}
+
+	offset += sprintf(buf + offset, "The End\n");
+	return offset;
+}
+
+static ssize_t conf_store(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count)
+{
+	char *ptr;
+	char tmp_str[100];
+	char *tmp_str2;
+	uint32_t lun, bLUEnable, bMemoryType, dNumAllocUnits, bProvisioningType;
+	uint32_t *tmp_val;
+	int ret = 0;
+
+	pr_info("How To Use : # echo LUN,bLUEnable,bMemoryType,dNumAllocUnits,bProvisioningType > conf\n"
+		);
+	pr_info("# echo 0,1,0,65535,3 > conf\n");
+	pr_info(" LUN = 0 ~ 31\n");
+	pr_info(" bLUEnable = 0, 1\n");
+	pr_info(" bMemoryType = 0 (Normal Memory), 1 (System Code Memory), 2 (Non-Persistent Memory), 3 (Enhanced Memory 1), 4 (Enhanced Memory 2), 5 (Enhanced Memory 3), 6 (Enhanced Memory 4)\n"
+		);
+	pr_info(" dNumAllocUnits (bytes)  = The value shall be calculated considering the capacity adjustment factor of the selected memory type\n"
+		);
+	pr_info(" bProvisioningType = 0 (Thin Provisioning is disabled), 2 (Thin Provisioning is enabled and TPRZ = 0), 3 (This Provisioning is enabled and TPRZ = 1)\n"
+		);
+
+	strcpy(tmp_str, buf);
+
+	tmp_str2 = tmp_str;
+	ptr = strsep(&tmp_str2, ",");
+	ret = kstrtoul(ptr, 0, (ulong *)&lun);
+	ptr = strsep(&tmp_str2, ",");
+	ret = kstrtoul(ptr, 0, (ulong *)&bLUEnable);
+	ptr = strsep(&tmp_str2, ",");
+	ret = kstrtoul(ptr, 0, (ulong *)&bMemoryType);
+	ptr = strsep(&tmp_str2, ",");
+	ret = kstrtoul(ptr, 0, (ulong *)&dNumAllocUnits);
+	ptr = strsep(&tmp_str2, ",");
+	ret = kstrtoul(ptr, 0, (ulong *)&bProvisioningType);
+
+	if (lun >= 0 && lun < 8) {
+		conf0_desc_buf[0x10 + 0x10*lun] = bLUEnable;
+		conf0_desc_buf[0x10 + 0x10*lun + 0x3] = bMemoryType;
+		tmp_val = (uint32_t *)&conf0_desc_buf[0x10 + 0x10*lun + 0x4];
+		*tmp_val = cpu_to_be32(dNumAllocUnits);
+		conf0_desc_buf[0x10 + 0x10*lun + 0xA] = bProvisioningType;
+	} else if (lun >= 8 && lun < 16) {
+		lun -= 8;
+		conf1_desc_buf[0x10 + 0x10*lun] = bLUEnable;
+		conf1_desc_buf[0x10 + 0x10*lun + 0x3] = bMemoryType;
+		tmp_val = (uint32_t *)&conf1_desc_buf[0x10 + 0x10*lun + 0x4];
+		*tmp_val = cpu_to_be32(dNumAllocUnits);
+		conf1_desc_buf[0x10 + 0x10*lun + 0xA] = bProvisioningType;
+	} else if (lun >= 16 && lun < 24) {
+		lun -= 16;
+		conf2_desc_buf[0x10 + 0x10*lun] = bLUEnable;
+		conf2_desc_buf[0x10 + 0x10*lun + 0x3] = bMemoryType;
+		tmp_val = (uint32_t *)&conf2_desc_buf[0x10 + 0x10*lun + 0x4];
+		*tmp_val = cpu_to_be32(dNumAllocUnits);
+		conf2_desc_buf[0x10 + 0x10*lun + 0xA] = bProvisioningType;
+	} else if (lun >= 24 && lun < 32) {
+		lun -= 24;
+		conf3_desc_buf[0x10 + 0x10*lun] = bLUEnable;
+		conf3_desc_buf[0x10 + 0x10*lun + 0x3] = bMemoryType;
+		tmp_val = (uint32_t *)&conf3_desc_buf[0x10 + 0x10*lun + 0x4];
+		*tmp_val = cpu_to_be32(dNumAllocUnits);
+		conf3_desc_buf[0x10 + 0x10*lun + 0xA] = bProvisioningType;
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(conf, 0644,
+		   conf_show, conf_store);
+
+static ssize_t conf_read_from_storage_store(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+
+	if (!strncmp(buf, "1", 1)) {
+		is_read = 1;
+		ufshcd_read_desc_param(hba, QUERY_DESC_IDN_CONFIGURATION,
+				0, 0, conf0_desc_buf, hba->desc_size.conf_desc);
+		ufshcd_read_desc_param(hba, QUERY_DESC_IDN_CONFIGURATION,
+				1, 0, conf1_desc_buf, hba->desc_size.conf_desc);
+		ufshcd_read_desc_param(hba, QUERY_DESC_IDN_CONFIGURATION,
+				2, 0, conf2_desc_buf, hba->desc_size.conf_desc);
+		ufshcd_read_desc_param(hba, QUERY_DESC_IDN_CONFIGURATION,
+				3, 0, conf3_desc_buf, hba->desc_size.conf_desc);
+
+		dev_info(dev, "read complete!\n");
+	} else {
+		dev_err(dev, "example : echo 1 > conf_read_from_storage\n");
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR_WO(conf_read_from_storage);
+
+static ssize_t geometry_desc_show(struct device *dev,
+			struct device_attribute *attr,
+			 char *buf)
+{
+	char str[1024] = { 0 };
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	unsigned long long *qTotal;
+	unsigned long *dSeg;
+
+	u8 desc_buf[hba->desc_size.geom_desc];
+
+	ufshcd_read_desc_param(hba, QUERY_DESC_IDN_GEOMETRY,
+				  0, 0, desc_buf, hba->desc_size.geom_desc);
+
+	qTotal = (unsigned long long *)&desc_buf[GEOMETRY_DESC_PARAM_DEV_CAP];
+	dSeg = (unsigned long *)&desc_buf[GEOMETRY_DESC_PARAM_SEG_SIZE];
+	sprintf(str,
+		"qTotalRawDeviceCapacity = 0x%llx (bytes)\ndSegmentSize = 0x%x\nbAllocationUnitSize = 0x%x\n",
+		be64_to_cpu(*qTotal) << 9, be32_to_cpu(*dSeg),
+		desc_buf[GEOMETRY_DESC_PARAM_ALLOC_UNIT_SIZE]);
+	return sprintf(buf, "%s", str);
+}
+
+static DEVICE_ATTR_RO(geometry_desc);
 
 static int ufshcd_parse_clock_info(struct ufs_hba *hba)
 {
@@ -304,6 +582,7 @@ int ufshcd_pltfrm_init(struct platform_device *pdev,
 	struct resource *mem_res;
 	int irq, err;
 	struct device *dev = &pdev->dev;
+	int ret;
 
 	mem_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	mmio_base = devm_ioremap_resource(dev, mem_res);
@@ -353,6 +632,27 @@ int ufshcd_pltfrm_init(struct platform_device *pdev,
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
+	ret = device_create_file(&pdev->dev, &dev_attr_geometry_desc);
+	if (ret) {
+		dev_err(&pdev->dev, "[ERROR][UFS] failed to create geometry_desc\n");
+		goto dealloc_host;
+	}
+	ret = device_create_file(&pdev->dev, &dev_attr_conf_read_from_storage);
+	if (ret) {
+		dev_err(&pdev->dev, "[ERROR][UFS] failed to create conf_read_from_storage\n");
+		goto dealloc_host;
+	}
+	ret = device_create_file(&pdev->dev, &dev_attr_conf_write_to_storage);
+	if (ret) {
+		dev_err(&pdev->dev, "[ERROR][UFS] failed to create conf_write_to_storage\n");
+		goto dealloc_host;
+	}
+	ret = device_create_file(&pdev->dev, &dev_attr_conf);
+	if (ret) {
+		dev_err(&pdev->dev, "[ERROR][UFS] failed to create conf\n");
+		goto dealloc_host;
+	}
+
 	return 0;
 
 dealloc_host:
@@ -361,6 +661,17 @@ out:
 	return err;
 }
 EXPORT_SYMBOL_GPL(ufshcd_pltfrm_init);
+
+int ufshcd_pltfrm_remove(struct platform_device *pdev)
+{
+	device_remove_file(&pdev->dev, &dev_attr_conf_read_from_storage);
+	device_remove_file(&pdev->dev, &dev_attr_conf_write_to_storage);
+	device_remove_file(&pdev->dev, &dev_attr_geometry_desc);
+	device_remove_file(&pdev->dev, &dev_attr_conf);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ufshcd_pltfrm_remove);
 
 MODULE_AUTHOR("Santosh Yaragnavi <santosh.sy@samsung.com>");
 MODULE_AUTHOR("Vinayak Holikatti <h.vinayak@samsung.com>");

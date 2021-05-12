@@ -48,7 +48,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 		IORESOURCE_MEM, "ufs-unipro");
 	host->ufs_reg_unipro = devm_ioremap_resource(dev, mem_res);
 	dev_dbg(dev,
-		"%s:%d mem_res = %08x\n",
+		"%s:%d mem_res = %p\n",
 		__func__, __LINE__, host->ufs_reg_unipro);
 	if (host->ufs_reg_unipro == NULL) {
 		dev_err(dev,
@@ -61,7 +61,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 		IORESOURCE_MEM, "ufs-mphy");
 	host->ufs_reg_mphy = devm_ioremap_resource(dev, mem_res);
 	dev_dbg(dev,
-		"%s:%d mem_res = %08x\n",
+		"%s:%d mem_res = %p\n",
 		__func__, __LINE__, host->ufs_reg_mphy);
 
 	if (host->ufs_reg_mphy == NULL) {
@@ -75,7 +75,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 	host->ufs_reg_sbus_config =
 		devm_ioremap_resource(dev, mem_res);
 	dev_dbg(dev,
-		"%s:%d mem_res = %08x\n",
+		"%s:%d mem_res = %p\n",
 		__func__, __LINE__, host->ufs_reg_sbus_config);
 	if (host->ufs_reg_sbus_config == NULL) {
 		dev_err(dev,
@@ -88,7 +88,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 		IORESOURCE_MEM, "ufs-fmp");
 	host->ufs_reg_fmp = devm_ioremap_resource(dev, mem_res);
 	dev_dbg(dev,
-		"%s:%d mem_Res = %08x\n",
+		"%s:%d mem_Res = %p\n",
 		__func__, __LINE__, host->ufs_reg_fmp);
 	if (host->ufs_reg_fmp == NULL) {
 		dev_err(dev, "cannot ioremap for ufs fmp register\n");
@@ -100,7 +100,7 @@ static int ufs_tcc_get_resource(struct ufs_tcc_host *host)
 		IORESOURCE_MEM, "ufs-sec");
 	host->ufs_reg_sec = devm_ioremap_resource(dev, mem_res);
 	dev_dbg(dev,
-		"%s:%d mem_Res = %08x\n",
+		"%s:%d mem_Res = %p\n",
 		__func__, __LINE__, host->ufs_reg_sec);
 	if (host->ufs_reg_sec == NULL) {
 		dev_err(dev, "cannot ioremap for ufs fmp register\n");
@@ -140,7 +140,6 @@ static void encryption_setting(struct ufs_hba *hba)
 
 static int tcc_ufs_smu_setting(struct ufs_hba *hba)
 {
-	//unsigned int smu_bypass = 1;
 	unsigned int smu_index  = 0;
 	unsigned int desc_type  = 0;
 	unsigned int tid, sw, sr, nsw, nsr, ufk, enc, valid;
@@ -350,6 +349,9 @@ static void ufs_tcc_post_init(struct ufs_hba *hba)
 
 	ufshcd_writel(hba, 0x7FFF, REG_INTERRUPT_ENABLE);
 
+	ufshcd_dme_set(hba,
+		UIC_ARG_MIB_SEL((unsigned int)0x9a,
+		RX_LANE_0), 0xFU);
 
 	ufs_unipro_writel(host,
 		UNIPRO_PCLK_PERIOD_NS, PA_DBG_CLK_PERIOD);
@@ -377,15 +379,16 @@ static void ufs_tcc_post_init(struct ufs_hba *hba)
 		UIC_ARG_MIB_SEL((unsigned int)T_ConnectionState,
 		0x0U), T_CONNECTION_STATE_ON_VAL);
 
+#if 0
 	ufshcd_dme_set(hba,
 		UIC_ARG_MIB_SEL((unsigned int)0x0200,
-		0x0U), 0x3fU);
+		TX_LANE_0), 0x40U);
 	ufshcd_dme_set(hba,
 		UIC_ARG_MIB_SEL((unsigned int)0x8f,
-		TX_LANE_0), 0x0U);
+		TX_LANE_0), 0x3fU);
 	ufshcd_dme_set(hba,
 		UIC_ARG_MIB_SEL((unsigned int)0x8f,
-		RX_LANE_1), 0x0U);
+		RX_LANE_1), 0x3fU);
 
 	ufshcd_dme_set(hba,
 		UIC_ARG_MIB_SEL((unsigned int)0x0f,
@@ -446,8 +449,10 @@ static void ufs_tcc_post_init(struct ufs_hba *hba)
 	ufshcd_dme_set(hba,
 		UIC_ARG_MIB_SEL((unsigned int)0x200,
 		0x0U), 0x0U);
+#endif
 
 	ufshcd_writel(hba, 0xA, HCI_DATA_REORDER);
+	ufshcd_writel(hba, 0xDFC2E492, FMP_FMPRSECURITY);
 
 }
 static int ufs_tcc_hce_enable_notify(struct ufs_hba *hba,
@@ -469,13 +474,6 @@ static int ufs_tcc_hce_enable_notify(struct ufs_hba *hba,
 
 static int ufs_tcc_link_startup_post_change(struct ufs_hba *hba)
 {
-	//uint32_t  rd_data;
-	//uint32_t  cport_log_en = 0;
-	//uint32_t  wlu_enable = 0;
-	//uint32_t  wlu_burst_len = 3;
-	//uint32_t  hci_buffering_enable = 0;
-	uint32_t  axidma_rwdataburstlen = 0;
-	uint32_t  no_of_beat_burst = 7;
 	int res = 0;
 
 	ufshcd_writel(hba, UTRIACR_VAL, HCI_UTRIACR);
@@ -491,8 +489,10 @@ static int ufs_tcc_link_startup_post_change(struct ufs_hba *hba)
 	ufshcd_writel(hba, 0x1, HCI_UTMRLRSR);
 	ufshcd_writel(hba, 0x1, HCI_UTRLRSR);
 
+#if 0
 	axidma_rwdataburstlen = no_of_beat_burst;
 	axidma_rwdataburstlen = (axidma_rwdataburstlen & 0xFFFFFFF0);
+#endif
 
 	tcc_ufs_smu_setting(hba);
 
@@ -601,7 +601,7 @@ static int ufs_tcc_remove(struct platform_device *pdev)
 	struct ufs_hba *hba =  platform_get_drvdata(pdev);
 
 	ufshcd_remove(hba);
-	return 0;
+	return ufshcd_pltfrm_remove(pdev);
 }
 
 static const struct of_device_id ufs_tcc_of_match[] = {
