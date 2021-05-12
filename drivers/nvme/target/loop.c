@@ -240,6 +240,7 @@ static int nvme_loop_init_hctx(struct blk_mq_hw_ctx *hctx, void *data,
 
 	BUG_ON(hctx_idx >= ctrl->ctrl.queue_count);
 
+	blk_queue_flag_set(QUEUE_FLAG_BIOVEC_PHYS_NOMERGE, hctx->queue);
 	hctx->driver_data = queue;
 	return 0;
 }
