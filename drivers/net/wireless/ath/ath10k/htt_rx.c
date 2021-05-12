@@ -1300,13 +1300,24 @@ static void ath10k_htt_rx_h_csum_offload(struct sk_buff *msdu)
 	msdu->ip_summed = ath10k_htt_rx_get_csum_state(msdu);
 }
 
+static bool ath10k_htt_rx_h_frag_multicast_check(struct ath10k *ar,
+						 struct sk_buff *skb,
+						 u16 offset)
+{
+	struct ieee80211_hdr *hdr;
+
+	hdr = (struct ieee80211_hdr *)(skb->data + offset);
+	return !is_multicast_ether_addr(hdr->addr1);
+}
+
 static void ath10k_htt_rx_h_mpdu(struct ath10k *ar,
 				 struct sk_buff_head *amsdu,
-				 struct ieee80211_rx_status *status)
+				 struct ieee80211_rx_status *status,
+				 bool frag)
 {
 	struct sk_buff *first;
 	struct sk_buff *last;
-	struct sk_buff *msdu;
+	struct sk_buff *msdu, *temp;
 	struct htt_rx_desc *rxd;
 	struct ieee80211_hdr *hdr;
 	enum htt_rx_mpdu_encrypt_type enctype;
@@ -1320,6 +1331,7 @@ static void ath10k_htt_rx_h_mpdu(struct ath10k *ar,
 	bool is_decrypted;
 	bool is_mgmt;
 	u32 attention;
+	bool multicast_check = true;
 
 	if (skb_queue_empty(amsdu))
 		return;
@@ -1397,6 +1409,21 @@ static void ath10k_htt_rx_h_mpdu(struct ath10k *ar,
 }
 
 	skb_queue_walk(amsdu, msdu) {
+		if (frag)
+			multicast_check = ath10k_htt_rx_h_frag_multicast_check(ar,
+									       msdu,
+									       0);
+
+		if (!multicast_check) {
+			/* Discard the fragment with invalid PN or multicast DA
+			 */
+			temp = msdu->prev;
+			__skb_unlink(msdu, amsdu);
+			msdu = temp;
+			multicast_check = true;
+			continue;
+		}
+
 		ath10k_htt_rx_h_csum_offload(msdu);
 		ath10k_htt_rx_h_undecap(ar, msdu, status, first_hdr, enctype,
 					is_decrypted);
@@ -1570,7 +1597,7 @@ static int ath10k_htt_rx_handle_amsdu(struct ath10k_htt *htt)
 		ath10k_htt_rx_h_unchain(ar, &amsdu);
 
 	ath10k_htt_rx_h_filter(ar, &amsdu, rx_status);
-	ath10k_htt_rx_h_mpdu(ar, &amsdu, rx_status);
+	ath10k_htt_rx_h_mpdu(ar, &amsdu, rx_status, false);
 	ath10k_htt_rx_h_deliver(ar, &amsdu, rx_status);
 
 	return num_msdus;
@@ -1905,7 +1932,7 @@ static int ath10k_htt_rx_in_ord_ind(struct ath10k *ar, struct sk_buff *skb)
 			num_msdus += skb_queue_len(&amsdu);
 			ath10k_htt_rx_h_ppdu(ar, &amsdu, status, vdev_id);
 			ath10k_htt_rx_h_filter(ar, &amsdu, status);
-			ath10k_htt_rx_h_mpdu(ar, &amsdu, status);
+			ath10k_htt_rx_h_mpdu(ar, &amsdu, status, frag);
 			ath10k_htt_rx_h_deliver(ar, &amsdu, status);
 			break;
 		case -EAGAIN:
