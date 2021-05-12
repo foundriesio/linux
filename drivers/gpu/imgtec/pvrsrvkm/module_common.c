@@ -376,14 +376,16 @@ void PVRSRVDeviceShutdown(PVRSRV_DEVICE_NODE *psDeviceNode)
 */ /***************************************************************************/
 int PVRSRVDeviceSuspend(PVRSRV_DEVICE_NODE *psDeviceNode)
 {
+#if defined(SUPPORT_AUTOVZ)
 	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
 
-	psDeviceNode->bAutoVzFwIsUp = IMG_FALSE;
 	PVR_DPF((PVR_DBG_MESSAGE, "%s Mode: %s", __func__, (PVRSRV_VZ_MODE_IS(GUEST)?"GUEST":"HOST")));
 
 	PVR_DPF((PVR_DBG_MESSAGE, "%s before: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
 				, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
 
+#endif
+	psDeviceNode->bAutoVzFwIsUp = IMG_FALSE;
 	/*
 	 * LinuxBridgeBlockClientsAccess prevents processes from using the driver
 	 * while it's suspended (this is needed for Android). Acquire the bridge

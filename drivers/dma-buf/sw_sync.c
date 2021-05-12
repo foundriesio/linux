@@ -292,8 +292,9 @@ static struct sync_pt *sync_pt_create(struct sync_timeline *obj,
 		rb_insert_color(&pt->node, &obj->pt_tree);
 
 		parent = rb_next(&pt->node);
-		list_add_tail(&pt->link,
-			      parent ? &rb_entry(parent, typeof(*pt), node)->link : &obj->pt_list);
+		list_add_tail(&pt->link, parent ?
+			 &rb_entry(parent, typeof(*pt), node)->link
+			 : &obj->pt_list);
 	}
 unlock:
 	spin_unlock_irq(&obj->lock);
@@ -436,14 +437,14 @@ int sw_sync_create_fence(struct sync_timeline *obj, unsigned int value, int *fd)
 	struct sync_file *sync_file;
 
 	*fd = get_unused_fd_flags(O_CLOEXEC);
-	if (*fd < 0) 	{
-		pr_err(" sw_sync get fd error \n");
+	if (*fd < 0) {
+		pr_err("sw_sync get fd error\n");
 		return *fd;
 	}
 
 	pt = sync_pt_create(obj, value);
 	if (!pt) {
-		pr_err(" sync_pt_create fail\n");
+		pr_err("sync_pt_create fail\n");
 		result = -ENOMEM;
 		goto err;
 	}
@@ -451,7 +452,7 @@ int sw_sync_create_fence(struct sync_timeline *obj, unsigned int value, int *fd)
 	sync_file = sync_file_create(&pt->base);
 	dma_fence_put(&pt->base);
 	if (!sync_file) {
-		pr_err(" sync_file_create fail\n");
+		pr_err("sync_file_create fail\n");
 		result = -ENOMEM;
 		goto err;
 	}

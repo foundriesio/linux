@@ -1,6 +1,7 @@
 /*************************************************************************/ /*!
 @File
 @Title          Debug Functionality
+@Copyright      Copyright (c) Telechips Inc.
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @Description    Provides kernel side Debug Functionality.
 @License        Dual MIT/GPLv2
@@ -372,7 +373,7 @@ void PVRSRVDebugPrintf(IMG_UINT32 ui32DebugLevel,
 		return;
 	}
 
-#if defined(CONFIG_POWERVR_DEBUG_LEVEL)	
+#if defined(CONFIG_POWERVR_DEBUG_LEVEL)
 	gPVRDebugLevel = CONFIG_POWERVR_DEBUG_LEVEL;
 #endif
 	va_start(vaArgs, pszFormat);

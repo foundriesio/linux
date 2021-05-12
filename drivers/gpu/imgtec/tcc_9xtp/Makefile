@@ -22,10 +22,9 @@ else
         else
             include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_drm.mk
             ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_drm.h
-	endif    
+	endif
     endif
 endif
-
 
 obj-$(CONFIG_POWERVR_TCC9XTP) += tcc_9xtp.o
 

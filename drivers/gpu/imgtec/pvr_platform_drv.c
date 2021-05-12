@@ -3,6 +3,7 @@
 @File
 @Title          PowerVR DRM platform driver
 @Codingstyle    LinuxKernel
+@Copyright      Copyright (c) Telechips Inc.
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @License        Dual MIT/GPLv2
 

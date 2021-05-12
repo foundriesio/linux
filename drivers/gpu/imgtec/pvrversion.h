@@ -1,6 +1,7 @@
 /*************************************************************************/ /*!
 @File           pvrversion.h
 @Title          PowerVR version numbers and strings.
+@Copyright      Copyright (c) Telechips Inc.
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @Description    Version numbers and strings for PowerVR components.
 @License        Dual MIT/GPLv2

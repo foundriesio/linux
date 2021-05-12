@@ -2,3 +2,4 @@ config POWERVR_TCC9XTP
 	bool "PowerVR Telechips support"
 	default y
 	depends on POWERVR_ROGUE
+	depends on ARCH_TCC

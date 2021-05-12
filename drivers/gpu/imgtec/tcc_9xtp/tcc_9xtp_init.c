@@ -1,8 +1,9 @@
-/*******************************************************************************
-*   FileName : tcc_9XTP_init.c
-*   Copyright (c) Telechips Inc.
-*   SPDX-license-Identifier : Dual MIT/GPLv2
-*   Description : 9XTP GT9524 Initialization
+// SPDX-License-Identifier: Dual MIT/GPL
+/*
+ *   FileName : tcc_9XTP_init.c
+ *   Copyright (c) Telechips Inc.
+ *   Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ *   Description : 9XTP GT9524 Initialization
 
 The contents of this file are subject to the MIT license as set out below.
 
@@ -67,13 +68,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <linux/dma-mapping.h>
 
-static struct tcc_context *g_platform = NULL;
+static struct tcc_context *g_platform;
 //#define CLK_CONTROL_IN_TF_A_ROM
 
 static void RgxEnableClock(struct tcc_context *platform)
 {
-	if (!platform->gpu_clk)
-	{
+	if (!platform->gpu_clk)	{
 		PVR_DPF((PVR_DBG_ERROR, "gpu_clk is null\n"));
 		return;
 	}
@@ -83,7 +83,8 @@ static void RgxEnableClock(struct tcc_context *platform)
 		clk_prepare_enable(platform->gpu_clk);
 		#else
 		//CLKMASK unmask
-		OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK, (IMG_UINT32)GPU_3DENGINE_CLKMASK_FULL_MASK);
+		OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK,
+			(IMG_UINT32)GPU_3DENGINE_CLKMASK_FULL_MASK);
 		#endif
 		platform->gpu_active = IMG_TRUE;
 	}
@@ -101,8 +102,10 @@ static void RgxDisableClock(struct tcc_context *platform)
 		clk_disable_unprepare(platform->gpu_clk);
 		#else
 		//CLKMASK mask
-		IMG_UINT32 value = OSReadHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK);
-	        OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK, (value & ~((IMG_UINT32)GPU_3DENGINE_CLKMASK_3D_MASK)));
+		IMG_UINT32 value = OSReadHWReg32(platform->pv3DBusConfReg,
+					GPU_3DENGINE_CLKMASK);
+		OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK,
+			(value & ~((IMG_UINT32)GPU_3DENGINE_CLKMASK_3D_MASK)));
 		#endif
 		platform->gpu_active = IMG_FALSE;
 	}
@@ -111,6 +114,7 @@ static void RgxDisableClock(struct tcc_context *platform)
 static void RgxEnablePower(struct tcc_context *platform)
 {
 	struct device *dev = (struct device *)platform->dev_config->pvOSDevice;
+
 	if (!platform->bEnablePd) {
 		pm_runtime_get_sync(dev);
 		platform->bEnablePd = IMG_TRUE;
@@ -120,6 +124,7 @@ static void RgxEnablePower(struct tcc_context *platform)
 static void RgxDisablePower(struct tcc_context *platform)
 {
 	struct device *dev = (struct device *)platform->dev_config->pvOSDevice;
+
 	if (platform->bEnablePd) {
 		pm_runtime_put_sync(dev);
 		platform->bEnablePd = IMG_FALSE;
@@ -128,30 +133,31 @@ static void RgxDisablePower(struct tcc_context *platform)
 
 void RgxResume(struct tcc_context *platform)
 {
-//	if( gRev == 0 ) 
+//	if( gRev == 0 )
 	{
 		RgxEnablePower(platform);
 		RgxEnableClock(platform);
 	}
- }
+}
 
 void RgxSuspend(struct tcc_context *platform)
 {
-//        if( gRev == 0 ) 
+//        if( gRev == 0 )
 	{
 		RgxDisableClock(platform);
 		RgxDisablePower(platform);
-	}		
+	}
 }
 
 PVRSRV_ERROR TccPrePowerState(IMG_HANDLE hSysData,
-							 PVRSRV_DEV_POWER_STATE eNewPowerState,
-							 PVRSRV_DEV_POWER_STATE eCurrentPowerState,
-							 IMG_BOOL bForced)
+				 PVRSRV_DEV_POWER_STATE eNewPowerState,
+				 PVRSRV_DEV_POWER_STATE eCurrentPowerState,
+				 IMG_BOOL bForced)
 {
 	struct tcc_context *platform = (struct tcc_context *)hSysData;
 
-	if (PVRSRV_VZ_MODE_IS(GUEST) || (platform->dev_config->psDevNode->bAutoVzFwIsUp))
+	if (PVRSRV_VZ_MODE_IS(GUEST)
+		 || (platform->dev_config->psDevNode->bAutoVzFwIsUp))
 		return PVRSRV_OK;
 	else if ((eNewPowerState != eCurrentPowerState) &&
 			 (eNewPowerState != PVRSRV_DEV_POWER_STATE_ON))
@@ -161,13 +167,14 @@ PVRSRV_ERROR TccPrePowerState(IMG_HANDLE hSysData,
 }
 
 PVRSRV_ERROR TccPostPowerState(IMG_HANDLE hSysData,
-							  PVRSRV_DEV_POWER_STATE eNewPowerState,
-							  PVRSRV_DEV_POWER_STATE eCurrentPowerState,
-							  IMG_BOOL bForced)
+				  PVRSRV_DEV_POWER_STATE eNewPowerState,
+				  PVRSRV_DEV_POWER_STATE eCurrentPowerState,
+				  IMG_BOOL bForced)
 {
 	struct tcc_context *platform = (struct tcc_context *)hSysData;
 
-	if (PVRSRV_VZ_MODE_IS(GUEST) || (platform->dev_config->psDevNode->bAutoVzFwIsUp))
+	if (PVRSRV_VZ_MODE_IS(GUEST)
+		 || (platform->dev_config->psDevNode->bAutoVzFwIsUp))
 		return PVRSRV_OK;
 	else if ((eNewPowerState != eCurrentPowerState) &&
 			 (eCurrentPowerState != PVRSRV_DEV_POWER_STATE_ON))
@@ -193,58 +200,73 @@ void RgxTccUnInit(struct tcc_context *platform)
 	iounmap((void __iomem *) platform->pv3DBusConfReg);
 	pm_runtime_disable(dev);
 	devm_kfree(dev, platform);
-
 }
 
-struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
+struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG *psDevConfig)
 {
+	struct resource *psDevMemRes = NULL;
 	struct device *dev = (struct device *)psDevConfig->pvOSDevice;
 	struct tcc_context *platform;
-	RGX_DATA* psRGXData = (RGX_DATA*)psDevConfig->hDevData;
+	RGX_DATA *psRGXData = (RGX_DATA *)psDevConfig->hDevData;
+#ifndef SUPPORT_AUTOVZ
+	IMG_UINT32 value;
+#endif
 
 	platform = devm_kzalloc(dev, sizeof(struct tcc_context), GFP_KERNEL);
-	if (NULL == platform) {
-		PVR_DPF((PVR_DBG_ERROR, "RgxTccInit: Failed to kzalloc tcc_context"));
+	if (platform == NULL) {
+		PVR_DPF((PVR_DBG_ERROR,
+			 "%s: Failed to kzalloc tcc_context", __func__));
 		return NULL;
 	}
 
 	g_platform = platform;
-	dma_set_coherent_mask(dev,DMA_BIT_MASK(64));
+	dma_set_coherent_mask(dev, DMA_BIT_MASK(64));
 
 	if (!dev->dma_mask)
 		dev->dma_mask = &dev->coherent_dma_mask;
 
-	PVR_DPF((PVR_DBG_MESSAGE, "%s: dma_mask = %llx", __func__, dev->coherent_dma_mask));
+	PVR_DPF((PVR_DBG_MESSAGE, "%s: dma_mask = %llx", __func__,
+			 dev->coherent_dma_mask));
 
 	//To support core-reset in native-mode
-	struct resource *psDevMemRes = NULL;
-	IMG_UINT32 value;
-	psDevMemRes = platform_get_resource(to_platform_device(dev), IORESOURCE_MEM, 1);
-	platform->pv3DBusConfReg = (void __iomem *)ioremap(psDevMemRes->start, resource_size(psDevMemRes));
-	
-	if  (platform->pv3DBusConfReg == 0) 
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: mapping register bank failed !", __func__));
+
+	psDevMemRes = platform_get_resource(to_platform_device(dev),
+		 IORESOURCE_MEM, 1);
+	platform->pv3DBusConfReg = (void __iomem *)ioremap(psDevMemRes->start,
+		 resource_size(psDevMemRes));
+
+	if (platform->pv3DBusConfReg == 0) {
+		PVR_DPF((PVR_DBG_ERROR, "%s: mapping register bank failed !",
+			 __func__));
 		return NULL;
 	}
 
 #ifndef SUPPORT_AUTOVZ
-	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_PWRDOWN, (IMG_UINT32)GPU_3DENGINE_PWRDOWN_FULL_MASK);
-	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_SWRESET, (IMG_UINT32)GPU_3DENGINE_SWRESET_FULL_MASK);
-	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK, (IMG_UINT32)GPU_3DENGINE_CLKMASK_FULL_MASK);
+	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_PWRDOWN,
+			 (IMG_UINT32)GPU_3DENGINE_PWRDOWN_FULL_MASK);
+	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_SWRESET,
+			 (IMG_UINT32)GPU_3DENGINE_SWRESET_FULL_MASK);
+	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK,
+			 (IMG_UINT32)GPU_3DENGINE_CLKMASK_FULL_MASK);
 
 	//PWRDOWN, SWRESET, CLKMASK
 	value = OSReadHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_PWRDOWN);
-	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_PWRDOWN, (value & ~((IMG_UINT32)GPU_3DENGINE_PWRDOWN_PWRDNREQN_MASK)));
+	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_PWRDOWN,
+		 (value & ~((IMG_UINT32)GPU_3DENGINE_PWRDOWN_PWRDNREQN_MASK)));
 	value = OSReadHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_SWRESET);
-	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_SWRESET, (value & ~((IMG_UINT32)GPU_3DENGINE_SWRESET_3D_MASK)));
+	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_SWRESET,
+		 (value & ~((IMG_UINT32)GPU_3DENGINE_SWRESET_3D_MASK)));
 	value = OSReadHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK);
-	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK, (value & ~((IMG_UINT32)GPU_3DENGINE_CLKMASK_3D_MASK)));
+	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK,
+		 (value & ~((IMG_UINT32)GPU_3DENGINE_CLKMASK_3D_MASK)));
 
 	//pwrdown not request, not reset, unmask
-	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_PWRDOWN, (IMG_UINT32)GPU_3DENGINE_PWRDOWN_FULL_MASK);
-	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_SWRESET, (IMG_UINT32)GPU_3DENGINE_SWRESET_FULL_MASK);
-	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK, (IMG_UINT32)GPU_3DENGINE_CLKMASK_FULL_MASK);
+	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_PWRDOWN,
+			 (IMG_UINT32)GPU_3DENGINE_PWRDOWN_FULL_MASK);
+	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_SWRESET,
+			 (IMG_UINT32)GPU_3DENGINE_SWRESET_FULL_MASK);
+	OSWriteHWReg32(platform->pv3DBusConfReg, GPU_3DENGINE_CLKMASK,
+			 (IMG_UINT32)GPU_3DENGINE_CLKMASK_FULL_MASK);
 #endif
 
 	platform->dev_config = psDevConfig;
@@ -255,13 +277,14 @@ struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 
 	platform->gpu_clk = devm_clk_get(dev, "9XTP_clk");
 	if (IS_ERR_OR_NULL(platform->gpu_clk)) {
-		PVR_DPF((PVR_DBG_ERROR, "RgxTccInit: Failed to find gpu_clk clock source"));
+		PVR_DPF((PVR_DBG_ERROR,
+		 "%s: Failed to find gpu_clk clock source", __func__));
 		goto fail0;
 	}
 
-	if (psRGXData && psRGXData->psRGXTimingInfo)
-	{
-		psRGXData->psRGXTimingInfo->ui32CoreClockSpeed = clk_get_rate(platform->gpu_clk);
+	if (psRGXData && psRGXData->psRGXTimingInfo) {
+		psRGXData->psRGXTimingInfo->ui32CoreClockSpeed
+			 = clk_get_rate(platform->gpu_clk);
 	}
 
 	return platform;

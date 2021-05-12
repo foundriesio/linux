@@ -965,7 +965,7 @@ PVRSRV_ERROR RGXSystemGetFabricCoherency(IMG_CPU_PHYADDR sRegsCpuPBase,
 	}
 	else if (ui32AppHintFabricCoherency > ui32DeviceFabricCoherency)
 	{
-		PVR_DPF((PVR_DBG_ERROR,
+		PVR_DPF((PVR_DBG_MESSAGE,
 				"Cannot upgrade device fabric coherency from %s to %s, ignoring",
 				aszLabels[ui32DeviceFabricCoherency],
 				aszLabels[ui32AppHintFabricCoherency]));

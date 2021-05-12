@@ -22,7 +22,7 @@ else
         else
             include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_drm.mk
             ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_drm.h
-	endif    
+	endif
     endif
 endif
 
@@ -227,7 +227,7 @@ ifeq ($(SUPPORT_BUFFER_SYNC),1)
 endif
 
 # Android native synchronisation
-ifeq ($(SUPPORT_NATIVE_FENCE_SYNC),1)                                                                                                   
+ifeq ($(SUPPORT_NATIVE_FENCE_SYNC),1)
 ifeq ($(SUPPORT_DMA_FENCE),1)
  pvrsrvkm-y += \
   ../pvr_sync_file.o \

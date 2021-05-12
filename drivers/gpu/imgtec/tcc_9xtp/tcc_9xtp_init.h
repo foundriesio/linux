@@ -1,8 +1,9 @@
-/*******************************************************************************
-*   FileName : tcc_9xtp_init.h
-*   Copyright (c) Telechips Inc. 
-*   SPDX-license-Identifier : Dual MIT/GPLv2
-*   Description : 9XTP GT9524 Initialization
+/* SPDX-License-Identifier: Dual MIT/GPL */
+/*
+ *   FileName : tcc_9xtp_init.h
+ *   Copyright (c) Telechips Inc.
+ *   Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ *   Description : 9XTP GT9524 Initialization
 
 The contents of this file are subject to the MIT license as set out below.
 
@@ -58,31 +59,44 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GPU_3DENGINE_CLKMASK			0
 #define GPU_3DENGINE_CLKMASK_3D_SHIFT		0
 #define GPU_3DENGINE_CLKMASK_ADB_SHIFT          2
-#define GPU_3DENGINE_CLKMASK_3D_MASK            (0x1 << GPU_3DENGINE_CLKMASK_3D_SHIFT)
-#define GPU_3DENGINE_CLKMASK_ADB_MASK           (0x1 << GPU_3DENGINE_CLKMASK_ADB_SHIFT)
-#define GPU_3DENGINE_CLKMASK_FULL_MASK		(GPU_3DENGINE_CLKMASK_3D_MASK | GPU_3DENGINE_CLKMASK_ADB_MASK)
+#define GPU_3DENGINE_CLKMASK_3D_MASK            \
+		(0x1 << GPU_3DENGINE_CLKMASK_3D_SHIFT)
+#define GPU_3DENGINE_CLKMASK_ADB_MASK           \
+		(0x1 << GPU_3DENGINE_CLKMASK_ADB_SHIFT)
+#define GPU_3DENGINE_CLKMASK_FULL_MASK		\
+		(GPU_3DENGINE_CLKMASK_3D_MASK | GPU_3DENGINE_CLKMASK_ADB_MASK)
 
 
 #define GPU_3DENGINE_SWRESET                    4
 #define GPU_3DENGINE_SWRESET_3D_SHIFT           0
 #define GPU_3DENGINE_SWRESET_ADB_SHIFT          2
-#define GPU_3DENGINE_SWRESET_3D_MASK            (0x1 << GPU_3DENGINE_SWRESET_3D_SHIFT)
-#define GPU_3DENGINE_SWRESET_ADB_MASK           (0x1 << GPU_3DENGINE_SWRESET_ADB_SHIFT)
-#define GPU_3DENGINE_SWRESET_FULL_MASK 		(GPU_3DENGINE_SWRESET_3D_MASK | GPU_3DENGINE_SWRESET_ADB_MASK)
+#define GPU_3DENGINE_SWRESET_3D_MASK            \
+		(0x1 << GPU_3DENGINE_SWRESET_3D_SHIFT)
+#define GPU_3DENGINE_SWRESET_ADB_MASK           \
+		(0x1 << GPU_3DENGINE_SWRESET_ADB_SHIFT)
+#define GPU_3DENGINE_SWRESET_FULL_MASK		\
+		(GPU_3DENGINE_SWRESET_3D_MASK | GPU_3DENGINE_SWRESET_ADB_MASK)
 
 
 #define GPU_3DENGINE_PWRDOWN			8
 #define GPU_3DENGINE_PWRDOWN_PWRDNACKN_SHIFT    0
 #define GPU_3DENGINE_PWRDOWN_PWRDNREQN_SHIFT    1
 #define GPU_3DENGINE_PWRDOWN_PWRDN_BYPASS_SHIFT	3
-#define GPU_3DENGINE_PWRDOWN_SWRSTN_SHIFT   	4
-#define GPU_3DENGINE_PWRDOWN_PWRDNACKN_MASK     (0x1 << GPU_3DENGINE_PWRDOWN_PWRDNACKN_SHIFT)
-#define GPU_3DENGINE_PWRDOWN_PWRDNREQN_MASK     (0x1 << GPU_3DENGINE_PWRDOWN_PWRDNREQN_SHIFT)
-#define GPU_3DENGINE_PWRDOWN_PWRDN_BYPASS_MASK  (0x1 << GPU_3DENGINE_PWRDOWN_PWRDN_BYPASS_SHIFT)
-#define GPU_3DENGINE_PWRDOWN_SWRSTN_MASK        (0x1 << GPU_3DENGINE_PWRDOWN_SWRSTN_SHIFT)
-#define GPU_3DENGINE_PWRDOWN_FULL_MASK		(GPU_3DENGINE_PWRDOWN_PWRDNREQN_MASK|GPU_3DENGINE_PWRDOWN_PWRDN_BYPASS_MASK|GPU_3DENGINE_PWRDOWN_SWRSTN_MASK)
+#define GPU_3DENGINE_PWRDOWN_SWRSTN_SHIFT	4
+#define GPU_3DENGINE_PWRDOWN_PWRDNACKN_MASK     \
+		(0x1 << GPU_3DENGINE_PWRDOWN_PWRDNACKN_SHIFT)
+#define GPU_3DENGINE_PWRDOWN_PWRDNREQN_MASK     \
+		(0x1 << GPU_3DENGINE_PWRDOWN_PWRDNREQN_SHIFT)
+#define GPU_3DENGINE_PWRDOWN_PWRDN_BYPASS_MASK  \
+		(0x1 << GPU_3DENGINE_PWRDOWN_PWRDN_BYPASS_SHIFT)
+#define GPU_3DENGINE_PWRDOWN_SWRSTN_MASK        \
+		(0x1 << GPU_3DENGINE_PWRDOWN_SWRSTN_SHIFT)
+#define GPU_3DENGINE_PWRDOWN_FULL_MASK		\
+		(GPU_3DENGINE_PWRDOWN_PWRDNREQN_MASK | \
+		 GPU_3DENGINE_PWRDOWN_PWRDN_BYPASS_MASK | \
+		 GPU_3DENGINE_PWRDOWN_SWRSTN_MASK)
 
-typedef struct tcc_context {
+struct tcc_context {
 	PVRSRV_DEVICE_CONFIG	*dev_config;
 	IMG_BOOL			bEnablePd;
 	struct clk			*gpu_clk;
@@ -93,8 +107,8 @@ typedef struct tcc_context {
 	void __iomem *pv3DBusConfReg;
 	IMG_HANDLE hSysLISRData;
 	PFN_LISR pfnDeviceLISR;
-	void *pvDeviceLISRData;	
-} tcc_context;
+	void *pvDeviceLISRData;
+};
 
 #if defined(CONFIG_DEVFREQ_THERMAL) && defined(SUPPORT_LINUX_DVFS)
 int tcc_power_model_simple_init(struct device *dev);
@@ -102,18 +116,18 @@ int tcc_power_model_simple_init(struct device *dev);
 
 long int GetConfigFreq(void);
 IMG_UINT32 AwClockFreqGet(IMG_HANDLE hSysData);
-struct tcc_context * RgxTccInit(PVRSRV_DEVICE_CONFIG* psDevConfig);
+struct tcc_context *RgxTccInit(PVRSRV_DEVICE_CONFIG *psDevConfig);
 void RgxTccUnInit(struct tcc_context *platform);
 void RgxResume(struct tcc_context *platform);
 void RgxSuspend(struct tcc_context *platform);
 PVRSRV_ERROR TccPrePowerState(IMG_HANDLE hSysData,
-							 PVRSRV_DEV_POWER_STATE eNewPowerState,
-							 PVRSRV_DEV_POWER_STATE eCurrentPowerState,
-							 IMG_BOOL bForced);
+				PVRSRV_DEV_POWER_STATE eNewPowerState,
+				PVRSRV_DEV_POWER_STATE eCurrentPowerState,
+				IMG_BOOL bForced);
 PVRSRV_ERROR TccPostPowerState(IMG_HANDLE hSysData,
-							  PVRSRV_DEV_POWER_STATE eNewPowerState,
-							  PVRSRV_DEV_POWER_STATE eCurrentPowerState,
-							  IMG_BOOL bForced);
+				PVRSRV_DEV_POWER_STATE eNewPowerState,
+				PVRSRV_DEV_POWER_STATE eCurrentPowerState,
+				IMG_BOOL bForced);
 void tccSetFrequency(IMG_UINT32 ui32Frequency);
 void tccSetVoltage(IMG_UINT32 ui32Voltage);
 #endif	/* __RK_INIT_V2__ */

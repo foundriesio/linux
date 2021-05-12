@@ -3,6 +3,7 @@
 @File
 @Title          PowerVR DRM driver
 @Codingstyle    LinuxKernel
+@Copyright      Copyright (c) Telechips Inc.
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @License        Dual MIT/GPLv2
 
@@ -97,11 +98,10 @@ static int pvr_pm_resume(struct device *dev)
 const struct dev_pm_ops pvr_pm_ops = {
 	.suspend = pvr_pm_suspend,
 	.resume = pvr_pm_resume,
-        .freeze = pvr_pm_suspend,
-        .thaw = pvr_pm_resume,
-        .restore = pvr_pm_resume,
-        .poweroff = pvr_pm_suspend,
-
+	.freeze = pvr_pm_suspend,
+	.thaw = pvr_pm_resume,
+	.restore = pvr_pm_resume,
+	.poweroff = pvr_pm_suspend,
 };
 
 

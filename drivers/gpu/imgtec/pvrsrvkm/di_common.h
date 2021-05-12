@@ -138,7 +138,7 @@ typedef IMG_INT64 (*DI_PFN_READ)(IMG_CHAR *pszBuffer, IMG_UINT64 ui64Count,
  * @Description
  * Handle writes operation to the entry.
  *
- * @Input pszBuffer buffer containing written data
+ * @Input pszBuffer NUL-terminated buffer containing written data
  * @Input ui64Count length of the data in pszBuffer (length of the buffer)
  * @InOut pui64Pos pointer to the current position in the entry
  * @Input pvData private data provided during entry creation

@@ -1,8 +1,9 @@
-/*******************************************************************************
-*   FileName : sysconfig.h
-*   Copyright (c) Telechips Inc.
-*   SPDX-license-Identifier : Dual MIT/GPLv2
-*   Description : System Description Header
+/* SPDX-License-Identifier: Dual MIT/GPL */
+/*
+ *   FileName : sysconfig.h
+ *   Copyright (c) Telechips Inc.
+ *   Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ *   Description : System Description Header
 
 The contents of this file are subject to the MIT license as set out below.
 
@@ -56,7 +57,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define TCC_PowerVR_9XTP_IRQ          123
 
 #define SYS_RGX_ACTIVE_POWER_LATENCY_MS (100)
-
+#define TCC_PMAP_PVR_VZ			IMG_UINT64_C(0x80000000)
 /*****************************************************************************
  * system specific data structures
  *****************************************************************************/

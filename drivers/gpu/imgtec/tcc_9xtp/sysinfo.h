@@ -1,8 +1,9 @@
-/*******************************************************************************
-*   FileName : sysinfo.h
-*   Copyright (c) Telechips Inc. 
-*   SPDX-license-Identifier : Dual MIT/GPLv2
-*   Description : System Description Header
+/* SPDX-License-Identifier: Dual MIT/GPL */
+/*
+ *   FileName : sysinfo.h
+ *   Copyright (c) Telechips Inc
+ *   Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ *   Description : System Description Header
 
 The contents of this file are subject to the MIT license as set out below.
 
