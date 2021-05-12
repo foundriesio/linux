@@ -124,6 +124,7 @@
 
 #define SSS_MBOX_STATUS_ADDR (0x1E020000)
 #define SSS_MBOX_DATA_ADDR (0x1E022000)
+#define SSS_MAX_ATTEMPT_COUNT (100)
 #define CHIP_REVISION_ES (0x00000000)
 #define CHIP_REVISION_CS (0x00000001)
 
@@ -354,13 +355,23 @@ static void sss_set_func_id(void);
 static void sss_busy_check(void)
 {
 	void __iomem *sss_status_vaddr = NULL;
+	uint32_t i = 0;
 
-	/* Wait until SSS mbox busy is 0 */
 	sss_status_vaddr =
 		ioremap_nocache((phys_addr_t)SSS_MBOX_STATUS_ADDR, (ulong)64);
-	while ((readl_relaxed(sss_status_vaddr) & (uint32_t)0x01)
-	       == (uint32_t)0x01) {
-		;
+
+	/* Wait until SSS mbox busy is 0
+	 * Timeout if there is a delay of more than 100ms */
+	for (i = 0; i < SSS_MAX_ATTEMPT_COUNT; i++) {
+		if (((readl_relaxed(sss_status_vaddr) & (uint32_t)0x01)
+		     == (uint32_t)0x00)) {
+			break;
+		}
+		mdelay(1);
+	}
+
+	if (i >= SSS_MAX_ATTEMPT_COUNT) {
+		pr_err("sss busy cmd error(%d)!\n", i);
 	}
 
 	iounmap(sss_status_vaddr);
