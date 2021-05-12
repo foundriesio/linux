@@ -84,4 +84,55 @@ config TCC_BOOTSTAGE
 
 	  If unsure, say N.
 
+config PM_TCC805X
+	bool "Power management driver for TCC805x"
+	depends on ARCH_TCC805X
+	default y
+	help
+	  Select this option to enable TCC805x power management driver.
+
+	  TCC805x power management driver controls Dialog Smiconductor PMIC
+	  attached on TCC805x SoC based platform on some power events (e.g.
+	  suspend, resume) accordingly including some software workarounds
+	  for the PMICs if needed.
+
+	  If unsure, say Y.
+
+if PM_TCC805X
+
+config PM_TCC805X_DA9062_SW_WORKAROUND
+	bool "Enable software workaround for DA9062 PMIC"
+	depends on REGULATOR_DA9062
+	default y
+	help
+	  Select this option to add some software workaround code for DA9062
+	  PMIC on TCC805x SoC based platformm, into TCC805x PM driver. By
+	  enabling this, (1) CORE0p8 power off timing is delayed for 16.4
+	  msec and (2) SYS_EN IRQ is unmasked to get wake-up signal, as the
+	  workaround.
+
+	  While only some versions of DA9062 PMICs need this workaround, the
+	  others will not be affected by this option. So disable this for
+	  such case.
+
+	  If unsure, say Y.
+
+config PM_TCC805X_DA9131_SW_WORKAROUND
+	bool "Enable software workaround for DA9131 PMIC"
+	depends on REGULATOR_DA9121
+	default y
+	help
+	  Select this option to add some software workaround code for DA9131
+	  PMIC on TCC805x SoC based platformm, into TCC805x PM driver. By
+	  enabling this, (1) voltage slew rate is adjusted correctly and (2)
+	  GPIO1/2 pull-up/pull-down is enabled, as the workaround.
+
+	  While only some versions of DA9131 PMICs need this workaround, the
+	  others will not be affected by this option. So disable this for
+	  such case.
+
+	  If unsure, say Y.
+
+endif # PM_TCC805X
+
 endif # SOC_TCC
