@@ -109,5 +109,8 @@ enum tcc_hsm_ioctl_obj_id_ecc {
 #define HSM_WRITE_OTP_CMD (_IOWR(HSM_IOCTL_MAGIC, 23U, uint32_t))
 #define HSM_WRITE_SNOR_CMD (_IOWR(HSM_IOCTL_MAGIC, 24U, uint32_t))
 #define HSM_GET_VER_CMD (_IOWR(HSM_IOCTL_MAGIC, 25U, uint32_t))
+#define HSM_RUN_ECDH_PUBKEY_COMPUTE_CMD (_IOWR(HSM_IOCTL_MAGIC, 26U, uint32_t))
+#define HSM_RUN_ECDH_PHASE_I_CMD (_IOWR(HSM_IOCTL_MAGIC, 27U, uint32_t))
+#define HSM_RUN_ECDH_PHASE_II_CMD (_IOWR(HSM_IOCTL_MAGIC, 28U, uint32_t))
 
 #endif /* TCC_HSM_H */

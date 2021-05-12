@@ -610,6 +610,31 @@ static int32_t tcc_hsm_ioctl_get_version(uint32_t cmd, ulong arg)
 	return ret;
 }
 
+static int32_t tcc_hsm_ioctl_run_ecdh_phaseI(uint32_t cmd, ulong arg)
+{
+	struct tcc_hsm_ioctl_ecdh_key_param param;
+	uint32_t req = REQ_HSM_RUN_ECDH_PHASE_I;
+	int32_t ret = -EFAULT;
+
+	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
+		ELOG("copy_from_user failed\n");
+		return -ENOMEM;
+	}
+
+	ret = tcc_hsm_cmd_run_ecdh_phaseI(MBOX_DEV_HSM, req, &param);
+	if (ret != HSM_OK) {
+		ELOG("failed to run ecdh phase I \n");
+		return ret;
+	}
+
+	if (tcc_copy_to_user(arg, (void *)&param, sizeof(param)) != HSM_OK) {
+		ELOG("copy_to_user failed\n");
+		return -ENOMEM;
+	}
+
+	return ret;
+}
+
 static int32_t tcc_hsm_ioctl_get_rng(uint32_t cmd, ulong arg)
 {
 	struct tcc_hsm_ioctl_rng_param param;
@@ -700,6 +725,10 @@ static long tcc_hsm_ioctl(struct file *file, uint32_t cmd, ulong arg)
 
 	case HSM_GET_RNG_CMD:
 		ret = tcc_hsm_ioctl_get_rng(cmd, arg);
+		break;
+
+	case HSM_RUN_ECDH_PHASE_I_CMD:
+		ret = tcc_hsm_ioctl_run_ecdh_phaseI(cmd, arg);
 		break;
 
 	default:

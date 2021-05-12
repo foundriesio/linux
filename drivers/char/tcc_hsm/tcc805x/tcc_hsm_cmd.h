@@ -40,6 +40,9 @@
 
 #define REQ_HSM_RUN_ECDSA_SIGN              (0x10310000U)
 #define REQ_HSM_RUN_ECDSA_VERIFY            (0x10320000U)
+#define REQ_HSM_RUN_ECDH_PUBKEY_COMPUTE		(0x10330000u)
+#define REQ_HSM_RUN_ECDH_PHASE_I			(0x10340000u)
+#define REQ_HSM_RUN_ECDH_PHASE_II			(0x10350000u)
 
 #define REQ_HSM_RUN_RSASSA_PKCS_SIGN        (0x10550000U)
 #define REQ_HSM_RUN_RSASSA_PKCS_VERIFY      (0x10560000U)
@@ -69,6 +72,7 @@
 
 #define TCC_HSM_HASH_DIGEST_SIZE	(64U)
 #define TCC_HSM_ECDSA_KEY_SIZE		(64U)
+#define TCC_HSM_ECDSA_P521_KEY_SIZE	(68U)
 #define TCC_HSM_ECDSA_DIGEST_SIZE	(64U)
 #define TCC_HSM_ECDSA_SIGN_SIZE		(64U)
 
@@ -185,6 +189,15 @@ struct tcc_hsm_ioctl_version_param {
 	uint32_t z;
 };
 
+struct tcc_hsm_ioctl_ecdh_key_param {
+	uint32_t key_type;
+	uint32_t obj_id;
+	uint8_t prikey[TCC_HSM_ECDSA_P521_KEY_SIZE];
+	uint32_t prikey_size;
+	uint8_t pubkey[TCC_HSM_ECDSA_P521_KEY_SIZE * 2];
+	uint32_t pubkey_size;
+};
+
 int32_t tcc_hsm_cmd_set_key(
 	uint32_t device_id, uint32_t req,
 	struct tcc_hsm_ioctl_set_key_param *param);
@@ -203,6 +216,9 @@ int32_t tcc_hsm_cmd_gen_mac_by_kt(
 int32_t tcc_hsm_cmd_gen_hash(
 	uint32_t device_id, uint32_t req,
 	struct tcc_hsm_ioctl_hash_param *param);
+int32_t tcc_hsm_cmd_run_ecdh_phaseI(
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_ecdh_key_param *param);
 int32_t tcc_hsm_cmd_run_ecdsa(
 	uint32_t device_id, uint32_t req,
 	struct tcc_hsm_ioctl_ecdsa_param *aram);

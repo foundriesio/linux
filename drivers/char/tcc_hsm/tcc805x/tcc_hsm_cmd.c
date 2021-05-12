@@ -470,6 +470,69 @@ int32_t tcc_hsm_cmd_gen_hash(
 	return result;
 }
 
+int32_t tcc_hsm_cmd_run_ecdh_phaseI(
+	uint32_t device_id, uint32_t req,
+	struct tcc_hsm_ioctl_ecdh_key_param *param)
+{
+	uint32_t data[4] = {0};
+	uint32_t index = 0;
+	int32_t rdata[64] = {0};
+	uint32_t data_size = 0;
+	int32_t rdata_size = 0;
+	int32_t result = 0;
+
+	data[index] = param->key_type;
+	index++;
+	data[index] = param->obj_id;
+	index++;
+	data[index] = param->prikey_size;
+	index++;
+	data[index] = param->pubkey_size;
+	index++;
+	DLOG("key_type=0x%x obj_id=0x%x prikey_size=0x%x pubkey_size=0x%x\n",
+	     param->key_type, param->obj_id, param->prikey_size,
+	     param->pubkey_size);
+	data_size = ((uint32_t)sizeof(uint32_t) * index);
+
+	rdata_size = sec_sendrecv_cmd(
+		device_id, (req | MBOX_LOCATION_DATA), data, data_size, rdata,
+		DMA_MAX_RSIZE);
+	if (rdata_size < 0) {
+		ELOG("sec_sendrecv_cmd error(%d)\n", rdata_size);
+		return -EBADR;
+	}
+
+	index = 0;
+
+	result = rdata[index];
+	index++;
+	if (result != HSM_OK) {
+		ELOG("Error: 0x%x\n", result);
+		return result;
+	}
+
+	if (rdata[index]
+	    == (int32_t)(param->prikey_size + param->pubkey_size)) {
+		index++;
+		memcpy((void *)param->prikey, (const void *)&rdata[index],
+		       param->prikey_size);
+		index +=
+			((param->prikey_size + 3U)
+			 / (uint32_t)sizeof(uint32_t));
+
+		memcpy((void *)param->pubkey, (const void *)&rdata[index],
+		       param->pubkey_size);
+		index +=
+			((param->pubkey_size + 3U)
+			 / (uint32_t)sizeof(uint32_t));
+	} else {
+		ELOG("wrong prikey_size(%d)\n", rdata[index]);
+		return -EBADR;
+	}
+
+	return result;
+}
+
 int32_t tcc_hsm_cmd_run_ecdsa(
 	uint32_t device_id, uint32_t req,
 	struct tcc_hsm_ioctl_ecdsa_param *param)
