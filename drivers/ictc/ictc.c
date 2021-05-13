@@ -331,7 +331,7 @@ static int32_t ictc_parse_dt(struct device_node *np, struct device *dev)
 			}
 
 		ret =
-		    of_property_read_u32_index(gpio_node, "reg", 0,
+		    of_property_read_u32(gpio_node, "reg-offset",
 					&idev->ictc_pin_map_val[i].reg_base);
 		if (ret < 0) {
 			dev_err(dev,
@@ -791,7 +791,7 @@ static int32_t ictc_probe(struct platform_device *pdev)
 								, 0);
 					ret =
 						of_property_read_u32_index
-						(gpio_node, "reg",
+						(gpio_node, "reg-offset",
 						 0,
 						 &f_in_gpio_base);
 					if (ret != SUCCESS) {
