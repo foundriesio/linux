@@ -39,7 +39,6 @@
 
 #define I2C_DEF_RETRIES         2
 
-#define I2C_ACK_TIMEOUT         5    /* in msec */
 #define I2C_CMD_TIMEOUT         500  /* in msec */
 
 #define i2c_readl       __raw_readl
@@ -73,6 +72,8 @@ struct tcc_i2c {
 	int32_t             irq;
 	uint32_t            interrupt_mode;
 	uint32_t            noise_filter;
+	uint32_t            ack_timeout;
+
 	bool                use_pw;
 	uint32_t            pwh;
 	uint32_t            pwl;
@@ -285,7 +286,7 @@ static int32_t tcc_i2c_acked(struct tcc_i2c *i2c)
 	uint32_t tmo, temp;
 	int32_t ret;
 
-	tmo = I2C_ACK_TIMEOUT;
+	tmo = i2c->ack_timeout;
 	tmo_jiffies = msecs_to_jiffies(tmo);
 
 	if ((i2c->msg->flags & (u16)I2C_M_IGNORE_NAK) != (u16)0) {
@@ -396,7 +397,7 @@ static int32_t tcc_i2c_access_arbitration(struct tcc_i2c *i2c, bool on)
 	void __iomem *regs;
 	uint32_t tmo;
 
-	tmo = I2C_ACK_TIMEOUT;
+	tmo = i2c->ack_timeout;
 	tmo_jiffies = msecs_to_jiffies(tmo);
 
 	if (i2c->core == 7) {
@@ -834,6 +835,18 @@ static void tcc_i2c_parse_dt(struct device_node *np, struct tcc_i2c *i2c)
 	if ((ret1 != 0) || (ret2 != 0)) {
 		i2c->pwh = 2;
 		i2c->pwl = 3;
+	}
+
+	/* ack timeout min 5 msec, max 1000 msec*/
+	ret = of_property_read_u32(np, "ack-timeout", &i2c->ack_timeout);
+	if (ret != 0) {
+		i2c->ack_timeout = 5;
+	}
+	if (i2c->ack_timeout < 5) {
+		i2c->ack_timeout = 5;
+	}
+	if (i2c->ack_timeout > 1000) {
+		i2c->ack_timeout = 1000;
 	}
 }
 
