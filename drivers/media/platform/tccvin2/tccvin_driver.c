@@ -458,6 +458,16 @@ skip_alloc_async_subdev:
 			remote_dev = of_graph_get_remote_port_parent(local_ep);
 			remote_ep = of_graph_get_remote_endpoint(local_ep);
 
+			if (remote_dev == NULL) {
+				loge("can not find remote device\n");
+				goto e_remote_dev;
+			}
+
+			if (remote_ep == NULL) {
+				loge("can not find remote ep\n");
+				goto e_remote_ep;
+			}
+
 			if (of_property_read_u32(remote_ep, "channel",
 				&(remote_output_ch)) < 0) {
 				remote_output_ch = -1;
@@ -489,8 +499,9 @@ skip_alloc_async_subdev:
 			tccvin_traversal_subdevices(vdev, remote_dev,
 					(target_ch) != -1 ?
 					target_ch : remote_output_ch);
-
+e_remote_dev:
 			of_node_put(remote_dev);
+e_remote_ep:
 			of_node_put(remote_ep);
 
 			if (skip_traversal)
