@@ -1998,6 +1998,10 @@ int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
 		logi("v4l2_subdev_call(video, get_fmt) is wrong\n");
 	} else {
 		switch (fmt->format.code) {
+		case MEDIA_BUS_FMT_RGB888_1X24:
+			logi("MEDIA_BUS_FMT_RGB888_1X24");
+			stream->vs_info.data_format = FMT_RGB444_24BIT;
+			break;
 		case MEDIA_BUS_FMT_UYVY8_2X8:
 			logi("MEDIA_BUS_FMT_UYVY8_2X8\n");
 			stream->vs_info.data_format = FMT_YUV422_8BIT;
@@ -2005,10 +2009,6 @@ int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
 		case MEDIA_BUS_FMT_UYVY8_1X16:
 			logi("MEDIA_BUS_FMT_UYVY8_1X16\n");
 			stream->vs_info.data_format = FMT_YUV422_16BIT;
-			break;
-		case MEDIA_BUS_FMT_RGB888_1X24:
-			logi("MEDIA_BUS_FMT_RGB888_1X24");
-			stream->vs_info.data_format = FMT_RGB444_24BIT;
 			break;
 		case MEDIA_BUS_FMT_Y8_1X8:
 			logi("MEDIA_BUS_FMT_Y8_1X8\n");
