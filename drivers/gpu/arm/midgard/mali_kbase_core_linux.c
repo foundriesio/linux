@@ -5427,10 +5427,10 @@ static const struct dev_pm_ops kbase_pm_ops = {
 	.suspend = kbase_device_suspend,
 	.resume = kbase_device_resume,
 	/* TCC - for quick boot */
-    .freeze = kbase_device_suspend,
-    .thaw = kbase_device_resume,
-    .restore = kbase_device_resume,
-    .poweroff = kbase_device_suspend,
+	.freeze = kbase_device_suspend,
+	.thaw = kbase_device_resume,
+	.restore = kbase_device_resume,
+	.poweroff = kbase_device_suspend,
 #ifdef KBASE_PM_RUNTIME
 	.runtime_suspend = kbase_device_runtime_suspend,
 	.runtime_resume = kbase_device_runtime_resume,

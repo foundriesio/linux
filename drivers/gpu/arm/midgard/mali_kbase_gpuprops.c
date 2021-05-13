@@ -3,7 +3,7 @@
  *
  * (C) COPYRIGHT 2017-2021 Telechips Inc.
  * (C) COPYRIGHT 2011-2021 ARM Limited. All rights reserved.
-*
+ *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms

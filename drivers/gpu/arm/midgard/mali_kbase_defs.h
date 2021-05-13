@@ -161,7 +161,7 @@
 #define BASE_MAX_NR_CLOCKS_REGULATORS (1)
 #else
 #define BASE_MAX_NR_CLOCKS_REGULATORS (2)
-#endif 
+#endif
 
 /* Forward declarations */
 struct kbase_context;
