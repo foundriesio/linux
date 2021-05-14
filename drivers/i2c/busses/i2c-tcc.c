@@ -50,7 +50,7 @@
 #define CMD_WR		BIT(4)
 #define CMD_ACK		BIT(3)
 #define CMD_IACK	BIT(0)
-#define CMD_XFER_MASK	GENMASK(7, 4)
+#define CMD_MASK	GENMASK(7, 4)
 
 /* I2C SR Reg */
 #define SR_STATE_M	GENMASK(21, 16)
@@ -84,35 +84,35 @@
 #define i2c_writel      __raw_writel
 
 struct tcc_i2c {
-	spinlock_t              lock;
-	wait_queue_head_t       wait;
-	void __iomem            *regs;
-	void __iomem            *port_cfg;
-	void __iomem            *share_core;
+	spinlock_t          lock;
+	wait_queue_head_t   wait;
+	void __iomem        *regs;
+	void __iomem        *port_cfg;
+	void __iomem        *share_core;
 
-	int32_t                     core;
+	int32_t             core;
 	uint32_t            i2c_clk_rate;
 	uint32_t            core_clk_rate;
-	struct clk              *pclk; /* I2C PERI CLK */
-	struct clk              *hclk; /* I2C IO config */
-	struct clk              *fclk; /* FBUS IO CLK */
-	struct i2c_msg          *msg;
+	struct clk          *pclk; /* I2C PERI CLK */
+	struct clk          *hclk; /* I2C IO config */
+	struct clk          *fclk; /* FBUS IO CLK */
+	struct i2c_msg      *msg;
 	uint32_t            msg_num;
 	uint32_t            msg_idx;
 	uint32_t            msg_ptr;
 
-	struct completion       msg_complete;
-	struct device           *dev;
-	struct i2c_adapter      adap;
-	bool                    is_suspended;
+	struct completion   msg_complete;
+	struct device       *dev;
+	struct i2c_adapter  adap;
+	bool                is_suspended;
 	uint32_t            port_mux[2];
 
-	int32_t                     irq;
+	int32_t             irq;
 	uint32_t            interrupt_mode;
 	uint32_t            noise_filter;
 	uint32_t            ack_timeout;
 
-	bool                    use_pw;
+	bool                use_pw;
 	uint32_t            pwh;
 	uint32_t            pwl;
 
@@ -170,7 +170,7 @@ static void tcc_i2c_disable_irq(struct tcc_i2c *i2c)
 {
 	i2c_writel(i2c_readl(i2c->regs+I2C_CTRL) & ~CTRL_IEN,
 			i2c->regs+I2C_CTRL);
-	i2c_writel((i2c_readl(i2c->regs+I2C_CMD) | 1U),
+	i2c_writel((i2c_readl(i2c->regs+I2C_CMD) | CMD_IACK),
 			i2c->regs+I2C_CMD);
 }
 /* Before disable clock, TCC803x have to check corresponding i2c core.
@@ -179,16 +179,16 @@ static void tcc_i2c_disable_irq(struct tcc_i2c *i2c)
 static int32_t tcc_i2c_check_share_core(struct tcc_i2c *i2c)
 {
 	int32_t ret;
-	uint32_t is_enabled = 0;
+	uint32_t is_enabled = 0U;
 
 	if (i2c->share_core != NULL) {
-		is_enabled = ((i2c_readl(i2c->share_core) >> 7U) & 1U);
+		is_enabled = i2c_readl(i2c->share_core) & CTRL_EN;
 	}
 	if (is_enabled != 0U) {
 		ret = 1;
 	} else {
 		ret = 0;
-}
+	}
 	dev_dbg(i2c->dev, "[DEBUG][I2C] %s: share_core enable %d\n",
 			__func__, ret);
 	return ret;
@@ -222,8 +222,8 @@ static int32_t tcc_i2c_set_noise_filter(struct tcc_i2c *i2c)
 	time_reg = (time_reg & (~0x1FU)) | (filter_cnt & 0x1FU);
 	i2c_writel(time_reg, i2c->regs + I2C_TIME);
 
-	dev_dbg(&i2c->adap.dev,
-			"[DEBUG][I2C] <%s> fbus_io clk: %dHz, noise filter load value %d\n",
+	dev_dbg(i2c->dev,
+			"[DEBUG][I2C] %s: fbus_io clk: %dMHz, noise filter load value %d\n",
 			__func__, fbus_ioclk_Mhz, filter_cnt);
 	return 0;
 }
@@ -245,7 +245,7 @@ static irqreturn_t tcc_i2c_isr(int32_t irq, void *dev_id)
 
 	dev_dbg(i2c->dev,
 			"[DEBUG][I2C] %s: CMD(0x%08x), SR(0x%08x)\n",
-			cmd, status);
+			__func__, cmd, status);
 
 	complete(&i2c->msg_complete);
 	return IRQ_HANDLED;
@@ -264,7 +264,7 @@ static int32_t tcc_i2c_bus_busy(struct tcc_i2c *i2c, int32_t start_stop)
 			break;
 		}
 		if (time_after(jiffies, timeout_jiffies)) {
-			dev_warn(&i2c->adap.dev,
+			dev_warn(i2c->dev,
 					"[WARN][I2C] <%s> I2C bus is busy\n",
 					__func__);
 			return -ETIMEDOUT;
@@ -293,7 +293,7 @@ static int32_t wait_intr(struct tcc_i2c *i2c)
 	} else{
 		/* Check whether command is cleared */
 		timeout_jiffies = jiffies + msecs_to_jiffies(I2C_CMD_TIMEOUT);
-		while ((i2c_readl(i2c->regs + I2C_CMD) & CMD_XFER_MASK) != 0UL) {
+		while ((i2c_readl(i2c->regs + I2C_CMD) & CMD_MASK) != 0UL) {
 			if (time_after(jiffies, timeout_jiffies)) {
 				dev_err(i2c->dev, "[ERROR][I2C] i2c cmd timeout - 0 (check sclk status)\n");
 				return -ETIMEDOUT;
@@ -310,7 +310,6 @@ static int32_t wait_intr(struct tcc_i2c *i2c)
 		}
 
 		/* Clear a pending interrupt */
-		cmd = i2c_readl(i2c->regs+I2C_CMD);
 		i2c_writel((cmd | CMD_IACK), i2c->regs+I2C_CMD);
 	}
 
@@ -378,13 +377,13 @@ static int32_t tcc_i2c_acked(struct tcc_i2c *i2c)
 			return ret;
 		}
 		if (time_after(jiffies, timeout_jiffies)) {
-			dev_dbg(&i2c->adap.dev,
+			dev_dbg(i2c->dev,
 					"[DEBUG][I2C] <%s> No ACK\n", __func__);
 			return -ENXIO;
 		}
 		schedule();
 	}
-	dev_dbg(&i2c->adap.dev, "[DEBUG][I2C] <%s> ACK received\n", __func__);
+	dev_dbg(i2c->dev, "[DEBUG][I2C] <%s> ACK received\n", __func__);
 	return 0;
 }
 
@@ -393,18 +392,6 @@ static int32_t recv_i2c(struct tcc_i2c *i2c)
 	int32_t ret;
 	u16 i;
 
-	dev_dbg(&i2c->adap.dev,
-			"[DEBUG][I2C] READ [%x][%d]\n",
-			i2c->msg->addr, i2c->msg->len);
-
-	ret = tcc_i2c_message_start(i2c, i2c->msg);
-	if (ret != 0) {
-		return ret;
-	}
-	ret = tcc_i2c_acked(i2c);
-	if (ret != 0) {
-		return ret;
-	}
 	for (i = 0; i < i2c->msg->len; i++) {
 		if (i == (i2c->msg->len - 1U)) {
 			i2c_writel((CMD_RD | CMD_ACK), i2c->regs+I2C_CMD);
@@ -427,18 +414,6 @@ static int32_t send_i2c(struct tcc_i2c *i2c)
 	int32_t ret;
 	u16 i;
 
-	dev_dbg(&i2c->adap.dev,
-			"[DEBUG][I2C] SEND [%x][%d]",
-			i2c->msg->addr, i2c->msg->len);
-
-	ret = tcc_i2c_message_start(i2c, i2c->msg);
-	if (ret != 0) {
-		return ret;
-	}
-	ret = tcc_i2c_acked(i2c);
-	if (ret != 0) {
-		return ret;
-	}
 	for (i = 0; i < i2c->msg->len; i++) {
 		i2c_writel(i2c->msg->buf[i], i2c->regs+I2C_TXR);
 
@@ -466,6 +441,7 @@ static int32_t tcc_i2c_doxfer(
 {
 	int32_t err, ret = 0;
 	int32_t i;
+	bool recv;
 
 	for (i = 0; i < num; i++) {
 		spin_lock_irq(&i2c->lock);
@@ -477,21 +453,36 @@ static int32_t tcc_i2c_doxfer(
 		spin_unlock_irq(&i2c->lock);
 
 		if ((i2c->msg->flags & (u16)I2C_M_RD) != (u16)0) {
-			err = recv_i2c(i2c);
-			if (err != 0) {
-				dev_dbg(i2c->dev,
-						"[DEBUG][I2C] receiving error addr 0x%x err %d\n",
-						i2c->msg->addr, err);
-				goto fail;
-			}
+			recv = (bool)true;
 		} else {
-			err = send_i2c(i2c);
-			if (err != 0) {
-				dev_dbg(i2c->dev,
-						"[DEBUG][I2C] sending error addr 0x%x err %d\n",
-						i2c->msg->addr, err);
-				goto fail;
-			}
+			recv = (bool)false;
+		}
+
+		dev_dbg(i2c->dev,
+				"[DEBUG][I2C] %s [addr:%x][len:%d]\n",
+				recv ? "READ" : "WRITE",
+				i2c->msg->addr,
+				i2c->msg->len);
+
+		/* start address */
+		err = tcc_i2c_message_start(i2c, i2c->msg);
+		if (err != 0) {
+			goto fail;
+		}
+		err = tcc_i2c_acked(i2c);
+		if (err != 0) {
+			goto fail;
+		}
+
+		/* read or write data */
+		err = recv ? recv_i2c(i2c) : send_i2c(i2c);
+		if (err != 0) {
+			dev_dbg(i2c->dev,
+					"[DEBUG][I2C] %s error, addr 0x%x err %d\n",
+					recv ? "receiving" : "sending",
+					i2c->msg->addr,
+					err);
+			goto fail;
 		}
 
 		if ((i2c->msg->flags & (u16)I2C_M_STOP) != (u16)0) {
@@ -541,14 +532,14 @@ static int32_t tcc_i2c_xfer(
 		if (ret > 0) {
 			return ret;
 		}
-		dev_dbg(&i2c->adap.dev,
-				"Retrying transmission (%d)\n",
+		dev_dbg(i2c->dev,
+				"[DEBUG][I2C] Retrying transmission (%d)\n",
 				retry);
 	}
 	return ret;
 }
 
-static u32 tcc_i2c_func(struct i2c_adapter *adap)
+static uint32_t tcc_i2c_func(struct i2c_adapter *adap)
 {
 	return (u32)(I2C_FUNC_I2C) | (u32)(I2C_FUNC_SMBUS_EMUL);
 }
@@ -773,10 +764,11 @@ static int32_t tcc_i2c_init(struct tcc_i2c *i2c)
 
 	fbus_ioclk = clk_get_rate(i2c->fclk);
 	peri_clk = clk_get_rate(i2c->pclk);
-	if (fbus_ioclk < (peri_clk << 2U)) { /* IO CLK > (I2C peri clk x 4) */
-		dev_err(i2c->dev, "[ERROR][I2C] %s: iobus clk(%ldHz) is not enough.\n",
-				__func__, fbus_ioclk);
-		return -EINVAL;
+	if (fbus_ioclk < (peri_clk << 2U)) {
+		dev_err(i2c->dev,
+				"[ERROR][I2C] fbus io clk(%ldHz) is not enough.\n",
+				fbus_ioclk);
+		return -EIO;
 	}
 	/* Set prescale */
 	i2c->soc_data->set_prescale(i2c);
@@ -798,7 +790,8 @@ static int32_t tcc_i2c_init(struct tcc_i2c *i2c)
 	/* set port mux */
 	ret = i2c->soc_data->set_port(i2c);
 	if (ret < 0) {
-		dev_err(i2c->dev, "[ERROR][I2C] %s: failed to set i2c port.\n",
+		dev_err(i2c->dev,
+			"[ERROR][I2C] %s: failed to set port configuration\n",
 				__func__);
 		return ret;
 	}
