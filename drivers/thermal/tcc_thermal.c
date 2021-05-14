@@ -78,8 +78,10 @@
 #endif
 
 #define DEBUG
-static const struct tcc_sc_fw_handle *sc_fw_handle_for_otp;
 
+#if defined(CONFIG_ARCH_TCC805X)
+static const struct tcc_sc_fw_handle *sc_fw_handle_for_otp;
+#endif
 enum calibration_type {
 	TYPE_ONE_POINT_TRIMMING,
 	TYPE_TWO_POINT_TRIMMING,

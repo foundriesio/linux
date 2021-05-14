@@ -2459,74 +2459,74 @@
 		mode-recovery = <BOOT_RECOVERY>;
 	};
 
-        thermal: thermal@14700000 {
-                compatible = "telechips,tcc-thermal";
-                sc-firmware = <&tcc_sc_fw>;
+	thermal: thermal@14700000 {
+		compatible = "telechips,tcc-thermal";
+		sc-firmware = <&tcc_sc_fw>;
 
-                reg = <0x14700000 0x4>, //0:Enable register
-                      <0x14700004 0x4>, //1:Control register
-                      <0x1470000C 0x4>, //2:Probe select register
-                      <0x147000D0 0x4>,
-                      <0x147000D4 0x4>,
-                      <0x147000D8 0x4>,
-                      <0x147000DC 0x4>,
-                      <0x147000E0 0x4>,
-                      <0x147000E4 0x4>, //3-8:TSENSOR Data register
-                      <0x14700024 0x4>, //9:Interrupt Eable register
-                      <0x14700034 0x4>, //10:Interrupt Status register
-                      <0x14700050 0x4>,
-                      <0x14700054 0x4>, // 11, 12:Threshold Data register(MAIN)
-                      <0x14700058 0x4>,
-                      <0x1470005C 0x4>, // 13, 14:Threshold Data register(Probe0)
-                      <0x14700060 0x4>,
-                      <0x14700064 0x4>, // 15, 16:Threshold Data register(Probe1)
-                      <0x14700068 0x4>,
-                      <0x1470006C 0x4>, // 17, 18:Threshold Data register(Probe2)
-                      <0x14700070 0x4>,
-                      <0x14700074 0x4>, // 19, 20:Threshold Data register(Probe3)
-                      <0x14700078 0x4>,
-                      <0x1470007C 0x4>, // 21, 22:Threshold Data register(Probe4)
-                      <0x14700044 0x4>, // 23:Interrupt Clear register
-                      <0x1470002C 0x4>, // 24:Interrupt Mask register
-                      <0x14700154 0x4>; // 25:Interval time register
+		reg = <0x14700000 0x4>, //0:Enable register
+		      <0x14700004 0x4>, //1:Control register
+		      <0x1470000C 0x4>, //2:Probe select register
+		      <0x147000D0 0x4>,
+		      <0x147000D4 0x4>,
+		      <0x147000D8 0x4>,
+		      <0x147000DC 0x4>,
+		      <0x147000E0 0x4>,
+		      <0x147000E4 0x4>, //3-8:TSENSOR Data register
+		      <0x14700024 0x4>, //9:Interrupt Eable register
+		      <0x14700034 0x4>, //10:Interrupt Status register
+		      <0x14700050 0x4>,
+		      <0x14700054 0x4>, // 11, 12:Threshold Data register(MAIN)
+		      <0x14700058 0x4>,
+		      <0x1470005C 0x4>, // 13, 14:Threshold Data register(Probe0)
+		      <0x14700060 0x4>,
+		      <0x14700064 0x4>, // 15, 16:Threshold Data register(Probe1)
+		      <0x14700068 0x4>,
+		      <0x1470006C 0x4>, // 17, 18:Threshold Data register(Probe2)
+		      <0x14700070 0x4>,
+		      <0x14700074 0x4>, // 19, 20:Threshold Data register(Probe3)
+		      <0x14700078 0x4>,
+		      <0x1470007C 0x4>, // 21, 22:Threshold Data register(Probe4)
+		      <0x14700044 0x4>, // 23:Interrupt Clear register
+		      <0x1470002C 0x4>, // 24:Interrupt Mask register
+		      <0x14700154 0x4>; // 25:Interval time register
 
-                status = "okay";
+		status = "okay";
 
-                throttle_count = <5>;
-                throttle_active_count = <0>;
-                throttle_passive_count = <5>;
-                interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
-                cal_type = "TYPE_TWO_POINT_TRIMMING";
-                polling-delay-idle = <600>;
-                polling-delay-passive = <1000>;
-                core = "CPU1";
+		throttle_count = <5>;
+		throttle_active_count = <0>;
+		throttle_passive_count = <5>;
+		interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
+		cal_type = "TYPE_TWO_POINT_TRIMMING";
+		polling-delay-idle = <600>;
+		polling-delay-passive = <1000>;
+		core = "CPU1";
 
-                threshold_high_temp = <75>;
-                threshold_low_temp = <(-15)>;
-                interval_time = <262143>;
+		threshold_high_temp = <75>;
+		threshold_low_temp = <(-15)>;
+		interval_time = <262143>;
 
-                throttle_table {
-                        throttle_tab_0 {
-                                temp = <0>;
-                                freq_max_cluster0 = <1690>;
-                        };
-                        throttle_tab_1 {
-                                temp = <75>;
-                                freq_max_cluster0 = <1500>;
-                        };
-                        throttle_tab_2 {
-                                temp = <80>;
-                                freq_max_cluster0 = <1460>;
-                        };
-                        throttle_tab_3 {
-                                temp = <85>;
-                                freq_max_cluster0 = <950>;
-                        };
-                        throttle_tab_4 {
-                                temp = <125>;
-                                freq_max_cluster0 = <950>;
-                        };
-                };
+		throttle_table {
+			throttle_tab_0 {
+				temp = <0>;
+				freq_max_cluster0 = <1100>;
+			};
+			throttle_tab_1 {
+				temp = <75>;
+				freq_max_cluster0 = <1050>;
+			};
+			throttle_tab_2 {
+				temp = <80>;
+				freq_max_cluster0 = <1000>;
+			};
+			throttle_tab_3 {
+				temp = <85>;
+				freq_max_cluster0 = <900>;
+			};
+			throttle_tab_4 {
+				temp = <125>;
+				freq_max_cluster0 = <900>;
+			};
+		};
 	};
 };
 
