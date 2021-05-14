@@ -35,6 +35,8 @@
 #include <video/videomode.h>
 #include <panel_helper.h>
 
+#include "panel-tcc.h"
+
 #define LOG_TAG "FBP_LVDS"
 
 //#define LVDS_DEBUG
@@ -135,9 +137,13 @@ static int panel_lvds_disable(struct fb_panel *panel)
 			pr_err("[ERROR][%s] : backlight driver not valid\n", __func__);
 		}
 		#else
-		if (lvds->lvds_pins.blk_off != NULL) {
-			pinctrl_select_state(lvds->lvds_pins.p,
-				lvds->lvds_pins.blk_off);
+		if (
+		    panel_tcc_pin_select_state(
+					       lvds->lvds_pins.p,
+					       lvds->lvds_pins.blk_off) < 0) {
+			dev_warn(lvds->dev,
+				 "[WARN][%s:%s] %s failed set pinctrl to blk_off\r\n",
+				 LOG_TAG, lvds->data->name, __func__);
 		}
 		#endif
 
@@ -145,9 +151,13 @@ static int panel_lvds_disable(struct fb_panel *panel)
 			(lvds->tcc_lvds_hw.lvds_type == PANEL_LVDS_DUAL)
 			? TS_MUX_IDX0 : lvds->tcc_lvds_hw.ts_mux_id, 1);
 
-		if (lvds->lvds_pins.pwr_off != NULL) {
-			pinctrl_select_state(lvds->lvds_pins.p,
-				lvds->lvds_pins.pwr_off);
+		if (
+		    panel_tcc_pin_select_state(
+					       lvds->lvds_pins.p,
+					       lvds->lvds_pins.pwr_off) < 0) {
+			dev_warn(lvds->dev,
+				 "[WARN][%s:%s] %s failed set pinctrl to pwr_off\r\n",
+				 LOG_TAG, lvds->data->name, __func__);
 		}
 
 		lvds->enabled = 0;
@@ -177,16 +187,24 @@ static int panel_lvds_prepare(struct fb_panel *panel)
 		LOG_TAG, __func__, lvds->data->name);
 
 	if (!lvds->enabled) {
-		if (lvds->lvds_pins.pwr_on_1 != NULL) {
-			pinctrl_select_state(lvds->lvds_pins.p,
-				lvds->lvds_pins.pwr_on_1);
+		if (
+			panel_tcc_pin_select_state(
+				lvds->lvds_pins.p,
+				lvds->lvds_pins.pwr_on_1) < 0) {
+			dev_warn(lvds->dev,
+				"[WARN][%s:%s] %s failed set pinctrl to pwr_on_1\r\n",
+				LOG_TAG, lvds->data->name, __func__);
 		}
 
 		udelay(20);
 
-		if (lvds->lvds_pins.pwr_on_2 != NULL) {
-			pinctrl_select_state(lvds->lvds_pins.p,
-				lvds->lvds_pins.pwr_on_2);
+		if (
+			panel_tcc_pin_select_state(
+				lvds->lvds_pins.p,
+				lvds->lvds_pins.pwr_on_2) < 0) {
+			dev_warn(lvds->dev,
+				"[WARN][%s:%s] %s failed set pinctrl to pwr_on_2\r\n",
+				LOG_TAG, lvds->data->name, __func__);
 		}
 
 		LVDS_WRAP_ResetPHY(
@@ -220,9 +238,13 @@ static int panel_lvds_enable(struct fb_panel *panel)
 			pr_err("[ERROR][%s] : backlight driver not valid\n", __func__);
 		}
 		#else
-		if (lvds->lvds_pins.blk_on != NULL) {
-			pinctrl_select_state(lvds->lvds_pins.p,
-				lvds->lvds_pins.blk_on);
+		if (
+			panel_tcc_pin_select_state(
+				lvds->lvds_pins.p,
+				lvds->lvds_pins.blk_on) < 0) {
+			dev_warn(lvds->dev,
+				"[WARN][%s:%s] %s failed set pinctrl to blk_on\r\n",
+				LOG_TAG, lvds->data->name, __func__);
 		}
 		#endif
 
@@ -668,9 +690,29 @@ static int panel_lvds_resume(struct device *dev)
 	dev_dbg(dev, "[DEBUG][%s] %s\n", LOG_TAG, __func__);
 
 	/* Set pin status to defualt */
-	if (lvds->lvds_pins.default0 != NULL) {
-		pinctrl_select_state(lvds->lvds_pins.p,
-			lvds->lvds_pins.default0);
+	if (
+		panel_tcc_pin_select_state(
+			lvds->lvds_pins.p,
+			lvds->lvds_pins.default0) < 0) {
+		dev_warn(lvds->dev,
+			"[WARN][%s:%s] %s failed set pinctrl to default0\r\n",
+			LOG_TAG, lvds->data->name, __func__);
+	}
+	if (
+		panel_tcc_pin_select_state(
+			lvds->lvds_pins.p,
+			lvds->lvds_pins.pwr_off) < 0) {
+		dev_warn(lvds->dev,
+			"[WARN][%s:%s] %s failed set pinctrl to pwr_off\r\n",
+			LOG_TAG, lvds->data->name, __func__);
+	}
+	if (
+		panel_tcc_pin_select_state(
+			lvds->lvds_pins.p,
+			lvds->lvds_pins.blk_off) < 0) {
+		dev_warn(lvds->dev,
+			"[WARN][%s:%s] %s failed set pinctrl to blk_off\r\n",
+			LOG_TAG, lvds->data->name, __func__);
 	}
 
 	return 0;
