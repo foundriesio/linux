@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /**************************************************************************
  * Copyright (C) 2020 Telechips Inc.
  *
@@ -81,15 +83,15 @@ int tcc_make_edid_from_display_mode(
 		(((mode->vsync_start - mode->vdisplay) & 0xf) << 4) |
 		((mode->vsync_end - mode->vsync_start) & 0xf);
 	pixel_data->hsync_vsync_offset_pulse_width_hi =
-		(((mode->hsync_start - mode->hdisplay) >> 8) << 6) ||
-		(((mode->hsync_end - mode->hsync_start) >> 8) << 4) ||
-		(((mode->vsync_start - mode->vdisplay) >> 4) << 2) ||
+		(((mode->hsync_start - mode->hdisplay) >> 8) << 6) |
+		(((mode->hsync_end - mode->hsync_start) >> 8) << 4) |
+		(((mode->vsync_start - mode->vdisplay) >> 4) << 2) |
 		((mode->vsync_end - mode->vsync_start) >> 4);
 
 	pixel_data->width_mm_lo = mode->width_mm & 0xff;
 	pixel_data->height_mm_lo = mode->height_mm & 0xff;
 	pixel_data->width_height_mm_hi =
-		(mode->width_mm >> 8) << 4 || mode->height_mm >> 8;
+		(mode->width_mm >> 8) << 4 | mode->height_mm >> 8;
 	pixel_data->hborder = 0x0;
 	pixel_data->vborder = 0x0;
 	pixel_data->misc = DRM_EDID_PT_SEPARATE_SYNC;

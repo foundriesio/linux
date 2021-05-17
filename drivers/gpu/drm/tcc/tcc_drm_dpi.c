@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /*
  * TCC DRM Parallel output support.
  *
@@ -223,6 +225,7 @@ out:
 }
 
 #if defined(CONFIG_TCC_DP_DRIVER_V1_4)
+#if defined(CONFIG_TCC_DRM_SUPPORT_REAL_HPD)
 static int tcc_drm_dp_get_hpd_state(struct tcc_dpi *ctx)
 {
 	unsigned char hpd_state = 0;
@@ -240,6 +243,7 @@ static int tcc_drm_dp_get_hpd_state(struct tcc_dpi *ctx)
 err_out:
 	return 0;
 }
+#endif
 
 static int tcc_drm_encoder_set_video(
 	struct tcc_dpi *ctx, struct drm_crtc_state *crtc_state)
@@ -322,7 +326,7 @@ tcc_dpi_detect(struct drm_connector *connector, bool force)
 	#if defined(CONFIG_TCC_DP_DRIVER_V1_4)
 	if (ctx->hw_device->connector_type == DRM_MODE_CONNECTOR_DisplayPort) {
 		if (ctx->dp == NULL)
-			goto out;
+			return connector_status;
 		#if defined(CONFIG_TCC_DRM_SUPPORT_REAL_HPD)
 		/**
 		 * The HAL(Hardware Abstraction layer) must be able to handle
@@ -346,7 +350,7 @@ tcc_dpi_detect(struct drm_connector *connector, bool force)
 			connector_status_connected ?
 			"connected" : "disconnected");
 	#endif
-out:
+
 	return connector_status;
 }
 
@@ -742,6 +746,7 @@ int tcc_dpi_bind(
 		break;
 	case DRM_MODE_CONNECTOR_VIRTUAL:
 		encoder_type = DRM_MODE_ENCODER_VIRTUAL;
+		break;
 	default:
 		encoder_type = DRM_MODE_ENCODER_LVDS;
 	}
@@ -850,37 +855,43 @@ err_out:
 ssize_t proc_read_edid(
 	struct file *filp, char __user *usr_buf, size_t cnt, loff_t *off_set)
 {
-	struct drm_encoder encoder;
 	struct tcc_dpi *ctx = PDE_DATA(file_inode(filp));
 	struct drm_crtc *crtc = (ctx) ? ctx->encoder.crtc : NULL;
+	int i;
 
 	if (crtc) {
 		struct drm_property_blob *edid_blob = NULL;
 		struct drm_connector *connector =
 			tcc_dpi_find_connector_from_crtc(crtc);
-		if (connector)
-			edid_blob = connector->edid_blob_ptr;
-		if (edid_blob) {
-			int i;
+		unsigned char *data;
 
+		if (!connector)
+			goto out;
+		edid_blob = connector->edid_blob_ptr;
+		if (!edid_blob)
+			goto out;
+		data = edid_blob->data;
+		if (!data)
+			goto out;
+
+		pr_info(
+			"[INFO][%s] CRTC_ID[%ud] length = %zu",
+			LOG_TAG, drm_crtc_index(crtc),
+			edid_blob->length);
+		for (i = 0; i < edid_blob->length; i += 8) {
 			pr_info(
-				"[INFO][%s] CRTC_ID[%d] length = %d",
-				LOG_TAG, drm_crtc_index(crtc),
-				edid_blob->length);
-			for (i = 0; i < edid_blob->length; i += 8) {
-				pr_info(
-					"%02x %02x %02x %02x %02x %02x %02x %02x\r\n",
-					edid_blob->data[i+0],
-					edid_blob->data[i+1],
-					edid_blob->data[i+2],
-					edid_blob->data[i+3],
-					edid_blob->data[i+4],
-					edid_blob->data[i+5],
-					edid_blob->data[i+6],
-					edid_blob->data[i+7]);
-			}
+				"%02x %02x %02x %02x %02x %02x %02x %02x\r\n",
+				data[i+0],
+				data[i+1],
+				data[i+2],
+				data[i+3],
+				data[i+4],
+				data[i+5],
+				data[i+6],
+				data[i+7]);
 		}
 	}
+out:
 	return 0;
 }
 
@@ -906,7 +917,7 @@ struct drm_encoder *tcc_dpi_probe(
 	int ret;
 	#if defined(CONFIG_DRM_TCC_DPI_PROC)
 	char proc_name[255];
-	char *drm_name;
+	const char *drm_name;
 	#endif
 
 

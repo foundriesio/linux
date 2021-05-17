@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /* tcc_drm_crtc.c
  *
  * Copyright (C) 2016 Telechips Inc.
@@ -300,7 +302,7 @@ static int tcc_drm_crtc_check_pixelclock_match(unsigned long res,
 	unsigned long bp;
 	int match = 0;
 
-	if(clk_div)
+	if (clk_div)
 		data *= clk_div*2;
 
 	bp = DIV_ROUND_UP(data, 10);
@@ -358,6 +360,7 @@ static int tcc_drm_crtc_check_display_timing(struct drm_crtc *crtc,
 	struct DisplayBlock_Info ddinfo;
 	int need_reset = 0;
 	u32 vactive;
+
 	VIOC_DISP_GetDisplayBlock_Info(
 		hw_data->display_device.virt_addr, &ddinfo);
 	/* Check turn on status of display device */
@@ -389,7 +392,7 @@ static int tcc_drm_crtc_check_display_timing(struct drm_crtc *crtc,
 			clk_get_rate(
 				hw_data->ddc_clock), mode->clock * 1000,
 				vioc_disp_get_clkdiv(
-                                  hw_data->display_device.virt_addr))) {
+				hw_data->display_device.virt_addr))) {
 		dev_info(
 			crtc->dev->dev,
 			"[INFO][%s] %s display device(%d) clock is not match %ldHz : %dHz\r\n",
@@ -700,12 +703,13 @@ int tcc_drm_crtc_set_display_timing(struct drm_crtc *crtc,
 
 finish:
 	#endif
+
 	/* Set pixel clocks */
 	if (
 		!tcc_drm_crtc_check_pixelclock_match(
 			clk_get_rate(hw_data->ddc_clock), vm.pixelclock,
 				vioc_disp_get_clkdiv(
-                                  hw_data->display_device.virt_addr))) {
+				hw_data->display_device.virt_addr))) {
 		dev_info(
 			crtc->dev->dev,
 			"[INFO][%s] %s display device(%d) clock is not match %ldHz : %dHz\r\n",

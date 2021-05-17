@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /* tcc_drm_core.c
  *
  * Copyright (C) 2016 Telechips Inc.

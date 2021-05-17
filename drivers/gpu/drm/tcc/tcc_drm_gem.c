@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /* tcc_drm_gem.c
  *
  * Copyright (C) 2016 Telechips Inc.
@@ -616,7 +618,7 @@ int tcc_gem_cpu_prep_ioctl(struct drm_device *dev, void *data,
 	struct drm_tcc_gem_cpu_prep *args =
 		(struct drm_tcc_gem_cpu_prep *)data;
 	struct drm_gem_object *obj;
-	 struct tcc_drm_gem *tcc_gem;
+	struct tcc_drm_gem *tcc_gem;
 	bool write = !!(args->flags & TCC_GEM_CPU_PREP_WRITE);
 	bool wait = !(args->flags & TCC_GEM_CPU_PREP_NOWAIT);
 	int err = 0;
@@ -670,7 +672,7 @@ int tcc_gem_cpu_fini_ioctl(struct drm_device *dev, void *data,
 	struct drm_tcc_gem_cpu_prep *args =
 		(struct drm_tcc_gem_cpu_prep *)data;
 	struct drm_gem_object *obj;
-	 struct tcc_drm_gem *tcc_gem;
+	struct tcc_drm_gem *tcc_gem;
 	int err = 0;
 
 	mutex_lock(&dev->struct_mutex);

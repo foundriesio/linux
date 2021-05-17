@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /* tcc_drm_core.c
  *
  * Copyright (C) 2016 Telechips Inc.
@@ -382,7 +384,8 @@ int tcc_drm_address_dt_parse(
 	struct platform_device *pdev,
 	struct tcc_hw_device *hw_data, unsigned long version)
 {
-	int (*parse_api)(struct platform_device *, struct tcc_hw_device *);
+	int (*parse_api)
+		(struct platform_device *p, struct tcc_hw_device *h);
 
 	switch (version) {
 	case TCC_DRM_DT_VERSION_OLD:

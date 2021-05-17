@@ -1,4 +1,6 @@
-/* tcc_drm_lcd_base.h
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * tcc_drm_lcd_base.h
  *
  * Copyright (c) 2016 Telechips Inc.
  * Copyright (C) 2011 Samsung Electronics Co.Ltd

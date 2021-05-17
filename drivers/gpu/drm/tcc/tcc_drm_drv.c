@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /*
  * Copyright (C) 2016 Telechips Inc.
  * Copyright (c) 2011 Samsung Electronics Co., Ltd.
@@ -19,6 +21,7 @@
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc_helper.h>
+#include <drm/drm_fb_helper.h>
 #include <drm/tcc_drm.h>
 
 #include <tcc_drm_address.h>
@@ -36,10 +39,10 @@
 #define DRIVER_NAME	"tcc-drm"
 #endif
 #define DRIVER_DESC	"Telechips SoC DRM"
-#define DRIVER_DATE	"20210503"
+#define DRIVER_DATE	"20210517"
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	4
-#define DRIVER_PATCH	7
+#define DRIVER_PATCH	8
 
 static struct device *tcc_drm_get_dma_device(void);
 
@@ -230,27 +233,26 @@ struct tcc_drm_driver_info {
 #define DRM_VIRTUAL_DEVICE	BIT(1)	/* create virtual platform device */
 #define DRM_DMA_DEVICE		BIT(2)	/* can be used for dma allocations */
 
-#define DRV_PTR(drv, cond) (IS_ENABLED(cond) ? &drv : NULL)
-
 /*
  * Connector drivers should not be placed before associated crtc drivers,
  * because connector requires pipe number of its crtc during initialization.
  */
 static struct tcc_drm_driver_info tcc_drm_drivers[] = {
 	{
-		DRV_PTR(lcd_driver, CONFIG_DRM_TCC_LCD),
+		IS_ENABLED(CONFIG_DRM_TCC_LCD) ? &lcd_driver : NULL,
 		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
 	}, {
-		DRV_PTR(ext_driver, CONFIG_DRM_TCC_EXT),
+		IS_ENABLED(CONFIG_DRM_TCC_EXT) ? &ext_driver : NULL,
 		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
 	}, {
-		DRV_PTR(third_driver, CONFIG_DRM_TCC_THIRD),
+		IS_ENABLED(CONFIG_DRM_TCC_THIRD) ? &third_driver : NULL,
 		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
 	}, {
-		DRV_PTR(fourth_driver, CONFIG_DRM_TCC_FOURTH),
+		IS_ENABLED(CONFIG_DRM_TCC_FOURTH) ? &fourth_driver : NULL,
 		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
 	}, {
-		DRV_PTR(screen_share_driver, CONFIG_DRM_TCC_SCREEN_SHARE),
+		IS_ENABLED(CONFIG_DRM_TCC_SCREEN_SHARE) ?
+			&screen_share_driver : NULL,
 		DRM_COMPONENT_DRIVER | DRM_DMA_DEVICE
 	}, {
 		&tcc_drm_platform_driver,

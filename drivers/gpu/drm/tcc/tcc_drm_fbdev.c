@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /* tcc_drm_fbdev.c
  *
  * Copyright (C) 2016 Telechips Inc.
@@ -91,6 +93,7 @@ static struct drm_crtc *tcc_drm_check_crtc_id(
 	return crtc;
 }
 
+#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
 static struct drm_crtc *tcc_drm_get_crtc_by_index(
 	struct drm_fb_helper *fb_helper, unsigned int req_crtc_index)
 {
@@ -108,7 +111,7 @@ static struct drm_crtc *tcc_drm_get_crtc_by_index(
 	}
 	return crtc;
 }
-
+#endif
 
 int tcc_drm_fb_helper_ioctl(struct fb_info *info, unsigned int cmd,
 			unsigned long arg)

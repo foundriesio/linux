@@ -1,8 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-/*
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ *
  * Copyright (C) Telechips Inc.
  */
-
 #ifndef __TCC_DRM_ADDRESS_H__
 #define __TCC_DRM_ADDRESS_H__
 

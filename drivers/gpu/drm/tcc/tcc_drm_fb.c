@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /* tcc_drm_fb.c
  *
  * Copyright (C) 2016 Telechips Inc.
@@ -177,9 +179,11 @@ err_null:
  * perform a commit. Otherwise, one should use the default implementation
  * drm_atomic_helper_commit_tail().
  */
+#if defined(CONFIG_DRM_TCC_USES_CONFIG_HELPERS)
 static struct drm_mode_config_helper_funcs tcc_drm_mode_config_helpers = {
 	.atomic_commit_tail = drm_atomic_helper_commit_tail_rpm,
 };
+#endif
 
 static const struct drm_mode_config_funcs tcc_drm_mode_config_funcs = {
 	.fb_create = tcc_user_fb_create,
@@ -204,7 +208,9 @@ void tcc_drm_mode_config_init(struct drm_device *dev)
 	dev->mode_config.max_height = 4096;
 
 	dev->mode_config.funcs = &tcc_drm_mode_config_funcs;
-	//dev->mode_config.helper_private = &tcc_drm_mode_config_helpers;
+	#if defined(CONFIG_DRM_TCC_USES_CONFIG_HELPERS)
+	dev->mode_config.helper_private = &tcc_drm_mode_config_helpers;
+	#endif
 
 	dev->mode_config.allow_fb_modifiers = true;
 

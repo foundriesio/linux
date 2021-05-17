@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /*
  * Copyright (c) 2016 Telechips Inc.
  * Copyright (C) 2011 Samsung Electronics Co.Ltd
@@ -23,6 +25,8 @@
 #include "tcc_drm_gem.h"
 #include "tcc_drm_plane.h"
 #define LOG_TAG "DRMPANEL"
+
+#if defined(CONFIG_DRM_TCC_USES_PLANE_GET_SIZE)
 /*
  * This function is to get X or Y size shown via screen. This needs length and
  * start position of CRTC.
@@ -59,6 +63,7 @@ static int tcc_plane_get_size(
 
 	return size;
 }
+#endif
 
 static void tcc_plane_mode_set(struct tcc_drm_plane_state *tcc_state)
 {
@@ -119,6 +124,7 @@ static void tcc_plane_mode_set(struct tcc_drm_plane_state *tcc_state)
 	//		tcc_state->crtc.w, tcc_state->crtc.h);
 }
 
+#if defined(CONFIG_DRM_TCC_USES_PLANE_DUMP)
 static void tcc_plane_mode_set_dump(struct tcc_drm_plane_state *tcc_state)
 {
 	struct drm_plane_state *state = &tcc_state->base;
@@ -177,6 +183,7 @@ static void tcc_plane_mode_set_dump(struct tcc_drm_plane_state *tcc_state)
 			tcc_state->crtc.x, tcc_state->crtc.y,
 			tcc_state->crtc.w, tcc_state->crtc.h);
 }
+#endif
 
 static void tcc_drm_plane_reset(struct drm_plane *plane)
 {
@@ -233,7 +240,6 @@ static int tcc_plane_atomic_check(struct drm_plane *plane,
 {
 	struct tcc_drm_plane_state *tcc_state;
 	struct drm_crtc_state *crtc_state;
-	struct drm_framebuffer *fb;
 	int ret = 0;
 
 	if (state == NULL) {
@@ -344,7 +350,9 @@ static int tcc_plane_atomic_check(struct drm_plane *plane,
 		goto err_null;
 	}
 	/* translate state into tcc_state */
-	//tcc_plane_mode_set_dump(tcc_state);
+	#if defined(CONFIG_DRM_TCC_USES_PLANE_DUMP)
+	tcc_plane_mode_set_dump(tcc_state);
+	#endif
 	tcc_plane_mode_set(tcc_state);
 
 	return 0;
@@ -362,8 +370,9 @@ static void tcc_plane_atomic_update(struct drm_plane *plane,
 
 	if (!state->crtc)
 		return;
-
+	/* kernel-4.14 only */
 	plane->crtc = state->crtc;
+	/* -- */
 
 	if (tcc_crtc->ops->update_plane)
 		tcc_crtc->ops->update_plane(tcc_crtc, tcc_plane);

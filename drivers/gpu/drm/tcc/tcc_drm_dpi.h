@@ -1,4 +1,6 @@
-/*
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ *
  * TCC DRM Parallel output support.
  *
  * Copyright (C) 2016 Telechips Inc.

@@ -1,4 +1,6 @@
-/* tcc_drm_drv.h
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * tcc_drm_drv.h
  *
  * Copyright (C) 2016 Telechips Inc.
  * Copyright (c) 2011 Samsung Electronics Co., Ltd.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /* tcc_drm_lcd.c
  *
  * Copyright (c) 2016 Telechips Inc.
@@ -397,17 +399,23 @@ static void lcd_win_set_pixfmt(struct lcd_context *ctx, unsigned int win,
 	switch (pixel_format) {
 	case DRM_FORMAT_BGR565:
 		vioc_swap = 5;  /* B-G-R */
+		vioc_fmt = TCC_LCDC_IMG_FMT_RGB565;
+		break;
 	case DRM_FORMAT_RGB565:
 		vioc_fmt = TCC_LCDC_IMG_FMT_RGB565;
 		break;
 	case DRM_FORMAT_BGR888:
 		vioc_swap = 5;  /* B-G-R */
+		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888_3;
+		break;
 	case DRM_FORMAT_RGB888:
 		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888_3;
 		break;
 	case DRM_FORMAT_XBGR8888:
 	case DRM_FORMAT_ABGR8888:
 		vioc_swap = 5;  /* B-G-R */
+		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888;
+		break;
 	case DRM_FORMAT_XRGB8888:
 	case DRM_FORMAT_ARGB8888:
 		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888;
