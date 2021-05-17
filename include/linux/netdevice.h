@@ -264,6 +264,9 @@ struct hh_cache {
 #define LL_RESERVED_SPACE_EXTRA(dev,extra) \
 	((((dev)->hard_header_len+(dev)->needed_headroom+(extra))&~(HH_DATA_MOD - 1)) + HH_DATA_MOD)
 
+extern const struct header_ops eth_header_ops;
+__be16 eth_header_parse_protocol(const struct sk_buff *skb);
+
 struct header_ops {
 	int	(*create) (struct sk_buff *skb, struct net_device *dev,
 			   unsigned short type, const void *daddr,
@@ -274,7 +277,6 @@ struct header_ops {
 				const struct net_device *dev,
 				const unsigned char *haddr);
 	bool	(*validate)(const char *ll_header, unsigned int len);
-	__be16	(*parse_protocol)(const struct sk_buff *skb);
 };
 
 /* These flag bits are private to the generic network queueing
@@ -2905,9 +2907,10 @@ static inline __be16 dev_parse_header_protocol(const struct sk_buff *skb)
 {
 	const struct net_device *dev = skb->dev;
 
-	if (!dev->header_ops || !dev->header_ops->parse_protocol)
-		return 0;
-	return dev->header_ops->parse_protocol(skb);
+	if (dev->header_ops == &eth_header_ops)
+		return eth_header_parse_protocol(skb);
+
+	return 0;
 }
 
 /* ll_header must have at least hard_header_len allocated */
