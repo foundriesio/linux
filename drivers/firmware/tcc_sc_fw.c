@@ -92,10 +92,10 @@ struct tcc_sc_fw_info {
 static void tcc_sc_fw_print_command(struct tcc_sc_fw_info *info,
 				    struct tcc_sc_fw_cmd *cmd)
 {
-	if(info == NULL)
+	if (info == NULL)
 		return;
 
-	if(cmd == NULL)
+	if (cmd == NULL)
 		return;
 
 	dev_info(info->dev, "======== SC FW CMD DUMP ========\n");
@@ -207,46 +207,47 @@ static void tcc_sc_fw_halt_xfer(struct tcc_sc_fw_info *info,
 
 	status = tcc_sc_fw_get_xfer_status(xfer);
 
-	if(status == TCC_SC_FW_XFER_STAT_TX_PEND) {
+	if (status == TCC_SC_FW_XFER_STAT_TX_PEND) {
 		tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_HALT);
 
 		dev_err(info->dev, "[ERROR][TCC_SC_FW] Halt tx pending xfer(%p)\n",
 			xfer);
-	} else if((status == TCC_SC_FW_XFER_STAT_TX_START) ||
+		return;
+	} else if ((status == TCC_SC_FW_XFER_STAT_TX_START) ||
 		(status == TCC_SC_FW_XFER_STAT_RX_PEND)){
 		tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_HALT);
-
-		spin_lock_irqsave(&info->rx_lock, flags);
-		if (!list_empty(&info->rx_pending)) {
-			list_for_each_entry(list, &info->rx_pending, node) {
-				if(((list->tx_mssg.cmd[0] & 0xFFFF0000UL) ==
-					(xfer->tx_mssg.cmd[0] & 0xFFFF0000UL)) &&
-					(list->tx_mssg.cmd[1] == xfer->tx_mssg.cmd[1])) {
-
-					list_del_init(&list->node);
-
-					if(status == TCC_SC_FW_XFER_STAT_RX_PEND) {
-						dev_err(info->dev,
-							"[ERROR][TCC_SC_FW] Halt xfer, remove xfer(%p) from rx_pending list, put to pool\n",
-							xfer);
-						put_tcc_sc_fw_xfer(xfer, info);
-					} else {
-						dev_err(info->dev,
-							"[ERROR][TCC_SC_FW] Halt xfer, remove xfer(%p) from rx_pending list\n",
-							xfer);
-					}
-					break;
-				}
-			}
-		}
-		spin_unlock_irqrestore(&info->rx_lock, flags);
-
 	} else {
 		dev_warn(info->dev, "[WARN][TCC_SC_FW] Wrong xfer(%p) status 0x%x (%s)\n",
 			xfer, xfer->status, __func__);
 		tcc_sc_fw_print_command(info,
 			(struct tcc_sc_fw_cmd *)xfer->tx_mssg.cmd);
+		return;
 	}
+
+	spin_lock_irqsave(&info->rx_lock, flags);
+	if (!list_empty(&info->rx_pending)) {
+		list_for_each_entry(list, &info->rx_pending, node) {
+			if(((list->tx_mssg.cmd[0] & 0xFFFF0000UL) ==
+				(xfer->tx_mssg.cmd[0] & 0xFFFF0000UL)) &&
+				(list->tx_mssg.cmd[1] == xfer->tx_mssg.cmd[1])) {
+
+				list_del_init(&list->node);
+
+				if(status == TCC_SC_FW_XFER_STAT_RX_PEND) {
+					dev_err(info->dev,
+						"[ERROR][TCC_SC_FW] Halt xfer, remove xfer(%p) from rx_pending list, put to pool\n",
+						xfer);
+					put_tcc_sc_fw_xfer(xfer, info);
+				} else {
+					dev_err(info->dev,
+						"[ERROR][TCC_SC_FW] Halt xfer, remove xfer(%p) from rx_pending list\n",
+						xfer);
+				}
+				break;
+			}
+		}
+	}
+	spin_unlock_irqrestore(&info->rx_lock, flags);
 }
 
 static s32 tcc_sc_fw_xfer_async(struct tcc_sc_fw_info *info,
@@ -260,7 +261,7 @@ static s32 tcc_sc_fw_xfer_async(struct tcc_sc_fw_info *info,
 	trace_tcc_sc_fw_start_xfer(xfer);
 
 	spin_lock_irqsave(&info->lock, flags);
-	if(info->uid >= 0xFFFF)
+	if (info->uid >= 0xFFFF)
 		info->uid = 0;
 	else
 		info->uid++;
@@ -271,7 +272,7 @@ static s32 tcc_sc_fw_xfer_async(struct tcc_sc_fw_info *info,
 	xfer->tx_mssg.flags = 0;
 
 	status = tcc_sc_fw_get_xfer_status(xfer);
-	if(status != TCC_SC_FW_XFER_STAT_IDLE) {
+	if (status != TCC_SC_FW_XFER_STAT_IDLE) {
 		dev_warn(info->dev, "[WARN][TCC_SC_FW] Wrong xfer(%p) status 0x%x (%s)\n",
 			xfer, xfer->status, __func__);
 	}
@@ -296,7 +297,7 @@ static void tcc_sc_fw_xfer_sync_complete(void *args, void *msg)
 
 	BUG_ON(xfer == NULL);
 
-	if(ctx->response != NULL)
+	if (ctx->response != NULL)
 		memcpy(ctx->response, xfer->rx_mssg.cmd,
 		       sizeof(struct tcc_sc_fw_cmd));
 
@@ -347,14 +348,13 @@ static void tcc_sc_fw_tx_prepare(struct mbox_client *cl, void *msg)
 	u8 status;
 
 	status = tcc_sc_fw_get_xfer_status(xfer);
-	if(status == TCC_SC_FW_XFER_STAT_HALT) {
+	if (status == TCC_SC_FW_XFER_STAT_HALT) {
 		xfer->tx_mssg.flags = TCC_SC_MBOX_FLAG_SKIP_XFER;
 		dev_warn(info->dev,
 			"[WARN][TCC_SC_FW] xfer(%p) is halted. Skip transfer message\n",
 			xfer);
-	} else if(xfer->status == TCC_SC_FW_XFER_STAT_TX_PEND) {
+	} else if (xfer->status == TCC_SC_FW_XFER_STAT_TX_PEND) {
 		tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_TX_START);
-
 		spin_lock_irqsave(&info->rx_lock, flags);
 		list_add_tail(&xfer->node, &info->rx_pending);
 		spin_unlock_irqrestore(&info->rx_lock, flags);
@@ -371,14 +371,13 @@ static void tcc_sc_fw_tx_done(struct mbox_client *cl, void *msg, int r)
 	u8 status;
 
 	status = tcc_sc_fw_get_xfer_status(xfer);
-
-	if(status == TCC_SC_FW_XFER_STAT_HALT) {
+	if (status == TCC_SC_FW_XFER_STAT_HALT) {
 		dev_warn(info->dev,
 			"[WARN][TCC_SC_FW] put halted xfer(%p) to pool (%d)\n",
 			xfer, r);
 
 		put_tcc_sc_fw_xfer(xfer, info);
-	} else if(xfer->status == TCC_SC_FW_XFER_STAT_TX_START){
+	} else if (xfer->status == TCC_SC_FW_XFER_STAT_TX_START){
 		tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_RX_PEND);
 	}
 }
@@ -398,7 +397,7 @@ static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 	spin_lock_irqsave(&info->rx_lock, flags);
 	if (!list_empty(&info->rx_pending)) {
 		list_for_each_entry(xfer, &info->rx_pending, node) {
-			if(((xfer->tx_mssg.cmd[0] & 0xFFFF0000UL) ==
+			if (((xfer->tx_mssg.cmd[0] & 0xFFFF0000UL) ==
 				(mbox_msg->cmd[0] & 0xFFFF0000UL)) &&
 				(xfer->tx_mssg.cmd[1] == mbox_msg->cmd[1])) {
 				list_del_init(&xfer->node);
@@ -409,7 +408,7 @@ static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 	}
 	spin_unlock_irqrestore(&info->rx_lock, flags);
 
-	if(match) {
+	if (match) {
 		rx_mbox_msg = &match->rx_mssg;
 		rx_mbox_msg->cmd_len = 0UL;
 		rx_mbox_msg->data_len = 0UL;
@@ -446,18 +445,19 @@ static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 		trace_tcc_sc_fw_done_xfer(xfer);
 
 		dev_dbg(dev, "[DEBUG][TCC_SC_FW] Complete command rx\n");
-	}else {
+	} else {
 		trace_tcc_sc_fw_rx_invalid_message(mbox_msg);
 		dev_err(dev, "[ERROR][TCC_SC_FW] Invalid response\n");
 	}
 
 }
 
-static void *tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle,
-					struct tcc_sc_fw_mmc_cmd *cmd,
-					struct tcc_sc_fw_mmc_data *data,
-					void (*complete)(void *, void *),
-					void *args)
+static void *tcc_sc_fw_cmd_request_mmc_cmd(
+				const struct tcc_sc_fw_handle *handle,
+				struct tcc_sc_fw_mmc_cmd *cmd,
+				struct tcc_sc_fw_mmc_data *data,
+				void (*complete)(void *, void *),
+				void *args)
 {
 	struct tcc_sc_fw_info *info = NULL;
 	struct tcc_sc_fw_xfer *xfer;
@@ -478,7 +478,7 @@ static void *tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle
 	trace_tcc_sc_fw_start_mmc_req(cmd, data);
 
 	xfer = get_tcc_sc_fw_xfer(info);
-	if(xfer == NULL)
+	if (xfer == NULL)
 		return NULL;
 
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
@@ -517,7 +517,8 @@ static void *tcc_sc_fw_cmd_request_mmc_cmd(const struct tcc_sc_fw_handle *handle
 	xfer->complete = complete;
 	xfer->args = args;
 	ret = tcc_sc_fw_xfer_async(info, xfer);
-	if(ret < 0) {
+
+	if (ret < 0) {
 		xfer_handle = NULL;
 	} else {
 		xfer_handle = (void *)xfer;
@@ -551,7 +552,7 @@ static s32 tcc_sc_fw_cmd_get_mmc_prot_info(
 
 	dev = info->dev;
 	xfer = get_tcc_sc_fw_xfer(info);
-	if(xfer == NULL)
+	if (xfer == NULL)
 		return -ENOMEM;
 
 	req_cmd.bsid = info->bsid;
@@ -588,8 +589,8 @@ static s32 tcc_sc_fw_cmd_get_mmc_prot_info(
 }
 
 int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
-					 struct tcc_sc_fw_ufs_cmd *sc_cmd,
-					 void (*complete)(void *, void *), void *args)
+				struct tcc_sc_fw_ufs_cmd *sc_cmd,
+				void (*complete)(void *, void *), void *args)
 {
 	struct tcc_sc_fw_info *info = NULL;
 	struct tcc_sc_fw_xfer *xfer;
@@ -608,7 +609,7 @@ int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 		return -EINVAL;
 
 	xfer = get_tcc_sc_fw_xfer(info);
-	if(xfer == NULL)
+	if (xfer == NULL)
 		return -ENOMEM;
 
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
@@ -657,7 +658,7 @@ static s32 tcc_sc_fw_cmd_get_revision(struct tcc_sc_fw_info *info)
 	struct tcc_sc_fw_cmd res_cmd = { 0, };
 	s32 ret;
 
-	if(xfer == NULL)
+	if (xfer == NULL)
 		return -ENOMEM;
 
 	req_cmd.bsid = info->bsid;
@@ -712,7 +713,7 @@ static s32 tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
 
 	dev = info->dev;
 	xfer = get_tcc_sc_fw_xfer(info);
-	if(xfer == NULL)
+	if (xfer == NULL)
 		return -ENOMEM;
 
 	req_cmd.bsid = info->bsid;
@@ -752,9 +753,10 @@ static s32 tcc_sc_fw_cmd_request_gpio_cmd(const struct tcc_sc_fw_handle *handle,
 	return ret;
 }
 
-static s32 tcc_sc_fw_cmd_request_gpio_no_res_cmd(const struct tcc_sc_fw_handle *handle,
-					  uint32_t address, uint32_t bit_number,
-					  uint32_t width, uint32_t value)
+static s32 tcc_sc_fw_cmd_request_gpio_no_res_cmd(
+				const struct tcc_sc_fw_handle *handle,
+				uint32_t address, uint32_t bit_number,
+				uint32_t width, uint32_t value)
 {
 	struct tcc_sc_fw_info *info;
 	struct device *dev;
@@ -772,7 +774,7 @@ static s32 tcc_sc_fw_cmd_request_gpio_no_res_cmd(const struct tcc_sc_fw_handle *
 
 	dev = info->dev;
 	xfer = get_tcc_sc_fw_xfer(info);
-	if(xfer == NULL)
+	if (xfer == NULL)
 		return -ENOMEM;
 
 	req_cmd.bsid = info->bsid;
@@ -803,7 +805,7 @@ static s32 tcc_sc_fw_cmd_request_gpio_no_res_cmd(const struct tcc_sc_fw_handle *
 	return ret;
 }
 
-static s32 tcc_sc_fw_cmd_get_otp_cmd (const struct tcc_sc_fw_handle *handle,
+static s32 tcc_sc_fw_cmd_get_otp_cmd(const struct tcc_sc_fw_handle *handle,
 				struct tcc_sc_fw_otp_cmd *cmd, uint32_t offset)
 {
 	struct tcc_sc_fw_info *info;
@@ -859,7 +861,7 @@ static s32 tcc_sc_fw_cmd_get_otp_cmd (const struct tcc_sc_fw_handle *handle,
 	return ret;
 }
 
-void tcc_sc_fw_halt_cmd(   const struct tcc_sc_fw_handle *handle,
+void tcc_sc_fw_halt_cmd(const struct tcc_sc_fw_handle *handle,
 			   void *xfer_handle)
 {
 	struct tcc_sc_fw_info *info;

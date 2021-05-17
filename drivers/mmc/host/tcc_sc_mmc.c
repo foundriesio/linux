@@ -150,7 +150,7 @@ static void tcc_sc_mmc_timeout_timer(unsigned long data)
 	host = (struct tcc_sc_mmc_host *)data;
 
 	handle = host->handle;
-	if(host->xfer_handle != NULL) {
+	if (host->xfer_handle != NULL) {
 		handle->ops.mmc_ops->halt_cmd(handle, host->xfer_handle);
 		host->xfer_handle = NULL;
 	}

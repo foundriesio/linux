@@ -60,7 +60,7 @@ struct tcc_sc_fw_mmc_cmd {
 	u32			resp[4];
 	u32			flags;
 	s32			error;
-	u32 			part_num;
+	u32			part_num;
 };
 
 struct tcc_sc_fw_mmc_data {

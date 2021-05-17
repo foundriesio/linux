@@ -131,8 +131,8 @@ static s32 tcc_sc_mbox_send_data(struct mbox_chan *chan, void *data)
 	size_t flags;
 	u32 i;
 
-	if ((mdev == NULL) || (msg == NULL)){
-		pr_err("[ERROR][TCC_SC_MBOX][%s] argument is null",__func__);
+	if ((mdev == NULL) || (msg == NULL)) {
+		pr_err("[ERROR][TCC_SC_MBOX][%s] argument is null", __func__);
 		return -EINVAL;
 	}
 
@@ -140,7 +140,7 @@ static s32 tcc_sc_mbox_send_data(struct mbox_chan *chan, void *data)
 	 * Clint can halt pending mbox message before send data
 	 * by setting this flag.
 	 */
-	if((msg->flags & TCC_SC_MBOX_FLAG_SKIP_XFER) != 0) {
+	if ((msg->flags & TCC_SC_MBOX_FLAG_SKIP_XFER) != 0) {
 		dev_err(mdev->dev,
 			"[ERROR][TCC_SC_MBOX] Skip mbox message transfer\n");
 		tasklet_schedule(&mdev->finish_tasklet);
@@ -230,7 +230,7 @@ static s32 tcc_sc_mbox_startup(struct mbox_chan *chan)
 	size_t flags;
 
 	if (chan == NULL) {
-		pr_err("[ERROR][TCC_SC_MBOX][%s] argument is null",__func__);
+		pr_err("[ERROR][TCC_SC_MBOX][%s] argument is null", __func__);
 		return -EINVAL;
 	}
 	mdev = mbox_chan_to_tcc_sc_mbox(chan);
@@ -264,7 +264,7 @@ static void tcc_sc_mbox_shutdown(struct mbox_chan *chan)
 	size_t flags;
 
 	if (chan == NULL) {
-		pr_err("[ERROR][TCC_SC_MBOX][%s] argument is null",__func__);
+		pr_err("[ERROR][TCC_SC_MBOX][%s] argument is null", __func__);
 		return;
 	}
 	mdev = mbox_chan_to_tcc_sc_mbox(chan);
@@ -295,7 +295,7 @@ static irqreturn_t tcc_sc_mbox_rx_irq_handler(s32 irq, void *data)
 	irqreturn_t ret = (irqreturn_t)IRQ_NONE;
 
 	if (mdev == NULL) {
-		pr_err("[ERROR][TCC_SC_MBOX][%s] argument is null",__func__);
+		pr_err("[ERROR][TCC_SC_MBOX][%s] argument is null", __func__);
 		return ret;
 	}
 	status = tcc_sc_mbox_readl(mdev, MBOX_CMD_FIFO_STS);
