@@ -809,7 +809,7 @@ static int ar0147_g_frame_interval(struct v4l2_subdev *sd,
 {
 	struct ar0147		*dev	= NULL;
 
-	dev = to_state(sd);
+	dev = to_dev(sd);
 	if (!dev) {
 		loge("Failed to get video source object by subdev\n");
 		return -EINVAL;
@@ -827,7 +827,7 @@ static int ar0147_s_frame_interval(struct v4l2_subdev *sd,
 {
 	struct ar0147		*dev	= NULL;
 
-	dev = to_state(sd);
+	dev = to_dev(sd);
 	if (!dev) {
 		loge("Failed to get video source object by subdev\n");
 		return -EINVAL;
