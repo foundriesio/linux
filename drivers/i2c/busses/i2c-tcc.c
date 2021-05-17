@@ -76,6 +76,15 @@
 #define I2C_IRQ_STS             0x0C
 #endif
 
+/* I2C transfer state */
+enum {
+	STATE_IDLE,
+	STATE_START,
+	STATE_READ,
+	STATE_WRITE,
+	STATE_STOP,
+};
+
 #define I2C_DEF_RETRIES         2
 
 #define I2C_CMD_TIMEOUT         500	/* in msec */
@@ -100,6 +109,7 @@ struct tcc_i2c {
 	uint32_t            msg_num;
 	uint32_t            msg_idx;
 	uint32_t            msg_ptr;
+	int32_t             state;
 
 	struct completion   msg_complete;
 	struct device       *dev;
@@ -310,6 +320,7 @@ static int32_t wait_intr(struct tcc_i2c *i2c)
 		}
 
 		/* Clear a pending interrupt */
+		cmd = i2c_readl(i2c->regs+I2C_CMD);
 		i2c_writel((cmd | CMD_IACK), i2c->regs+I2C_CMD);
 	}
 
@@ -344,6 +355,10 @@ static int32_t tcc_i2c_stop(struct tcc_i2c *i2c)
 {
 	int32_t ret;
 
+	if (i2c->state == STATE_STOP) {
+		return 0;
+	}
+
 	i2c_writel(CMD_STOP, i2c->regs+I2C_CMD);
 	ret = wait_intr(i2c);
 	if (ret != 0) {
@@ -354,6 +369,7 @@ static int32_t tcc_i2c_stop(struct tcc_i2c *i2c)
 		return ret;
 	}
 
+	i2c->state = STATE_STOP;
 	return 0;
 }
 
@@ -366,8 +382,19 @@ static int32_t tcc_i2c_acked(struct tcc_i2c *i2c)
 		return 0;
 	}
 
-	timeout_jiffies = jiffies + msecs_to_jiffies(i2c->ack_timeout);
+	if ((i2c_readl(i2c->regs + I2C_SR) & SR_RX_ACK) == 0U) {
+		dev_dbg(i2c->dev, "[DEBUG][I2C] <%s> ACK received\n", __func__);
+		return 0;
+	}
 
+	if (i2c->ack_timeout == 0) {
+		(void)tcc_i2c_stop(i2c);
+		dev_dbg(i2c->dev, "[DEBUG][I2C] <%s> No ACK\n", __func__);
+		return -EAGAIN;
+	}
+
+	/* check ACK repeatedly for recovery */
+	timeout_jiffies = jiffies + msecs_to_jiffies(i2c->ack_timeout);
 	while (1) {
 		if ((i2c_readl(i2c->regs + I2C_SR) & SR_RX_ACK) == 0U) {
 			break;
@@ -383,6 +410,7 @@ static int32_t tcc_i2c_acked(struct tcc_i2c *i2c)
 		}
 		schedule();
 	}
+
 	dev_dbg(i2c->dev, "[DEBUG][I2C] <%s> ACK received\n", __func__);
 	return 0;
 }
@@ -391,6 +419,8 @@ static int32_t recv_i2c(struct tcc_i2c *i2c)
 {
 	int32_t ret;
 	u16 i;
+
+	i2c->state = STATE_READ;
 
 	for (i = 0; i < i2c->msg->len; i++) {
 		if (i == (i2c->msg->len - 1U)) {
@@ -413,6 +443,8 @@ static int32_t send_i2c(struct tcc_i2c *i2c)
 {
 	int32_t ret;
 	u16 i;
+
+	i2c->state = STATE_WRITE;
 
 	for (i = 0; i < i2c->msg->len; i++) {
 		i2c_writel(i2c->msg->buf[i], i2c->regs+I2C_TXR);
@@ -450,6 +482,7 @@ static int32_t tcc_i2c_doxfer(
 		i2c->msg_num    = (u16)num;
 		i2c->msg_ptr    = 0;
 		i2c->msg_idx    = 0;
+		i2c->state      = STATE_IDLE;
 		spin_unlock_irq(&i2c->lock);
 
 		if ((i2c->msg->flags & (u16)I2C_M_RD) != (u16)0) {
@@ -521,21 +554,14 @@ static int32_t tcc_i2c_xfer(
 		int32_t num)
 {
 	struct tcc_i2c *i2c = (struct tcc_i2c *)adap->algo_data;
-	int32_t retry;
-	int32_t ret = 0;
+	int32_t ret;
 
 	if (i2c->is_suspended) {
 		return -EBUSY;
 	}
-	for (retry = 0; retry < adap->retries; retry++) {
-		ret = tcc_i2c_doxfer(i2c, msgs, num);
-		if (ret > 0) {
-			return ret;
-		}
-		dev_dbg(i2c->dev,
-				"[DEBUG][I2C] Retrying transmission (%d)\n",
-				retry);
-	}
+
+	ret = tcc_i2c_doxfer(i2c, msgs, num);
+
 	return ret;
 }
 
@@ -852,13 +878,10 @@ static void tcc_i2c_parse_dt(struct device_node *np, struct tcc_i2c *i2c)
 		i2c->use_pw = (bool)true;
 	}
 
-	/* ack timeout min 5 msec, max 1000 msec*/
+	/* ack timeout max 1000 msec*/
 	ret = of_property_read_u32(np, "ack-timeout", &i2c->ack_timeout);
 	if (ret != 0) {
-		i2c->ack_timeout = 5;
-	}
-	if (i2c->ack_timeout < 5) {
-		i2c->ack_timeout = 5;
+		i2c->ack_timeout = 0;
 	}
 	if (i2c->ack_timeout > 1000) {
 		i2c->ack_timeout = 1000;
@@ -962,9 +985,12 @@ static int32_t tcc_i2c_probe(struct platform_device *pdev)
 	i2c->adap.retries = I2C_DEF_RETRIES;
 	i2c->dev = &(pdev->dev);
 	(void)sprintf(i2c->adap.name, "%s", pdev->name);
-	dev_info(&pdev->dev, "[INFO][I2C] sclk: %d kHz retry: %d irq mode: %d noise filter: %dns\n",
-			(i2c->i2c_clk_rate/1000U), i2c->adap.retries,
-			i2c->interrupt_mode, i2c->noise_filter);
+	dev_info(&pdev->dev, "[INFO][I2C] sclk: %d kHz retry: %d ack-timeout: %dms irq mode: %d noise filter: %dns\n",
+			(i2c->i2c_clk_rate/1000U),
+			i2c->adap.retries,
+			i2c->ack_timeout,
+			i2c->interrupt_mode,
+			i2c->noise_filter);
 	spin_lock_init(&i2c->lock);
 	init_waitqueue_head(&i2c->wait);
 

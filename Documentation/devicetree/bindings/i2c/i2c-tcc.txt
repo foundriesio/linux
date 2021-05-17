@@ -25,6 +25,9 @@ Optional properties:
 - interrupt_mode	: interrupt-base transfer, default is not used interrupt.
 - noise_filter		: Desired I2C Noise filtering time in ns, default is 50ns
 - status		: Activation status
+- ack-timeout		: If I2C receive NAK, i2c driver send the device address and check whether receiving ACK/NAK
+			  It works repeatedly during "ack-timeout" msec
+			  the maximum value of "ack-timeout" is 1000
 
 Note:
 GPIO used for I2C SCL/SDA are named as number. you can find port number in Chip Specification.
