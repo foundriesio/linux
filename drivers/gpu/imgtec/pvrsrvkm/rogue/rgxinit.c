@@ -1969,11 +1969,12 @@ static PVRSRV_ERROR RGXDevInitCompatCheck_KMBuildOptions_FWAgainstDriver(RGXFWIF
 	if (psFwOsInit == NULL)
 		return PVRSRV_ERROR_INVALID_PARAMS;
 
-	ui32BuildOptions = (RGX_BUILD_OPTIONS_KM);
+	ui32BuildOptions = (RGX_BUILD_OPTIONS_KM & RGX_BUILD_OPTIONS_MASK_FW);
 
-	ui32BuildOptionsFWKMPart = psFwOsInit->sRGXCompChecks.ui32BuildOptions & RGX_BUILD_OPTIONS_MASK_KM;
+	ui32BuildOptionsFWKMPart = psFwOsInit->sRGXCompChecks.ui32BuildOptions & RGX_BUILD_OPTIONS_MASK_FW;
 
-	if (ui32BuildOptions != ui32BuildOptionsFWKMPart)
+	/* Check if the FW is missing support for any features required by the driver */
+	if (~ui32BuildOptionsFWKMPart & ui32BuildOptions)
 	{
 		ui32BuildOptionsMismatch = ui32BuildOptions ^ ui32BuildOptionsFWKMPart;
 #if !defined(PVRSRV_STRICT_COMPAT_CHECK)

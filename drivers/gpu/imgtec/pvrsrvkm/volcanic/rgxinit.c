@@ -792,7 +792,17 @@ static PVRSRV_ERROR RGXSetPowerParams(PVRSRV_RGXDEV_INFO   *psDevInfo,
 #if defined(PVR_AUTOVZ_OVERRIDE_FW_MMU_CARVEOUT_BASE_ADDR)
 			sKernelMMUCtxPCAddr.uiAddr = PVR_AUTOVZ_OVERRIDE_FW_MMU_CARVEOUT_BASE_ADDR;
 #else
-			sKernelMMUCtxPCAddr.uiAddr = IMG_UINT64_C(0x80000000) +
+			IMG_DEV_PHYADDR sPhysHeapBase;
+			IMG_UINT64 uRawHeapBase;
+			eError = PhysHeapRegionGetDevPAddr(psDevInfo->psDeviceNode->apsPhysHeap[PVRSRV_DEVICE_PHYS_HEAP_FW_LOCAL], 0, &sPhysHeapBase);
+		        if (eError != PVRSRV_OK) {
+				PVR_DPF((PVR_DBG_ERROR, "%s: PhysHeapRegionGetDevPAddr FAILED: %s",
+					__func__, PVRSRVGetErrorString(eError)));
+				uRawHeapBase = 0;
+			} else
+				uRawHeapBase = sPhysHeapBase.uiAddr;
+
+			sKernelMMUCtxPCAddr.uiAddr = uRawHeapBase +
 										 (RGX_FIRMWARE_RAW_HEAP_SIZE * RGX_NUM_OS_SUPPORTED);
 #endif /* PVR_AUTOVZ_OVERRIDE_FW_MMU_CARVEOUT_BASE_ADDR */
 		}
@@ -1872,18 +1882,19 @@ static PVRSRV_ERROR RGXDevInitCompatCheck_KMBuildOptions_FWAgainstDriver(RGXFWIF
 	if (psFwOsInit == NULL)
 		return PVRSRV_ERROR_INVALID_PARAMS;
 
-	ui32BuildOptions = (RGX_BUILD_OPTIONS_KM);
+	ui32BuildOptions = (RGX_BUILD_OPTIONS_KM & RGX_BUILD_OPTIONS_MASK_FW);
 
-	ui32BuildOptionsFWKMPart = psFwOsInit->sRGXCompChecks.ui32BuildOptions & RGX_BUILD_OPTIONS_MASK_KM;
+	ui32BuildOptionsFWKMPart = psFwOsInit->sRGXCompChecks.ui32BuildOptions & RGX_BUILD_OPTIONS_MASK_FW;
 
-	if (ui32BuildOptions != ui32BuildOptionsFWKMPart)
+	/* Check if the FW is missing support for any features required by the driver */
+	if (~ui32BuildOptionsFWKMPart & ui32BuildOptions)
 	{
 		ui32BuildOptionsMismatch = ui32BuildOptions ^ ui32BuildOptionsFWKMPart;
 #if !defined(PVRSRV_STRICT_COMPAT_CHECK)
 		/*Mask the debug flag option out as we do support combinations of debug vs release in um & km*/
 		ui32BuildOptionsMismatch &= ~OPTIONS_DEBUG_MASK;
 #endif
-		if (((ui32BuildOptions & ui32BuildOptionsMismatch) != 0) && ((ui32BuildOptions & ui32BuildOptionsMismatch) != 0x800))
+		if ((ui32BuildOptions & ui32BuildOptionsMismatch) != 0)
 		{
 			PVR_LOG(("(FAIL) RGXDevInitCompatCheck: Mismatch in Firmware and KM driver build options; "
 				"extra options present in the KM driver: (0x%x). Please check rgx_options.h",

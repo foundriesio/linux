@@ -2842,7 +2842,11 @@ PVRSRV_ERROR PVRSRVRGXDestroyRenderContextKM(RGX_SERVER_RENDER_CONTEXT *psRender
 	OSWRLockReleaseWrite(psDevInfo->hRenderCtxListLock);
 
 #if defined(SUPPORT_BUFFER_SYNC)
-	pvr_buffer_sync_context_destroy(psRenderContext->psBufferSyncContext);
+	if (psRenderContext->psBufferSyncContext != NULL)
+	{
+		pvr_buffer_sync_context_destroy(psRenderContext->psBufferSyncContext);
+		psRenderContext->psBufferSyncContext = NULL;
+	}
 #endif
 
 	/* Cleanup the TA if we haven't already */
