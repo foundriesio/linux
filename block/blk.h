@@ -162,6 +162,8 @@ static inline bool biovec_phys_mergeable(struct request_queue *q,
 		return false;
 	if ((addr1 | mask) != ((addr2 + vec2->bv_len - 1) | mask))
 		return false;
+	if (blk_queue_biovec_phys_nomerge(q))
+		return false;
 	return true;
 }
 
