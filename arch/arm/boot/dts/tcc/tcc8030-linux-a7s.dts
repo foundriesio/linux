@@ -1669,7 +1669,7 @@
 	};
 
 	/* ipc for r5(micom) */
-	ipc0: tcc_ipc@0 {
+	ipc0: tcc_ipc0 {
 		 compatible = "telechips,tcc_ipc";
 		 device-name = "tcc_ipc_micom";
 		 mbox-names ="micom-ipc";
@@ -1683,7 +1683,7 @@
 	};
 
 	/* ipc for A7S */
-	ipc1: tcc_ipc@1 {
+	ipc1: tcc_ipc1 {
 		 compatible = "telechips,tcc_ipc";
 		 device-name = "tcc_ipc_ap";
 		 mbox-names ="ap-ipc";

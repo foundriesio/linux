@@ -13,7 +13,7 @@ Required properties:
 
 
 Example:
-	ipc0: tcc_ipc@0 {
+	ipc0: tcc_ipc0 {
 		 compatible = "telechips,tcc_ipc";
 		 device-name = "tcc_ipc_micom";
 		 mbox-names ="micom-ipc";
