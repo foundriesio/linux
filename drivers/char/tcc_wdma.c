@@ -1426,7 +1426,7 @@ static int wdma_screen_capture(char *Capture)
 
 	ret = vfs_write(filp_mem,  (char __user *)image_virt_addr, image_size, &filp_mem->f_pos);
 
-	vfs_fsync(filp_mem, NULL);
+	vfs_fsync(filp_mem, 0);
 	set_fs(oldfs);
 	dma_free_coherent(misc->parent, image_size, image_virt_addr, handle);
 	filp_close(filp, NULL);
