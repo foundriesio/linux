@@ -499,6 +499,22 @@ static int queue_pages_pte_range(pmd_t *pmd, unsigned long addr,
 		ptl = pmd_lock(walk->mm, pmd);
 		if (pmd_trans_huge(*pmd)) {
 			page = pmd_page(*pmd);
+
+			nid = page_to_nid(page);
+			if (node_isset(nid, *qp->nmask) == !!(flags & MPOL_MF_INVERT)) {
+				spin_unlock(ptl);
+				return 0;
+			}
+
+			/*
+			 * We cannot modify (split) THP in pure strict mode. A misplaced
+			 * page has to be reported by EIO
+			 */
+			if ((flags & (MPOL_MF_STRICT | MPOL_MF_MOVE | MPOL_MF_MOVE_ALL) == MPOL_MF_STRICT)) {
+				spin_unlock(ptl);
+				return -EIO;
+			}
+
 			if (is_huge_zero_page(page)) {
 				spin_unlock(ptl);
 				__split_huge_pmd(vma, pmd, addr, false, NULL);
@@ -509,8 +525,15 @@ static int queue_pages_pte_range(pmd_t *pmd, unsigned long addr,
 				ret = split_huge_page(page);
 				unlock_page(page);
 				put_page(page);
-				if (ret)
+				if (ret) {
+					/*
+					 * When moving pages in the strict mode we
+					 * should report errors
+					 */
+					if (flags & MPOL_MF_STRICT)
+						return -EIO;
 					return 0;
+				}
 			}
 		} else {
 			spin_unlock(ptl);
@@ -536,6 +559,12 @@ retry:
 		nid = page_to_nid(page);
 		if (node_isset(nid, *qp->nmask) == !!(flags & MPOL_MF_INVERT))
 			continue;
+		/*
+		 * We cannot modify (split) THP in pure strict mode. A misplaced
+		 * page has to be reported by EIO
+		 */
+		if ((flags & (MPOL_MF_STRICT | MPOL_MF_MOVE | MPOL_MF_MOVE_ALL) == MPOL_MF_STRICT))
+			break;
 		if (PageTransCompound(page)) {
 			get_page(page);
 			pte_unmap_unlock(pte, ptl);
@@ -543,8 +572,10 @@ retry:
 			ret = split_huge_page(page);
 			unlock_page(page);
 			put_page(page);
-			/* Failed to split -- skip. */
+			/* Failed to split -- skip. unless in strict mode */
 			if (ret) {
+				if (flags & MPOL_MF_STRICT)
+					return -EIO;
 				pte = pte_offset_map_lock(walk->mm, pmd,
 						addr, &ptl);
 				continue;
@@ -552,11 +583,16 @@ retry:
 			goto retry;
 		}
 
-		migrate_page_add(page, qp->pagelist, flags);
+		if (flags & (MPOL_MF_MOVE | MPOL_MF_MOVE_ALL)) {
+			if (!vma_migratable(vma))
+				break;
+			migrate_page_add(page, qp->pagelist, flags);
+		} else
+			break;
 	}
 	pte_unmap_unlock(pte - 1, ptl);
 	cond_resched();
-	return 0;
+	return addr != end ? -EIO : 0;
 }
 
 static int queue_pages_hugetlb(pte_t *pte, unsigned long hmask,
@@ -628,7 +664,12 @@ static int queue_pages_test_walk(unsigned long start, unsigned long end,
 	unsigned long endvma = vma->vm_end;
 	unsigned long flags = qp->flags;
 
-	if (!vma_migratable(vma))
+	/*
+	 * Need check MPOL_MF_STRICT to return -EIO if possible
+	 * regardless of vma_migratable
+	 */
+	if (!vma_migratable(vma) &&
+	    !(flags & MPOL_MF_STRICT))
 		return 1;
 
 	if (endvma > end)
@@ -655,7 +696,7 @@ static int queue_pages_test_walk(unsigned long start, unsigned long end,
 	}
 
 	/* queue pages from current vma */
-	if (flags & (MPOL_MF_MOVE | MPOL_MF_MOVE_ALL))
+	if (flags & MPOL_MF_VALID)
 		return 0;
 	return 1;
 }
