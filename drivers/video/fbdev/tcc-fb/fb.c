@@ -72,7 +72,7 @@
 #define FBDC_ALIGNED(w, mul) (((unsigned int)w + (mul - 1)) & ~(mul - 1))
 #endif
 
-#define FB_VERSION "1.0.4"
+#define FB_VERSION "1.0.5"
 #define FB_BUF_MAX_NUM (3)
 #define BYTE_TO_PAGES(range) (((range) + (PAGE_SIZE - 1)) >> PAGE_SHIFT)
 
@@ -587,17 +587,18 @@ static int fbX_prepare_m2m(struct fb_info *info)
 	return ret;
 }
 
-static void fbX_m2m_activate_var(
+static int fbX_m2m_activate_var(
 	unsigned int dma_addr, struct fb_var_screeninfo *var,
 	struct fbX_par *par)
 {
 	unsigned int width, height, format, channel;
+	int ret = -ENODEV;
 
 	VIOC_DISP_GetSize(par->pdata.ddc_info.virt_addr, &width, &height);
 	if ((width == 0) || (height == 0)) {
 		pr_err("[ERROR][FBX] error in %s: vioc invalid status (%dx%d)\n",
 		       __func__, width, height);
-		return;
+		goto err_out;
 	}
 
 	switch (var->bits_per_pixel) {
@@ -610,11 +611,13 @@ static void fbX_m2m_activate_var(
 	default:
 		pr_err("[ERROR][FBX] error in %s: can not support bpp %d\n",
 		       __func__, var->bits_per_pixel);
-		return;
+		ret = -EINVAL;
+		goto err_out;
 	}
 
 	if (par->pdata.FbUpdateType == FBX_M2M_RDMA_UPDATE) {
 		struct SCALER_TYPE scaler;
+
 		memset(&scaler, 0x00, sizeof(struct SCALER_TYPE));
 
 		scaler.responsetype = SCALER_POLLING;
@@ -650,8 +653,9 @@ static void fbX_m2m_activate_var(
 		VIOC_RDMA_SetImageIntl(par->pdata.rdma_info.virt_addr, 0);
 		VIOC_RDMA_SetImageFormat(
 			par->pdata.rdma_info.virt_addr, format);
-		if ((scaler.dest_ImgWidth > width)
-		    || (scaler.dest_ImgHeight > height))
+		if (
+			(scaler.dest_ImgWidth > width) ||
+			(scaler.dest_ImgHeight > height))
 			VIOC_RDMA_SetImageSize(
 				par->pdata.rdma_info.virt_addr, width, height);
 		else
@@ -708,6 +712,9 @@ static void fbX_m2m_activate_var(
 				par->pdata.filp, TCC_ATTACH_IOCTRL_KERNEL,
 				(unsigned long)&attach);
 	}
+	return 0;
+err_out:
+	return ret;
 }
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
 static void tca_vioc_configure_FBCDEC(
@@ -760,11 +767,12 @@ static void tca_vioc_configure_FBCDEC(
 	}
 }
 #endif
-static void fbX_activate_var(
+static int fbX_activate_var(
 	unsigned int dma_addr, struct fb_var_screeninfo *var,
 	struct fbX_par *par)
 {
 	unsigned int width, height, format, channel;
+	int ret = -ENODEV;
 
 	if (par->pdata.FbWdmaPath == 0) {
 		VIOC_DISP_GetSize(
@@ -778,14 +786,14 @@ static void fbX_activate_var(
 	if ((width == 0) || (height == 0)) {
 		pr_err("[ERROR][FBX] error in %s: vioc invalid status (%dx%d)\n",
 		       __func__, width, height);
-		return;
+		goto err_out;
 	}
 
 	if (par->pdata.FbWdmaPath == 1
 	    && par->pdata.wdma_info.virt_addr != NULL) {
 		if (!VIOC_WDMA_IsImageEnable(par->pdata.wdma_info.virt_addr)) {
 			/* WDMA Path is not Ready */
-			return;
+			goto err_out;
 		}
 	}
 
@@ -799,14 +807,16 @@ static void fbX_activate_var(
 	default:
 		pr_err("[ERROR][FBX] error in %s: can not support bpp %d\n",
 		       __func__, var->bits_per_pixel);
-		return;
+		ret = -EINVAL;
+		goto err_out;
 	}
 
 	if (par->pdata.scaler_info.virt_addr) {
-		if (VIOC_CONFIG_GetScaler_PluginToRDMA(
-			    par->pdata.rdma_info.blk_num)
-		    < 0) {
+		if (
+			VIOC_CONFIG_GetScaler_PluginToRDMA(
+				par->pdata.rdma_info.blk_num) < 0) {
 			unsigned int enable;
+
 			VIOC_RDMA_GetImageEnable(
 				par->pdata.rdma_info.virt_addr, &enable);
 			if (enable)
@@ -818,13 +828,13 @@ static void fbX_activate_var(
 		}
 	}
 
-#if defined(CONFIG_VIOC_PVRIC_FBDC)
+	#if defined(CONFIG_VIOC_PVRIC_FBDC)
 	tca_vioc_configure_FBCDEC(
 		par->pdata.fbdc_info.blk_num, dma_addr,
 		par->pdata.fbdc_info.virt_addr, par->pdata.rdma_info.virt_addr,
 		par->pdata.wdma_info.virt_addr, format,
 		par->pdata.rdma_info.blk_num, var->reserved[3], width, height);
-#endif
+	#endif
 	VIOC_RDMA_SetImageIntl(par->pdata.rdma_info.virt_addr, 0);
 	VIOC_RDMA_SetImageFormat(par->pdata.rdma_info.virt_addr, format);
 	if ((var->xres > width) || (var->yres > height))
@@ -879,6 +889,10 @@ static void fbX_activate_var(
 	}
 
 	VIOC_RDMA_SetImageEnable(par->pdata.rdma_info.virt_addr);
+	return 0;
+
+err_out:
+	return ret;
 }
 
 /**
@@ -940,25 +954,38 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	case FBX_RDMA_UPDATE:
 	case FBX_OVERLAY_UPDATE:
 	case FBX_NOWAIT_UPDATE:
-		fbX_activate_var(dma_addr, var, info->par);
+		ret = fbX_activate_var(dma_addr, var, info->par);
 		break;
 	case FBX_M2M_RDMA_UPDATE:
-		fbX_prepare_m2m(info);
-		fbX_m2m_activate_var(dma_addr, var, info->par);
+		ret = fbX_prepare_m2m(info);
+		if (ret < 0)
+			break;
+		ret = fbX_m2m_activate_var(
+			dma_addr, var, info->par);
 		break;
 	case FBX_ATTACH_UPDATE:
 		if (par->pdata.filp == NULL) {
-			fbX_prepare_m2m(info);
-			fbX_m2m_activate_var(
-				(par->map_dma
-				 + (info->var.xres * info->var.yoffset
-				    * info->var.bits_per_pixel / 8)),
+			ret = fbX_prepare_m2m(info);
+			if (ret < 0)
+				break;
+			ret = fbX_m2m_activate_var(
+				(
+					par->map_dma +
+					(
+						info->var.xres *
+						info->var.yoffset *
+						info->var.bits_per_pixel /
+						8)),
 				&info->var, info->par);
 		}
 		break;
 	default:
-		return 0;
+		ret = -EINVAL;
+		break;
 	}
+
+	if (ret < 0)
+		goto out_no_wait;
 
 	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	if (par->panel) {
