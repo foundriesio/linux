@@ -72,7 +72,7 @@
 #define FBDC_ALIGNED(w, mul) (((unsigned int)w + (mul - 1)) & ~(mul - 1))
 #endif
 
-#define FB_VERSION "1.0.3"
+#define FB_VERSION "1.0.4"
 #define FB_BUF_MAX_NUM (3)
 #define BYTE_TO_PAGES(range) (((range) + (PAGE_SIZE - 1)) >> PAGE_SHIFT)
 
@@ -891,11 +891,14 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 {
 	struct fbX_par *par = info->par;
 	unsigned int dma_addr;
+	int ret = 0;
 
-	if (par->pdata.fb_power_status != EM_FB_UNBLANK)
-		goto out;
+	if (par->pdata.fb_power_status != EM_FB_UNBLANK) {
+		ret = -ENODEV;
+		goto out_no_wait;
+	}
 
-#if defined(CONFIG_VIOC_PVRIC_FBDC)
+	#if defined(CONFIG_VIOC_PVRIC_FBDC)
 	if (var->reserved[3] != 0) {
 		unsigned int bufID = 0;
 		unsigned int FBCBufSize =
@@ -905,6 +908,7 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 				+ FBDC_ALIGNED(
 					  (var->xres * var->yres / 64), 256))
 			* PAGE_SIZE;
+
 		if (var->yoffset == 0)
 			bufID = 0;
 		else if (var->yoffset == var->yres)
@@ -922,10 +926,10 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		dma_addr = par->map_dma
 			+ (var->xres * var->yoffset
 			   * (var->bits_per_pixel / 8));
-#else
+	#else
 	dma_addr = par->map_dma
 		+ (var->xres * var->yoffset * (var->bits_per_pixel / 8));
-#endif
+	#endif
 	dev_dbg(info->dev,
 		"[INF][FBX] %s: fb%d addr:0x%08x - %s updateType:0x%x\n",
 		__func__, info->node, dma_addr,
@@ -956,35 +960,32 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		return 0;
 	}
 
-#if defined(CONFIG_FB_PANEL_LVDS_TCC)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	if (par->panel) {
 		VIOC_DISP_TurnOn(par->pdata.ddc_info.virt_addr);
 	}
-#endif
-
-out:
+	#endif
 
 	if (par->pdata.fb_power_status == EM_FB_POWERDOWN)
 		goto out_no_wait;
 	if (par->pdata.fb_power_status == EM_FB_BLANK
 	    && par->pdata.FbUpdateType != FBX_RDMA_UPDATE)
 		goto out_no_wait;
-
 	if (var->activate & FB_ACTIVATE_VBL) {
 		fbX_vsync_activate(info);
-		if (atomic_read(&fb_waitq[info->node].state) != 0)
-			goto out;
-		if (wait_event_interruptible_timeout(
+		if (atomic_read(&fb_waitq[info->node].state))
+			goto out_no_wait;
+		if (
+			wait_event_interruptible_timeout(
 			    fb_waitq[info->node].waitq,
 			    atomic_read(&fb_waitq[info->node].state) == 1,
-			    msecs_to_jiffies(50))
-		    == 0)
+			    msecs_to_jiffies(50)) == 0)
 			dev_err(info->dev,
 				"[INF][FBX] %s: vsync wait queue timeout \n",
 				__func__);
 	}
 out_no_wait:
-	return 0;
+	return ret;
 }
 
 /**
