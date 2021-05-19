@@ -264,6 +264,9 @@ struct hh_cache {
 #define LL_RESERVED_SPACE_EXTRA(dev,extra) \
 	((((dev)->hard_header_len+(dev)->needed_headroom+(extra))&~(HH_DATA_MOD - 1)) + HH_DATA_MOD)
 
+extern const struct header_ops eth_header_ops;
+__be16 eth_header_parse_protocol(const struct sk_buff *skb);
+
 struct header_ops {
 	int	(*create) (struct sk_buff *skb, struct net_device *dev,
 			   unsigned short type, const void *daddr,
@@ -2898,6 +2901,16 @@ static inline int dev_parse_header(const struct sk_buff *skb,
 	if (!dev->header_ops || !dev->header_ops->parse)
 		return 0;
 	return dev->header_ops->parse(skb, haddr);
+}
+
+static inline __be16 dev_parse_header_protocol(const struct sk_buff *skb)
+{
+	const struct net_device *dev = skb->dev;
+
+	if (dev->header_ops == &eth_header_ops)
+		return eth_header_parse_protocol(skb);
+
+	return 0;
 }
 
 /* ll_header must have at least hard_header_len allocated */
