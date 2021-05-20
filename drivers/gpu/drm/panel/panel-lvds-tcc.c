@@ -26,10 +26,10 @@
 
 #define LOG_TAG "DRMLVDS"
 
-#define DRIVER_DATE	"20210504"
+#define DRIVER_DATE	"20210520"
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	0
-#define DRIVER_PATCH	0
+#define DRIVER_PATCH	1
 
 //#define LVDS_DEBUG
 #ifdef LVDS_DEBUG
@@ -282,6 +282,14 @@ static int panel_lvds_get_modes(struct drm_panel *panel)
 	drm_display_mode_from_videomode(&lvds->video_mode, mode);
 	mode->type |= DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 	drm_mode_probed_add(connector, mode);
+
+	/* Physical size as value that display resolution divided by 10. */
+	connector->display_info.width_mm =
+		(mode->hdisplay > 10) ?
+		DIV_ROUND_UP(mode->hdisplay, 10) : mode->hdisplay;
+	connector->display_info.height_mm =
+		(mode->vdisplay > 10) ?
+		DIV_ROUND_UP(mode->vdisplay, 10) : mode->vdisplay;
 
 	return 1;
 }
