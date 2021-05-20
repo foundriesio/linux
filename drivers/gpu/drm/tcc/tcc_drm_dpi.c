@@ -482,6 +482,19 @@ static int tcc_dpi_get_modes(struct drm_connector *connector)
 					"[INFO][%s] Native mode is detected at index [%d] name [%s]\r\n",
 					LOG_TAG, count, mode->name);
 				mode->type |= DRM_MODE_TYPE_PREFERRED;
+
+				/*
+				 * Physical size as value that display
+				 * resolution divided by 10.
+				 */
+				connector->display_info.width_mm =
+					(mode->hdisplay > 10) ?
+					DIV_ROUND_UP(mode->hdisplay, 10) :
+					mode->hdisplay;
+				connector->display_info.height_mm =
+					(mode->vdisplay > 10) ?
+					DIV_ROUND_UP(mode->vdisplay, 10) :
+					mode->vdisplay;
 			}
 			drm_mode_probed_add(connector, mode);
 		}
