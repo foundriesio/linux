@@ -72,13 +72,13 @@
 #define FBDC_ALIGNED(w, mul) (((unsigned int)w + (mul - 1)) & ~(mul - 1))
 #endif
 
-#define FB_VERSION "1.0.5"
+#define FB_VERSION "1.0.6"
 #define FB_BUF_MAX_NUM (3)
 #define BYTE_TO_PAGES(range) (((range) + (PAGE_SIZE - 1)) >> PAGE_SHIFT)
 
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
-static unsigned int fbdc_dec_1st_cfg = 0;
-static unsigned int fbdc_wdma_need_on = 0; /* 0: no, 1: need */
+static unsigned int fbdc_dec_1st_cfg;
+static unsigned int fbdc_wdma_need_on; /* 0: no, 1: need */
 #endif
 
 enum fb_power_status {
@@ -101,11 +101,26 @@ struct fb_vioc_block {
 	unsigned int blk_num; // block number like dma number or mixer number
 };
 
+struct fb_scale {
+	/* source size */
+	unsigned int srcwidth;
+	unsigned int srcheight;
+
+	/* scaler out and dest size */
+	unsigned int outwidth;
+	unsigned int outheight;
+	unsigned int destwidth;
+	unsigned int destheight;
+};
+
 struct fb_region {
+	/* region information */
 	unsigned int x;
 	unsigned int y;
 	unsigned int width;
 	unsigned int height;
+
+	struct fb_scale scale;
 };
 
 struct fb_dp_device {
@@ -170,11 +185,11 @@ static struct fb_fix_screeninfo fbX_fix = {
 };
 
 enum { FB_DEV_0 = 0,
-       FB_DEV_1,
-       FB_DEV_2,
-       FB_DEV_3,
-       FB_DEV_4,
-       FB_DEV_MAX,
+	FB_DEV_1,
+	FB_DEV_2,
+	FB_DEV_3,
+	FB_DEV_4,
+	FB_DEV_MAX,
 };
 
 static struct fb_vioc_waitq fb_waitq[FB_DEV_MAX];
@@ -189,20 +204,24 @@ irqreturn_t fbX_display_handler(int irq, void *dev_id)
 	struct fb_info *info;
 	struct fbX_par *par;
 	unsigned int block_status;
+	#if defined(CONFIG_VIOC_PVRIC_FBDC)
+	unsigned int fbdc_status;
+	#endif
 
 	if (dev_id == NULL) {
-		pr_err("[ERROR][FBX] %s irq: %d dev_id:%p \n", __func__, irq,
-		       dev_id);
+		pr_err(
+			"[ERROR][TSVFB] %s irq: %d dev_id:%p\n", __func__, irq,
+			dev_id);
 		return IRQ_NONE;
 	}
 
 	info = dev_id;
 	par = info->par;
-#if defined(CONFIG_VIOC_PVRIC_FBDC)
-	unsigned int fbdc_status;
+
+	#if defined(CONFIG_VIOC_PVRIC_FBDC)
 	fbdc_status = VIOC_PVRIC_FBDC_GetStatus(par->pdata.fbdc_info.virt_addr);
 	if (fbdc_status & PVRICSYS_IRQ_ALL) {
-		// pr_info("[INF][VIOC_I] FBDC(%d) INT(0x%x) ------ \n",
+		// pr_info("[INFO][VIOC_I] FBDC(%d) INT(0x%x) ------\n",
 		// fbdc_dec_1st_cfg, fbdc_status);
 		if (fbdc_status & PVRICSTS_IDLE_MASK) {
 			VIOC_PVRIC_FBDC_ClearIrq(
@@ -216,10 +235,11 @@ irqreturn_t fbX_display_handler(int irq, void *dev_id)
 		}
 		if (fbdc_status & PVRICSTS_TILE_ERR_MASK) {
 			unsigned int rdma_enable;
+
 			VIOC_PVRIC_FBDC_ClearIrq(
 				par->pdata.fbdc_info.virt_addr,
 				PVRICSTS_TILE_ERR_MASK);
-			pr_info("[INF][VIOC_I] FBDC(%d) INT(0x%x) ------ \n",
+			pr_info("[INFO][VIOC_I] FBDC(%d) INT(0x%x) ------\n",
 				fbdc_dec_1st_cfg, PVRICSTS_TILE_ERR_MASK);
 			VIOC_RDMA_GetImageEnable(
 				par->pdata.rdma_info.virt_addr, &rdma_enable);
@@ -236,10 +256,11 @@ irqreturn_t fbX_display_handler(int irq, void *dev_id)
 		}
 		if (fbdc_status & PVRICSTS_ADDR_ERR_MASK) {
 			unsigned int rdma_enable;
+
 			VIOC_PVRIC_FBDC_ClearIrq(
 				par->pdata.fbdc_info.virt_addr,
 				PVRICSTS_ADDR_ERR_MASK);
-			pr_info("[INF][VIOC_I] FBDC(%d) INT(0x%x) ------ \n",
+			pr_info("[INFO][VIOC_I] FBDC(%d) INT(0x%x) ------\n",
 				fbdc_dec_1st_cfg, PVRICSTS_ADDR_ERR_MASK);
 			VIOC_RDMA_GetImageEnable(
 				par->pdata.rdma_info.virt_addr, &rdma_enable);
@@ -257,10 +278,11 @@ irqreturn_t fbX_display_handler(int irq, void *dev_id)
 
 		if (fbdc_status & PVRICSTS_EOF_ERR_MASK) {
 			unsigned int rdma_enable;
+
 			VIOC_PVRIC_FBDC_ClearIrq(
 				par->pdata.fbdc_info.virt_addr,
 				PVRICSTS_EOF_ERR_MASK);
-			pr_info("[INF][VIOC_I] FBDC(%d) INT(0x%x) ------ \n",
+			pr_info("[INFO][VIOC_I] FBDC(%d) INT(0x%x) ------\n",
 				fbdc_dec_1st_cfg, PVRICSTS_EOF_ERR_MASK);
 			VIOC_RDMA_GetImageEnable(
 				par->pdata.rdma_info.virt_addr, &rdma_enable);
@@ -277,8 +299,8 @@ irqreturn_t fbX_display_handler(int irq, void *dev_id)
 		}
 	}
 
-#endif
-#if !defined(CONFIG_VIOC_PVRIC_FBDC)
+	#endif
+	#if !defined(CONFIG_VIOC_PVRIC_FBDC)
 	if (par->pdata.FbUpdateType == FBX_OVERLAY_UPDATE) {
 		block_status = vioc_intr_get_status(
 			VIOC_INTR_RD0
@@ -296,9 +318,9 @@ irqreturn_t fbX_display_handler(int irq, void *dev_id)
 			}
 		}
 	} else if (par->pdata.FbUpdateType != FBX_NOWAIT_UPDATE)
-#else
+	#else
 	if (par->pdata.FbUpdateType != FBX_NOWAIT_UPDATE)
-#endif
+	#endif
 	{
 		block_status = vioc_intr_get_status(
 			get_vioc_index(par->pdata.ddc_info.blk_num));
@@ -410,7 +432,9 @@ static int fbX_set_par(struct fb_info *info)
 
 	info->fix.line_length = (info->var.xres * info->var.bits_per_pixel) / 8;
 	if (info->var.rotate != 0) {
-		pr_info("[INF][FBX] %s: do not support rotation \n", __func__);
+		pr_info(
+			"[INFO][TSVFB] %s: do not support rotation\n",
+			__func__);
 		return -1;
 	}
 
@@ -421,6 +445,7 @@ static void schedule_palette_update(
 	struct fb_info *info, unsigned int regno, unsigned int val)
 {
 	unsigned long flags;
+
 	local_irq_save(flags);
 	local_irq_restore(flags);
 }
@@ -435,9 +460,9 @@ chan_to_field(unsigned int chan, struct fb_bitfield *bf)
 }
 
 /**
- *  	fb_setcolreg - Optional function. Sets a color register.
- *      @regno: Which register in the CLUT we are programming
- *      @red: The red value which can be up to 16 bits wide
+ * fb_setcolreg - Optional function. Sets a color register.
+ *	@regno: Which register in the CLUT we are programming
+ *	@red: The red value which can be up to 16 bits wide
  *	@green: The green value which can be up to 16 bits wide
  *	@blue:  The blue value which can be up to 16 bits wide.
  *	@transp: If supported, the alpha value which can be up to 16 bits wide.
@@ -445,8 +470,8 @@ chan_to_field(unsigned int chan, struct fb_bitfield *bf)
  *
  */
 static int fbX_setcolreg(
-	unsigned regno, unsigned red, unsigned green, unsigned blue,
-	unsigned transp, struct fb_info *info)
+	unsigned int regno, unsigned int red, unsigned int green,
+	unsigned int blue, unsigned int transp, struct fb_info *info)
 {
 	unsigned int val;
 
@@ -480,8 +505,9 @@ static int fbX_setcolreg(
 		break;
 
 	default:
-		pr_err("[ERROR][FBX] error in %s: unknown type %d\n", __func__,
-		       info->fix.visual);
+		pr_err(
+			"[ERROR][TSVFB] error in %s: unknown type %d\n",
+			__func__, info->fix.visual);
 		return 1; /* unknown type */
 	}
 
@@ -505,6 +531,101 @@ static void fbX_vsync_activate(struct fb_info *info)
 			get_vioc_index(par->pdata.ddc_info.blk_num),
 			VIOC_DISP_INTR_DISPLAY);
 	atomic_set(&fb_waitq[info->node].state, 0);
+}
+
+static int tsvfb_check_regions(
+	struct fb_info *info, struct fb_var_screeninfo *var,
+	unsigned int hw_width, unsigned int hw_height)
+{
+	struct fb_region *region;
+	struct fb_scale *scale;
+	struct fbX_par *par;
+	unsigned int tmp;
+	int ret = -ENODEV;
+
+	if (!info || !info->par)
+		goto err_out;
+	par = info->par;
+	region = &par->pdata.region;
+	scale = &region->scale;
+
+	if (region->x + 1 >= hw_width) {
+		ret = -EINVAL;
+		dev_err(
+			info->dev,
+			"[ERROR][TSVFB] %s: position x (%d) is invalid.\r\n",
+			__func__, region->x);
+		goto err_out;
+	}
+	if (region->y + 1 >= hw_height) {
+		ret = -EINVAL;
+		dev_err(
+			info->dev,
+			"[ERROR][TSVFB] %s: position y (%d) is invalid.\r\n",
+			__func__, region->y);
+		goto err_out;
+	}
+
+	if (par->pdata.scaler_info.virt_addr) {
+		scale->srcwidth = var->xres;
+		scale->srcheight = var->yres;
+
+		scale->outwidth = region->width;
+		scale->outheight = region->height;
+
+		scale->destwidth = region->width;
+		scale->destheight = region->height;
+
+		/*
+		 * Scaler limitation:
+		 * width of input and output should be even value.
+		 */
+		if (scale->srcwidth & 1U) {
+			ret = -EINVAL;
+			dev_err(info->dev,
+				"[ERROR][TSVFB] %s: The scalar does not work if the width of source image is odd.\r\n",
+				__func__);
+			goto err_out;
+		}
+		if (scale->destwidth & 1U) {
+			ret = -EINVAL;
+			dev_err(info->dev,
+				"[ERROR][TSVFB] %s: The scalar does not work if the width of destination image is odd.\r\n",
+				__func__);
+			goto err_out;
+		}
+
+		if (region->x + region->width > hw_width) {
+			tmp = region->x + region->width;
+			tmp -= hw_width;
+			scale->outwidth = region->width - tmp;
+		}
+		if (
+			region->y +
+			region->height > hw_height) {
+			tmp = region->y + region->height;
+			tmp -= hw_height;
+			scale->outheight = region->height - tmp;
+		}
+	} else {
+		scale->srcwidth = region->width;
+		if (region->x + region->width > hw_width) {
+			tmp = region->x + region->width;
+			tmp -= hw_width;
+			scale->srcwidth = region->width - tmp;
+		}
+		scale->srcheight = region->height;
+		if (
+			region->y +
+			region->height > hw_height) {
+			tmp = region->y + region->height;
+			tmp -= hw_height;
+			scale->srcheight = region->height - tmp;
+		}
+	}
+	return 0;
+err_out:
+	return ret;
 }
 
 static int fbX_prepare_m2m(struct fb_info *info)
@@ -536,8 +657,9 @@ static int fbX_prepare_m2m(struct fb_info *info)
 				GFP_KERNEL, "/dev/scaler%d",
 				get_vioc_index(par->pdata.scaler_info.blk_num));
 		if (name == NULL) {
-			pr_err("%s out of memory at line(%d)\r\n", __func__,
-			       __LINE__);
+			pr_err(
+				"%s out of memory at line(%d)\r\n",
+				__func__, __LINE__);
 			break;
 		}
 		par->pdata.filp = filp_open(name, O_RDWR, 666);
@@ -545,8 +667,9 @@ static int fbX_prepare_m2m(struct fb_info *info)
 		name = NULL;
 
 		if (IS_ERR(par->pdata.filp)) {
-			pr_err("error in %s: can not open misc device(%s) \n",
-			       __func__, name);
+			pr_err(
+				"error in %s: can not open misc device(%s)\n",
+				__func__, name);
 			break;
 		}
 
@@ -557,8 +680,9 @@ static int fbX_prepare_m2m(struct fb_info *info)
 				GFP_KERNEL, "fb_scaler%d",
 				get_vioc_index(par->pdata.scaler_info.blk_num));
 		if (name == NULL) {
-			pr_err("%s out of memory at line(%d)\r\n", __func__,
-			       __LINE__);
+			pr_err(
+				"%s out of memory at line(%d)\r\n",
+				__func__, __LINE__);
 			break;
 		}
 		pmap_get_info((const char *)name, &pmap);
@@ -570,6 +694,7 @@ static int fbX_prepare_m2m(struct fb_info *info)
 				(info->var.xres * info->var.yres
 				 * (info->var.bits_per_pixel / 8));
 			unsigned int idx = 0;
+
 			for (idx = 0; idx < ATTACH_BUF_NUM; idx++) {
 				par->pdata.dst_addr[idx] =
 					(pmap.base + (buf_offset * idx));
@@ -578,8 +703,9 @@ static int fbX_prepare_m2m(struct fb_info *info)
 			}
 			ret = 0;
 		} else {
-			pr_err("error in %s: pmap size are not enough(%d)\n",
-			       __func__, pmap.size);
+			pr_err(
+				"error in %s: pmap size are not enough(%lld)\n",
+				__func__, pmap.size);
 			ret = -ENODEV;
 		}
 	} while (0);
@@ -589,15 +715,26 @@ static int fbX_prepare_m2m(struct fb_info *info)
 
 static int fbX_m2m_activate_var(
 	unsigned int dma_addr, struct fb_var_screeninfo *var,
-	struct fbX_par *par)
+	struct fb_info *info)
 {
 	unsigned int width, height, format, channel;
+	struct fb_region *region;
+	struct fb_scale *scale;
+	struct fbX_par *par;
 	int ret = -ENODEV;
+
+	if (!info || !info->par)
+		goto err_out;
+
+	par = info->par;
+	region = &par->pdata.region;
+	scale = &region->scale;
 
 	VIOC_DISP_GetSize(par->pdata.ddc_info.virt_addr, &width, &height);
 	if ((width == 0) || (height == 0)) {
-		pr_err("[ERROR][FBX] error in %s: vioc invalid status (%dx%d)\n",
-		       __func__, width, height);
+		pr_err(
+			"[ERROR][TSVFB] error in %s: vioc invalid status (%dx%d)\n",
+			__func__, width, height);
 		goto err_out;
 	}
 
@@ -609,11 +746,16 @@ static int fbX_m2m_activate_var(
 		format = VIOC_IMG_FMT_ARGB8888;
 		break;
 	default:
-		pr_err("[ERROR][FBX] error in %s: can not support bpp %d\n",
-		       __func__, var->bits_per_pixel);
+		pr_err(
+			"[ERROR][TSVFB] error in %s: can not support bpp %d\n",
+			__func__, var->bits_per_pixel);
 		ret = -EINVAL;
 		goto err_out;
 	}
+
+	ret = tsvfb_check_regions(info, var, width, height);
+	if (ret < 0)
+		goto err_out;
 
 	if (par->pdata.FbUpdateType == FBX_M2M_RDMA_UPDATE) {
 		struct SCALER_TYPE scaler;
@@ -624,8 +766,8 @@ static int fbX_m2m_activate_var(
 
 		scaler.src_Yaddr = dma_addr;
 		scaler.src_fmt = format;
-		scaler.src_ImgWidth = var->xres;
-		scaler.src_ImgHeight = var->yres;
+		scaler.src_ImgWidth = scale->srcwidth;
+		scaler.src_ImgHeight = scale->srcheight;
 		scaler.src_winLeft = 0;
 		scaler.src_winTop = 0;
 		scaler.src_winRight = var->xres;
@@ -637,13 +779,13 @@ static int fbX_m2m_activate_var(
 
 		scaler.dest_fmt = format;
 		scaler.dest_ImgWidth =
-			par->pdata.region.width; // destination image width
+			scale->destwidth; // destination image width
 		scaler.dest_ImgHeight =
-			par->pdata.region.height; // destination image height
+			scale->destheight; // destination image height
 		scaler.dest_winLeft = 0;
 		scaler.dest_winTop = 0;
-		scaler.dest_winRight = par->pdata.region.width;
-		scaler.dest_winBottom = par->pdata.region.height;
+		scaler.dest_winRight = scale->outwidth;
+		scaler.dest_winBottom = scale->outheight;
 
 		if (par->pdata.filp)
 			par->pdata.filp->f_op->unlocked_ioctl(
@@ -653,18 +795,12 @@ static int fbX_m2m_activate_var(
 		VIOC_RDMA_SetImageIntl(par->pdata.rdma_info.virt_addr, 0);
 		VIOC_RDMA_SetImageFormat(
 			par->pdata.rdma_info.virt_addr, format);
-		if (
-			(scaler.dest_ImgWidth > width) ||
-			(scaler.dest_ImgHeight > height))
-			VIOC_RDMA_SetImageSize(
-				par->pdata.rdma_info.virt_addr, width, height);
-		else
-			VIOC_RDMA_SetImageSize(
-				par->pdata.rdma_info.virt_addr,
-				scaler.dest_ImgWidth, scaler.dest_ImgHeight);
+		VIOC_RDMA_SetImageSize(
+			par->pdata.rdma_info.virt_addr,
+			scale->outwidth, scale->outheight);
 		VIOC_RDMA_SetImageOffset(
 			par->pdata.rdma_info.virt_addr, format,
-			scaler.dest_ImgWidth);
+			scale->destwidth);
 		VIOC_RDMA_SetImageBase(
 			par->pdata.rdma_info.virt_addr, scaler.dest_Yaddr, 0,
 			0);
@@ -685,7 +821,7 @@ static int fbX_m2m_activate_var(
 			- (4 * get_vioc_index(par->pdata.ddc_info.blk_num));
 		VIOC_WMIX_SetPosition(
 			par->pdata.wmixer_info.virt_addr, channel,
-			par->pdata.region.x, par->pdata.region.y);
+			region->x, region->y);
 		VIOC_WMIX_SetChromaKey(
 			par->pdata.wmixer_info.virt_addr, channel, 1 /*ON*/,
 			0x0, 0x0, 0x0, 0xF8, 0xFC, 0xF8);
@@ -699,8 +835,8 @@ static int fbX_m2m_activate_var(
 		memset(&attach, 0x0, sizeof(ATTACH_INFO_TYPE));
 
 		attach.fmt = format;
-		attach.img_width = par->pdata.region.width;
-		attach.img_height = par->pdata.region.height;
+		attach.img_width = region->width;
+		attach.img_height = region->height;
 		attach.offset_x = 0;
 		attach.offset_y = 0;
 		attach.mode = ATTACH_PREVIEW_MODE;
@@ -725,13 +861,15 @@ static void tca_vioc_configure_FBCDEC(
 {
 	if (bSet_Comp) {
 		if (!fbdc_dec_1st_cfg) {
-#if 0
-			if (VIOC_WDMA_IsImageEnable(pWDMA) && VIOC_WDMA_IsContinuousMode(pWDMA)) {
+			#if defined(CONFIG_TSVFB_USES_TEST_CODE)
+			if (
+				VIOC_WDMA_IsImageEnable(pWDMA) &&
+				VIOC_WDMA_IsContinuousMode(pWDMA)) {
 				attach_data.flag = 0;
 				afbc_wdma_need_on = 1;
 				VIOC_WDMA_SetImageDisable(pWDMA);
 			}
-#endif
+			#endif
 			VIOC_RDMA_SetImageDisable(pRDMA);
 			VIOC_CONFIG_FBCDECPath(vioc_dec_id, rdmaPath, 1);
 			VIOC_PVRIC_FBDC_SetBasicConfiguration(
@@ -749,13 +887,15 @@ static void tca_vioc_configure_FBCDEC(
 		}
 	} else {
 		if (fbdc_dec_1st_cfg) {
-#if 0
-			if (VIOC_WDMA_IsImageEnable(pWDMA) && VIOC_WDMA_IsContinuousMode(pWDMA)) {
+		#if defined(CONFIG_TSVFB_USES_TEST_CODE)
+			if (
+				VIOC_WDMA_IsImageEnable(pWDMA) &&
+				VIOC_WDMA_IsContinuousMode(pWDMA)) {
 				attach_data.flag = 0;
 				afbc_wdma_need_on = 1;
 				VIOC_WDMA_SetImageDisable(pWDMA);
 			}
-#endif
+		#endif
 			VIOC_RDMA_SetImageDisable(pRDMA);
 			VIOC_PVRIC_FBDC_TurnOFF(pFBDC);
 			VIOC_CONFIG_FBCDECPath(vioc_dec_id, rdmaPath, 0);
@@ -767,12 +907,23 @@ static void tca_vioc_configure_FBCDEC(
 	}
 }
 #endif
+
 static int fbX_activate_var(
 	unsigned int dma_addr, struct fb_var_screeninfo *var,
-	struct fbX_par *par)
+	struct fb_info *info)
 {
 	unsigned int width, height, format, channel;
+	struct fb_region *region;
+	struct fb_scale *scale;
+	struct fbX_par *par;
 	int ret = -ENODEV;
+
+	if (!info || !info->par)
+		goto err_out;
+
+	par = info->par;
+	region = &par->pdata.region;
+	scale = &region->scale;
 
 	if (par->pdata.FbWdmaPath == 0) {
 		VIOC_DISP_GetSize(
@@ -784,8 +935,9 @@ static int fbX_activate_var(
 	}
 
 	if ((width == 0) || (height == 0)) {
-		pr_err("[ERROR][FBX] error in %s: vioc invalid status (%dx%d)\n",
-		       __func__, width, height);
+		pr_err(
+			"[ERROR][TSVFB] error in %s: vioc invalid status (%dx%d)\n",
+			__func__, width, height);
 		goto err_out;
 	}
 
@@ -797,6 +949,10 @@ static int fbX_activate_var(
 		}
 	}
 
+	ret = tsvfb_check_regions(info, var, width, height);
+	if (ret < 0)
+		goto err_out;
+
 	switch (var->bits_per_pixel) {
 	case 16:
 		format = VIOC_IMG_FMT_RGB565;
@@ -805,8 +961,9 @@ static int fbX_activate_var(
 		format = VIOC_IMG_FMT_ARGB8888;
 		break;
 	default:
-		pr_err("[ERROR][FBX] error in %s: can not support bpp %d\n",
-		       __func__, var->bits_per_pixel);
+		pr_err(
+			"[ERROR][TSVFB] error in %s: can not support bpp %d\n",
+			__func__, var->bits_per_pixel);
 		ret = -EINVAL;
 		goto err_out;
 	}
@@ -837,12 +994,10 @@ static int fbX_activate_var(
 	#endif
 	VIOC_RDMA_SetImageIntl(par->pdata.rdma_info.virt_addr, 0);
 	VIOC_RDMA_SetImageFormat(par->pdata.rdma_info.virt_addr, format);
-	if ((var->xres > width) || (var->yres > height))
-		VIOC_RDMA_SetImageSize(
-			par->pdata.rdma_info.virt_addr, width, height);
-	else
-		VIOC_RDMA_SetImageSize(
-			par->pdata.rdma_info.virt_addr, var->xres, var->yres);
+
+	VIOC_RDMA_SetImageSize(
+			par->pdata.rdma_info.virt_addr,
+			scale->srcwidth, scale->srcheight);
 	VIOC_RDMA_SetImageOffset(
 		par->pdata.rdma_info.virt_addr, format, var->xres);
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
@@ -869,7 +1024,7 @@ static int fbX_activate_var(
 			- (4 * get_vioc_index(par->pdata.ddc_info.blk_num));
 		VIOC_WMIX_SetPosition(
 			par->pdata.wmixer_info.virt_addr, channel,
-			par->pdata.region.x, par->pdata.region.y);
+			region->x, region->y);
 		VIOC_WMIX_SetChromaKey(
 			par->pdata.wmixer_info.virt_addr, channel, 1, 0x0, 0x0,
 			0x0, 0xF8, 0xFC, 0xF8);
@@ -880,10 +1035,10 @@ static int fbX_activate_var(
 		VIOC_SC_SetBypass(par->pdata.scaler_info.virt_addr, 0);
 		VIOC_SC_SetDstSize(
 			par->pdata.scaler_info.virt_addr,
-			par->pdata.region.width, par->pdata.region.height);
+			scale->destwidth, scale->destheight);
 		VIOC_SC_SetOutSize(
 			par->pdata.scaler_info.virt_addr,
-			par->pdata.region.width, par->pdata.region.height);
+			scale->outwidth, scale->outheight);
 		VIOC_SC_SetOutPosition(par->pdata.scaler_info.virt_addr, 0, 0);
 		VIOC_SC_SetUpdate(par->pdata.scaler_info.virt_addr);
 	}
@@ -933,9 +1088,10 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 			+ FBDC_ALIGNED((var->xres * var->yres / 64), 256);
 		// dma_addr = par->map_dma + (FBDC_ALIGNED((var->xres *
 		// var->yres/64), 256)*bufnum);
-		pr_err("%s yoffset:%d yres:%d dma_addr:0x%x, FBCBufSize:%d bufnum:%d\n",
-		       __func__, var->yoffset, var->yres, dma_addr, FBCBufSize,
-		       bufID);
+		pr_err(
+			"%s yoffset:%d yres:%d dma_addr:0x%x, FBCBufSize:%d bufnum:%d\n",
+			__func__, var->yoffset, var->yres, dma_addr, FBCBufSize,
+			bufID);
 	} else
 		dma_addr = par->map_dma
 			+ (var->xres * var->yoffset
@@ -945,7 +1101,7 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		+ (var->xres * var->yoffset * (var->bits_per_pixel / 8));
 	#endif
 	dev_dbg(info->dev,
-		"[INF][FBX] %s: fb%d addr:0x%08x - %s updateType:0x%x\n",
+		"[INFO][TSVFB] %s: fb%d addr:0x%08x - %s updateType:0x%x\n",
 		__func__, info->node, dma_addr,
 		var->activate == FB_ACTIVATE_VBL ? "VBL" : "NOPE",
 		par->pdata.FbUpdateType);
@@ -954,14 +1110,13 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	case FBX_RDMA_UPDATE:
 	case FBX_OVERLAY_UPDATE:
 	case FBX_NOWAIT_UPDATE:
-		ret = fbX_activate_var(dma_addr, var, info->par);
+		ret = fbX_activate_var(dma_addr, var, info);
 		break;
 	case FBX_M2M_RDMA_UPDATE:
 		ret = fbX_prepare_m2m(info);
 		if (ret < 0)
 			break;
-		ret = fbX_m2m_activate_var(
-			dma_addr, var, info->par);
+		ret = fbX_m2m_activate_var(dma_addr, var, info);
 		break;
 	case FBX_ATTACH_UPDATE:
 		if (par->pdata.filp == NULL) {
@@ -976,7 +1131,7 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 						info->var.yoffset *
 						info->var.bits_per_pixel /
 						8)),
-				&info->var, info->par);
+				&info->var, info);
 		}
 		break;
 	default:
@@ -988,9 +1143,8 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		goto out_no_wait;
 
 	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
-	if (par->panel) {
+	if (par->panel)
 		VIOC_DISP_TurnOn(par->pdata.ddc_info.virt_addr);
-	}
 	#endif
 
 	if (par->pdata.fb_power_status == EM_FB_POWERDOWN)
@@ -1008,7 +1162,7 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 			    atomic_read(&fb_waitq[info->node].state) == 1,
 			    msecs_to_jiffies(50)) == 0)
 			dev_err(info->dev,
-				"[INF][FBX] %s: vsync wait queue timeout \n",
+				"[INFO][TSVFB] %s: vsync wait queue timeout\n",
 				__func__);
 	}
 out_no_wait:
@@ -1050,15 +1204,13 @@ static int fbX_blank(int blank, struct fb_info *info)
 		/* screen: unblanked, hsync: on,  vsync: on */
 		dev_info(info->dev, "FB_BLANK_UNBLANK\r\n");
 #if defined(CONFIG_FB_PANEL_LVDS_TCC)
-		if (par->panel) {
+		if (par->panel)
 			fb_panel_prepare(par->panel);
-		}
 #endif
 		ret = fbx_turn_on_resource(info);
 #if defined(CONFIG_FB_PANEL_LVDS_TCC)
-		if (par->panel) {
+		if (par->panel)
 			fb_panel_enable(par->panel);
-		}
 #endif
 		break;
 	case FB_BLANK_HSYNC_SUSPEND:
@@ -1070,7 +1222,7 @@ static int fbX_blank(int blank, struct fb_info *info)
 		break;
 	default:
 		dev_err(info->dev,
-			"[ERROR][FBX] error in %s: Invaild blank_mode %d\n",
+			"[ERROR][TSVFB] error in %s: Invaild blank_mode %d\n",
 			__func__, blank);
 		ret = -EINVAL;
 	}
@@ -1092,11 +1244,6 @@ static int tsvfb_ioctl(
 		{
 			unsigned int no_pixel_alphablend;
 
-			dev_dbg(
-				info->dev,
-				"[INF][FBX] %s: FBIOSET_NO_PIXELALPHABLEND is 0x%lx\n",
-				__func__, info->node,
-				FBIOSET_NO_PIXELALPHABLEND);
 			if (
 				copy_from_user(
 					&no_pixel_alphablend,
@@ -1104,7 +1251,7 @@ static int tsvfb_ioctl(
 					sizeof(unsigned int))) {
 				dev_err(
 				info->dev,
-				"[ERROR][FBX] %s: FBIOSET_NO_PIXELALPHABLEND - Failed get user data\n",
+				"[ERROR][TSVFB] %s: FBIOSET_NO_PIXELALPHABLEND - Failed get user data\n",
 				__func__);
 				ret =  -EFAULT;
 				break;
@@ -1116,7 +1263,7 @@ static int tsvfb_ioctl(
 	default:
 		dev_err(
 			info->dev,
-			"[ERROR][FBX] %s: ioctl: Unknown [%u/0x%X]\n",
+			"[ERROR][TSVFB] %s: ioctl: Unknown [%u/0x%X]\n",
 			__func__, cmd, cmd);
 		ret = -ENODEV;
 	}
@@ -1134,16 +1281,14 @@ static struct sg_table *fb_ion_map_dma_buf(
 	struct sg_table *table;
 	struct fb_info *info = (struct fb_info *)attachment->dmabuf->priv;
 
-	if (info == NULL) {
-		pr_err("[ERROR][FBX] %s: info is null\n", __func__);
+	if (!info) {
+		pr_err("[ERROR][TSVFB] %s: info is null\n", __func__);
 		return ERR_PTR(-ENOMEM);
 	}
 
 	table = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
-	if (table == NULL) {
-		pr_err("[ERROR][FBX] %s: kzalloc failed\n", __func__);
+	if (!table)
 		return ERR_PTR(-ENOMEM);
-	}
 
 	err = sg_alloc_table(table, 1, GFP_KERNEL);
 	if (err) {
@@ -1172,12 +1317,12 @@ static void fb_ion_unmap_dma_buf(
 
 static int fb_ion_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 {
-	return -ENOSYS;
+	return -ENOMEM;
 }
 
 static void fb_ion_dma_buf_release(struct dma_buf *dmabuf)
 {
-	return;
+	/* Nothing TODO */
 }
 
 static void *fb_ion_dma_buf_kmap(struct dma_buf *dmabuf, unsigned long offset)
@@ -1198,18 +1343,13 @@ struct dma_buf *new_tccfb_dmabuf_export(struct fb_info *info)
 {
 	struct dma_buf *dmabuf;
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
 	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
+
 	exp_info.ops = &new_fb_dma_buf_ops;
 	exp_info.size = info->fix.smem_len;
 	exp_info.flags = O_RDWR;
 	exp_info.priv = info;
 	dmabuf = dma_buf_export(&exp_info);
-#else
-	dmabuf = dma_buf_export(
-		info, &new_fb_dma_buf_ops, info->fix.smem_len, O_RDWR, NULL);
-#endif
-
 	return dmabuf;
 }
 #else
@@ -1261,6 +1401,7 @@ static void dmabuf_release(struct dma_buf *buf)
 static void *dmabuf_map(struct dma_buf *buf, unsigned long page)
 {
 	struct fb_info *priv = buf->priv;
+
 	return priv->screen_base + page;
 }
 
@@ -1340,18 +1481,13 @@ struct dma_buf *new_tccfb_dmabuf_export(struct fb_info *info)
 {
 	struct dma_buf *dmabuf;
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
 	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
+
 	exp_info.ops = &dmabuf_ops;
 	exp_info.size = info->fix.smem_len;
 	exp_info.flags = O_RDWR;
 	exp_info.priv = info;
 	dmabuf = dma_buf_export(&exp_info);
-#else
-	dmabuf = dma_buf_export(
-		info, &dmabuf_ops, info->fix.smem_len, O_RDWR, NULL);
-#endif
-
 	return dmabuf;
 }
 #endif
@@ -1377,9 +1513,10 @@ static struct fb_ops fb_ops = {
 };
 
 #ifdef CONFIG_OF
-static struct of_device_id fbX_of_match[] = {
-	{.compatible = "telechips,fb"},
-	{}
+static const struct of_device_id fbX_of_match[] = {
+	{
+		.compatible = "telechips,fb"},
+	{ }
 };
 MODULE_DEVICE_TABLE(of, fbX_of_match);
 #endif
@@ -1418,22 +1555,24 @@ static int __init fb_map_video_memory(struct fb_info *info)
 		par->map_cpu = dma_alloc_writecombine(
 			info->dev, par->map_size, &par->map_dma, GFP_KERNEL);
 		if (par->map_cpu == NULL) {
-			pr_err("[ERROR][FBX] %s: error dma_alloc map_cpu\n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] %s: error dma_alloc map_cpu\n",
+				__func__);
 			goto exit;
 		}
-		pr_info("[INF][FBX] %s by dma_alloc_writecombine()\n",
+		pr_info("[INFO][TSVFB] %s by dma_alloc_writecombine()\n",
 			__func__);
 	} else {
 		par->map_dma = res.start;
 		par->map_size = resource_size(&res);
 		par->map_cpu = ioremap_nocache(par->map_dma, par->map_size);
 		if (par->map_cpu == NULL) {
-			pr_err("[ERROR][FBX] %s: error ioremap map_cpu\n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] %s: error ioremap map_cpu\n",
+				__func__);
 			goto exit;
 		}
-		pr_info("[INF][FBX] %s by ioremap_nocache()\n", __func__);
+		pr_info("[INFO][TSVFB] %s by ioremap_nocache()\n", __func__);
 	}
 
 	if (par->map_cpu) {
@@ -1442,7 +1581,7 @@ static int __init fb_map_video_memory(struct fb_info *info)
 	 */
 #if !defined(CONFIG_TCC803X_CA7S) && !defined(CONFIG_TCC805X_CA53Q)
 		memset_io(par->map_cpu, 0x00, par->map_size);
-		pr_info("[INF][FBX] %s: clear fb mem\n", __func__);
+		pr_info("[INFO][TSVFB] %s: clear fb mem\n", __func__);
 #endif
 		par->screen_dma = par->map_dma;
 		info->screen_base = par->map_cpu;
@@ -1457,6 +1596,7 @@ exit:
 static inline void fb_unmap_video_memory(struct fb_info *info)
 {
 	struct fbX_par *par = info->par;
+
 	if (par->map_cpu)
 		dma_free_writecombine(
 			info->dev, par->map_size, par->map_cpu, par->map_dma);
@@ -1506,8 +1646,9 @@ static int fb_register_isr(struct fb_info *info)
 			    par->pdata.rdma_info.irq_num, fbX_display_handler,
 			    IRQF_SHARED, info->fix.id, info)
 		    < 0) {
-			pr_err("[ERROR][FBX] error in %s: can not register isr \n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] error in %s: can not register isr\n",
+				__func__);
 			return -EINVAL;
 		}
 		vioc_intr_enable(
@@ -1527,8 +1668,9 @@ static int fb_register_isr(struct fb_info *info)
 			    par->pdata.ddc_info.irq_num, fbX_display_handler,
 			    IRQF_SHARED, info->fix.id, info)
 		    < 0) {
-			pr_err("[ERROR][FBX] error in %s: can not register isr \n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] error in %s: can not register isr\n",
+				__func__);
 			return -EINVAL;
 		}
 		vioc_intr_enable(
@@ -1550,7 +1692,7 @@ static int fb_dt_parse_data(struct fb_info *info)
 #ifdef CONFIG_ARCH_TCC803X
 #ifdef CONFIG_FB_NEW_DISP1
 	if (!strcmp("/fb@0", of_node_full_name(info->dev->of_node))) {
-		printk("%s fb0 disp1 support\n", __func__);
+		pr_info("%s fb0 disp1 support\n", __func__);
 		property_idx = 2;
 	}
 #endif
@@ -1559,8 +1701,9 @@ static int fb_dt_parse_data(struct fb_info *info)
 	if (info->dev->of_node != NULL) {
 		if (of_property_read_u32(
 			    info->dev->of_node, "xres", &info->var.xres)) {
-			pr_err("[ERROR][FBX] error in %s: can nod find xres \n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] error in %s: can nod find xres\n",
+				__func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1568,8 +1711,9 @@ static int fb_dt_parse_data(struct fb_info *info)
 
 		if (of_property_read_u32(
 			    info->dev->of_node, "yres", &info->var.yres)) {
-			pr_err("[ERROR][FBX] error in %s: can nod find yres \n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] error in %s: can nod find yres\n",
+				__func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1577,15 +1721,17 @@ static int fb_dt_parse_data(struct fb_info *info)
 		if (of_property_read_u32(
 			    info->dev->of_node, "bpp",
 			    &info->var.bits_per_pixel)) {
-			pr_err("[ERROR][FBX] error in %s: can nod find bpp \n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] error in %s: can nod find bpp\n",
+				__func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
 
 		if (of_property_read_u32(info->dev->of_node, "mode", &index)) {
-			pr_err("[ERROR][FBX] error in %s: can nod find mode \n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] error in %s: can nod find mode\n",
+				__func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1601,8 +1747,9 @@ static int fb_dt_parse_data(struct fb_info *info)
 			info->var.yres_virtual = info->var.yres * 3;
 			break;
 		default:
-			pr_err("[ERROR][FBX] error in %s: Invaild fb mode(%d)\n",
-			       __func__, index);
+			pr_err(
+				"[ERROR][TSVFB] error in %s: Invaild fb mode(%d)\n",
+				__func__, index);
 		}
 		info->fix.line_length =
 			info->var.xres * info->var.bits_per_pixel / 8;
@@ -1610,8 +1757,9 @@ static int fb_dt_parse_data(struct fb_info *info)
 		if (of_property_read_u32(
 			    info->dev->of_node, "update-type",
 			    &par->pdata.FbUpdateType)) {
-			pr_err("[ERROR][FBX] error in %s: can nod find update-type \n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] error in %s: can nod find update-type\n",
+				__func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1619,8 +1767,9 @@ static int fb_dt_parse_data(struct fb_info *info)
 		if (of_property_read_u32_index(
 			    info->dev->of_node, "device-priority", 0,
 			    &par->pdata.FbDeviceType)) {
-			pr_err("[ERROR][FBX] error in %s: can nod find update-type \n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] error in %s: can nod find update-type\n",
+				__func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1650,15 +1799,17 @@ static int fb_dt_parse_data(struct fb_info *info)
 			np = of_parse_phandle(
 				info->dev->of_node, "telechips,wdma", 0);
 			if (np == NULL) {
-				pr_err("[ERROR][FBX] error in %s: can not find telechips,wdma \n",
-				       __func__);
+				pr_err(
+					"[ERROR][TSVFB] error in %s: can not find telechips,wdma\n",
+					__func__);
 				ret = -ENODEV;
 				goto err_dt_parse;
 			}
 
 			if (par->pdata.FbUpdateType != FBX_NOWAIT_UPDATE) {
-				pr_err("[ERROR][FBX] error in %s: can not support update type [%d]\n",
-				       __func__, par->pdata.FbUpdateType);
+				pr_err(
+					"[ERROR][TSVFB] error in %s: can not support update type [%d]\n",
+					__func__, par->pdata.FbUpdateType);
 				ret = -ENODEV;
 				goto err_dt_parse;
 			}
@@ -1696,8 +1847,9 @@ static int fb_dt_parse_data(struct fb_info *info)
 				break;
 #endif
 			default:
-				pr_err("[ERROR][FBX] error in %s: can not get ddc clock \n",
-				       __func__);
+				pr_err(
+					"[ERROR][TSVFB] error in %s: can not get ddc clock\n",
+					__func__);
 				par->pdata.ddc_clock = NULL;
 				break;
 			}
@@ -1707,8 +1859,9 @@ static int fb_dt_parse_data(struct fb_info *info)
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
 		np = of_parse_phandle(info->dev->of_node, "telechips,fbdc", 0);
 		if (!np) {
-			pr_err("[ERROR][FBX] error in %s: can not find telechips,fbdc \n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] error in %s: can not find telechips,fbdc\n",
+				__func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1723,8 +1876,9 @@ static int fb_dt_parse_data(struct fb_info *info)
 
 		np = of_parse_phandle(info->dev->of_node, "telechips,rdma", 0);
 		if (!np) {
-			pr_err("[ERROR][FBX] error in %s: can not find telechips,rdma \n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] error in %s: can not find telechips,rdma\n",
+				__func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1743,8 +1897,9 @@ static int fb_dt_parse_data(struct fb_info *info)
 		np = of_parse_phandle(
 			info->dev->of_node, "telechips,wmixer", 0);
 		if (!np) {
-			pr_err("[ERROR][FBX] error in %s: can not find telechips,wmixer \n",
-			       __func__);
+			pr_err(
+				"[ERROR][TSVFB] error in %s: can not find telechips,wmixer\n",
+				__func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
 		}
@@ -1756,13 +1911,8 @@ static int fb_dt_parse_data(struct fb_info *info)
 		VIOC_WMIX_GetOverlayPriority(
 			par->pdata.wmixer_info.virt_addr,
 			&par->pdata.FbLayerOrder);
-#if defined(CONFIG_FB_NEW_HALFDISPLAY_SUPPORT)
 		np = of_parse_phandle(
 			info->dev->of_node, "telechips,scaler", 0);
-#else
-		np = NULL;
-#endif
-
 		if (np) {
 			of_property_read_u32_index(
 				info->dev->of_node, "telechips,scaler",
@@ -1770,43 +1920,49 @@ static int fb_dt_parse_data(struct fb_info *info)
 			par->pdata.scaler_info.virt_addr = VIOC_SC_GetAddress(
 				get_vioc_index(par->pdata.scaler_info.blk_num));
 		} else
-			pr_warn("[WAN][FBX] warning in %s: can not find telechips,scaler \n",
+			pr_info(
+				"[INFO][TSVFB] %s: therer is no telechips,scaler\n",
 				__func__);
 
 		np = of_find_node_by_name(info->dev->of_node, "fbx_region");
 		if (!np)
-			pr_warn("[WAN][FBX] warning in %s: can not find fbx_region \n",
+			pr_info(
+				"[INFO][TSVFB] %s: there is no fbx_region\n",
 				__func__);
 
 		if (np) {
 			if (of_property_read_u32(
 				    np, "x", &par->pdata.region.x)) {
-				pr_err("[ERROR][FBX] error in %s: can nod find 'x' of fbx_region  \n",
-				       __func__);
+				pr_err(
+					"[ERROR][TSVFB] error in %s: can nod find 'x' of fbx_region\n",
+					__func__);
 				ret = -ENODEV;
 				goto err_dt_parse;
 			}
 
 			if (of_property_read_u32(
 				    np, "y", &par->pdata.region.y)) {
-				pr_err("[ERROR][FBX] error in %s: can nod find 'y' of fbx_region  \n",
-				       __func__);
+				pr_err(
+					"[ERROR][TSVFB] error in %s: can nod find 'y' of fbx_region\n",
+					__func__);
 				ret = -ENODEV;
 				goto err_dt_parse;
 			}
 
 			if (of_property_read_u32(
 				    np, "width", &par->pdata.region.width)) {
-				pr_err("[ERROR][FBX] error in %s: can nod find 'width' of fbx_region  \n",
-				       __func__);
+				pr_err(
+					"[ERROR][TSVFB] error in %s: can nod find 'width' of fbx_region\n",
+					__func__);
 				ret = -ENODEV;
 				goto err_dt_parse;
 			}
 
 			if (of_property_read_u32(
 				    np, "height", &par->pdata.region.height)) {
-				pr_err("[ERROR][FBX] error in %s: can nod find 'height' of fbx_region  \n",
-				       __func__);
+				pr_err(
+					"[ERROR][TSVFB] error in %s: can nod find 'height' of fbx_region\n",
+					__func__);
 				ret = -ENODEV;
 				goto err_dt_parse;
 			}
@@ -1816,12 +1972,18 @@ static int fb_dt_parse_data(struct fb_info *info)
 			par->pdata.region.height = info->var.yres;
 		}
 
-		if (!IS_ERR_OR_NULL(par->pdata.vioc_clock)) {
+		pr_info(
+			"[INFO][TSVFB] %s: region x:%d y:%d width:%d height:%d\r\n",
+			__func__,
+			par->pdata.region.x,
+			par->pdata.region.y,
+			par->pdata.region.width,
+			par->pdata.region.height);
+
+		if (!IS_ERR_OR_NULL(par->pdata.vioc_clock))
 			clk_prepare_enable(par->pdata.vioc_clock);
-		}
-		if (!IS_ERR_OR_NULL(par->pdata.ddc_clock)) {
+		if (!IS_ERR_OR_NULL(par->pdata.ddc_clock))
 			clk_prepare_enable(par->pdata.ddc_clock);
-		}
 
 		par->pdata.fb_power_status = EM_FB_UNBLANK;
 	}
@@ -1849,16 +2011,18 @@ static ssize_t fbX_ovp_store(
 {
 	struct fb_info *info = platform_get_drvdata(to_platform_device(dev));
 	struct fbX_par *par = info->par;
-	unsigned int value = 0;
+	unsigned long value = 0;
 
-	value = simple_strtoul(buf, NULL, 10);
-	if ((int)value < 0 || value > 29) {
-		pr_err("[ERROR][FBX] %s: invalid ovp%d\n", __func__, value);
+	if (kstrtoul(buf, 10, &value))
+		return 0;
+
+	if (value < 0 || value > 29) {
+		pr_err("[ERROR][TSVFB] %s: invalid ovp%ld\n", __func__, value);
 		return count;
 	}
 
 	if (par->pdata.FbLayerOrder != value) {
-		pr_info("[INF][FBX] %s: ovp%d -> %d \n", __func__,
+		pr_info("[INFO][TSVFB] %s: ovp%d -> %ld\n", __func__,
 			par->pdata.FbLayerOrder, value);
 
 		par->pdata.FbLayerOrder = value;
@@ -1870,7 +2034,8 @@ static ssize_t fbX_ovp_store(
 
 	return count;
 }
-static DEVICE_ATTR(ovp, S_IRUGO | S_IWUSR, fbX_ovp_show, fbX_ovp_store);
+static DEVICE_ATTR(
+	ovp, 0644/* S_IRUGO | S_IWUSR*/, fbX_ovp_show, fbX_ovp_store);
 
 static struct attribute *fbX_dev_attrs[] = {
 	&dev_attr_ovp.attr,
@@ -1884,9 +2049,9 @@ static struct attribute_group fbX_dev_attgrp = {
 
 static int __init fbX_probe(struct platform_device *pdev)
 {
-#if defined(CONFIG_FB_PANEL_LVDS_TCC)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	struct device_node *panel_node;
-#endif
+	#endif
 	unsigned int no_kernel_logo = 0;
 	struct fb_info *info;
 	struct fbX_par *par;
@@ -1894,8 +2059,9 @@ static int __init fbX_probe(struct platform_device *pdev)
 
 	info = framebuffer_alloc(sizeof(struct fbX_par), &pdev->dev);
 	if (!info) {
-		pr_err("[ERROR][FBX] error in %s: can not allocate fb\n",
-		       __func__);
+		pr_err(
+			"[ERROR][TSVFB] error in %s: can not allocate fb\n",
+			__func__);
 		retval = -ENOMEM;
 		goto err_fb_probe;
 	}
@@ -1904,40 +2070,40 @@ static int __init fbX_probe(struct platform_device *pdev)
 	info->dev = &pdev->dev;
 	platform_set_drvdata(pdev, info);
 
-#ifdef CONFIG_OF
+	#ifdef CONFIG_OF
 	fb_dt_parse_data(info);
-#endif
+	#endif
 	if (of_property_read_u32(
 		    pdev->dev.of_node, "no-kernel-logo", &no_kernel_logo)) {
-		pr_warn("[WARN][FBX] %s There is no no-kernel-logo property\n",
+		pr_warn("[WARN][TSVFB] %s There is no no-kernel-logo property\n",
 			__func__);
 	}
 
-#if defined(CONFIG_FB_PANEL_LVDS_TCC)
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	panel_node = of_graph_get_remote_node(pdev->dev.of_node, 0, -1);
 	if (panel_node)
 		par->panel = of_fb_find_panel(panel_node);
 	if (panel_node && par->panel) {
 		dev_info(
 			info->dev,
-			"[INFO][FBX] %s fb%d has framebuffer panel\r\n",
+			"[INFO][TSVFB] %s fb%d has framebuffer panel\r\n",
 			__func__, of_alias_get_id(info->dev->of_node, "fb"));
 		if (of_property_read_u32(
 			    panel_node, "lcdc-mux-select", &par->pdata.lcdc_mux)
 		    == 0) {
 			dev_info(
 				info->dev,
-				"[INFO][FBX] %s lcdc-mux-select=%d from remote node\r\n",
+				"[INFO][TSVFB] %s lcdc-mux-select=%d from remote node\r\n",
 				__func__, par->pdata.lcdc_mux);
 		} else {
 			dev_err(info->dev,
-				"[ERROR][FBX] %s can not found lcdc-mux-select from remote node\r\n",
+				"[ERROR][TSVFB] %s can not found lcdc-mux-select from remote node\r\n",
 				__func__);
 			retval = -ENODEV;
 			goto err_fb_free;
 		}
 	}
-#endif
+	#endif
 
 	snprintf(
 		fbX_fix.id, sizeof(fbX_fix.id), "telechips,fb%d",
@@ -1957,16 +2123,18 @@ static int __init fbX_probe(struct platform_device *pdev)
 	info->pseudo_palette =
 		devm_kzalloc(&pdev->dev, sizeof(unsigned int) * 16, GFP_KERNEL);
 	if (!info->pseudo_palette) {
-		pr_err("[ERROR][FBX] error in %s: can not allocate pseudo_palette\n",
-		       __func__);
+		pr_err(
+			"[ERROR][TSVFB] error in %s: can not allocate pseudo_palette\n",
+			__func__);
 		retval = -ENOMEM;
 		goto err_fb_free;
 	}
 
 	retval = fb_map_video_memory(info);
 	if (retval < 0) {
-		pr_err("[ERROR][FBX] error in %s: can not remap framebuffer \n",
-		       __func__);
+		pr_err(
+			"[ERROR][TSVFB] error in %s: can not remap framebuffer\n",
+			__func__);
 		retval = -ENOMEM;
 		goto err_fb_free;
 	}
@@ -1975,18 +2143,19 @@ static int __init fbX_probe(struct platform_device *pdev)
 	fbX_set_par(info);
 
 	if (register_framebuffer(info) < 0) {
-		pr_err("[ERROR][FBX] error in %s: can not register framebuffer device\n",
-		       __func__);
+		pr_err(
+			"[ERROR][TSVFB] error in %s: can not register framebuffer device\n",
+			__func__);
 		retval = -EINVAL;
 		goto err_palette_free;
 	}
 
 	if (no_kernel_logo) {
-		pr_info("[INF][FBX] SKIP fb_show_logo\n");
+		pr_info("[INFO][TSVFB] SKIP fb_show_logo\n");
 	} else {
 		if (fb_prepare_logo(info, FB_ROTATE_UR)) {
 			/* Start display and show logo on boot */
-			pr_info("[INF][FBX] fb_show_logo\n");
+			pr_info("[INFO][TSVFB] fb_show_logo\n");
 			// So, we use fb_alloc_cmap_gfp
 			// function(fb_default_camp(default_16_colors))
 			fb_alloc_cmap_gfp(&info->cmap, 16, 0, GFP_KERNEL);
@@ -2005,13 +2174,13 @@ static int __init fbX_probe(struct platform_device *pdev)
 	if (sysfs_create_group(&pdev->dev.kobj, &fbX_dev_attgrp) != 0)
 		fb_warn(info, "failed to register attributes\n");
 
-#if !defined(CONFIG_TCC803X_CA7S) && !defined(CONFIG_TCC805X_CA53Q)
+	#if !defined(CONFIG_TCC803X_CA7S) && !defined(CONFIG_TCC805X_CA53Q)
 	fbX_activate_var(
 		(par->map_dma
 		 + (info->var.xres * info->var.yoffset
 		    * info->var.bits_per_pixel / 8)),
-		&info->var, info->par);
-#endif
+		&info->var, info);
+	#endif
 	fbX_set_par(info);
 
 	if (par->pdata.FbWdmaPath == 1
@@ -2039,29 +2208,37 @@ static int fbX_remove(struct platform_device *pdev)
 {
 	struct fb_info *info = platform_get_drvdata(pdev);
 	struct fbX_par *par = info->par;
+
 	if (info) {
 		switch (par->pdata.FbUpdateType) {
 		case FBX_M2M_RDMA_UPDATE:
+			if (par->pdata.filp)
+				filp_close(par->pdata.filp, 0);
+			fb_unregister_isr(info);
+			break;
 		case FBX_ATTACH_UPDATE:
 			if (par->pdata.filp)
 				filp_close(par->pdata.filp, 0);
+			fb_unregister_isr(info);
+			break;
 		case FBX_RDMA_UPDATE:
+			fb_unregister_isr(info);
+			break;
 		case FBX_OVERLAY_UPDATE:
 			fb_unregister_isr(info);
 			break;
 		case FBX_NOWAIT_UPDATE:
+			break;
 		default:
 			break;
 		}
 		atomic_set(&fb_waitq[info->node].state, 0);
 
 		fb_unmap_video_memory(info);
-		if (!IS_ERR_OR_NULL(par->pdata.vioc_clock)) {
+		if (!IS_ERR_OR_NULL(par->pdata.vioc_clock))
 			clk_put(par->pdata.vioc_clock);
-		}
-		if (!IS_ERR_OR_NULL(par->pdata.ddc_clock)) {
+		if (!IS_ERR_OR_NULL(par->pdata.ddc_clock))
 			clk_put(par->pdata.ddc_clock);
-		}
 
 		unregister_framebuffer(info);
 		framebuffer_release(info);
@@ -2083,11 +2260,15 @@ fbx_set_display_controller(struct fb_info *info, struct videomode *vm)
 
 	u32 channel;
 
-	if (!info)
+	if (!info) {
+		ret = -EINVAL;
 		goto err_null_pointer;
+	}
 	par = info->par;
-	if (!par)
+	if (!par) {
+		ret = -EINVAL;
 		goto err_null_pointer;
+	}
 
 	/* Display MUX */
 	VIOC_CONFIG_LCDPath_Select(
@@ -2095,7 +2276,7 @@ fbx_set_display_controller(struct fb_info *info, struct videomode *vm)
 		par->pdata.lcdc_mux);
 	dev_info(
 		info->dev,
-		"[INFO][FBX] %s display device(%d) to connect mux(%d)\r\n",
+		"[INFO][TSVFB] %s display device(%d) to connect mux(%d)\r\n",
 		__func__, get_vioc_index(par->pdata.ddc_info.blk_num),
 		par->pdata.lcdc_mux);
 
@@ -2117,7 +2298,7 @@ fbx_set_display_controller(struct fb_info *info, struct videomode *vm)
 	vactive = interlace ? (vm->vactive <<= 1) : vm->vactive;
 
 	dev_info(
-		info->dev, "[INFO][FBX] %s %dx%d panel\r\n", __func__,
+		info->dev, "[INFO][TSVFB] %s %dx%d panel\r\n", __func__,
 		vm->hactive, vactive);
 
 	stTimingParam.lpc = vm->hactive;
@@ -2134,13 +2315,6 @@ fbx_set_display_controller(struct fb_info *info, struct videomode *vm)
 		stTimingParam.fswc2 = stTimingParam.fswc + 1;
 		stTimingParam.fewc2 =
 			(stTimingParam.fewc > 0) ? (stTimingParam.fewc - 1) : 0;
-#if 0
-		if (
-			mode->vtotal == 1250 && vm->hactive == 1920 &&
-			vm.vactive == 540)
-			/* VIC 1920x1080@50i 1250 vtotal */
-			stTimingParam.fewc -= 2;
-#endif
 	} else {
 		stTimingParam.fpw =
 			(vm->vsync_len > 0) ? (vm->vsync_len - 1) : 0;
@@ -2196,10 +2370,7 @@ fbx_set_display_controller(struct fb_info *info, struct videomode *vm)
 	VIOC_DISP_SetSize(par->pdata.ddc_info.virt_addr, vm->hactive, vactive);
 	VIOC_DISP_SetBGColor(par->pdata.ddc_info.virt_addr, 0, 0, 0, 0);
 
-finish:
-
 	return 0;
-
 err_null_pointer:
 	return -1;
 }
@@ -2218,16 +2389,16 @@ static int fbx_turn_on_resource(struct fb_info *info)
 #if defined(CONFIG_FB_PANEL_LVDS_TCC)
 	if (par->pdata.fb_power_status == EM_FB_POWERDOWN)
 		if (par->panel) {
-			if (fb_panel_get_mode(par->panel, &vm) < 0) {
+			if (fb_panel_get_mode(par->panel, &vm) < 0)
 				goto next_step;
-			}
+
 			fbx_set_display_controller(info, &vm);
 			if (!IS_ERR_OR_NULL(par->pdata.ddc_clock)) {
 				clk_set_rate(
 					par->pdata.ddc_clock, vm.pixelclock);
 				dev_info(
 					info->dev,
-					"%s set ddc clock to %dHz\r\n",
+					"%s set ddc clock to %ldHz\r\n",
 					__func__,
 					clk_get_rate(par->pdata.ddc_clock));
 			}
@@ -2335,7 +2506,8 @@ static int fbx_turn_off_resource_internal(
 		VIOC_CONFIG_SWReset(scnum, VIOC_CONFIG_RESET);
 		VIOC_CONFIG_SWReset(scnum, VIOC_CONFIG_CLEAR);
 		dev_info(
-			info->dev, "[INFO][FBX] reset rdma_%d with Scaler-%d\n",
+			info->dev,
+			"[INFO][TSVFB] reset rdma_%d with Scaler-%d\n",
 			get_vioc_index(par->pdata.rdma_info.blk_num),
 			get_vioc_index(scnum));
 	}
@@ -2343,14 +2515,14 @@ static int fbx_turn_off_resource_internal(
 	VIOC_CONFIG_SWReset(par->pdata.rdma_info.blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset(par->pdata.rdma_info.blk_num, VIOC_CONFIG_CLEAR);
 	dev_info(
-		info->dev, "[INFO][FBX] reset rdma_%d\n",
+		info->dev, "[INFO][TSVFB] reset rdma_%d\n",
 		get_vioc_index(par->pdata.rdma_info.blk_num));
 
 #if defined(CONFIG_FB_PANEL_LVDS_TCC)
-	if (par->panel && fb_power_status == EM_FB_POWERDOWN)
-		if (!IS_ERR_OR_NULL(par->pdata.ddc_clock)) {
+	if (par->panel && fb_power_status == EM_FB_POWERDOWN) {
+		if (!IS_ERR_OR_NULL(par->pdata.ddc_clock))
 			clk_disable_unprepare(par->pdata.ddc_clock);
-		}
+	}
 #endif
 	par->pdata.fb_power_status = fb_power_status;
 out:
@@ -2409,19 +2581,17 @@ static int fbX_resume(struct platform_device *dev)
 	struct fbX_par *par = info->par;
 
 	console_lock();
-#if defined(CONFIG_FB_PANEL_LVDS_TCC)
-	if (par->panel) {
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
+	if (par->panel)
 		fb_panel_prepare(par->panel);
-	}
-#endif
+	#endif
 	fbx_turn_on_resource(info);
 	fb_set_suspend(info, 0);
 
-#if defined(CONFIG_FB_PANEL_LVDS_TCC)
-	if (par->panel) {
+	#if defined(CONFIG_FB_PANEL_LVDS_TCC)
+	if (par->panel)
 		fb_panel_enable(par->panel);
-	}
-#endif
+	#endif
 
 	par->pm_state = PM_EVENT_ON;
 	console_unlock();
@@ -2437,37 +2607,39 @@ static int fbX_resume(struct platform_device *dev)
 static void fbX_prepare_vin_path_rdma(struct fbX_par *par)
 {
 	int rdma_enable;
+	#if defined(CONFIG_FB_CHECK_RDMA_CADDRESS)
 	unsigned int prev = 0;
 	unsigned int cur = 0;
 	int idx;
 	int status = 0;
+	#endif
 
 	VIOC_RDMA_GetImageEnable(par->pdata.rdma_info.virt_addr, &rdma_enable);
+	#if defined(CONFIG_FB_CHECK_RDMA_CADDRESS)
 	cur = VIOC_RDMA_Get_CAddress(par->pdata.rdma_info.virt_addr);
-#if 0
-	for( idx = 0; idx < 10; idx++){
+	for (idx = 0; idx < 10; idx++) {
 		prev = cur;
 		msleep(20);
 		cur = VIOC_RDMA_Get_CAddress(par->pdata.rdma_info.virt_addr);
-		if (prev != cur) {
+		if (prev != cur)
 			status++;
-		}
 	}
-#endif
+	#endif
 
 	if (rdma_enable)
 		VIOC_RDMA_SetImageDisable(par->pdata.rdma_info.virt_addr);
 
-#if 0
-	pr_info("[INFO][FBX] rdma_enable = [%s], status = [%s]\n",
-						rdma_enable ? "enable" : "disable",
-						status? "working" : "not working");
-#endif
+	#if defined(CONFIG_TSVFB_DUMP_VIN_RDMA)
+	pr_info(
+		"[INFO][TSVFB] rdma_enable = [%s], status = [%s]\n",
+		rdma_enable ? "enable" : "disable",
+		status ? "working" : "not working");
+	#endif
 	VIOC_CONFIG_SWReset_RAW(
 		par->pdata.rdma_info.blk_num, VIOC_CONFIG_RESET);
 	VIOC_CONFIG_SWReset_RAW(
 		par->pdata.rdma_info.blk_num, VIOC_CONFIG_CLEAR);
-	pr_info("[INFO][FBX] rdma[%d] SWReset.\n",
+	pr_info("[INFO][TSVFB] rdma[%d] SWReset.\n",
 		par->pdata.rdma_info.blk_num - VIOC_RDMA);
 }
 
@@ -2476,20 +2648,17 @@ static struct platform_driver fbX_driver = {
 	.remove = fbX_remove,
 	.suspend = fbX_suspend, /* optional but recommended */
 	.resume = fbX_resume,   /* optional but recommended */
-	.driver =
-		{
-			.name = "fb",
+	.driver = {
+		.name = "fb",
 #ifdef CONFIG_OF
-			.of_match_table = of_match_ptr(fbX_of_match),
+		.of_match_table = of_match_ptr(fbX_of_match),
 #endif
-		},
+	},
 };
 
 static int __init fbX_init(void)
 {
-	int ret;
-	ret = platform_driver_register(&fbX_driver);
-	return ret;
+	return platform_driver_register(&fbX_driver);
 }
 
 static void __exit fbX_exit(void)
