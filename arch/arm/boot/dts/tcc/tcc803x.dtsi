@@ -952,7 +952,7 @@
          };
 
 	/* A53 <-> M4, A7, R5 */
-	sec_ipc: mbox@19000000 {
+	sec_ipc: mbox19000000 {
 		compatible = "telechips,multichannel-mailbox";
 		reg = <0x19000000 0x100>;
 		interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_LOW>;
@@ -2204,12 +2204,12 @@
 		status = "okay";
 	};
 
-	tcc_hsm@0 {
+	tcc_hsm0 {
 		compatible = "telechips,tcc-hsm";
 		status = "okay";
 	};
 
-	tcc_thsm@0 {
+	tcc_thsm0 {
 		compatible = "telechips,tcc-thsm";
 		status = "okay";
 	};

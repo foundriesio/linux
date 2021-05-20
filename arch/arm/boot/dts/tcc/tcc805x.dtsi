@@ -2407,11 +2407,11 @@
 		status = "okay";
 	};
 
-	tcc_hsm@0 {
+	tcc_hsm0 {
 		compatible = "telechips,tcc-hsm";
 		status = "okay";
 	};
-	tcc_thsm@0 {
+	tcc_thsm0 {
 		compatible = "telechips,tcc-thsm";
 		status = "okay";
 	};
