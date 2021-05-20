@@ -872,7 +872,7 @@ static int _hmgr_process(vputype type, int cmd, long pHandle, void *args)
 			break;
 		}
 	}
-#if DEFINED_CONFIG_VENC_CNT_1to16
+#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
 	else {
 		err(
 		"Enc :: Encoder for HEVC do not support. command(0x%x)",
@@ -1025,7 +1025,7 @@ static int _hmgr_cmd_open(char *str)
 #ifdef FORCED_ERROR
 		forced_error_count = FORCED_ERR_CNT;
 #endif
-#if DEFINED_CONFIG_VENC_CNT_1to16
+#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
 		hmgr_data.only_decmode = 0;
 #else
 		hmgr_data.only_decmode = 1;

@@ -30,8 +30,9 @@
 #define cmdk(msg...)     V_DBG(VPU_DBG_INFO, "TCC_4K_D2_VMGR [Cmd]: " msg)
 #define err(msg...)      V_DBG(VPU_DBG_INFO, "TCC_4K_D2_VMGR [Err]: " msg)
 
-#define VPU_4K_D2_REGISTER_DUMP
-#define VPU_4K_D2_DUMP_STATUS
+// Enable the featue for future use
+//#define VPU_4K_D2_REGISTER_DUMP
+//#define VPU_4K_D2_DUMP_STATUS
 
 #define DEBUG_VPU_4K_D2_K //To debug vpu drv in usersapce side (e.g. omx)
 
@@ -755,7 +756,6 @@ int vmgr_4k_d2_process_ex(struct VpuList *cmd_list, vputype type, int Op,
 static int _vmgr_4k_d2_internal_handler(unsigned int reason)
 {
 	int ret, ret_code = RETCODE_INTR_DETECTION_NOT_ENABLED;
-	unsigned long flags;
 	unsigned int vint_reason = 0;
 	int oper_inst = 0, cnt = 0;
 	int timeout = 500;
@@ -1335,7 +1335,7 @@ rinse_repeat:
 			return 0x999;
 		}
 	}
-#if DEFINED_CONFIG_VENC_CNT_1to16
+#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
 	else {
 		err(
 		"Enc[%d]: Encoder for VPU-4K-D2 VP9/HEVC do not support. command(0x%x)",
@@ -1439,6 +1439,7 @@ static int _vmgr_4k_d2_proc_exit_by_external(struct VpuList *list, int *result,
 	return 0;
 }
 
+#if 0 // Keep the code for future use
 static void _vmgr_4k_d2_wait_process(int wait_ms)
 {
 	int max_count = wait_ms / 20;
@@ -1454,6 +1455,7 @@ static void _vmgr_4k_d2_wait_process(int wait_ms)
 		}
 	}
 }
+#endif
 
 static int _vmgr_4k_d2_external_all_close(int wait_ms)
 {
@@ -1489,7 +1491,7 @@ static int _vmgr_4k_d2_cmd_open(char *str)
 #ifdef FORCED_ERROR
 		forced_error_count = FORCED_ERR_CNT;
 #endif
-#if DEFINED_CONFIG_VENC_CNT_1to16
+#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
 		vmgr_4k_d2_data.only_decmode = 0;
 #else
 		vmgr_4k_d2_data.only_decmode = 1;
@@ -1803,7 +1805,6 @@ static long _vmgr_4k_d2_compat_ioctl(struct file *file, unsigned int cmd,
 
 static irqreturn_t _vmgr_4k_d2_isr_handler(int irq, void *dev_id)
 {
-	unsigned long flags;
 	unsigned int reason;
 
 	cntInt_4kd2++;
