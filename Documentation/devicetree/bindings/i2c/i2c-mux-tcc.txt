@@ -1,0 +1,131 @@
+Telechips I2C Bus Mux
+
+This binding describes an I2C bus multiplexer to route the I2C signals,
+and represents port configuration (selection) using the device tree bindings.
+
+                                                .-----.  .-----.
+                                                | dev |  | dev |
+.------------------------------.                '-----'  '-----'
+| SoC                          |                  |        |
+|                             /|------------------+--------'
+| .-----. .-------.  .-------+ | child bus A, on MUX value set to 0
+| | I2C |-| CHMux | -| GPMux | |
+| '-----' '-------'  '--+----+ |
+|                       |     \| child bus B, on MUX value set to 1
+|                    .--+----. |---------------+--------+--------.
+|                    |Pinmux | |               |        |        |
+|                    '-------' |            .-----.  .-----.  .-----.
+'------------------------------'            | dev |  | dev |  | dev |
+                                            '-----'  '-----'  '-----'
+
+Required properties:
+- compatible: Name for matching with the drivers depending on chipset
+              "telechips,tcc-i2c-mux" (available all chipset except tcc802x)
+
+- reg: The I2C port configuration address. should be 0x163c0000
+
+- i2c-parent: The phandle of the I2C bus that this multiplexer's master-side
+port is connected to.
+
+* Standard I2C mux properties. See i2c-mux.txt in this directory.
+
+* I2C child bus nodes. See i2c-mux.txt in this directory.
+For each i2c child node, an I2C child bus will be created. They will
+be numbered based on their order in the device tree.
+
+* I2C transactions to devices behind all I2C multiplexers connected to
+the same parent adapter that this multiplexer is connected to are blocked
+for the full duration of the complete multiplexed I2C transaction.
+
+* The properties of mux-locked or parent-locked multiplexers are discussed
+in more detail in Documentation/i2c/i2c-topology.
+
+Note: I2C mux is parsing port number from pinctrl name of i2c child node.
+so, please be following the pattern as like i2cxx_bus, xx is port number.
+you can find port number in Chip Specification or pinctrl device tree.
+
+Example:
+
+i2cmux@163c0000 {
+	compatible = "telechips,i2c-mux";
+	reg = <0x0 0x163c0000 0x0 0x10>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	i2c-parent = <&i2c1>;
+
+	i2c@0 {
+		reg = <0>;
+		pinctrl-0 = <&i2c6_bus>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		mxt_touch@4b {
+			compatible = "atmel,maxtouch";
+			status = "okay";
+			reg = <0x4b>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&tsc0_default>;
+
+			interrupt-parent = <&gpsd1>;
+			interrupts = <9 IRQ_TYPE_EDGE_FALLING>;
+		};
+	};
+
+	i2c@1 {
+		reg = <1>;
+		pinctrl-0 = <&i2c33_bus>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		mxt_touch@4d {
+			compatible = "atmel,maxtouch";
+			status = "disabled";
+			reg = <0x4d>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&tsc1_sv01>;
+
+			interrupt-parent = <&gpa>;
+			interrupts = <21 IRQ_TYPE_EDGE_FALLING>;
+		};
+
+		mxt_touch@4f {
+			compatible = "atmel,maxtouch";
+			status = "disabled";
+			reg = <0x4f>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&tsc2_sv01>;
+
+			interrupt-parent = <&gpc>;
+			interrupts = <13 IRQ_TYPE_EDGE_FALLING>;
+		};
+	};
+
+	i2c@2 {
+		reg = <2>;
+		pinctrl-0 = <&i2c37_bus>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		dp_serializer:max96851@60 {
+			compatible  = "maxim,serdes";
+			reg = <0x60>;
+		};
+		dp_deserializer0:max96878@48 {
+			compatible  = "maxim,serdes";
+			reg = <0x48>;
+		 };
+		dp_deserializer1:max96878@4a {
+			compatible  = "maxim,serdes";
+			reg = <0x4a>;
+		};
+		dp_deserializer2:max96878@4c {
+			compatible  = "maxim,serdes";
+			reg = <0x4c>;
+		};
+		dp_deserializer3:max96878@68 {
+			compatible  = "maxim,serdes";
+			reg = <0x68>;
+		};
+	};
+};

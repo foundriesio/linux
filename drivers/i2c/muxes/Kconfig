@@ -98,6 +98,17 @@ config I2C_MUX_REG
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-mux-reg.
 
+config I2C_MUX_TCC
+	tristate "Telechips I2C multiplexer"
+	depends on ARCH_TCC
+	help
+	  If you say yes to this option, support will be included for Telechips
+	  I2C multiplexer. This driver provides access to
+	  I2C busses connected through a MUX.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called i2c-mux-tcc.
+
 config I2C_DEMUX_PINCTRL
 	tristate "pinctrl-based I2C demultiplexer"
 	depends on PINCTRL && OF
