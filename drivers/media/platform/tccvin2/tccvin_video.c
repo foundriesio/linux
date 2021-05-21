@@ -41,7 +41,6 @@
 
 #include <media/v4l2-common.h>
 #include <media/videobuf2-dma-contig.h>
-#include <soc/tcc/pmap.h>
 
 #include "tccvin_video.h"
 
@@ -361,10 +360,12 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 {
 	struct device_node		*main_node	= NULL;
 	struct device_node		*vioc_node	= NULL;
+	struct device_node		*pmap_node	= NULL;
 	struct vioc_path		*vioc_path	= NULL;
 	void __iomem			*address	= NULL;
 	unsigned int			vin_id		= 0;
 	unsigned int			vioc_id		= 0;
+	int				ret		= 0;
 
 	WARN_ON(IS_ERR_OR_NULL(vdev));
 
@@ -522,6 +523,69 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 		loge("VIN[%d] - \"wdma\" node is not found.\n", vin_id);
 		return -ENODEV;
 	}
+
+#if defined(CONFIG_OVERLAY_PGL)
+	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN30)) {
+		/* pmap_pgl */
+		pmap_node = of_parse_phandle(main_node, "memory-region", 0);
+		if (pmap_node != NULL) {
+			ret = of_address_to_resource(pmap_node, 0, &vdev->cif.pmap_pgl);
+			if (ret == 0) {
+				logi("VIN[%d] - %20s: 0x%08llx ~ 0x%08llx (0x%08llx)\n",
+					vin_id, "pmap_pgl",
+					vdev->cif.pmap_pgl.start,
+					vdev->cif.pmap_pgl.start +
+					resource_size(&vdev->cif.pmap_pgl),
+					resource_size(&vdev->cif.pmap_pgl));
+			}
+		} else {
+			loge("VIN[%d] - \"pmap_pgl\" node is not found.\n", vin_id);
+			return -ENODEV;
+		}
+		of_node_put(pmap_node);
+	}
+#endif/* defined(CONFIG_OVERLAY_PGL) */
+
+	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN30)) {
+		/* pmap_viqe */
+		pmap_node = of_parse_phandle(main_node, "memory-region", 1);
+		if (pmap_node != NULL) {
+			ret = of_address_to_resource(pmap_node, 0, &vdev->cif.pmap_viqe);
+			if (ret == 0) {
+				logi("VIN[%d] - %20s: 0x%08llx ~ 0x%08llx (0x%08llx)\n",
+					vin_id, "pmap_viqe",
+					vdev->cif.pmap_viqe.start,
+					vdev->cif.pmap_viqe.start +
+					resource_size(&vdev->cif.pmap_viqe),
+					resource_size(&vdev->cif.pmap_viqe));
+			}
+		}
+		of_node_put(pmap_node);
+	}
+
+	/* pmap_prev */
+	pmap_node = of_parse_phandle(main_node, "memory-region", 2);
+	if (pmap_node != NULL) {
+		ret = of_address_to_resource(pmap_node, 0, &vdev->cif.pmap_prev);
+		if (ret == 0) {
+			logi("VIN[%d] - %20s: 0x%08llx ~ 0x%08llx (0x%08llx)\n",
+				vin_id, "pmap_prev",
+				vdev->cif.pmap_prev.start,
+				vdev->cif.pmap_prev.start +
+				resource_size(&vdev->cif.pmap_prev),
+				resource_size(&vdev->cif.pmap_prev));
+
+			/*
+			 * Redirect dma memory allocations to special memory window.
+			 */
+			dma_declare_coherent_memory(vdev->dev->vdev.dev,
+				vdev->cif.pmap_prev.start,
+				vdev->cif.pmap_prev.start,
+				resource_size(&vdev->cif.pmap_prev),
+				0);
+		}
+	}
+	of_node_put(pmap_node);
 
 	return 0;
 }
@@ -684,7 +748,7 @@ int tccvin_set_pgl(struct tccvin_streaming *vdev)
 	width		= vdev->cur_frame->width;
 	height		= vdev->cur_frame->height;
 	format		= PGL_FORMAT;
-	buf_addr	= vdev->cif.pmap_pgl.base;
+	buf_addr	= vdev->cif.pmap_pgl.start;
 
 	logd("RDMA: 0x%px, size[%d x %d], format[%d]\n",
 		rdma, width, height, format);
@@ -879,7 +943,7 @@ static int32_t tccvin_set_deinterlacer(struct tccvin_streaming *vdev)
 		u32	format		= VIOC_VIQE_FMT_YUV422;
 		u32	bypass_deintl	= VIOC_VIQE_DEINTL_MODE_3D;
 		u32	offset		= width * height * 2 * 2;
-		u32	deintl_base0	= vdev->cif.pmap_viqe.base;
+		u32	deintl_base0	= vdev->cif.pmap_viqe.start;
 		u32	deintl_base1	= deintl_base0 + offset;
 		u32	deintl_base2	= deintl_base1 + offset;
 		u32	deintl_base3	= deintl_base2 + offset;
@@ -1145,7 +1209,7 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 		}
 		mutex_unlock(&cif->lock);
 	} else {
-		addr[0] = vdev->cif.pmap_preview.base;
+		addr[0] = vdev->cif.pmap_prev.start;
 		addr[1] = 0;
 		addr[2] = 0;
 
@@ -1349,55 +1413,6 @@ wdma_update:
 	}
 
 	return IRQ_HANDLED;
-}
-
-static int32_t tccvin_allocate_essential_buffers(struct tccvin_streaming *vdev)
-{
-	struct pmap			*pmap		= NULL;
-	int32_t				ret		= 0;
-
-	WARN_ON(IS_ERR_OR_NULL(vdev));
-
-	pmap = &vdev->cif.pmap_preview;
-	if (vdev->vdev.num > 0) {
-		/* device index is not 0 */
-		sprintf(pmap->name, "rearcamera%d", vdev->vdev.num);
-	} else {
-		/* device index is 0 */
-		sprintf(pmap->name, "rearcamera");
-	}
-	ret = pmap_get_info(pmap->name, pmap);
-	if (ret == 1) {
-		logi("name: %20s, base: 0x%08llx, size: 0x%08llx\n",
-			pmap->name, pmap->base, pmap->size);
-	} else {
-		logw("get \"rearcamera\" pmap information.\n");
-	}
-
-	pmap = &vdev->cif.pmap_viqe;
-	strcpy(pmap->name, "rearcamera_viqe");
-	ret = pmap_get_info(pmap->name, pmap);
-	if (ret == 1) {
-		logi("name: %20s, base: 0x%08llx, size: 0x%08llx\n",
-			pmap->name, pmap->base, pmap->size);
-	} else {
-		logw("get \"rearcamera_viqe\" pmap information.\n");
-	}
-
-#if defined(CONFIG_OVERLAY_PGL)
-	pmap = &vdev->cif.pmap_pgl;
-	strcpy(pmap->name, "parking_gui");
-	ret = pmap_get_info(pmap->name, pmap);
-	if (ret == 1) {
-		logi("name: %20s, base: 0x%08llx, size: 0x%08llx\n",
-			pmap->name, pmap->base, pmap->size);
-	} else {
-		loge("get \"parking_gui\" pmap information.\n");
-		return -1;
-	}
-#endif/* defined(CONFIG_OVERLAY_PGL) */
-
-	return 0;
 }
 
 void tccvin_get_default_rect(struct tccvin_streaming *stream,
@@ -1816,9 +1831,6 @@ int tccvin_video_init(struct tccvin_streaming *stream)
 	/* init work thread */
 	INIT_WORK(&stream->cif.wdma_work, tccvin_work_thread);
 
-	/* allocate essential buffers */
-	tccvin_allocate_essential_buffers(stream);
-
 	atomic_set(&stream->active, 0);
 
 	return ret;
@@ -2030,7 +2042,6 @@ int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
 			stream->vs_info.data_format = FMT_YUV422_8BIT;
 			break;
 		}
-
 	}
 
 	ret = v4l2_subdev_call(subdev, video, g_mbus_config,

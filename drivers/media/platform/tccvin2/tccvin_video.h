@@ -30,8 +30,8 @@
 #include <video/tcc/vioc_intr.h>
 #include <video/tcc/tcc_cam_ioctrl.h>
 
-/* optional pmap for viqe */
-#include <soc/tcc/pmap.h>
+/* reserved memory */
+#include <linux/ioport.h>
 
 #include <linux/kthread.h>
 #include <linux/sched.h>
@@ -109,9 +109,9 @@ struct tccvin_cif {
 	unsigned int			use_pgl;
 
 	/* optional pmap */
-	struct pmap			pmap_pgl;
-	struct pmap			pmap_viqe;
-	struct pmap			pmap_preview;
+	struct resource			pmap_pgl;
+	struct resource			pmap_viqe;
+	struct resource			pmap_prev;
 
 	/* framebuffer */
 	struct buf_addr			preview_buf_addr[VB2_MAX_FRAME];
