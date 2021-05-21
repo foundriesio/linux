@@ -1567,10 +1567,15 @@ static int32_t tcc_spi_init(struct tcc_spi *tccspi)
 }
 
 #ifdef CONFIG_OF
-static int32_t tcc_spi_get_gpsb_ch(struct tcc_spi_pl_data *pd)
+static int32_t tcc_spi_get_gpsb_ch(struct device_node *np)
 {
-	const char *gpsb_name = pd->name;
+	const char *gpsb_name = np->name;
 	int32_t gpsb_ch, ret;
+
+	gpsb_ch = of_alias_get_id(np, "gpsb");
+	if ((gpsb_ch >= 0) && (gpsb_ch < TCC_GPSB_MAX_CH)) {
+		return gpsb_ch;
+	}
 
 	ret = sscanf(gpsb_name, "gpsb%d", &gpsb_ch);
 	if (ret != 1) {
@@ -1609,7 +1614,7 @@ static struct tcc_spi_pl_data *tcc_spi_parse_dt(struct device *dev)
 
 	/* Get the driver name */
 	pd->name = np->name;
-	pd->gpsb_channel = tcc_spi_get_gpsb_ch(pd);
+	pd->gpsb_channel = tcc_spi_get_gpsb_ch(np);
 	if (pd->gpsb_channel < 0) {
 		dev_err(dev, "[ERROR][SPI] wrong spi driver name (%s)\n",
 				np->name);
