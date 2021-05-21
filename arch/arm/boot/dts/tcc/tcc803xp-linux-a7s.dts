@@ -124,7 +124,7 @@
 		pmap_fb_video: fb_video {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "fb_video";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			alloc-ranges = <RESERVED_HEAP_BASE RESERVED_HEAP_SIZE>;
 			size = <PMAP_SIZE_FB_VIDEO>;
 			no-map;
 		};
@@ -132,7 +132,7 @@
 		pmap_fb1_video: fb1_video {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "fb1_video";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			alloc-ranges = <RESERVED_HEAP_BASE RESERVED_HEAP_SIZE>;
 			size = <PMAP_SIZE_FB1_VIDEO>;
 			no-map;
 		};
@@ -144,7 +144,7 @@
 		pmap_ump_reserved: ump_reserved {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "ump_reserved";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			alloc-ranges = <RESERVED_HEAP_BASE RESERVED_HEAP_SIZE>;
 			// Max-Video-Resolution(Aligned_256KB(w*h*3/2))*12+1MB
 			size = <PMAP_SIZE_UMP_RESERVED>;
 		};
@@ -152,7 +152,7 @@
 		pmap_ion_carveout_cam: ion_carveout_cam {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "ion_carveout_cam";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
+			alloc-ranges = <RESERVED_HEAP_BASE RESERVED_HEAP_SIZE>;
 			size = <PMAP_SIZE_ION_CARVEOUT_CAM>; // 12MB
 		};
 
@@ -160,76 +160,67 @@
 		 * Camera Memory
 		 *-----------------------------------------------------------
 		 */
-		pmap_parking_gui: parking_gui {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "parking_gui";
-			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_CAMERA_PGL>;
+		pmap_parking_gui: pmap_parking_gui {
+			compatible = "shared-dma-pool";
+			reg = <CAMERA_PGL_BASE PMAP_SIZE_CAMERA_PGL>;
+			alignment = <0x1000>;
 			no-map;
 		};
 
-		pmap_rearcamera_viqe: rearcamera_viqe {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera_viqe";
-			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_CAMERA_VIQE>;
+		pmap_rearcamera_viqe: pmap_rearcamera_viqe {
+			compatible = "shared-dma-pool";
+			reg = <CAMERA_VIQE_BASE PMAP_SIZE_CAMERA_VIQE>;
+			alignment = <0x1000>;
 			no-map;
 		};
 
-		pmap_rearcamera: rearcamera {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera";
-			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_CAMERA_PREVIEW0>;
-			// no-map;
+		pmap_rearcamera: pmap_rearcamera {
+			compatible = "shared-dma-pool";
+			reg = <CAMERA_PREVIEW_BASE PMAP_SIZE_CAMERA_PREVIEW0>;
+			alignment = <0x1000>;
+			no-map;
 		};
 
-		pmap_rearcamera1: rearcamera1 {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera1";
-			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_CAMERA_PREVIEW1>;
-			// no-map;
+		pmap_rearcamera1: pmap_rearcamera1 {
+			compatible = "shared-dma-pool";
+			reg = <CAMERA_PREVIEW1_BASE PMAP_SIZE_CAMERA_PREVIEW1>;
+			alignment = <0x1000>;
+			no-map;
 		};
 
-		pmap_rearcamera2: rearcamera2 {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera2";
-			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_CAMERA_PREVIEW2>;
-			// no-map;
+		pmap_rearcamera2: pmap_rearcamera2 {
+			compatible = "shared-dma-pool";
+			reg = <CAMERA_PREVIEW2_BASE PMAP_SIZE_CAMERA_PREVIEW2>;
+			alignment = <0x1000>;
+			no-map;
 		};
 
-		pmap_rearcamera3: rearcamera3 {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera3";
-			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_CAMERA_PREVIEW3>;
-			// no-map;
+		pmap_rearcamera3: pmap_rearcamera3 {
+			compatible = "shared-dma-pool";
+			reg = <CAMERA_PREVIEW3_BASE PMAP_SIZE_CAMERA_PREVIEW3>;
+			alignment = <0x1000>;
+//			no-map;
 		};
 
-		pmap_rearcamera4: rearcamera4 {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera4";
-			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_CAMERA_PREVIEW4>;
-			// no-map;
+		pmap_rearcamera4: pmap_rearcamera4 {
+			compatible = "shared-dma-pool";
+			reg = <CAMERA_PREVIEW4_BASE PMAP_SIZE_CAMERA_PREVIEW4>;
+			alignment = <0x1000>;
+//			no-map;
 		};
 
-		pmap_rearcamera5: rearcamera5 {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera5";
-			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_CAMERA_PREVIEW5>;
-			// no-map;
+		pmap_rearcamera5: pmap_rearcamera5 {
+			compatible = "shared-dma-pool";
+			reg = <CAMERA_PREVIEW5_BASE PMAP_SIZE_CAMERA_PREVIEW5>;
+			alignment = <0x1000>;
+//			no-map;
 		};
 
-		pmap_rearcamera6: rearcamera6 {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "rearcamera6";
-			alloc-ranges = <CAMERA_MEM_BASE CAMERA_MEM_SIZE>;
-			size = <PMAP_SIZE_CAMERA_PREVIEW6>;
-			// no-map;
+		pmap_rearcamera6: pmap_rearcamera6 {
+			compatible = "shared-dma-pool";
+			reg = <CAMERA_PREVIEW6_BASE PMAP_SIZE_CAMERA_PREVIEW6>;
+			alignment = <0x1000>;
+//			no-map;
 		};
 	};
 
@@ -1480,7 +1471,7 @@
 		wmixer		= <&vioc_wmix VIOC_WMIX5>;
 		wdma		= <&vioc_wdma VIOC_WDMA05>;
 		fifo		= <&vioc_fifo VIOC_FIFO0>;
-
+		memory-region	= <&pmap_parking_gui &pmap_rearcamera_viqe &pmap_rearcamera>;
 		port {
 			videoinput0_in: endpoint {
 				remote-endpoint	= <&adv7182_out>;
@@ -1507,6 +1498,7 @@
 		wmixer		= <&vioc_wmix VIOC_WMIX6>;
 		wdma		= <&vioc_wdma VIOC_WDMA07>;
 		fifo		= <&vioc_fifo VIOC_FIFO0>;
+		memory-region	= <0 0 &pmap_rearcamera1>;
 	};
 
 	videoinput2: videoinput2 {
@@ -1523,6 +1515,7 @@
 		wmixer		= <&vioc_wmix VIOC_WMIX3>;
 		wdma		= <&vioc_wdma VIOC_WDMA03>;
 		fifo		= <&vioc_fifo VIOC_FIFO0>;
+		memory-region	= <0 0 &pmap_rearcamera2>;
 	};
 
 	videoinput3: videoinput3 {
@@ -1539,7 +1532,7 @@
 		wmixer		= <&vioc_wmix VIOC_WMIX4>;
 		wdma		= <&vioc_wdma VIOC_WDMA04>;
 		fifo		= <&vioc_fifo VIOC_FIFO0>;
-
+		memory-region	= <0 0 &pmap_rearcamera3>;
 		port {
 			videoinput3_in: endpoint {
 				remote-endpoint	= <&mipi_csi2_0_out0>;
@@ -1560,7 +1553,7 @@
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN40>;
 		wdma		= <&vioc_wdma		VIOC_WDMA09>;
-
+		memory-region	= <0 0 &pmap_rearcamera4>;
 		port {
 			videoinput4_in: endpoint {
 				remote-endpoint	= <&mipi_csi2_0_out1>;
@@ -1581,7 +1574,7 @@
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN50>;
 		wdma		= <&vioc_wdma		VIOC_WDMA10>;
-
+		memory-region	= <0 0 &pmap_rearcamera5>;
 		port {
 			videoinput5_in: endpoint {
 				remote-endpoint	= <&mipi_csi2_0_out2>;
@@ -1602,7 +1595,7 @@
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN60>;
 		wdma		= <&vioc_wdma		VIOC_WDMA11>;
-
+		memory-region	= <0 0 &pmap_rearcamera6>;
 		port {
 			videoinput6_in: endpoint {
 				remote-endpoint	= <&mipi_csi2_0_out3>;
