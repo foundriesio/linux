@@ -42,6 +42,8 @@ static const struct of_device_id lcd_driver_dt_match[] = {
 	}, {
 		.compatible = "telechips,tcc-drm-lcd-v1.0",
 		.data = (const void *)&lcd_v1_x_data,
+	}, {
+		/* sentinel */
 	},
 }
 MODULE_DEVICE_TABLE(of, lcd_driver_dt_match);

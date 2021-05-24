@@ -45,6 +45,9 @@ static const struct of_device_id third_driver_dt_match[] = {
 		.data = (const void *)&third_v1_x_data,
 	},
 	#endif
+	{
+		/* sentinel */
+	},
 }
 MODULE_DEVICE_TABLE(of, third_driver_dt_match);
 

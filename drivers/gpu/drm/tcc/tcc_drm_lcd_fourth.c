@@ -42,8 +42,9 @@ static const struct of_device_id fourth_driver_dt_match[] = {
 	}, {
 		.compatible = "telechips,tcc-drm-fourth-v1.0",
 		.data = (const void *)&fourth_v1_x_data,
+	}, {
+		/* sentinel */
 	},
-	{},
 };
 MODULE_DEVICE_TABLE(of, fourth_driver_dt_match);
 

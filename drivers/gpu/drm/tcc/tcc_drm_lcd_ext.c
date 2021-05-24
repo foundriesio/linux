@@ -45,6 +45,9 @@ static const struct of_device_id ext_driver_dt_match[] = {
 		.data = (const void *)&ext_v1_x_data,
 	},
 	#endif
+	{
+		/* sentinel */
+	},
 }
 MODULE_DEVICE_TABLE(of, ext_driver_dt_match);
 

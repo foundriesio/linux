@@ -39,10 +39,10 @@
 #define DRIVER_NAME	"tcc-drm"
 #endif
 #define DRIVER_DESC	"Telechips SoC DRM"
-#define DRIVER_DATE	"20210520"
+#define DRIVER_DATE	"20210524"
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	4
-#define DRIVER_PATCH	9
+#define DRIVER_PATCH	10
 
 static struct device *tcc_drm_get_dma_device(void);
 

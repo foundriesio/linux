@@ -88,6 +88,8 @@ static const struct of_device_id screen_share_driver_dt_match[] = {
 	{
 		.compatible = "telechips,tcc-drm-screen-share",
 		.data = (const void *)&screen_share_data,
+	}, {
+		/* sentinel */
 	},
 }
 MODULE_DEVICE_TABLE(of, screen_share_driver_dt_match);
