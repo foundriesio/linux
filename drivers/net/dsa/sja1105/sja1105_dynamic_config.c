@@ -167,9 +167,10 @@ enum sja1105_hostcmd {
 	SJA1105_HOSTCMD_INVALIDATE = 4,
 };
 
+/* Command and entry overlap */
 static void
-sja1105_vl_lookup_cmd_packing(void *buf, struct sja1105_dyn_cmd *cmd,
-			      enum packing_op op)
+sja1105et_vl_lookup_cmd_packing(void *buf, struct sja1105_dyn_cmd *cmd,
+				enum packing_op op)
 {
 	const int size = SJA1105_SIZE_DYN_CMD;
 
@@ -177,6 +178,20 @@ sja1105_vl_lookup_cmd_packing(void *buf, struct sja1105_dyn_cmd *cmd,
 	sja1105_packing(buf, &cmd->errors,  30, 30, size, op);
 	sja1105_packing(buf, &cmd->rdwrset, 29, 29, size, op);
 	sja1105_packing(buf, &cmd->index,    9,  0, size, op);
+}
+
+/* Command and entry are separate */
+static void
+sja1105pqrs_vl_lookup_cmd_packing(void *buf, struct sja1105_dyn_cmd *cmd,
+				  enum packing_op op)
+{
+	u8 *p = buf + SJA1105_SIZE_VL_LOOKUP_ENTRY;
+	const int size = SJA1105_SIZE_DYN_CMD;
+
+	sja1105_packing(p, &cmd->valid,   31, 31, size, op);
+	sja1105_packing(p, &cmd->errors,  30, 30, size, op);
+	sja1105_packing(p, &cmd->rdwrset, 29, 29, size, op);
+	sja1105_packing(p, &cmd->index,    9,  0, size, op);
 }
 
 static size_t sja1105et_vl_lookup_entry_packing(void *buf, void *entry_ptr,
@@ -643,7 +658,7 @@ struct sja1105_dynamic_table_ops sja1105et_dyn_ops[BLK_IDX_MAX_DYN] = {
 	[BLK_IDX_SCHEDULE_ENTRY_POINTS] = {0},
 	[BLK_IDX_VL_LOOKUP] = {
 		.entry_packing = sja1105et_vl_lookup_entry_packing,
-		.cmd_packing = sja1105_vl_lookup_cmd_packing,
+		.cmd_packing = sja1105et_vl_lookup_cmd_packing,
 		.access = OP_WRITE,
 		.max_entry_count = SJA1105_MAX_VL_LOOKUP_COUNT,
 		.packed_size = SJA1105ET_SJA1105_SIZE_VL_LOOKUP_DYN_CMD,
@@ -738,7 +753,7 @@ struct sja1105_dynamic_table_ops sja1105pqrs_dyn_ops[BLK_IDX_MAX_DYN] = {
 	[BLK_IDX_SCHEDULE_ENTRY_POINTS] = {0},
 	[BLK_IDX_VL_LOOKUP] = {
 		.entry_packing = sja1105_vl_lookup_entry_packing,
-		.cmd_packing = sja1105_vl_lookup_cmd_packing,
+		.cmd_packing = sja1105pqrs_vl_lookup_cmd_packing,
 		.access = (OP_READ | OP_WRITE),
 		.max_entry_count = SJA1105_MAX_VL_LOOKUP_COUNT,
 		.packed_size = SJA1105PQRS_SJA1105_SIZE_VL_LOOKUP_DYN_CMD,
