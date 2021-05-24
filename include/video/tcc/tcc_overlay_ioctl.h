@@ -47,6 +47,7 @@
 #define OVERLAY_GET_PANEL_SIZE     (56)
 #define OVERLAY_SET_OVP_KERNEL     (154)
 #define OVERLAY_GET_OVP_KERNEL     (155)
+#define OVERLAY_OTF_PUSH_FRAME	   (131)
 
 struct panel_size_t {
 	unsigned int xres;

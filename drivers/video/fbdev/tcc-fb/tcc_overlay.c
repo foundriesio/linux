@@ -727,6 +727,28 @@ tcc_overlay_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 	} break;
 
+	case OVERLAY_OTF_PUSH_FRAME: {
+		dprintk("[%d] OVERLAY_OTF_PUSH_FRAME\n", __LINE__);
+		struct tcc_lcdc_image_update ImageInfo;
+
+		if (copy_from_user(
+			    &ImageInfo, (struct tcc_lcdc_image_update *)arg,
+			    sizeof(struct tcc_lcdc_image_update)))
+			return -EFAULT;
+
+		dprintk("addr:0x%x fmt:0x%x offset:%d %d frame:%d %d image:%d %d\n",
+		ImageInfo.addr0, ImageInfo.fmt, ImageInfo.offset_x, ImageInfo.offset_y,
+		ImageInfo.Frame_width, ImageInfo.Frame_height,
+		ImageInfo.Image_width, ImageInfo.Image_height);
+
+	#if defined(CONFIG_TCC_VIDEO_DISPLAY_BY_VSYNC_INT) \
+	|| defined(TCC_VIDEO_DISPLAY_BY_VSYNC_INT)
+		dprintk("deinterlace_mode:%x\n", ImageInfo.deinterlace_mode);
+	#endif
+
+		return 0;
+	} break;
+
 	default:
 		pr_err(" Unsupported IOCTL(%d)!!!\n", cmd);
 		break;
