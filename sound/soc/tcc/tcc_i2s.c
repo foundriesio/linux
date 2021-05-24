@@ -112,6 +112,7 @@ struct tcc_i2s_t {
 #endif
 
 	// configurations
+	int32_t sample_rate;
 	int32_t mclk_div;
 	int32_t bclk_ratio;
 	uint32_t dai_fmt;
@@ -139,7 +140,7 @@ struct tcc_i2s_t {
 };
 
 
-static inline uint32_t calc_normal_mclk(
+static inline uint32_t calc_mclk(
 	struct tcc_i2s_t *i2s,
 	int32_t sample_rate)
 {
@@ -149,7 +150,13 @@ static inline uint32_t calc_normal_mclk(
 				  (sample_rate == 22000) ? 22050 :
 				  (sample_rate == 11000) ? 11025 : sample_rate;
 
-	ret = sample_rate * i2s->mclk_div * i2s->bclk_ratio;
+	if (i2s->tdm_mode) {
+		ret = sample_rate *  i2s->mclk_div *
+			i2s->tdm_slots * i2s->tdm_slot_width;
+	} else {
+		ret = sample_rate * i2s->mclk_div * i2s->bclk_ratio;
+	}
+
 	return (uint32_t)ret;
 }
 
@@ -168,54 +175,6 @@ static inline uint32_t calc_bclk_from_mclk(
 	return (uint32_t)ret;
 }
 
-static inline uint32_t calc_cirrus_tdm_mclk(
-	struct tcc_i2s_t *i2s,
-	int32_t sample_rate)
-{
-	int32_t ret;
-
-	sample_rate = (sample_rate == 44100) ? 44100 :
-				  (sample_rate == 22000) ? 22050 :
-				  (sample_rate == 11000) ? 11025 : sample_rate;
-
-	ret = sample_rate *  i2s->mclk_div *
-		i2s->tdm_slots * i2s->tdm_slot_width;
-	return (uint32_t)ret;
-}
-
-static inline uint32_t calc_dsp_tdm_mclk(
-	struct tcc_i2s_t *i2s,
-	int32_t sample_rate)
-{
-	int32_t ret;
-
-	sample_rate = (sample_rate == 44100) ? 44100 :
-				  (sample_rate == 22000) ? 22050 :
-				  (sample_rate == 11000) ? 11025 : sample_rate;
-
-	ret = sample_rate *  i2s->mclk_div *
-			i2s->tdm_slots * i2s->tdm_slot_width;
-
-	return (uint32_t)ret;
-}
-
-#if defined(PCM_INTERFACE)
-static inline uint32_t calc_dsp_pcm_mclk(
-	struct tcc_i2s_t *i2s,
-	int32_t sample_rate)
-{
-	int32_t ret;
-
-	sample_rate = (sample_rate == 44100) ? 44100 :
-				  (sample_rate == 22000) ? 22050 :
-				  (sample_rate == 11000) ? 11025 : sample_rate;
-
-	ret = sample_rate *  i2s->mclk_div *
-		i2s->tdm_slots * i2s->tdm_slot_width;
-	return (uint32_t)ret;
-}
-#endif //PCM_INTERFACE
-
 static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	struct tcc_i2s_t *i2s =
@@ -227,7 +186,6 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	spin_lock(&i2s->lock);
 
 	i2s->dai_fmt = 0;
-	i2s->is_updated = TRUE;
 
 	switch (fmt & (uint32_t)SND_SOC_DAIFMT_INV_MASK) {
 	case SND_SOC_DAIFMT_NB_NF:
@@ -519,7 +477,6 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		} else {
 #endif
 			i2s->clk_continuous = TRUE;
-			tcc_dai_enable(i2s->dai_reg, TRUE);
 #if defined(TCC803x_ES_SND)
 		}
 #endif
@@ -527,7 +484,6 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	case SND_SOC_DAIFMT_GATED:
 		i2s_dai_dbg("[%d] SND_SOC_DAIFMT_GATED\n", i2s->blk_no);
 		i2s->clk_continuous = FALSE;
-		tcc_dai_enable(i2s->dai_reg, FALSE);
 		break;
 	default:
 		i2s_dai_err("[%d] does not supported\n", i2s->blk_no);
@@ -747,6 +703,51 @@ static int tcc_i2s_set_tdm_slot(
 	return 0;
 }
 
+static int tcc_i2s_set_sysclk(struct snd_soc_dai *dai,
+									int clk_id,
+									unsigned int freq,
+									int dir)
+{
+	struct tcc_i2s_t *i2s =
+		 (struct tcc_i2s_t *)snd_soc_dai_get_drvdata(dai);
+	int ret = 0;
+	int32_t mclk;
+	uint32_t cur_rate;
+
+	switch(clk_id){
+	case TCC_DAI_MCLK:
+		tcc_dai_enable(i2s->dai_reg, FALSE);
+
+		if(freq == 0){
+			mclk = calc_mclk(i2s, i2s->sample_rate);
+			i2s->clk_rate = mclk;
+		} else {
+			i2s->clk_rate = freq;
+		}
+
+		(void) clk_disable_unprepare(i2s->dai_pclk);
+		(void) clk_set_rate(i2s->dai_pclk, i2s->clk_rate);
+		(void) clk_prepare_enable(i2s->dai_pclk);
+
+		cur_rate = clk_get_rate(i2s->dai_pclk);
+		i2s_dai_dbg("[%d] %s - get_clk_rate:%u, mclk_div:%u, bclk_ratio:%u, tdm_slots:%d, tdm_slot_width:%d\n",
+			i2s->blk_no, __func__, cur_rate,
+			i2s->mclk_div, i2s->bclk_ratio,
+			i2s->tdm_slots, i2s->tdm_slot_width);
+
+		tcc_dai_enable(i2s->dai_reg, TRUE);
+		break;
+	default:
+		i2s_dai_err("%s - Not support clock ID\n", __func__);
+		ret = -EINVAL;
+		break;
+	}
+
+err:
+	return ret;
+}
+
+
 static int tcc_i2s_hw_params(
 	struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params,
@@ -873,8 +874,6 @@ static int tcc_i2s_hw_params(
 				ret = -EINVAL;
 				break;
 			}
-
-			mclk = calc_cirrus_tdm_mclk(i2s, sample_rate);
 			break;
 		case SND_SOC_DAIFMT_DSP_A:
 		case SND_SOC_DAIFMT_DSP_B:
@@ -892,25 +891,27 @@ static int tcc_i2s_hw_params(
 				tcc_dai_set_dsp_tdm_word_len(
 						i2s->dai_reg,
 						fmt_bitwidth);
+#if !defined(TCC805x_CS_SND)
+/* After TCC805x CS, Audio IPs does not set the vaild data ends in MCCR1 register.
+*/
 #if defined(PCM_INTERFACE)
 				if (i2s->tdm_pcm_mode) {
 					tcc_dai_set_dsp_tdm_mode_valid_data(
 							i2s->dai_reg,
 							i2s->tdm_slots,
 							i2s->tdm_slot_width);
-					mclk = calc_dsp_pcm_mclk(i2s, sample_rate);
 				} else {
 #endif //PCM_INTERFACE
 					tcc_dai_set_dsp_tdm_mode_valid_data(
 							i2s->dai_reg,
 							channels,
 							i2s->tdm_slot_width);
-					mclk = calc_dsp_tdm_mclk(i2s, sample_rate);
 #if defined(PCM_INTERFACE)
-					}
-#endif //PCM_INTERFACE
 				}
-				break;
+#endif //PCM_INTERFACE
+#endif
+			}
+			break;
 		default:
 			i2s_dai_warn("[%d] does not supported\n", i2s->blk_no);
 			ret = -ENOTSUPP;
@@ -921,8 +922,6 @@ static int tcc_i2s_hw_params(
 			goto hw_params_end;
 
 	} else {
-		mclk = calc_normal_mclk(i2s, sample_rate);
-
 		if ((i2s->dai_fmt & (uint32_t)SND_SOC_DAIFMT_FORMAT_MASK) ==
 			(uint32_t)SND_SOC_DAIFMT_RIGHT_J) {
 			tcc_dai_set_right_j_mode(
@@ -1036,6 +1035,8 @@ static int tcc_i2s_hw_params(
 #endif
 	}
 
+	mclk = calc_mclk(i2s, sample_rate);
+
 	i2s_dai_dbg("[%d] %s - mclk : %d\n", i2s->blk_no, __func__, mclk);
 #if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 	if (i2s->bclk_ratio == TCC_DAI_BCLK_RATIO_512) {
@@ -1061,25 +1062,16 @@ static int tcc_i2s_hw_params(
 #if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 	}
 #endif
+
 	if (i2s->clk_rate != mclk) {
-		uint32_t cur_rate = 0;
-
-		(void) clk_disable_unprepare(i2s->dai_pclk);
-		(void) clk_set_rate(i2s->dai_pclk, mclk);
-		(void) clk_prepare_enable(i2s->dai_pclk);
-
-		i2s->clk_rate = mclk;
-		cur_rate = clk_get_rate(i2s->dai_pclk);
-		i2s_dai_dbg("[%d] %s - get_clk_rate:%u, mclk_div:%u, bclk_ratio:%u\n",
-			i2s->blk_no, __func__, cur_rate,
-			i2s->mclk_div, i2s->bclk_ratio);
+		i2s->sample_rate = sample_rate;
+		tcc_i2s_set_sysclk(dai, TCC_DAI_MCLK, mclk, SND_SOC_CLOCK_OUT);
 	}
 
 	if (i2s->is_updated == TRUE) {
-		if ((i2s->tdm_mode == TRUE) && (i2s->clk_continuous == TRUE)) {
-			struct dai_reg_t regs = {0};
+		struct dai_reg_t regs = {0};
 
-			tcc_dai_reg_backup(i2s->dai_reg, &regs);
+		tcc_dai_reg_backup(i2s->dai_reg, &regs);
 /* Workaround Code for TCC803X, TCC899X and TCC901X
  * Stereo & 9.1ch Audio IPs cannot read DCLKDIV register (0x54)
  * So, we should always restore DCLKDIV value while write that
@@ -1087,19 +1079,18 @@ static int tcc_i2s_hw_params(
  */
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC899X) ||\
 	defined(CONFIG_ARCH_TCC901X)
-			if (i2s->block_type ==
-				(uint32_t)DAI_BLOCK_STEREO_TYPE ||
-				i2s->block_type ==
-				(uint32_t)DAI_BLOCK_9_1CH_TYPE) {
-				regs.dclkdiv = i2s->regs_backup.dclkdiv;
-			}
+		if (i2s->block_type ==
+			(uint32_t)DAI_BLOCK_STEREO_TYPE ||
+			i2s->block_type ==
+			(uint32_t)DAI_BLOCK_9_1CH_TYPE) {
+			regs.dclkdiv = i2s->regs_backup.dclkdiv;
+		}
 #endif
-			clk_disable_unprepare(i2s->dai_hclk);
-			(void) clk_prepare_enable(i2s->dai_hclk);
-			tcc_dai_reg_restore(i2s->dai_reg, &regs);
+		clk_disable_unprepare(i2s->dai_hclk);
+		(void) clk_prepare_enable(i2s->dai_hclk);
+		tcc_dai_reg_restore(i2s->dai_reg, &regs);
 
-			tcc_dai_enable(i2s->dai_reg, TRUE);
-			}
+		tcc_dai_enable(i2s->dai_reg, TRUE);
 		i2s->is_updated = FALSE;
 	}
 
@@ -1298,18 +1289,6 @@ static int tcc_i2s_trigger(
 	return ret;
 }
 
-static int tcc_i2s_set_sysclk(struct snd_soc_dai *dai,
-									int clk_id,
-									unsigned int freq,
-									int dir)
-{
-	int ret = 0;
-
-	i2s_dai_dbg("%s - Not support operation", __func__);
-
-	return ret;
-}
-
 static int tcc_i2s_set_pll(struct snd_soc_dai *dai,
 									int pll_id,
 									int source,
@@ -1420,9 +1399,9 @@ static struct snd_soc_dai_ops tcc_i2s_ops = {
 	.hw_free        = tcc_i2s_hw_free,
 	.trigger        = tcc_i2s_trigger,
 	.set_tdm_slot   = tcc_i2s_set_tdm_slot,
+	.set_sysclk		= tcc_i2s_set_sysclk,
 
 	/*Do not use below operations*/
-	.set_sysclk				= tcc_i2s_set_sysclk,
 	.set_pll				= tcc_i2s_set_pll,
 	.xlate_tdm_slot_mask	= tcc_i2s_xlate_tdm_slot_mask,
 	.set_channel_map		= tcc_i2s_set_channel_map,
@@ -1676,6 +1655,8 @@ static int set_audio_filter(
 
 	i2s->audio_filter_bit = ucontrol->value.integer.value[0];
 
+	i2s->is_updated = TRUE;
+
 	return 0;
 }
 
@@ -1725,6 +1706,8 @@ static int set_tx2rx_loopback_mode(
 		i2s->dai_reg,
 		(bool)ucontrol->value.integer.value[0]);
 
+	i2s->is_updated = TRUE;
+
 	return 0;
 }
 
@@ -1759,6 +1742,8 @@ static int set_rx2tx_loopback_mode(
 		i2s->dai_reg,
 		(bool)ucontrol->value.integer.value[0]);
 
+	i2s->is_updated = TRUE;
+
 	return 0;
 }
 
@@ -1789,6 +1774,8 @@ static int set_tdm_late_mode(
 
 	i2s->tdm_late_mode = (bool)ucontrol->value.integer.value[0];
 
+	i2s->is_updated = TRUE;
+
 	return 0;
 }
 
@@ -1816,6 +1803,8 @@ static int set_tdm_pcm_mode(
 		(struct tcc_i2s_t *)snd_soc_component_get_drvdata(component);
 
 	i2s->tdm_pcm_mode = (bool)ucontrol->value.integer.value[0];
+
+	i2s->is_updated = TRUE;
 
 	return 0;
 }
@@ -2236,6 +2225,7 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 		"clock-frequency",
 		&sample_rate);
 	if (ret == 0) {
+		i2s->sample_rate = sample_rate;
 		int32_t rate =
 			(int32_t)sample_rate * i2s->mclk_div * i2s->bclk_ratio;
 		i2s->clk_rate = (uint32_t)rate;

@@ -739,14 +739,14 @@ static int tcc_snd_card_sub_dai_link(
 	(void)of_property_read_u32(node, "bclk_ratio", &dai_info->bclk_ratio);
 	snd_card_dbg("\t\tbclk_ratio: %d\n", dai_info->bclk_ratio);
 
-	(void)of_property_read_s32(node, "tdm-slot-num", &dai_info->tdm_slots);
-	snd_card_dbg("\t\ttdm-slot-num : %d\n", dai_info->tdm_slots);
+	(void)of_property_read_s32(node, "dai-tdm-slot-num", &dai_info->tdm_slots);
+	snd_card_dbg("\t\tdai-tdm-slot-num : %d\n", dai_info->tdm_slots);
 
 	(void)of_property_read_s32(
 		node,
-		"tdm-slot-width",
+		"dai-tdm-slot-width",
 		&dai_info->tdm_width);
-	snd_card_dbg("\t\ttdm-slot-width : %d\n", dai_info->tdm_width);
+	snd_card_dbg("\t\tdai-tdm-slot-width : %d\n", dai_info->tdm_width);
 
 	dai_info->is_updated = FALSE;
 
@@ -956,7 +956,37 @@ error1:
 	return -ENOMEM;
 }
 
-static int tcc_snd_card_probe(struct platform_device *pdev)
+static int tcc_snd_card_late_probe(struct snd_soc_card *card)
+{
+	struct tcc_card_info_t *card_info = snd_soc_card_get_drvdata(card);
+	struct snd_soc_pcm_runtime *rtd;
+	unsigned int mclk = 0;
+	int ret = 0;
+
+	snd_card_dbg("%s\n", __func__);
+
+	list_for_each_entry(rtd, &card->rtd_list, list) {
+		struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+		struct tcc_dai_info_t *dai_info = tcc_snd_card_get_dai_info(card_info, cpu_dai);
+
+		if(dai_info == NULL)
+			goto err;
+
+		if((dai_info->dai_fmt & (uint32_t)SND_SOC_DAIFMT_CLOCK_MASK)
+			== SND_SOC_DAIFMT_CONT){
+
+			ret = snd_soc_dai_set_sysclk(cpu_dai, TCC_DAI_MCLK, mclk, SND_SOC_CLOCK_OUT);
+			if (ret && ret != -ENOTSUPP) {
+				goto err;
+			}
+		}
+	}
+
+err:
+	return 0;
+}
+
+static int tcc_snd_card_platform_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card;
 	int ret;
@@ -969,6 +999,7 @@ static int tcc_snd_card_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	card->dev = &pdev->dev;
+	card->late_probe = tcc_snd_card_late_probe;
 	platform_set_drvdata(pdev, card);
 
 	ret = snd_soc_of_parse_card_name(card, "card-name");
@@ -991,7 +1022,7 @@ static int tcc_snd_card_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int tcc_snd_card_remove(struct platform_device *pdev)
+static int tcc_snd_card_platform_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	struct tcc_card_info_t *card_info = snd_soc_card_get_drvdata(card);
@@ -1037,8 +1068,8 @@ static struct platform_driver tcc_snd_card_driver = {
 		.pm = &snd_soc_pm_ops,
 		.of_match_table = tcc_snd_card_of_match,
 	},
-	.probe = tcc_snd_card_probe,
-	.remove = tcc_snd_card_remove,
+	.probe = tcc_snd_card_platform_probe,
+	.remove = tcc_snd_card_platform_remove,
 };
 
 module_platform_driver(tcc_snd_card_driver);

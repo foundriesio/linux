@@ -69,6 +69,10 @@ enum TCC_DAI_PATH {
 	TCC_DAI_PATH_ASRC = 1
 };
 
+enum TCC_CLOCK_ID {
+	TCC_DAI_MCLK = 0,
+};
+
 struct dai_reg_t {
 	uint32_t damr;
 	uint32_t mccr0;
