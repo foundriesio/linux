@@ -634,7 +634,7 @@
 /*
 	add dummy key for booting  - start -
  */
-	/*pinctrl@74200000 {
+	/*pinctrl {
 		gpio_powerkey: gpio_powerkey {
 			telechips,pins = "gpf-31";
 			telechips,pin-function = <0>;
@@ -1041,7 +1041,7 @@
 		status = "okay";
 	};
 
-	pinctrl@74200000 {
+	pinctrl {
 		/*gpg-6 is for SDR_GPIO1*/
 		mdai_clks: mdai_clks{
 			telechips,pins = "gpg-7", "gpg-8";

@@ -593,12 +593,12 @@
 	};
 
 
-	pinctrl: pinctrl@74200000 {
+	pinctrl: pinctrl {
 		compatible = "telechips,tcc-pinctrl";
 		reg = <0x74200000 0x300 0x0 0x0>;
 	};
 
-	gpio: gpio@74200000 {
+	gpio: gpio {
 		compatible = "telechips,tcc-gpio";
 		reg = <0x74200000 0x300>;
 	};

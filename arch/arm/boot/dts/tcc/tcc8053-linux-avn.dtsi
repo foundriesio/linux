@@ -1250,7 +1250,7 @@
 	};
 
 	//This is for SDR solution.
-	pinctrl@14200000 {
+	pinctrl {
 		m1dai1_bclk: m1dai1_bclk {
 			 telechips,schmitt-input;
 		};

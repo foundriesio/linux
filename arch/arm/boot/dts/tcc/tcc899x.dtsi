@@ -1309,7 +1309,7 @@
 		max_irq = <192>;
 	};
 
-	pinctrl: pinctrl@14200000 {
+	pinctrl: pinctrl {
 		compatible = "telechips,tcc899x-pinctrl";
 		reg = <0x14200000 0x300>;
 		#address-cells = <1>;
