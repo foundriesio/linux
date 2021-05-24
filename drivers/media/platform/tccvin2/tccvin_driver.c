@@ -302,24 +302,6 @@ int tccvin_async_complete(struct v4l2_async_notifier *notifier)
 		goto error;
 	}
 
-	/*
-	 * get fmt of first subdev in image pipeline
-	 * and set the other subdevices using fmt ofr first subdev
-	 */
-	tccvin_video_subdevs_set_fmt(dev->stream);
-
-	/*
-	 * call g_dv_timings, get_fmt and g_mbus_config of subdevice
-	 * which is in front of video-in
-	 */
-	tccvin_video_subdevs_get_config(dev->stream);
-
-	/* Parse the Video Class control descriptor. */
-	if (tccvin_parse_control(dev) < 0) {
-		loge("Unable to parse tccvin descriptors.\n");
-		goto error;
-	}
-
 error:
 	return ret;
 }
@@ -601,8 +583,14 @@ static int tccvin_core_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, dev);
 
+	/* Parse the Video Class control descriptor. */
+	if (tccvin_parse_control(dev) < 0) {
+		loge("Unable to parse tccvin descriptors.\n");
+		goto e_tccvin_unregister_video;
+	}
+
 	if (tccvin_init_subdevices(dev) < 0)
-		goto e_v4l2_dev_unregister;
+		goto e_tccvin_unregister_video;
 
 	/* Create the tccvin_recovery_trigger sysfs */
 	tccvin_create_recovery_trigger(&dev->pdev->dev);
@@ -612,10 +600,11 @@ static int tccvin_core_probe(struct platform_device *pdev)
 
 	return 0;
 
+e_tccvin_unregister_video:
+	tccvin_unregister_video(dev);
 e_v4l2_dev_unregister:
 	v4l2_device_unregister(dev->stream->vdev.v4l2_dev);
 error:
-	tccvin_unregister_video(dev);
 	kfree(stream);
 	kref_put(&dev->ref, tccvin_delete);
 	return -ENODEV;

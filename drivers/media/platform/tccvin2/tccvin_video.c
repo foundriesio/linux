@@ -2180,6 +2180,19 @@ int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 
 	if ((stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_ALL) &&
 	    (stream->is_handover_needed != V4L2_CAP_CTRL_SKIP_SUBDEV)) {
+		/*
+		 * get fmt of first subdev in image pipeline
+		 * and set the other subdevices using fmt ofr first subdev
+		 */
+		tccvin_video_subdevs_set_fmt(stream);
+
+		/*
+		 * call g_dv_timings, get_fmt and g_mbus_config of subdevice
+		 * which is in front of video-in
+		 */
+		tccvin_video_subdevs_get_config(stream);
+
+
 		/* v4l2-subdev - s_power */
 		tccvin_video_subdevs_s_power(stream, 1);
 

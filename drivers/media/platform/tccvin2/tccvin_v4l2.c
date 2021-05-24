@@ -244,6 +244,7 @@ static int tccvin_v4l2_get_format(struct tccvin_streaming *stream,
 
 	if (fmt->type != stream->type) {
 		/* type is wrong */
+		loge("type is not matched\n");
 		return -EINVAL;
 	}
 
@@ -251,7 +252,14 @@ static int tccvin_v4l2_get_format(struct tccvin_streaming *stream,
 	format = stream->cur_format;
 	frame = stream->cur_frame;
 
-	if (format == NULL || frame == NULL) {
+	if (format == NULL) {
+		loge("format is null\n");
+		ret = -EINVAL;
+		goto done;
+	}
+
+	if (frame == NULL) {
+		loge("frame is null\n");
 		ret = -EINVAL;
 		goto done;
 	}
