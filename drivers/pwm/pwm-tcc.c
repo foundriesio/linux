@@ -137,7 +137,7 @@ static void tcc_pwm_wait(struct pwm_chip *chip, struct pwm_device *pwm)
 }
 
 static void tcc_pwm_register_mode_set(struct pwm_chip *chip,
-				      struct pwm_device *pwm, uint32_t regist_value)
+		struct pwm_device *pwm, uint32_t regist_value)
 {
 	struct pwm_chip *tmp = chip;
 	struct tcc_chip *tcc;
@@ -215,11 +215,9 @@ static int32_t tcc_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 
 	if (duty_ns == 0) {
 		goto pwm_low_out;
-	}
-	else if ((uint64_t) duty_ns == period_ns) {
+	} else if ((uint64_t) duty_ns == period_ns) {
 		goto pwm_hi_out;
-	}
-	else {
+	} else {
 	}
 
 	while (1) {
@@ -229,8 +227,7 @@ static int32_t tcc_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 		if (total_cnt <= 1UL) {
 			if ((uint64_t) duty_ns > (period_ns / 2UL)) {
 				goto pwm_hi_out;
-			}
-			else {
+			} else {
 				goto pwm_low_out;
 			}
 		}
@@ -487,8 +484,9 @@ static int32_t tcc_pwm_resume(struct device *dev)
 		dprintk(" polarity: %s", state.polarity ? "inverse" : "normal");
 
 		if (state.enabled) {
-			(void)tcc_pwm_config(&tcc->chip, pwm, (int32_t)state.duty_cycle,
-				       (int32_t)state.period);
+			(void)tcc_pwm_config(&tcc->chip, pwm,
+					(int32_t)state.duty_cycle,
+					(int32_t)state.period);
 			(void)tcc_pwm_enable(&tcc->chip, pwm);
 		}
 	}

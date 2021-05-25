@@ -4,7 +4,7 @@ Required properties:
 - compatible		: "telechips,pwm"
 - reg				: Physical base address and size of the controller's register area.
 - tcc,pwm-number	: Should be 4. Total number of ports supported by the chip.
-					  Refer to Full Specification for ports infomation.	
+					  Refer to Full Specification for ports infomation.
 - #pwm-cells		: Should be 2. See pwm.txt in this directory for a description of
   the cells format.
 - clocks			: phandle to input clock.
@@ -29,9 +29,9 @@ pwm:pwm@16030000 { /* pwm */
 		clocks = <&clk_peri PERI_PDM &clk_io IOBUS_PWM>;
 		clock-frequency = <400000000>;
 
-		pinctrl-names ="default"; 
-		pinctrl-0 = <&led_pin_a>; 
-		gfb-port = <52 0 0 0>;     //port mapping number for PDM0, PDM1, PDM2, PDM3 
+		pinctrl-names ="default";
+		pinctrl-0 = <&led_pin_a>;
+		gfb-port = <52 0 0 0>;     //port mapping number for PDM0, PDM1, PDM2, PDM3
 		status = "okay";
 };
 
