@@ -1,0 +1,27 @@
+* Device Tree Bindings for adma
+
+Required properties:
+
+- compatible : Property name that conveys the platform architecture identifiers,
+               as 'telechips,adma'
+- reg : Audio DMA register to use.
+- clocks : IOBUS clock of Audio DMA to use.
+- interrupts : Audio DMA IRQ to use.
+- have-hopcnt-clear : Whether to use hopcnt (hop counter)clear.
+                      Hopcnt clear suppports DMA stop at anytime.
+                      From TCC802x, hopcnt clear funtion is supported.
+- adrcnt-mode : Whether to use adrcnt (address counter).
+                Adrcnt supports buffer size in multiplex of 32.
+                From TCC803x, adrcnt function is supported.
+- status : disable or enable the device node.
+
+Example
+-------
+	adma0: adma@16100000 {
+		compatible = "telechips,adma";
+		reg = <0x0 0x16100000 0x0 0x200>;
+		clocks = <&clk_io IOBUS_ADMA0>;
+		interrupts = <GIC_SPI 80 IRQ_TYPE_LEVEL_HIGH>;
+		have-hopcnt-clear = <1>;
+		adrcnt-mode = <1>;
+	};

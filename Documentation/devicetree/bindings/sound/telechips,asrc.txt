@@ -2,19 +2,19 @@
 
 Required properties:
 
-- compatible : property name that conveys the platform architecture identifiers,
-               as 'telechips,switch'
-- reg        :
-- interrupts :
-- clocks     :
-- clock-name :
-- dma        :
-- mcaudio    :
-- max-ch-per-pair :
-- path-type  :
-- sync-mode  :
-- async-refclk :
-- status     :
+- compatible : Property name that conveys the platform architecture identifiers,
+               as 'telechips,asrc'
+- reg : ASRC register to use.
+- clocks : Peri/IOBUS clock of ASRC and reference to use.
+           In order of reference clock peri, ASRC IOBUS clock.
+- clock-names : The name of clocks.
+- dma : DMA to use.
+- mcaudio : The link of DAIF node to ASRC by M2P and P2M path.
+- max-ch-per-pair : Maximum data channel to SRC.
+- path-type : Path setting in each pair.
+- sync-mode : SRC sync setting.
+- async-refclk : Reference clock setting in each pair.
+- status : disable or enable the device node.
 
 Example
 -------

@@ -3,8 +3,8 @@
 Required properties:
 
 - compatible : property name that conveys the platform architecture identifiers,
-               as 'telechips,switch'
-- status        : disable or enable the device node
+               as 'telechips,snd-card'
+- status : disable or enable the device node
 
 
 Example

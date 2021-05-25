@@ -3,21 +3,21 @@
 Required properties:
 
 - compatible : property name that conveys the platform architecture identifiers,
-               as 'telechips,switch'
-- card-name       : 
-- status          : disable or enable the device node
-- asrc            : 
-- codec, dai-name : 
-- i2s             : 
-- codec           :  
-- codec,dai-name  : 
-- asrc-jm2p-pairs : 
-- asrc-p2m-pairs  :
-- mclk_div        :
-- bclk_ratio      :
-- samplerate      : default samplerate
-- format          : default format
-- channels        : default chnnels
+               as 'telechips,asrc-card'
+- card-name :
+- status : disable or enable the device node
+- asrc :
+- codec, dai-name :
+- i2s :
+- codec :
+- codec,dai-name :
+- asrc-m2p-pairs :
+- asrc-p2m-pairs :
+- mclk_div :
+- bclk_ratio :
+- samplerate : default samplerate
+- format : default format
+- channels : default chnnels
 
 Example
 -------

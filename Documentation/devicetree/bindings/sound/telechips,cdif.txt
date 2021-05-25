@@ -1,0 +1,23 @@
+* Device Tree Bindings for cdif
+
+Required properties:
+
+- compatible : Property name that conveys the platform architecture identifiers,
+               as 'telechips,cdif'
+- reg : CDIF register to use.
+- clocks : Peri/IOBUS clock of CDIF and audio filter to use.
+           In order of CDIF peri, CDIF IOBUS, audio filter peri clock.
+- clock-frequency : Default frame sync clock.
+- status : disable or enable the device node.
+
+Example
+-------
+cdif0: cdif@16101080 {
+	compatible = "telechips,cdif";
+	reg = <0x16101080 0x20 0x16101000 0x50>;
+	clocks = <&clk_peri PERI_MDAI0
+	          &clk_io IOBUS_DAI0
+			  &clk_peri PERI_MFLT0_CDIF>;
+	clock-frequency = <48000>;
+	status = "disabled";
+};

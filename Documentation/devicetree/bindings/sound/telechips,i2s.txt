@@ -1,0 +1,39 @@
+* Device Tree Bindings for i2s
+
+Required properties:
+
+- compatible : Property name that conveys the platform architecture identifiers,
+               as 'telechips,i2s'
+- reg : I2S register to use.
+- clocks : Peri/IOBUS clock of DAIF and audio filter to use.
+           In order of DAIF peri, DAIF IOBUS, audio filter peri clock.
+- clock-frequency : Default frame sync clock.
+- interrupts   : DAIF IRQ to use.
+- have-fifo-clear : Whether to use fifoclear.
+                    fifoclear suppports removing previous playback/capture data.
+                    From TCC802x, fifoclear funtion is supported.
+- audio-filter   : Whether to use audio filter.
+                   From TCC805x, both data and clock audio filter is supported.
+- block-type   : Stereo or 7.1 multi-channel selection.
+- adma : Audio DMA to use.
+- status : disable or enable the device node.
+
+Example
+-------
+	i2s0: i2s@16101000 {
+		compatible = "telechips,i2s";
+		reg = <0x0 0x16101000 0x0 0x50>,
+		      <0x0 0x16100080 0x0 0x8>;
+		clocks = <&clk_peri PERI_MDAI0
+		          &clk_io IOBUS_DAI0
+				  &clk_peri PERI_MFLT0_DAI>;
+		clock-frequency = <48000>;	// Default LRCK
+		interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
+		have-fifo-clear = <1>;
+		audio-filter = <0>;
+		// 0: disable, 1: clock only, 2: data only, 3: data and clock
+		block-type = <1>;
+		// 0: Stereo 1: 7.1CH
+		adma = <&adma0>;
+		status = "disabled";
+	};
