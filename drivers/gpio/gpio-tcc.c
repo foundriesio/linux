@@ -11,29 +11,29 @@ static const struct tcc_sc_fw_handle *sc_fw_handle;
 #endif
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-static int32_t request_gpio_to_sc(
-                ulong address, ulong bit_number, ulong width, ulong value)
+static int32_t request_gpio_to_sc(ulong address,
+	ulong bit_number, ulong width, ulong value)
 {
-        s32 ret;
-        u32 u32_mask = 0xFFFFFFFFU;
-        u32 addr_32 = (u32)(address & u32_mask);
-        u32 bit_num_32 = (u32)(bit_number & u32_mask);
-        u32 width_32 = (u32)(width & u32_mask);
-        u32 value_32 = (u32)(value & u32_mask);
+	s32 ret;
+	u32 u32_mask = 0xFFFFFFFFU;
+	u32 addr_32 = (u32)(address & u32_mask);
+	u32 bit_num_32 = (u32)(bit_number & u32_mask);
+	u32 width_32 = (u32)(width & u32_mask);
+	u32 value_32 = (u32)(value & u32_mask);
 
-        if (sc_fw_handle != NULL) {
-                ret = sc_fw_handle
-                        ->ops.gpio_ops->request_gpio_no_res
-                        (sc_fw_handle, addr_32,
-                         bit_num_32, width_32, value_32);
-        } else {
-                (void)pr_err(
-                                "[ERROR][PINCTRL] %s : sc_fw_handle is NULL"
-                                , __func__);
-                ret = -EINVAL;
-        }
+	if (sc_fw_handle != NULL) {
+		ret = sc_fw_handle
+			->ops.gpio_ops->request_gpio_no_res
+			(sc_fw_handle, addr_32,
+			bit_num_32, width_32, value_32);
+	} else {
+		(void)pr_err(
+		    "[ERROR][PINCTRL] %s : sc_fw_handle is NULL"
+		    , __func__);
+		ret = -EINVAL;
+	}
 
-        return ret;
+	return ret;
 }
 #endif
 
@@ -53,12 +53,12 @@ struct tcc_gpio_soc_data {
 
 struct tcc_gpio_group {
 	struct tcc_gpio_port *port;
-        struct gpio_chip gc;
-        struct irq_chip ic;
-        u32 source_section;
-        u32 *gpio_offset_num;
-        u32 *source_offset_num;
-        u32 *source_range;
+	struct gpio_chip gc;
+	struct irq_chip ic;
+	u32 source_section;
+	u32 *gpio_offset_num;
+	u32 *source_offset_num;
+	u32 *source_range;
 	const char *name;
 	u32 reg_offset;
 };
@@ -91,18 +91,20 @@ static irqreturn_t tcc_gpio_irq_handler(int irq, void *data)
 	int pin;
 	int idx_sel_reg, idx_sel_plc;
 
-        pr_debug("%s: ############name : %s %s %s %s %s\n"
-            , __func__, d->chip->name, gpio_gr->name, port->gpio_gr->ic.name, port->gpio_gr->gc.label, port->gpio_gr->name);
+	pr_debug("%s: ############name : %s %s %s %s %s\n"
+	    , __func__, d->chip->name, gpio_gr->name, port->gpio_gr->ic.name,
+	    port->gpio_gr->gc.label, port->gpio_gr->name);
 
 	hwirq = irqd_to_hwirq(d);
 	hwirq -= 32;
 
 #if defined(CONFIG_ARCH_TCC897X)
 	for (i = 0; i < port->irq_num; i++) {
-	    pr_debug("[GPIO][DEBUG] %s: irq map 4 : %ld hwirq : %ld\n", __func__, port->irq_port_map[i][4], hwirq);
-		if (port->irq_port_map[i][4] == hwirq) {
+		pr_debug("[GPIO][DEBUG] %s: irq map 4 : %ld hwirq : %ld\n",
+		    __func__, port->irq_port_map[i][4], hwirq);
+
+		if (port->irq_port_map[i][4] == hwirq)
 			break;
-		}
 	}
 
 	if (i > 15) {
@@ -187,17 +189,15 @@ static int tcc_gpio_irq_set_type(struct irq_data *d, u32 type)
 
 	gpio_gr = port->gpio_gr;
 
-	for(i = 0; i < port->gpio_num_gr; i++) {
-	    if(!strcmp(d->chip->name, gpio_gr->name)) {
-		break;
-	    } else {
+	for (i = 0; i < port->gpio_num_gr; i++) {
+		if (!strcmp(d->chip->name, gpio_gr->name))
+			break;
 		gpio_gr++;
-	    }
-
 	}
 
-        pr_debug("%s: ############name : %s %s %s %s %s\n"
-            , __func__, d->chip->name, gpio_gr->name, port->gpio_gr->ic.name, port->gpio_gr->gc.label, port->gpio_gr->name);
+	pr_debug("%s: ############name : %s %s %s %s %s\n"
+	    , __func__, d->chip->name, gpio_gr->name, port->gpio_gr->ic.name,
+	    port->gpio_gr->gc.label, port->gpio_gr->name);
 
 	if (gpio_gr->source_section == 0xff) {
 		pr_err
@@ -209,8 +209,8 @@ static int tcc_gpio_irq_set_type(struct irq_data *d, u32 type)
 	for (i = 0; i < gpio_gr->source_section; i++) {
 
 		if ((pin >= gpio_gr->gpio_offset_num[i]) &&
-		    (pin <
-		     (gpio_gr->gpio_offset_num[i] + gpio_gr->source_range[i]))) {
+		    (pin < (gpio_gr->gpio_offset_num[i] +
+			    gpio_gr->source_range[i]))) {
 
 			irq_source = gpio_gr->source_offset_num[i] +
 			    (pin - gpio_gr->gpio_offset_num[i]);
@@ -282,7 +282,8 @@ static int tcc_gpio_irq_set_type(struct irq_data *d, u32 type)
 	switch (type) {
 	case IRQ_TYPE_EDGE_RISING:
 		pr_debug("[GPIO][DEBUG] %s: type edge rising\n", __func__);
-		ret = devm_request_irq(gpio_gr->gc.parent, port->irq[irq_mux_num],
+		ret = devm_request_irq(gpio_gr->gc.parent,
+					port->irq[irq_mux_num],
 				       tcc_gpio_irq_handler,
 				       IRQ_TYPE_EDGE_RISING, KBUILD_MODNAME,
 				       gpio_gr);
@@ -298,7 +299,8 @@ static int tcc_gpio_irq_set_type(struct irq_data *d, u32 type)
 		break;
 	case IRQ_TYPE_EDGE_BOTH:
 		pr_debug("[GPIO][DEBUG] %s: type edge both\n", __func__);
-		ret = devm_request_irq(gpio_gr->gc.parent, port->irq[irq_mux_num],
+		ret = devm_request_irq(gpio_gr->gc.parent,
+					port->irq[irq_mux_num],
 				       tcc_gpio_irq_handler,
 				       IRQ_TYPE_EDGE_RISING, KBUILD_MODNAME,
 				       gpio_gr);
@@ -320,7 +322,8 @@ static int tcc_gpio_irq_set_type(struct irq_data *d, u32 type)
 		break;
 	case IRQ_TYPE_LEVEL_HIGH:
 		pr_debug("[GPIO][DEBUG] %s: type level high\n", __func__);
-		ret = devm_request_irq(gpio_gr->gc.parent, port->irq[irq_mux_num],
+		ret = devm_request_irq(gpio_gr->gc.parent,
+					port->irq[irq_mux_num],
 				       tcc_gpio_irq_handler,
 				       IRQ_TYPE_LEVEL_HIGH, KBUILD_MODNAME,
 				       gpio_gr);
@@ -337,100 +340,97 @@ static int tcc_gpio_irq_set_type(struct irq_data *d, u32 type)
 	return 0;
 }
 
-static int tcc_gpio_direction_input(struct gpio_chip *chip, unsigned gpio)
+static int tcc_gpio_direction_input(struct gpio_chip *chip, unsigned int gpio)
 {
-        return pinctrl_gpio_direction_input(chip->base + gpio);
+	return pinctrl_gpio_direction_input(chip->base + gpio);
 }
 
-static int tcc_gpio_direction_output(struct gpio_chip *chip, unsigned gpio,
-                                       int value)
+static int tcc_gpio_direction_output(struct gpio_chip *chip, unsigned int gpio,
+					    int value)
 {
 	tcc_gpio_set(chip, gpio, value);
-        return pinctrl_gpio_direction_output(chip->base + gpio);
+	return pinctrl_gpio_direction_output(chip->base + gpio);
 }
 
 static int tcc_gpio_get(struct gpio_chip *gc, unsigned int gpio)
 {
-        struct tcc_gpio_port *port = gpiochip_get_data(gc);
-        struct tcc_gpio_group *gpio_gr = port->gpio_gr;
-        unsigned long bit = BIT(gpio);
+	struct tcc_gpio_port *port = gpiochip_get_data(gc);
+	struct tcc_gpio_group *gpio_gr = port->gpio_gr;
+	unsigned long bit = BIT(gpio);
 	int i;
-        void __iomem *reg;
+	void __iomem *reg;
 
-        for(i = 0; i < port->gpio_num_gr; i++) {
-            if(!strcmp(gc->label, gpio_gr->name)) {
-                break;
-            } else {
-                gpio_gr++;
-            }
-        }
+	for (i = 0; i < port->gpio_num_gr; i++) {
+		if (!strcmp(gc->label, gpio_gr->name))
+			break;
+		gpio_gr++;
+	}
 
-        reg = port->base + gpio_gr->reg_offset;
+	reg = port->base + gpio_gr->reg_offset;
 
-	//pr_debug("%s: base : 0x%px, offset 0x%x\n", __func__, port->base, gpio_gr->reg_offset);
+	//pr_debug("%s: base : 0x%px, offset 0x%x\n", __func__,
+	//port->base, gpio_gr->reg_offset);
 
 	return readl_relaxed(reg) & bit;
 }
 
 static void tcc_gpio_set(struct gpio_chip *gc, unsigned int gpio, int val)
 {
-        struct tcc_gpio_port *port = gpiochip_get_data(gc);
+	struct tcc_gpio_port *port = gpiochip_get_data(gc);
 	struct tcc_gpio_group *gpio_gr = port->gpio_gr;
-        unsigned long bit = BIT(gpio);
+	unsigned long bit = BIT(gpio);
 	void __iomem *reg;
 	int i;
 
-        for(i = 0; i < port->gpio_num_gr; i++) {
-            if(!strcmp(gc->label, gpio_gr->name)) {
-                break;
-            } else {
-                gpio_gr++;
-            }
-        }
+	for (i = 0; i < port->gpio_num_gr; i++) {
+		if (!strcmp(gc->label, gpio_gr->name))
+			break;
+		gpio_gr++;
+	}
 
 	reg = port->base + gpio_gr->reg_offset;
 
-	//pr_debug("%s: base : 0x%px, offset 0x%x\n", __func__, port->base, gpio_gr->reg_offset);
+	//pr_debug("%s: base : 0x%px, offset 0x%x\n", __func__,
+	//port->base, gpio_gr->reg_offset);
 
-	if(val) {
-	    writel_relaxed(bit, reg + GPIO_BIT_SET);
-	} else {
-	    writel_relaxed(bit, reg + GPIO_BIT_CLEAR);
-	}
+	if (val)
+		writel_relaxed(bit, reg + GPIO_BIT_SET);
+	else
+		writel_relaxed(bit, reg + GPIO_BIT_CLEAR);
+
 }
 
 static int tcc_get_direction(struct gpio_chip *gc, unsigned int gpio)
 {
-        struct tcc_gpio_port *port = gpiochip_get_data(gc);
-        struct tcc_gpio_group *gpio_gr = port->gpio_gr;
-        unsigned long bit = BIT(gpio);
+	struct tcc_gpio_port *port = gpiochip_get_data(gc);
+	struct tcc_gpio_group *gpio_gr = port->gpio_gr;
+	unsigned long bit = BIT(gpio);
 	int output_enable_val, i;
-        void __iomem *reg;
+	void __iomem *reg;
 
-        for(i = 0; i < port->gpio_num_gr; i++) {
-            if(!strcmp(gc->label, gpio_gr->name)) {
-                break;
-            } else {
-                gpio_gr++;
-            }
-        }
+	for (i = 0; i < port->gpio_num_gr; i++) {
+		if (!strcmp(gc->label, gpio_gr->name))
+			break;
+		gpio_gr++;
+	}
 
-        reg = port->base + gpio_gr->reg_offset;
+	reg = port->base + gpio_gr->reg_offset;
 
-	//pr_debug("%s: base : 0x%px, offset 0x%x, bit : %d\n", __func__, port->base, gpio_gr->reg_offset, bit);
+	//pr_debug("%s: base : 0x%px, offset 0x%x, bit : %d\n", __func__,
+	//port->base, gpio_gr->reg_offset, bit);
 
-	output_enable_val = readl_relaxed(reg+0x4);;
+	output_enable_val = readl_relaxed(reg+0x4);
 
-	pr_debug("%s: output enable val : 0x%x\n",__func__, output_enable_val);
+	pr_debug("%s: output enable val : 0x%x\n", __func__, output_enable_val);
 	output_enable_val &= bit;
 
-	if(output_enable_val==0) {
-	    pr_debug("%s: input\n", __func__);
-	    return 1;
-	} else {
-	    pr_debug("%s: output\n", __func__);
-	    return 0;
+	if (output_enable_val == 0) {
+		pr_debug("%s: input\n", __func__);
+		return 1;
 	}
+
+	pr_debug("%s: output\n", __func__);
+	return 0;
 }
 
 static void tcc_irq_ack(struct irq_data *d)
@@ -439,45 +439,45 @@ static void tcc_irq_ack(struct irq_data *d)
 
 static int telechips_gpio_probe(struct platform_device *pdev)
 {
-    const struct of_device_id *of_id =
-	of_match_device(telechips_gpio_dt_ids, &pdev->dev);
-    struct device *dev = &pdev->dev;
-    struct device_node *node = dev->of_node;
-    struct device_node *np;
-    struct tcc_gpio_port *port;
-    struct resource *res;
-    struct gpio_chip *gc;
-    struct irq_chip *ic;
-    struct tcc_gpio_group *gpio_gr;
-    u32 source_section;
-    int gpio_num;
-    int irq_num;
-    int i;
-    struct property *prop;
-    int ret;
+	const struct of_device_id *of_id =
+	    of_match_device(telechips_gpio_dt_ids, &pdev->dev);
+	struct device *dev = &pdev->dev;
+	struct device_node *node = dev->of_node;
+	struct device_node *np;
+	struct tcc_gpio_port *port;
+	struct resource *res;
+	struct gpio_chip *gc;
+	struct irq_chip *ic;
+	struct tcc_gpio_group *gpio_gr;
+	u32 source_section;
+	int gpio_num;
+	int irq_num;
+	int i;
+	struct property *prop;
+	int ret;
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-    struct device_node *sc_np;
+	struct device_node *sc_np;
 #endif
 
-    dev_dbg(&(pdev->dev), "%s: tcc gpio driver start\n", __func__);
+	dev_dbg(&(pdev->dev), "%s: tcc gpio driver start\n", __func__);
 
-    port = devm_kzalloc(&pdev->dev, sizeof(*port), GFP_KERNEL);
-    if (!port)
-	return -ENOMEM;
+	port = devm_kzalloc(&pdev->dev, sizeof(*port), GFP_KERNEL);
+	if (!port)
+		return -ENOMEM;
 
-    port->sdata = of_id->data;
-    res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-    port->base = devm_ioremap_resource(dev, res);
-    if (IS_ERR(port->base))
-	return PTR_ERR(port->base);
+	port->sdata = of_id->data;
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	port->base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(port->base))
+		return PTR_ERR(port->base);
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	port->raw_base = res->start;
 	sc_np = of_parse_phandle(node, "sc-firmware", 0);
 	if (sc_np == NULL) {
 		dev_err(&(pdev->dev),
-				"[ERROR][PINCTRL] %s : sc_np == NULL\n"
-				, __func__);
+			"[ERROR][PINCTRL] %s : sc_np == NULL\n"
+			, __func__);
 		return -EINVAL;
 	}
 
@@ -505,199 +505,205 @@ static int telechips_gpio_probe(struct platform_device *pdev)
 	}
 #endif
 
-    for_each_child_of_node(node, np) {
-	prop = of_find_property(np, "gpio-controller", NULL);
-	if(prop != NULL) {
-	    ++port->gpio_num_gr;
+	for_each_child_of_node(node, np) {
+		prop = of_find_property(np, "gpio-controller", NULL);
+		if (prop != NULL)
+			++port->gpio_num_gr;
 	}
-    }
 
 
-    port->irq_num = of_irq_count(node);
-    if (port->irq_num < 0)
-	return port->irq_num;
+	port->irq_num = of_irq_count(node);
+	if (port->irq_num < 0)
+		return port->irq_num;
 
-    pr_debug("[GPIO][DEBUG] %s: irq num : %d\n", __func__, port->irq_num);
-    irq_num = port->irq_num;
+	pr_debug("[GPIO][DEBUG] %s: irq num : %d\n", __func__, port->irq_num);
+	irq_num = port->irq_num;
 
 
 #if defined(CONFIG_ARCH_TCC897X)
-    port->irq_port_map =
-	devm_kcalloc(&pdev->dev, irq_num, sizeof(int *), GFP_KERNEL);
+	port->irq_port_map =
+		devm_kcalloc(&pdev->dev, irq_num, sizeof(int *), GFP_KERNEL);
 
-    for (i = 0; i < irq_num; i++) {
-	port->irq_port_map[i] = devm_kcalloc(&pdev->dev, 5, sizeof(int),
+	for (i = 0; i < irq_num; i++) {
+		port->irq_port_map[i] = devm_kcalloc(&pdev->dev, 5, sizeof(int),
 		GFP_KERNEL);
-    }
+	}
 
-    for (i = 0; i < irq_num; i++) {
-	port->irq_port_map[i][0] = i;
-       of_property_read_u32_index(node, "interrupts", 1 + (i * 3),
-	                      &port->irq_port_map[i][4]);
-	pr_debug("[GPIO][DEBUG] %s: interrupt port mux num : %d\n",
-		__func__, port->irq_port_map[i][4]);
-    }
+	for (i = 0; i < irq_num; i++) {
+		port->irq_port_map[i][0] = i;
+		of_property_read_u32_index(node, "interrupts", 1 + (i * 3),
+		    &port->irq_port_map[i][4]);
+		pr_debug("[GPIO][DEBUG] %s: interrupt port mux num : %d\n",
+			__func__, port->irq_port_map[i][4]);
+	}
 #else
-    port->irq_port_map =
-	devm_kcalloc(&pdev->dev, irq_num / 2, sizeof(int *), GFP_KERNEL);
+	port->irq_port_map =
+	    devm_kcalloc(&pdev->dev, irq_num / 2, sizeof(int *), GFP_KERNEL);
 
-    for (i = 0; i < irq_num / 2; i++) {
-	port->irq_port_map[i] = devm_kcalloc(&pdev->dev, 4, sizeof(int),
+	for (i = 0; i < irq_num / 2; i++) {
+		port->irq_port_map[i] = devm_kcalloc(&pdev->dev, 4, sizeof(int),
 		GFP_KERNEL);
-    }
+	}
 
 
-     for (i = 0; i < irq_num / 2; i++) {
-       of_property_read_u32_index(node, "interrupts", 1 + (i * 3),
-               &port->irq_port_map[i][0]);
-       pr_debug("[GPIO][DEBUG] %s: interrupt port mux num : %d\n",
-                __func__, port->irq_port_map[i][0]);
-     }
+	for (i = 0; i < irq_num / 2; i++) {
+		of_property_read_u32_index(node, "interrupts", 1 + (i * 3),
+		    &port->irq_port_map[i][0]);
+		pr_debug("[GPIO][DEBUG] %s: interrupt port mux num : %d\n",
+		    __func__, port->irq_port_map[i][0]);
+	}
 #endif
 
-    port->irq = devm_kcalloc(&pdev->dev, irq_num, sizeof(int), GFP_KERNEL);
+	port->irq = devm_kcalloc(&pdev->dev, irq_num, sizeof(int), GFP_KERNEL);
 
-    for (i = 0; i < irq_num; i++) {
-	port->irq[i] = of_irq_get(node, i);
-	if (port->irq[i] < 0)
-	    return port->irq[i];
-    }
-
-
-    port->gpio_gr = kcalloc(port->gpio_num_gr, sizeof(struct tcc_gpio_group),
-            GFP_KERNEL);
-
-    gpio_gr = port->gpio_gr;
-
-
-    for_each_child_of_node(node, np) {
-
-	ret = of_property_read_string(np, "label", &gpio_gr->name);
-	if(ret) {
-	    return ret;
+	for (i = 0; i < irq_num; i++) {
+		port->irq[i] = of_irq_get(node, i);
+		if (port->irq[i] < 0)
+			return port->irq[i];
 	}
 
-	of_property_read_u32_index(np, "reg-offset", 0, &gpio_gr->reg_offset);
-	of_property_read_u32_index(np, "gpio-ranges", 3, &gpio_num);
 
-	gc = &gpio_gr->gc;
-	gc->of_node = np;
-	gc->parent = dev;
-	gc->label = gpio_gr->name;
-	gc->ngpio = gpio_num;
-	gc->base = of_alias_get_id(np, "gpio");
+	port->gpio_gr = kcalloc(port->gpio_num_gr,
+		sizeof(struct tcc_gpio_group), GFP_KERNEL);
 
-	gc->request = gpiochip_generic_request;
-	gc->free = gpiochip_generic_free;
-	gc->direction_input = tcc_gpio_direction_input;
-	gc->direction_output = tcc_gpio_direction_output;
-	gc->get_direction = tcc_get_direction;
-	gc->get = tcc_gpio_get;
-	gc->set = tcc_gpio_set;
+	gpio_gr = port->gpio_gr;
 
-	ret = gpiochip_add_data(gc, port);
-	if (ret < 0) {
-	    return ret;
-	}
 
-	    ret = of_property_read_u32_index(np, "source-num", 0, &source_section);
+	for_each_child_of_node(node, np) {
 
-	    gpio_gr->source_section = source_section;
+		ret = of_property_read_string(np, "label", &gpio_gr->name);
 
-	    if (gpio_gr->source_section != 0xffU) {
-		gpio_gr->gpio_offset_num = kcalloc(source_section, sizeof(u32),
-			GFP_KERNEL);
-		gpio_gr->source_offset_num = kcalloc(source_section, sizeof(u32),
-			GFP_KERNEL);
-		gpio_gr->source_range = kcalloc(source_section, sizeof(u32),
-			GFP_KERNEL);
-		for (i = 0U; i < gpio_gr->source_section; i++) {
-		    ret =
-			of_property_read_u32_index(np, "source-num",
-				((i * 3) + 1),
-				&gpio_gr->gpio_offset_num[i]);
-		    if (ret > 0) {
-			dev_err(&(pdev->dev),
+		if (ret)
+			return ret;
+
+		of_property_read_u32_index(np, "reg-offset", 0,
+			&gpio_gr->reg_offset);
+		of_property_read_u32_index(np, "gpio-ranges", 3, &gpio_num);
+
+		gc = &gpio_gr->gc;
+		gc->of_node = np;
+		gc->parent = dev;
+		gc->label = gpio_gr->name;
+		gc->ngpio = gpio_num;
+		gc->base = of_alias_get_id(np, "gpio");
+		gc->request = gpiochip_generic_request;
+		gc->free = gpiochip_generic_free;
+		gc->direction_input = tcc_gpio_direction_input;
+		gc->direction_output = tcc_gpio_direction_output;
+		gc->get_direction = tcc_get_direction;
+		gc->get = tcc_gpio_get;
+		gc->set = tcc_gpio_set;
+
+		ret = gpiochip_add_data(gc, port);
+
+		if (ret < 0)
+			return ret;
+
+		ret = of_property_read_u32_index(np, "source-num", 0,
+			&source_section);
+
+		gpio_gr->source_section = source_section;
+
+		if (gpio_gr->source_section != 0xffU) {
+			gpio_gr->gpio_offset_num =
+			    kcalloc(source_section, sizeof(u32), GFP_KERNEL);
+			gpio_gr->source_offset_num = kcalloc(source_section,
+				sizeof(u32), GFP_KERNEL);
+			gpio_gr->source_range =
+				kcalloc(source_section, sizeof(u32),
+					GFP_KERNEL);
+			for (i = 0U; i < gpio_gr->source_section; i++) {
+				ret = of_property_read_u32_index(np,
+					"source-num", ((i * 3) + 1),
+					&gpio_gr->gpio_offset_num[i]);
+
+				if (ret > 0) {
+
+					dev_err(&(pdev->dev),
 				"[ERROR][PINCTRL] failed to get source offset base\n"
-			       );
-			return -EINVAL;
-		    }
-		    ret =
-			of_property_read_u32_index(np, "source-num",
-				((i * 3) + 2),
-				&gpio_gr->source_offset_num[i]);
-		    if (ret > 0) {
-			dev_err(&(pdev->dev),
+					);
+					return -EINVAL;
+				}
+
+				ret = of_property_read_u32_index(np,
+					"source-num", ((i * 3) + 2),
+					&gpio_gr->source_offset_num[i]);
+
+				if (ret > 0) {
+					dev_err(&(pdev->dev),
 				"[ERROR][PINCTRL] failed to get source base\n"
-			       );
-			return -EINVAL;
-		    }
-		    ret =
-			of_property_read_u32_index(np, "source-num",
-				((i * 3) + 3),
-				&gpio_gr->source_range[i]);
-		    if (ret > 0) {
-			dev_err(&(pdev->dev),
+					);
+					return -EINVAL;
+				}
+
+				ret = of_property_read_u32_index(np,
+					"source-num", ((i * 3) + 3),
+					&gpio_gr->source_range[i]);
+
+				if (ret > 0) {
+					dev_err(&(pdev->dev),
 				"[ERROR][PINCTRL] failed to get source range\n"
-			       );
-			return -EINVAL;
-		    }
+					);
+					return -EINVAL;
+				}
+			}
+
 		}
 
-	    }
+		ic = &gpio_gr->ic;
+		ic->name = gpio_gr->name;
+		ic->irq_ack = tcc_irq_ack;
+		ic->irq_set_type = tcc_gpio_irq_set_type;
 
-	    ic = &gpio_gr->ic;
-	    ic->name = gpio_gr->name;
-	    ic->irq_ack = tcc_irq_ack;
-	    ic->irq_set_type = tcc_gpio_irq_set_type;
+		ret = gpiochip_irqchip_add(gc, ic, 0,
+			handle_simple_irq, IRQ_TYPE_NONE);
+		if (ret) {
+			dev_err(dev, "failed to add irqchip\n");
+			gpiochip_remove(gc);
+			return ret;
+		}
 
-	    ret = gpiochip_irqchip_add(gc, ic, 0, handle_simple_irq, IRQ_TYPE_NONE);
-	    if (ret) {
-		dev_err(dev, "failed to add irqchip\n");
-		gpiochip_remove(gc);
-		return ret;
-	    }
+		gpio_gr->port = port;
+		gpio_gr++;
+	}
 
-	gpio_gr->port=port;
-	gpio_gr++;
-    }
+	platform_set_drvdata(pdev, port);
 
-    platform_set_drvdata(pdev, port);
-
-    return 0;
+	return 0;
 }
 
 static s32 __maybe_unused tcc_gpio_suspend(struct device *dev)
 {
-        return 0;
+	return 0;
 }
 
 static s32 __maybe_unused tcc_gpio_resume(struct device *dev)
 {
-        struct tcc_gpio_port *port = dev_get_drvdata(dev);
+	struct tcc_gpio_port *port = dev_get_drvdata(dev);
 	int idx_sel_reg, idx_sel_plc;
 	int i;
 
-	for(i = 0; i < port->irq_num / 2; i++) {
-	    if(port->irq_port_map[i][3] == 1) {
-		idx_sel_reg = port->irq_port_map[i][0] / 4;
-		idx_sel_plc = port->irq_port_map[i][0] % 4;
+	for (i = 0; i < port->irq_num / 2; i++) {
+		if (port->irq_port_map[i][3] == 1) {
+			idx_sel_reg = port->irq_port_map[i][0] / 4;
+			idx_sel_plc = port->irq_port_map[i][0] % 4;
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
-		(void)request_gpio_to_sc(port->raw_base + EINT_MUX + (idx_sel_reg * 4),
+			(void)request_gpio_to_sc(port->raw_base +
+				EINT_MUX + (idx_sel_reg * 4),
 			(idx_sel_plc * 8), 8, port->irq_port_map[i][2]);
 #else
-		writel(readl(port->base + EINT_MUX + (idx_sel_reg * 4)) |
-			port->irq_port_map[i][2] << (idx_sel_plc * 8),
+			writel(readl(port->base + EINT_MUX +
+				    (idx_sel_reg * 4)) |
+				port->irq_port_map[i][2] << (idx_sel_plc * 8),
 			port->base + EINT_MUX + (idx_sel_reg * 4));
 #endif
-	    }
+		}
 	}
 
-        return 0;
+	return 0;
 }
 
-static SIMPLE_DEV_PM_OPS(tcc_gpio_pm_ops,
-                         tcc_gpio_suspend, tcc_gpio_resume);
+static SIMPLE_DEV_PM_OPS(tcc_gpio_pm_ops, tcc_gpio_suspend, tcc_gpio_resume);
 
 static struct platform_driver telechips_gpio_driver = {
 	.driver = {
