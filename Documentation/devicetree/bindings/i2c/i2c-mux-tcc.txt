@@ -40,9 +40,11 @@ for the full duration of the complete multiplexed I2C transaction.
 * The properties of mux-locked or parent-locked multiplexers are discussed
 in more detail in Documentation/i2c/i2c-topology.
 
-Note: I2C mux is parsing port number from pinctrl name of i2c child node.
+Note 1: I2C mux is parsing port number from the handler name of pinctrl.
 so, please be following the pattern as like i2cxx_bus, xx is port number.
 you can find port number in Chip Specification or pinctrl device tree.
+
+Note 2: The idle state of I2C signal which is used by i2c mux maintains low.
 
 Example:
 
@@ -54,9 +56,13 @@ i2cmux@163c0000 {
 
 	i2c-parent = <&i2c1>;
 
+	pinctrl-names = "tsc1", "tsc2", "serdes";
+	pinctrl-0 = <&i2c6_bus>;
+	pinctrl-1 = <&i2c33_bus>;
+	pinctrl-2 = <&i2c37_bus>;
+
 	i2c@0 {
 		reg = <0>;
-		pinctrl-0 = <&i2c6_bus>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 
@@ -74,7 +80,6 @@ i2cmux@163c0000 {
 
 	i2c@1 {
 		reg = <1>;
-		pinctrl-0 = <&i2c33_bus>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 
@@ -103,7 +108,6 @@ i2cmux@163c0000 {
 
 	i2c@2 {
 		reg = <2>;
-		pinctrl-0 = <&i2c37_bus>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 
