@@ -540,8 +540,7 @@ static void ltdc_crtc_mode_set_nofb(struct drm_crtc *crtc)
 
 	if (encoder) {
 		/* get bridge from encoder */
-		list_for_each_entry(bridge, &encoder->bridge_chain, chain_node)
-			if (bridge->encoder == encoder) break;
+		bridge = encoder->bridge;
 
 		/* Get the connector from encoder */
 		drm_connector_list_iter_begin(ddev, &iter);
