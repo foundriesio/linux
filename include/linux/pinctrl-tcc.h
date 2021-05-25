@@ -34,22 +34,22 @@
 #define INT_EINT0       (0+32)
 
 struct gpio_regs {
-        u32 data;         /* data */
-        u32 out_en;       /* output enable */
-        u32 out_or;       /* OR fnction on output data */
-        u32 out_bic;      /* BIC function on output data */
-        u32 out_xor;      /* XOR function on output data */
-        u32 strength0;    /* driver strength control 0 */
-        u32 strength1;    /* driver strength control 1 */
-        u32 pull_enable;  /* pull-up/down enable */
-        u32 pull_select;  /* pull-up/down select */
-        u32 in_en;        /* input enable */
-        u32 in_type;      /* input type (Shmitt / CMOS) */
-        u32 slew_rate;    /* slew rate */
-        u32 func_select0; /* port configuration 0 */
-        u32 func_select1; /* port configuration 1 */
-        u32 func_select2; /* port configuration 2 */
-        u32 func_select3; /* port configuration 3 */
+	u32 data;         /* data */
+	u32 out_en;       /* output enable */
+	u32 out_or;       /* OR fnction on output data */
+	u32 out_bic;      /* BIC function on output data */
+	u32 out_xor;      /* XOR function on output data */
+	u32 strength0;    /* driver strength control 0 */
+	u32 strength1;    /* driver strength control 1 */
+	u32 pull_enable;  /* pull-up/down enable */
+	u32 pull_select;  /* pull-up/down select */
+	u32 in_en;        /* input enable */
+	u32 in_type;      /* input type (Shmitt / CMOS) */
+	u32 slew_rate;    /* slew rate */
+	u32 func_select0; /* port configuration 0 */
+	u32 func_select1; /* port configuration 1 */
+	u32 func_select2; /* port configuration 2 */
+	u32 func_select3; /* port configuration 3 */
 };
 
 static void __iomem *pmgpio_base;
@@ -161,16 +161,16 @@ struct tcc_pinctrl_soc_data {
 };
 
 struct tcc_pinmux_function {
-        const char *name;
-        const char **groups;
-        s32 ngroups;
+	const char *name;
+	const char **groups;
+	s32 ngroups;
 };
 
 struct tcc_pin_group {
-        const char *name;
-        const u32 *pins;
-        u32 npins;
-        u32 func;
+	const char *name;
+	const u32 *pins;
+	u32 npins;
+	u32 func;
 };
 
 u32 tcc_irq_get_reverse(u32 irq);
@@ -182,6 +182,6 @@ u32 tcc_pinconf_unpack_value(u32 config);
 static int tcc_gpio_set_direction(void __iomem *base, u32 offset, int input);
 static int tcc_gpio_set_function(void __iomem *base, u32 offset, int func);
 static int tcc_pin_conf_get(void __iomem *base, u32 offset, int param);
-static int tcc_pin_conf_set(void __iomem *base, u32 offset, int param, int config,
-        struct tcc_pinctrl *pctl);
+static int tcc_pin_conf_set(void __iomem *base, u32 offset, int param,
+	int config, struct tcc_pinctrl *pctl);
 #endif
