@@ -60,7 +60,7 @@ struct tcc_db_platform_data {
 
 extern struct tcc_db_platform_data *get_tcc_db_platform_data(void);
 
-// tcc display output block operation 
+// tcc display output block operation
 struct tcc_db_out_ops {
 	/* initialize output.  db clocks are not on at this point */
 	int (*init)(struct lcd_panel *db);
@@ -87,7 +87,7 @@ enum{
 };
 
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC897X) \
-	||  defined(CONFIG_ARCH_TCC805X) 
+	||  defined(CONFIG_ARCH_TCC805X)
 struct lvds_gpio {
 	int power_on;
 	int display_on;

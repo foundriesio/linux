@@ -138,12 +138,12 @@ static void tcc_db_dsi_enable(struct lcd_panel *db)
 	{
 #define sim_debug(x) pr_info("sim %s\n", x)
 #define sim_value(x) pr_info("sim  0x%x\n", x)
-		volatile unsigned int cnt;
+		unsigned int cnt;
 
-		volatile PDDICONFIG pDDICfg =
+		PDDICONFIG pDDICfg =
 			(DDICONFIG *)tcc_p2v(HwDDI_CONFIG_BASE);
 
-		volatile MIPI_DSI *pHwMIPI_DSI =
+		MIPI_DSI *pHwMIPI_DSI =
 			(MIPI_DSI *)tcc_p2v(HwMIPI_DSI);
 #if 1
 
@@ -375,10 +375,10 @@ static void tcc_db_dsi_disable(struct lcd_panel *db)
 	}
 
 	{
-		volatile PDDICONFIG pDDICfg =
+		PDDICONFIG pDDICfg =
 			(DDICONFIG *)tcc_p2v(HwDDI_CONFIG_BASE);
 
-		volatile MIPI_DSI *pHwMIPI_DSI =
+		MIPI_DSI *pHwMIPI_DSI =
 			(MIPI_DSI *)tcc_p2v(HwMIPI_DSI);
 
 		pr_info(" %s: LINE:%d\n", __func__, __LINE__);

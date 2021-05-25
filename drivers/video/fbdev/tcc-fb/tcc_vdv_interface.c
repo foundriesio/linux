@@ -1320,8 +1320,8 @@ void _voic_set_panel(
 			if (vioc_v_dv_get_mode() != DV_STD)
 				value |= (0x1<<31);
 			value |= (
-			((*(volatile unsigned char *)(meta_VirtAddr + 3)) << 8)
-			| ((*(volatile unsigned char *)(meta_VirtAddr + 4))
+			((*(unsigned char *)(meta_VirtAddr + 3)) << 8)
+			| ((*(unsigned char *)(meta_VirtAddr + 4))
 				<< 0));
 		}
 		//pVPANEL->out.bioKsuds16.value	= value;  // 1d8
@@ -1536,9 +1536,9 @@ void _voic_set_metadata(
 		//value	= pVPANEL->out.bioKsuds16.value;
 		value = __dv_reg_r(pVPANEL + 0x01d8);
 		value &= ~(0xFFFF<<0);
-		value |= (((*(volatile unsigned char *)(meta_VirtAddr + 3))
+		value |= (((*(unsigned char *)(meta_VirtAddr + 3))
 				<< 8)
-			| ((*(volatile unsigned char *)(meta_VirtAddr + 4))
+			| ((*(unsigned char *)(meta_VirtAddr + 4))
 				<< 0));
 		//pVPANEL->out.bioKsuds16.value	= value;
 		__dv_reg_w(value, pVPANEL + 0x01d8);

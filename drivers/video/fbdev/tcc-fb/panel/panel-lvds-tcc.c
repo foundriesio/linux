@@ -134,7 +134,8 @@ static int panel_lvds_disable(struct fb_panel *panel)
 			lvds->backlight->props.state |= BL_CORE_FBBLANK;
 			backlight_update_status(lvds->backlight);
 		} else {
-			pr_err("[ERROR][%s] : backlight driver not valid\n", __func__);
+			pr_err("[ERROR][%s] : backlight driver not valid\n",
+			       __func__);
 		}
 		#else
 		if (
@@ -235,7 +236,8 @@ static int panel_lvds_enable(struct fb_panel *panel)
 			lvds->backlight->props.power = FB_BLANK_UNBLANK;
 			backlight_update_status(lvds->backlight);
 		} else {
-			pr_err("[ERROR][%s] : backlight driver not valid\n", __func__);
+			pr_err("[ERROR][%s] : backlight driver not valid\n",
+			       __func__);
 		}
 		#else
 		if (
@@ -519,10 +521,10 @@ static int panel_lvds_parse_dt(struct panel_lvds *lvds)
 		lvds->backlight = of_find_backlight_by_node(np);
 		of_node_put(np);
 
-		if (!lvds->backlight){ //backlight node is not valid
-			pr_err("[ERROR][%s] : backlight driver not valid\n", __func__);
-		}
-		else{
+		if (!lvds->backlight) { //backlight node is not valid
+			pr_err("[ERROR][%s] : backlight driver not valid\n",
+			       __func__);
+		} else {
 			pr_info("[INFO][%s] : External backlight driver : max brightness[%d]\n",
 			__func__,
 			lvds->backlight->props.max_brightness);
@@ -599,10 +601,9 @@ static int panel_lvds_probe(struct platform_device *pdev)
 			"[INFO][%s] %s with [%s] Primary port(%d) is in death\n",
 			LOG_TAG, __func__, lvds->data->name,
 			lvds->tcc_lvds_hw.port_main);
-	}else{
-		if(lvds->tcc_lvds_hw.lvds_type == PANEL_LVDS_SINGLE){
+	} else {
+		if (lvds->tcc_lvds_hw.lvds_type == PANEL_LVDS_SINGLE)
 			lvds->enabled = 1;
-		}
 		dev_info(
 			lvds->dev,
 			"[INFO][%s] %s with [%s] Primary port(%d) is in alive\r\n",
