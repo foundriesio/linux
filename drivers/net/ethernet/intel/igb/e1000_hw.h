@@ -20,8 +20,8 @@
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  */
 
-#ifndef _E1000_HW_H_
-#define _E1000_HW_H_
+#ifndef _E1000_IGB_HW_H_
+#define _E1000_IGB_HW_H_
 
 #include <linux/types.h>
 #include <linux/delay.h>
@@ -570,4 +570,4 @@ s32 igb_write_pcie_cap_reg(struct e1000_hw *hw, u32 reg, u16 *value);
 
 void igb_read_pci_cfg(struct e1000_hw *hw, u32 reg, u16 *value);
 void igb_write_pci_cfg(struct e1000_hw *hw, u32 reg, u16 *value);
-#endif /* _E1000_HW_H_ */
+#endif /* _E1000_IGB_HW_H_ */
