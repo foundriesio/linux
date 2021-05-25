@@ -227,7 +227,7 @@ struct hdmi_tx_dev {
 	volatile void __iomem *hdmi_tx_phy_if_io;
 
 	/* DDI_BUS interface */
-	volatile void __iomem *ddibus_io;
+	void __iomem *ddibus_io;
 
 	/* CKC interface */
 	volatile void __iomem *io_bus;
