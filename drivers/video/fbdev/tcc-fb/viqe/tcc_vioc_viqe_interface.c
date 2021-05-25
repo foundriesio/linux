@@ -3734,7 +3734,7 @@ unsigned int tcc_viqe_commom_dt_parse(
 	} else {
 		viqe_common_info->pVIQE0 =
 			VIOC_VIQE_GetAddress(viqe_common_info->gVIOC_VIQE0);
-		//pr_info("[INF][VIQE] viqe_video viqe0 %d %x\n",
+		//pr_info("[INF][VIQE] viqe_video viqe0 %d %px\n",
 		//	viqe_common_info->gVIOC_VIQE0,
 		//	viqe_common_info->pVIQE0);
 	}
@@ -3748,12 +3748,12 @@ unsigned int tcc_viqe_commom_dt_parse(
 		viqe_common_info->pVIQE1 = viqe_common_info->pVIQE0;
 		viqe_common_info->gVIOC_VIQE1 = viqe_common_info->gVIOC_VIQE0;
 		not_exist_viqe1 = 1;
-		//pr_info("[INF][VIQE] viqe_video viqe1(viqe0) %d %x\n",
+		//pr_info("[INF][VIQE] viqe_video viqe1(viqe0) %d %px\n",
 		//	index, viqe_common_info->pVIQE1);
 	} else {
 		viqe_common_info->pVIQE1 =
 			VIOC_VIQE_GetAddress(viqe_common_info->gVIOC_VIQE1);
-		//pr_info("[INF][VIQE] viqe_video viqe1 %d %x\n",
+		//pr_info("[INF][VIQE] viqe_video viqe1 %d %px\n",
 		//	viqe_common_info->gVIOC_VIQE1,
 		//	viqe_common_info->pVIQE1);
 	}
@@ -3771,7 +3771,7 @@ unsigned int tcc_viqe_commom_dt_parse(
 			pr_err("can not find vioc deintls address\n");
 			/* prevent KCS warning */
 		}
-		//pr_info("[INF][VIQE] deintls 0x%p\n",
+		//pr_info("[INF][VIQE] deintls 0x%px\n",
 		//	viqe_common_info->pDEINTLS);
 	}
 
@@ -3824,8 +3824,8 @@ unsigned int tcc_viqe_60hz_dt_parse(
 		pr_err("[ERR][VIQE] could not find viqe_video display node\n");
 	} else {
 		viqe_60hz_info->pDISPBase_60Hz = VIOC_DISP_GetAddress(index);
-		pr_info("[INF][VIQE] viqe_video display_60hz 0x%x %p\n",
-			index, viqe_60hz_info->pDISPBase_60Hz);
+		//pr_info("[INF][VIQE] viqe_video display_60hz 0x%x %p\n",
+		//	index, viqe_60hz_info->pDISPBase_60Hz);
 	}
 
 	scaler_node = of_parse_phandle(np, "telechips,sc", 0);
