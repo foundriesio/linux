@@ -1,0 +1,12 @@
+Hardware demux test
+
+Required properies:
+	-compatible:
+		"telechips,hwdemux_test"
+
+Optional properties:
+
+Examples:
+	tcc_hwdemux_test {
+                 compatible = "telechips,hwdemux_test";
+        };

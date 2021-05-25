@@ -345,15 +345,20 @@ static int __maybe_unused rx_dma_buffer_alloc(int devid,
 {
 	dma->buf_size = TSIF_DMA_SIZE;
 	dma->v_addr =
-		dma_alloc_coherent(tsif_ex_pri.dev[devid], dma->buf_size, &dma->dma_addr, GFP_KERNEL);
+		dma_alloc_coherent(tsif_ex_pri.dev[devid],
+				dma->buf_size, &dma->dma_addr,
+				GFP_KERNEL);
 	if (dma->v_addr == NULL)
 		return -1;
 
 	dma->buf_sec_size = SECTION_DMA_SIZE;
 	dma->v_sec_addr = dma_alloc_coherent(
-		tsif_ex_pri.dev[devid], dma->buf_sec_size, &dma->dma_sec_addr, GFP_KERNEL);
+		tsif_ex_pri.dev[devid], dma->buf_sec_size,
+		&dma->dma_sec_addr, GFP_KERNEL);
 	if (dma->v_sec_addr == NULL) {
-		dma_free_coherent(tsif_ex_pri.dev[devid], dma->buf_size, dma->v_addr, dma->dma_addr);
+		dma_free_coherent(tsif_ex_pri.dev[devid],
+				dma->buf_size, dma->v_addr,
+				dma->dma_addr);
 		return -1;
 	}
 
@@ -795,7 +800,7 @@ struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_start(unsigned int devid)
 	devid, (unsigned int)dma_buffer->v_addr,
 	(unsigned int)dma_buffer->dma_addr, dma_buffer->buf_size);
 	pr_info(
-	"[INFO][HWDMX][TSIF-%d]dma secure ts buffer alloc @0x%X(Phy=0x%X), size:%d\n",
+	"[INFO][HWDMX] [TSIF-%d] dma secure ts buffer alloc @0x%X(Phy=0x%X), size:%d\n",
 	devid, (unsigned int)dma_buffer->v_secure_addr,
 	(unsigned int)dma_buffer->secure_dma_addr,
 	dma_buffer->buf_size);
@@ -1196,10 +1201,10 @@ int tcc_hwdmx_tsif_rx_deinit(struct device *dev)
 
 #ifdef USE_REV_MEMORY
 	if (tsif_ex_pri.mem_base == NULL)
-		ret = -EFAULT;	
+		ret = -EFAULT;
 	iounmap(tsif_ex_pri.mem_base);
-	
-#if defined(CONFIG_ARCH_TCC899X)	
+
+#if defined(CONFIG_ARCH_TCC899X)
 	if (tsif_ex_pri.virt_secure_tsif == NULL)
 		ret = -EFAULT;
 	iounmap(tsif_ex_pri.virt_secure_tsif);

@@ -6,4 +6,5 @@ hwdmx_drv-objs += \
 	tsif.o \
 	demux.o
 
-EXTRA_CFLAGS := -Idrivers/media/dvb-core
+ccflags-y := -Idrivers/media/dvb-core
+#EXTRA_CFLAGS := -Idrivers/media/dvb-core

@@ -177,7 +177,7 @@ static int hwdmx_evt_handler(int cmd, void *rdata, int size)
 			p[1] = ((int *)rdata)[1];
 			str[8] = 0;
 			pr_info(
-				"[INFO][HWDMX]%s : [0x%X][0x%X][0x%X][0x%X][0x%X].\n",
+				"[INFO][HWDMX] %s : [0x%X][0x%X][0x%X][0x%X][0x%X].\n",
 				str, ((int *)rdata)[2], ((int *)rdata)[3],
 				((int *)rdata)[4], ((int *)rdata)[5],
 				((int *)rdata)[6]);
@@ -255,8 +255,10 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 		__LINE__, (u32) h->dma_buffer->dma_addr, h->dma_buffer->v_addr,
 		h->dma_buffer->buf_size, h->port_cfg.tsif_port);
 
-	if (session_cnt == 0)
+	if (session_cnt == 0) {
+		// Set Callback Function
 		sp_set_callback(hwdmx_evt_handler);
+	}
 
 	switch (h->working_mode) {
 	case 0x00:		// tsif for tdmb
@@ -503,7 +505,7 @@ int hwdmx_remove_filter_cmd(struct tcc_tsif_handle *h,
 	int fid;
 
 	pr_info
-	    ("[INFO][HWDMX][DEMUX #%d]hwdmx_remove_filter(type=%d, pid=%d)\n",
+	    ("[INFO][HWDMX] [DEMUX #%d]hwdmx_remove_filter(type=%d, pid=%d)\n",
 	     h->dmx_id, feed->f_type, feed->f_pid);
 
 	fid = (feed->f_type == FILTER_TYPE_SECTION) ? feed->f_id : 0;

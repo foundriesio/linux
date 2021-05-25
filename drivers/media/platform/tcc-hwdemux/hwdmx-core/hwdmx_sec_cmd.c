@@ -189,7 +189,7 @@ static int hwdmx_evt_handler(int cmd, void *rdata, int size)
 			p[1] = ((int *)rdata)[1];
 			str[8] = 0;
 			pr_info(
-			"[INFO][HWDMX]%s :[0x%X][0x%X][0x%X][0x%X][0x%X].\n",
+			"[INFO][HWDMX] %s : [0x%X][0x%X][0x%X][0x%X][0x%X].\n",
 			       str, ((int *)rdata)[2], ((int *)rdata)[3],
 			       ((int *)rdata)[4], ((int *)rdata)[5],
 			       ((int *)rdata)[6]);
@@ -266,12 +266,14 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 	int tsif;
 	int mbox_data[12], mbox_result;
 
-	pr_info("\n[INFO][HWDMX]%s:%d:0x%08x:0x%p:0x%08X port:%u\n", __func__,
+	pr_info("\n[INFO][HWDMX] %s:%d:0x%08x:0x%p:0x%08X port:%u\n", __func__,
 		__LINE__, (u32) h->dma_buffer->dma_addr, h->dma_buffer->v_addr,
 		h->dma_buffer->buf_size, h->port_cfg.tsif_port);
 
-	if (session_cnt == 0)
+	if (session_cnt == 0) {
+		// Set Callback function
 		sec_set_callback(hwdmx_evt_handler);
+	}
 
 	switch (h->working_mode) {
 	case 0x00:		// tsif for tdmb
@@ -291,6 +293,9 @@ int hwdmx_start_cmd(struct tcc_tsif_handle *h)
 
 	mbox_data[0] = h->dmx_id;
 	mbox_data[1] = NORMAL;
+#if defined(CONFIG_HWDEMUX_BYPASS_MODE)
+	mbox_data[1] = BYPASS;
+#endif
 	mbox_data[2] = 0;
 	mbox_data[3] = h->dma_buffer->dma_addr;
 	mbox_data[4] = h->dma_buffer->buf_size;
@@ -396,7 +401,7 @@ int hwdmx_set_pcrpid_cmd(struct tcc_tsif_handle *h, unsigned int pid)
 		       __func__, __LINE__, result);
 		goto out;
 	}
-	pr_info("[INFO][HWDMX] [DEMUX #%d]hwdmx_set_pcrpid(pid=%d)\n",
+	pr_info("[INFO][HWDMX] [DEMUX #%d] hwdmx_set_pcrpid(pid=%d)\n",
 		h->dmx_id, pid);
 
 out:
@@ -481,7 +486,7 @@ int hwdmx_add_filter_cmd(struct tcc_tsif_handle *h,
 		goto out;
 	}
 
-	pr_info("[INFO][HWDMX] [DEMUX #%d]hwdmx_add_filter(type=%d, pid=%d)\n",
+	pr_info("[INFO][HWDMX] [DEMUX #%d] hwdmx_add_filter(type=%d, pid=%d)\n",
 		h->dmx_id, feed->f_type, feed->f_pid);
 out:
 	return result;
@@ -495,7 +500,7 @@ int hwdmx_remove_filter_cmd(struct tcc_tsif_handle *h,
 	int fid;
 
 	pr_info
-	    ("[INFO][HWDMX][DEMUX #%d]hwdmx_remove_filter(type=%d, pid=%d)\n",
+	    ("[INFO][HWDMX] [DEMUX #%d] hwdmx_remove_filter(type=%d, pid=%d)\n",
 	     h->dmx_id, feed->f_type, feed->f_pid);
 
 	fid = (feed->f_type == SECTION) ? feed->f_id : 0;

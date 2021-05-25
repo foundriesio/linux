@@ -23,7 +23,7 @@
 
 #include <linux/types.h>
 #include "tca_hwdemux_param.h"
-#include "structures_cm4.h"
+//#include "structures_cm4.h"
 
 #define Hw37	(1LL << 37)
 #define Hw36	(1LL << 36)

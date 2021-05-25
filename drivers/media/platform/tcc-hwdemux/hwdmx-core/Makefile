@@ -9,5 +9,5 @@ tcc_hwdmx-objs += \
 	hwdmx_core.o \
 	tcc_hwdemux_tsif_rx.o \
 	TSDEMUX_sys.o
-	
+
 obj-$(CONFIG_HWDEMUX_TEST) += hwdmx_test.o

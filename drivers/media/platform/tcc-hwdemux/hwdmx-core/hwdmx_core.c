@@ -307,7 +307,7 @@ static void hwdmx_unload_fw(void)
 	//volatile PCM_TSD_CFG pTSDCfg = (volatile PCM_TSD_CFG) hHWDMX.cfg_base;
 
 	// CM4 No Reset
-	writel(readl(hHWDMX.cfg_base + CMB_RESET) | Hw1 | Hw2, 
+	writel(readl(hHWDMX.cfg_base + CMB_RESET) | Hw1 | Hw2,
 			hHWDMX.cfg_base + CMB_RESET);
 }
 
@@ -324,10 +324,11 @@ static void hwdmx_load_fw(const char *fw_data, int fw_size)
 	hwdmx_unload_fw();
 
 	if (fw_data && fw_size > 0) {
+		// Copy CM4 firmware
 		memcpy((void *)pCodeMem, (void *)fw_data, fw_size);
 	}
 
-	writel(readl(hHWDMX.cfg_base + CMB_RESET) & ~(Hw1 | Hw2), 
+	writel(readl(hHWDMX.cfg_base + CMB_RESET) & ~(Hw1 | Hw2),
 			hHWDMX.cfg_base + CMB_RESET);
 }
 
@@ -339,12 +340,12 @@ int hwdmx_parse_device_tree(struct platform_device *pdev)
 
 	cmbus_clk = of_clk_get(main_node, 0);
 	if (IS_ERR(cmbus_clk)) {
-		pr_err("[ERR][HWDMX]cmbus clk parsing failed\n");
+		pr_err("[ERR][HWDMX] cmbus clk parsing failed\n");
 		ret = -ENXIO;
 		goto goto_return;
 	} else {
-		pr_info("[INFO][HWDMX]cmbus clk parsing ok\n");	
-	}	
+		pr_info("[INFO][HWDMX] cmbus clk parsing ok\n");
+	}
 
 	idxReg = of_property_match_string(main_node, "reg-names", "code_mem");
 	if (idxReg >= 0) {
@@ -364,9 +365,17 @@ int hwdmx_parse_device_tree(struct platform_device *pdev)
 		goto goto_return;
 	}
 
+#if defined(CONFIG_HWDEMUX_BYPASS_MODE)
+	// BYPASS Mode
 	pr_err(
-	"[INFO][HWDMX] CODE(0x%08x), CFG(0x%08x)\n",
+	"[INFO][HWDMX] CODE(0x%08x), CFG(0x%08x), MODE(B)\n",
 	(unsigned int)hHWDMX.code_base, (unsigned int)hHWDMX.cfg_base);
+#else
+	// NORMAL Mode
+	pr_err(
+	"[INFO][HWDMX] CODE(0x%08x), CFG(0x%08x), MODE(N)\n",
+	(unsigned int)hHWDMX.code_base, (unsigned int)hHWDMX.cfg_base);
+#endif
 
 goto_return:
 	return ret;
@@ -424,7 +433,7 @@ static int hwdmx_probe(struct platform_device *pdev)
 	if (fw_data && fw_size) {
 		pr_info("[INFO][HWDMX] fw size:%d\n", fw_size);
 		hwdmx_load_fw(fw_data, fw_size);
-	
+
 		msleep(100); // Wait for CM Booting
 	}
 #endif
