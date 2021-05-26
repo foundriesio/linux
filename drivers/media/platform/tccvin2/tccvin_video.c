@@ -1243,6 +1243,7 @@ static void tccvin_work_thread(struct work_struct *data)
 	if (list_empty(&stream->queue.irqqueue)) {
 		loge("VIN[%d] - No entry of the incoming buffer list\n",
 			stream->vdev.num);
+		spin_unlock_irqrestore(&queue->irqlock, flags);
 		return;
 	}
 	spin_unlock_irqrestore(&queue->irqlock, flags);
