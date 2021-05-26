@@ -441,8 +441,8 @@ static void tcc_pcie_writel_rc(struct dw_pcie *pci, void __iomem *base,
 	err = dw_pcie_write(base + reg, (s32)size, write_val);
 	if (err != (s32)0) {
 		if (pci != NULL) {
-			dev_err(pci->dev, "dw_pcie_write fail, base:0x%8p, offset:0x%8x, value:0x%8x \n",
-						 base, reg, val);
+			dev_err(pci->dev, "dw_pcie_write fail, base:0x%8p, offset:0x%8x, value:0x%8x\n",
+						base, reg, val);
 		}
 	}
 }

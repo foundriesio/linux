@@ -239,7 +239,6 @@ static void tcc_pcie_assert_reset(struct tcc_pcie *tp)
 			}
 		}
 	}
-	return;
 }
 
 void tcc_pcie_layer_set(struct tcc_pcie *tp)
@@ -267,6 +266,10 @@ static s32 tcc_pcie_establish_link(struct tcc_pcie *tp)
 	s32 count = 0;
 	s32 err;
 
+	if (tp == NULL) {
+		return -ENOMEM;
+	}
+
 	pci = tp->pci;
 	if (pci == NULL) {
 		return -EINVAL;
@@ -287,9 +290,9 @@ static s32 tcc_pcie_establish_link(struct tcc_pcie *tp)
 
 	tcc_pcie_dev_sel(tp, PCIE_DEVICE_RC);
 	if (tp->using_ext_ref_clk == 1u) {
-	    tcc_pcie_ref_clk(tp, PCIE_REF_EXT);
+		tcc_pcie_ref_clk(tp, PCIE_REF_EXT);
 	} else {
-	    tcc_pcie_ref_clk(tp, PCIE_REF_INT);
+		tcc_pcie_ref_clk(tp, PCIE_REF_INT);
 	}
 
 	/* assert reset signals */
@@ -415,7 +418,6 @@ static void tcc_pcie_enable_interrupts(struct tcc_pcie *tp)
 		dw_pcie_msi_init(pp);
 #endif
 
-	return;
 }
 
 static void tcc_pcie_writel_rc(struct dw_pcie *pci, void __iomem *base, u32 reg,
@@ -431,7 +433,7 @@ static void tcc_pcie_writel_rc(struct dw_pcie *pci, void __iomem *base, u32 reg,
 	err = dw_pcie_write(base + reg, (s32)size, write_val);
 	if (err != (s32)0) {
 		if (pci != NULL) {
-			dev_err(pci->dev, "dw_pcie_write fail, base:0x%8p, offset:0x%8x, value:0x%8x \n",
+			dev_err(pci->dev, "dw_pcie_write fail, base:0x%8p, offset:0x%8x, value:0x%8x\n",
 						base, reg, val);
 		}
 	}
@@ -670,7 +672,7 @@ static s32 tcc_pcie_probe(struct platform_device *pdev)
 
 	tp->suspend_regs = kzalloc(TCC_PCIE_REG_BACKUP_SIZE, GFP_KERNEL);
 	if (tp->suspend_regs == NULL) {
-		dev_err(&pdev->dev, "failed to allocate pcie reg backup table\n");
+		return -ENOMEM;
 	}
 
 	return 0;
