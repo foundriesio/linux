@@ -35,6 +35,10 @@
 #define IDX_LVDS_WRAP 4
 #endif
 
+#ifndef ABS_DIFF
+#define ABS_DIFF(a, b) ((a > b) ? (a - b) : (b - a))
+#endif
+
 /* for upsample ratio calculation
  * n = upsample ratio
  * X = 2^n (X = 1, 2, 4, 8 16)
@@ -649,6 +653,7 @@ void LVDS_PHY_SetCFcon(
 	void __iomem *reg = LVDS_PHY_GetAddress(port);
 	unsigned int value;
 	unsigned int time_out = 0;
+	unsigned int update_step = 0x1;
 
 	if (reg) {
 		if (mode == LVDS_PHY_FCON_AUTOMATIC) {
@@ -670,7 +675,7 @@ void LVDS_PHY_SetCFcon(
 					if (enable) {
 					/* Alphachips Guide For CFCON */
 						__raw_writel(
-				0x0000002C,
+				0x0000000C | (update_step << 4),
 				reg + LVDS_FCCONTINSET0); // offset: 0x0B4
 						__raw_writel(
 				0x00000960,
@@ -679,7 +684,7 @@ void LVDS_PHY_SetCFcon(
 				0x003FF005,
 				reg + LVDS_FCCONTINSET2); // offset: 0x0BC
 						__raw_writel(
-				0x0000002D,
+				0x0000000D | (update_step << 4),
 				reg + LVDS_FCCONTINSET0); // offset: 0x0B4
 					}
 					goto closed_loop;
@@ -702,7 +707,7 @@ closed_loop:
 void LVDS_PHY_CheckPLLStatus(unsigned int p_port, unsigned int s_port)
 {
 	void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
-	void __iomem *s_reg = LVDS_PHY_GetAddress(p_port);
+	void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
 	unsigned int offset = LVDS_MONITOR_DEBUG1;
 	unsigned int time_out = 0;
 
@@ -729,6 +734,85 @@ void LVDS_PHY_CheckPLLStatus(unsigned int p_port, unsigned int s_port)
 		}
 	}
 	pr_err("[ERR][LVDS] %s time out\n", __func__);
+}
+
+/* read the fcon value of the port */
+int LVDS_PHY_Fcon_Value(unsigned int port)
+{
+	void __iomem *reg = LVDS_PHY_GetAddress(port);
+	unsigned int fcon = 0;
+
+	if (reg)
+		fcon = ((__raw_readl(reg + LVDS_FCRESEVAL)) >> 3) & 0x3ff;
+	return fcon;
+}
+
+struct fcon_info_t {
+	unsigned int num;
+	unsigned int mfcon;
+	unsigned int sfcon;
+	unsigned int mpllstat;
+	unsigned int spllstat;
+};
+
+int LVDS_PHY_CheckFcon(
+	unsigned int p_port, unsigned int s_port, unsigned int mfcon,
+	unsigned int sfcon)
+{
+	void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
+	void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
+	unsigned int offset = LVDS_MONITOR_DEBUG1;
+	/* the max count to check fcon and status */
+	unsigned int fcon_check_maxcnt = 200000;
+	unsigned int p_pllstatus = 0;
+	unsigned int s_pllstatus = 0;
+	/* the count : sequential phydet value : 0xf */
+	unsigned int lock_max = 1000;
+	unsigned int lock_cnt = 0;
+	unsigned int loop_cnt = 0;
+	unsigned int ret = 0;
+
+	if (p_reg || s_reg) {
+		while ((loop_cnt < fcon_check_maxcnt)
+		       && (lock_cnt < lock_max)) {
+			p_pllstatus =
+				(__raw_readl(p_reg + offset)
+				 & LVDS_MONITOR_DEBUG1_PLL_STATUS_MASK);
+			if (s_reg) {
+				s_pllstatus =
+					(__raw_readl(s_reg + offset)
+					 & LVDS_MONITOR_DEBUG1_PLL_STATUS_MASK);
+
+				if (p_pllstatus
+				       == LVDS_MONITOR_DEBUG1_PLL_STATUS_MASK
+				       && s_pllstatus
+				       == LVDS_MONITOR_DEBUG1_PLL_STATUS_MASK) {
+					lock_cnt += 1;
+				} else {
+					lock_cnt = 0;
+				}
+			} else { // single LVDS
+				if (p_pllstatus
+				    == LVDS_MONITOR_DEBUG1_PLL_STATUS_MASK) {
+					lock_cnt += 1;
+				} else {
+					lock_cnt = 0;
+				}
+			}
+			loop_cnt += 1;
+		}
+	}
+	if (lock_cnt < lock_max) {
+		ret = -1;
+		pr_info("%s :[FAILED] PLL locking loop_cnt = %d, lock_cnt = %d\n"
+		       , __func__, loop_cnt, lock_cnt);
+	} else {
+		ret = 0;
+		pr_info("%s :[OK] PLL locking loop_cnt = %d, lock_cnt = %d\n",
+		       __func__, loop_cnt, lock_cnt);
+	}
+
+	return ret;
 }
 
 /* LVDS_PHY_FConEnable
@@ -772,6 +856,21 @@ void LVDS_PHY_StrobeWrite(
 	pr_err("[ERR][LVDS] %s time out\n", __func__);
 }
 
+void LVDS_PHY_VsSet(unsigned int p_port, unsigned int s_port, unsigned int vs)
+{
+	void __iomem *p_reg = LVDS_PHY_GetAddress(p_port);
+	void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
+
+	LVDS_PHY_StrobeWrite(
+		p_reg, 0x3A0,
+		0x00000094 | ((vs & 0x3) << 5)); // STB_PLL ADDR 0x8
+	if (s_reg) {
+		LVDS_PHY_StrobeWrite(
+			s_reg, 0x3A0,
+			0x00000094 | ((vs & 0x3) << 5)); // STB_PLL ADDR 0x8
+	}
+}
+
 /* LVDS_PHY_Config
  * Setup LVDS PHY Strobe. (Alphachips Guide Value Only)
  * p_port : the primary port number
@@ -789,6 +888,12 @@ void LVDS_PHY_StrobeConfig(
 	void __iomem *s_reg = LVDS_PHY_GetAddress(s_port);
 	unsigned int vcmcal, swingcal;
 	unsigned int value;
+	unsigned int cpzs_main = 0x0000001F;
+	unsigned int cpzs_sub = 0x0000001F;
+	unsigned int strobe_LFR1S = 0x08;
+	unsigned int strobe_LFC1S = 0x18;
+	unsigned int strobe_LFC2S = 0x25;
+	unsigned int vs = 0;
 
 	if (p_reg) {
 		switch (step) {
@@ -797,240 +902,118 @@ void LVDS_PHY_StrobeConfig(
 				vcm, vsw, &vcmcal, &swingcal);
 			value = ((swingcal & 0xF) | ((vcmcal & 0x7) << 4));
 
+			LVDS_PHY_StrobeWrite(p_reg, 0x380, 0x000000FF);
+			LVDS_PHY_StrobeWrite(p_reg, 0x384, 0x0000001F);
+			LVDS_PHY_StrobeWrite(p_reg, 0x388, 0x00000032);
+			LVDS_PHY_StrobeWrite(p_reg, 0x38C, cpzs_main);
+			LVDS_PHY_StrobeWrite(p_reg, 0x390, 0x00000000);
+			LVDS_PHY_StrobeWrite(p_reg, 0x394, strobe_LFR1S);
+			LVDS_PHY_StrobeWrite(p_reg, 0x398, strobe_LFC1S);
+			LVDS_PHY_StrobeWrite(p_reg, 0x39C, strobe_LFC2S);
 			LVDS_PHY_StrobeWrite(
-				p_reg, 0x380, 0x000000FF); // STB_PLL ADDR 0x0
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x384, 0x0000001F); // STB_PLL ADDR 0x1
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x388, 0x00000032); // STB_PLL ADDR 0x2
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x38C, 0x0000000F); // STB_PLL ADDR 0x3
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x390, 0x00000000); // STB_PLL ADDR 0x4
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x394, 0x00000013); // STB_PLL ADDR 0x5
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x398, 0x00000029); // STB_PLL ADDR 0x6
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x39C, 0x00000025); // STB_PLL ADDR 0x7
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x3A0, 0x000000D4); // STB_PLL ADDR 0x8
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x3A4, 0x00000000); // STB_PLL ADDR 0x9
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x3A8, 0x0000000C); // STB_PLL ADDR 0xA
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x3AC, 0x00000000); // STB_PLL ADDR 0xB
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x3B0, 0x00000000); // STB_PLL ADDR 0xC
+				p_reg, 0x3A0, 0x00000094 | ((vs & 0x3) << 5));
+			LVDS_PHY_StrobeWrite(p_reg, 0x3A4, 0x00000000);
+			LVDS_PHY_StrobeWrite(p_reg, 0x3A8, 0x0000000C);
+			LVDS_PHY_StrobeWrite(p_reg, 0x3AC, 0x00000000);
+			LVDS_PHY_StrobeWrite(p_reg, 0x3B0, 0x00000000);
 			if (s_reg)
-				LVDS_PHY_StrobeWrite(
-					p_reg, 0x3B4,
-					0x00000007); // STB_PLL ADDR 0xD
+				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, 0x00000007);
 			else
-				LVDS_PHY_StrobeWrite(
-					p_reg, 0x3B4,
-					0x00000001); // STB_PLL ADDR 0xD
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x3B8, 0x00000001); // STB_PLL ADDR 0xE
+				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, 0x00000001);
+			LVDS_PHY_StrobeWrite(p_reg, 0x3B8, 0x00000001);
 
 			if (s_reg) {
+				LVDS_PHY_StrobeWrite(s_reg, 0x380, 0x000000FF);
+				LVDS_PHY_StrobeWrite(s_reg, 0x384, 0x0000001F);
+				LVDS_PHY_StrobeWrite(s_reg, 0x388, 0x00000032);
+				LVDS_PHY_StrobeWrite(s_reg, 0x38C, cpzs_sub);
+				LVDS_PHY_StrobeWrite(s_reg, 0x390, 0x00000000);
 				LVDS_PHY_StrobeWrite(
-					s_reg, 0x380,
-					0x000000FF); // STB_PLL ADDR 0x0
+					s_reg, 0x394, strobe_LFR1S);
 				LVDS_PHY_StrobeWrite(
-					s_reg, 0x384,
-					0x0000001F); // STB_PLL ADDR 0x1
+					s_reg, 0x398, strobe_LFC1S);
 				LVDS_PHY_StrobeWrite(
-					s_reg, 0x388,
-					0x00000032); // STB_PLL ADDR 0x2
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x38C,
-					0x0000000F); // STB_PLL ADDR 0x3
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x390,
-					0x00000000); // STB_PLL ADDR 0x4
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x394,
-					0x00000013); // STB_PLL ADDR 0x5
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x398,
-					0x00000029); // STB_PLL ADDR 0x6
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x39C,
-					0x00000025); // STB_PLL ADDR 0x7
+					s_reg, 0x39C, strobe_LFC2S);
 				LVDS_PHY_StrobeWrite(
 					s_reg, 0x3A0,
-					0x000000D4); // STB_PLL ADDR 0x8
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x3A4,
-					0x00000000); // STB_PLL ADDR 0x9
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x3A8,
-					0x0000000C); // STB_PLL ADDR 0xA
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x3AC,
-					0x00000000); // STB_PLL ADDR 0xB
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x3B0,
-					0x00000000); // STB_PLL ADDR 0xC
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x3B4,
-					0x0000000C); // STB_PLL ADDR 0xD
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x3B8,
-					0x00000001); // STB_PLL ADDR 0xE
+					0x00000094 | ((vs & 0x3) << 5));
+				LVDS_PHY_StrobeWrite(s_reg, 0x3A4, 0x00000000);
+				LVDS_PHY_StrobeWrite(s_reg, 0x3A8, 0x0000000C);
+				LVDS_PHY_StrobeWrite(s_reg, 0x3AC, 0x00000000);
+				LVDS_PHY_StrobeWrite(s_reg, 0x3B0, 0x00000000);
+				LVDS_PHY_StrobeWrite(s_reg, 0x3B4, 0x0000000C);
+				LVDS_PHY_StrobeWrite(s_reg, 0x3B8, 0x00000001);
 			}
 
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x204, value); // STB_LANE0 ADDR 0x1
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x244, value); // STB_LANE1 ADDR 0x1
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x284, value); // STB_LANE2 ADDR 0x1
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x2C4, value); // STB_LANE3 ADDR 0x1
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x304, value); // STB_LANE4 ADDR 0x1
+			LVDS_PHY_StrobeWrite(p_reg, 0x204, value);
+			LVDS_PHY_StrobeWrite(p_reg, 0x244, value);
+			LVDS_PHY_StrobeWrite(p_reg, 0x284, value);
+			LVDS_PHY_StrobeWrite(p_reg, 0x2C4, value);
+			LVDS_PHY_StrobeWrite(p_reg, 0x304, value);
 			if (s_reg) {
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x204,
-					value); // STB_LANE0 ADDR 0x1
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x244,
-					value); // STB_LANE1 ADDR 0x1
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x284,
-					value); // STB_LANE2 ADDR 0x1
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x2C4,
-					value); // STB_LANE3 ADDR 0x1
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x304,
-					value); // STB_LANE4 ADDR 0x1
+				LVDS_PHY_StrobeWrite(s_reg, 0x204, value);
+				LVDS_PHY_StrobeWrite(s_reg, 0x244, value);
+				LVDS_PHY_StrobeWrite(s_reg, 0x284, value);
+				LVDS_PHY_StrobeWrite(s_reg, 0x2C4, value);
+				LVDS_PHY_StrobeWrite(s_reg, 0x304, value);
 			}
 			break;
 		case LVDS_PHY_READY:
 			value = (upsample_ratio & 0x7);
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x380, 0x00000000); // STB_PLL ADDR 0x0
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x380, 0x000000FF); // STB_PLL ADDR 0x0
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x384, 0x0000001F); // STB_PLL ADDR 0x1
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x3A4, value); // STB_PLL ADDR 0x9
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x3AC, value); // STB_PLL ADDR 0xB
+			LVDS_PHY_StrobeWrite(p_reg, 0x380, 0x00000000);
+			LVDS_PHY_StrobeWrite(p_reg, 0x380, 0x000000FF);
+			LVDS_PHY_StrobeWrite(p_reg, 0x384, 0x0000001F);
+			LVDS_PHY_StrobeWrite(p_reg, 0x3A4, value);
+			LVDS_PHY_StrobeWrite(p_reg, 0x3AC, value);
 			if (s_reg) {
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x380,
-					0x00000000); // STB_PLL ADDR 0x0
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x380,
-					0x000000FF); // STB_PLL ADDR 0x0
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x384,
-					0x0000001F); // STB_PLL ADDR 0x1
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x3A4,
-					value); // STB_PLL ADDR 0x9
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x3AC,
-					value); // STB_PLL ADDR 0xB
+				LVDS_PHY_StrobeWrite(s_reg, 0x380, 0x00000000);
+				LVDS_PHY_StrobeWrite(s_reg, 0x380, 0x000000FF);
+				LVDS_PHY_StrobeWrite(s_reg, 0x384, 0x0000001F);
+				LVDS_PHY_StrobeWrite(s_reg, 0x3A4, value);
+				LVDS_PHY_StrobeWrite(s_reg, 0x3AC, value);
 			}
 			break;
 		case LVDS_PHY_START:
 			if (s_reg) {
-				unsigned int value =
-					(LVDS_PHY_GetRegValue(p_port, 0x3B4)
-					 & ~(0x000000F0));
-				LVDS_PHY_StrobeWrite(
-					p_reg, 0x3B4,
-					value); // STB_PLL ADDR 0xD
-				value =
-					(LVDS_PHY_GetRegValue(s_port, 0x3B4)
-					 & ~(0x000000F0));
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x3B4,
-					value); // STB_PLL ADDR 0xD
+				LVDS_PHY_StrobeWrite(s_reg, 0x3B8, 0x00000001);
+				LVDS_PHY_StrobeWrite(s_reg, 0x3B4, 0x0000003C);
 
-				LVDS_PHY_StrobeWrite(
-					p_reg, 0x3B8,
-					0x00000000); // STB_PLL ADDR 0xE
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x3B8,
-					0x00000000); // STB_PLL ADDR 0xE
-
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x3B8,
-					0x00000001); // STB_PLL ADDR 0xE
-				LVDS_PHY_StrobeWrite(
-					p_reg, 0x3B8,
-					0x00000001); // STB_PLL ADDR 0xE clk_gen
-
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x3B4,
-					0x0000003C); // STB_PLL ADDR 0xD
-				LVDS_PHY_StrobeWrite(
-					p_reg, 0x3B4,
-					0x00000037); // STB_PLL ADDR 0xD
-						     // startup_enable
-
+				LVDS_PHY_StrobeWrite(p_reg, 0x3B8, 0x00000001);
+				// PHY Start up  OFF
+				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, 0x000000C7);
+				// PHY Start up ON
+				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, 0x000000D7);
 			} else {
 				unsigned int value =
 					(LVDS_PHY_GetRegValue(p_port, 0x3B4)
 					 & ~(0x000000F0));
-				LVDS_PHY_StrobeWrite(
-					p_reg, 0x3B4,
-					value); // STB_PLL ADDR 0xD
-				LVDS_PHY_StrobeWrite(
-					p_reg, 0x3B8,
-					0x00000000); // STB_PLL ADDR 0xE
-				LVDS_PHY_StrobeWrite(
-					p_reg, 0x3B8,
-					0x00000001); // STB_PLL ADDR 0xE
+				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, value);
+				LVDS_PHY_StrobeWrite(p_reg, 0x3B8, 0x00000000);
+				LVDS_PHY_StrobeWrite(p_reg, 0x3B8, 0x00000001);
 				value =
 					(LVDS_PHY_GetRegValue(p_port, 0x3B4)
 					 & ~(0x000000F0));
 				value |= (0x1 << 4);
-				LVDS_PHY_StrobeWrite(
-					p_reg, 0x3B4,
-					value); // STB_PLL ADDR 0xD
+				LVDS_PHY_StrobeWrite(p_reg, 0x3B4, value);
 			}
 
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x200, 0x00000079); // STB_LANE0 ADDR 0x0
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x240, 0x00000079); // STB_LANE1 ADDR 0x0
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x280, 0x00000079); // STB_LANE2 ADDR 0x0
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x2C0, 0x00000079); // STB_LANE3 ADDR 0x0
-			LVDS_PHY_StrobeWrite(
-				p_reg, 0x300, 0x00000079); // STB_LANE4 ADDR 0x0
+			LVDS_PHY_StrobeWrite(p_reg, 0x200, 0x00000079);
+			LVDS_PHY_StrobeWrite(p_reg, 0x240, 0x00000079);
+			LVDS_PHY_StrobeWrite(p_reg, 0x280, 0x00000079);
+			LVDS_PHY_StrobeWrite(p_reg, 0x2C0, 0x00000079);
+			LVDS_PHY_StrobeWrite(p_reg, 0x300, 0x00000079);
 			if (s_reg) {
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x200,
-					0x00000079); // STB_LANE0 ADDR 0x0
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x240,
-					0x00000079); // STB_LANE1 ADDR 0x0
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x280,
-					0x00000079); // STB_LANE2 ADDR 0x0
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x2C0,
-					0x00000079); // STB_LANE3 ADDR 0x0
-				LVDS_PHY_StrobeWrite(
-					s_reg, 0x300,
-					0x00000079); // STB_LANE4 ADDR 0x0
+				LVDS_PHY_StrobeWrite(s_reg, 0x200, 0x00000079);
+				LVDS_PHY_StrobeWrite(s_reg, 0x240, 0x00000079);
+				LVDS_PHY_StrobeWrite(s_reg, 0x280, 0x00000079);
+				LVDS_PHY_StrobeWrite(s_reg, 0x2C0, 0x00000079);
+				LVDS_PHY_StrobeWrite(s_reg, 0x300, 0x00000079);
 			}
 			break;
 		case LVDS_PHY_CONFIG_MAX:
 		default:
-			pr_err("[ERR][LVDS] %s: invaild parameter(step: %d)\n",
-			       __func__, step);
+			pr_info("%s in error, invaild parameter(step: %d)\n",
+				__func__, step);
 			break;
 		}
 	}
@@ -1486,10 +1469,21 @@ void lvds_splitter_init(lvds_hw_info_t *lvds_hw)
 
 void lvds_phy_init(lvds_hw_info_t *lvds_hw)
 {
-	unsigned int upsample_ratio = LVDS_PHY_GetUpsampleRatio(
-		lvds_hw->port_main, lvds_hw->port_sub, lvds_hw->p_clk);
-	unsigned int ref_cnt = LVDS_PHY_GetRefCnt(
-		lvds_hw->port_main, lvds_hw->port_sub, lvds_hw->p_clk,
+	unsigned int ref_clk;
+	unsigned int upsample_ratio;
+	unsigned int ref_cnt;
+
+	if (lvds_hw->ts_mux_id == -1) { // lvds dual mode
+		ref_clk = lvds_hw->p_clk * 2;
+	} else { // lvds single mode
+		ref_clk = lvds_hw->p_clk;
+	}
+	pr_info("[%s] ref_clk for LVDS PHY = %d\n", __func__, ref_clk);
+
+	upsample_ratio = LVDS_PHY_GetUpsampleRatio(
+		lvds_hw->port_main, lvds_hw->port_sub, ref_clk);
+	ref_cnt = LVDS_PHY_GetRefCnt(
+		lvds_hw->port_main, lvds_hw->port_sub, ref_clk,
 		upsample_ratio);
 
 	lvds_phy_core_init(
@@ -1534,6 +1528,12 @@ void lvds_phy_core_init(
 	unsigned int *LVDS_LANE_SUB)
 {
 	unsigned int status;
+	unsigned int mfcon = 0; // main fcon
+	unsigned int sfcon = 0; // sub fcon
+	unsigned int pre_mfcon = 0;
+	unsigned int pre_sfcon = 0;
+	unsigned int fcon_threshold = 2;
+
 	int s_port_en = 0;
 
 	if (lvds_type != PANEL_LVDS_DUAL && lvds_type != PANEL_LVDS_SINGLE) {
@@ -1591,15 +1591,33 @@ void lvds_phy_core_init(
 	if (s_port_en)
 		LVDS_PHY_FConEnable(lvds_sub, 1);
 
+	// dummy startup clk2a enable, Is it needed for single LVDS?
+	if (s_port_en)
+		LVDS_PHY_StrobeConfig(
+			lvds_main, lvds_sub, upsample_ratio, LVDS_PHY_START,
+			vcm, vsw);
+
 	LVDS_PHY_SetCFcon(lvds_main, LVDS_PHY_FCON_AUTOMATIC, 1);
 	if (s_port_en)
 		LVDS_PHY_SetCFcon(lvds_sub, LVDS_PHY_FCON_AUTOMATIC, 1);
 
-	LVDS_PHY_CheckPLLStatus(lvds_main, lvds_sub);
-	mdelay(10); // fcon waiting time    -- Alphachips Guide
+	mfcon = LVDS_PHY_Fcon_Value(lvds_main);
+	if (s_port_en)
+		sfcon = LVDS_PHY_Fcon_Value(lvds_sub);
+
+	LVDS_PHY_CheckFcon(lvds_main, lvds_sub, mfcon, sfcon);
 
 	LVDS_PHY_StrobeConfig(
 		lvds_main, lvds_sub, upsample_ratio, LVDS_PHY_START, vcm, vsw);
+
+	if (s_port_en) {
+		mfcon = LVDS_PHY_Fcon_Value(lvds_main);
+		sfcon = LVDS_PHY_Fcon_Value(lvds_sub);
+		LVDS_PHY_CheckFcon(lvds_main, lvds_sub, mfcon, sfcon);
+		// save mfcon & sfcon after PLL is considered as locked.
+		pre_mfcon = LVDS_PHY_Fcon_Value(lvds_main);
+		pre_sfcon = LVDS_PHY_Fcon_Value(lvds_sub);
+	}
 
 	/* LVDS PHY digital setup */
 	LVDS_PHY_SetFormat(lvds_main, 0, 1, 0, upsample_ratio);
@@ -1609,6 +1627,7 @@ void lvds_phy_core_init(
 	LVDS_PHY_SetFifoEnableTiming(lvds_main, 0x3);
 	if (s_port_en)
 		LVDS_PHY_SetFifoEnableTiming(lvds_sub, 0x3);
+
 	/* LVDS PHY Main/Sub Lane Disable */
 	LVDS_PHY_LaneEnable(lvds_main, 0);
 	if (s_port_en)
@@ -1638,6 +1657,44 @@ void lvds_phy_core_init(
 	LVDS_PHY_LaneEnable(lvds_main, 1);
 	if (s_port_en)
 		LVDS_PHY_LaneEnable(lvds_sub, 1);
+
+	if (s_port_en) {
+		/* LVDS PHY Main/Sub port Lane Enable(to apply new power on
+		 * sequence)
+		 */
+		mfcon = LVDS_PHY_Fcon_Value(lvds_main);
+		sfcon = LVDS_PHY_Fcon_Value(lvds_sub);
+		if (ABS_DIFF(pre_mfcon, mfcon) > fcon_threshold
+		    || ABS_DIFF(pre_sfcon, sfcon) > fcon_threshold) {
+			/* LVDS PHY Main/Sub port FIFO Disable & Reset*/
+			LVDS_PHY_FifoEnable(lvds_main, 0);
+			LVDS_PHY_FifoEnable(lvds_sub, 0);
+
+			LVDS_PHY_FifoReset(lvds_main, 1);
+			LVDS_PHY_FifoReset(lvds_sub, 1);
+
+			LVDS_PHY_StrobeConfig(
+				lvds_main, lvds_sub, upsample_ratio,
+				LVDS_PHY_START, vcm, vsw);
+
+			udelay(1000); // Alphachips Guide
+			LVDS_PHY_FifoReset(lvds_main, 0);
+			LVDS_PHY_FifoReset(lvds_sub, 0);
+
+			/* LVDS PHY Main/Sub port FIFO Enable */
+			LVDS_PHY_FifoEnable(lvds_main, 1);
+			LVDS_PHY_FifoEnable(lvds_sub, 1);
+			pr_info("%s : [LVDS RESET] LVDS PHY mfcon : %d, pre_mfcon = %d, sfcon = %d, pre_sfcon = %d, fcon_threshold = %d\n"
+			       , __func__, mfcon, pre_mfcon, sfcon, pre_sfcon,
+			       fcon_threshold);
+		} else {
+			pr_info("%s : [LVDS OK] LVDS PHY mfcon : %d, pre_mfcon = %d, sfcon = %d, pre_sfcon = %d, fcon_threshold = %d\n"
+			       , __func__, mfcon, pre_mfcon, sfcon, pre_sfcon,
+			       fcon_threshold);
+		}
+	}
+	// Restore VS to 2
+	LVDS_PHY_VsSet(lvds_main, lvds_sub, 2);
 
 	status = LVDS_PHY_CheckStatus(lvds_main, lvds_sub);
 	if (!(status & 0x1)) {
