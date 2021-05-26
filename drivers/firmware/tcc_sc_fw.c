@@ -359,7 +359,7 @@ static void tcc_sc_fw_tx_prepare(struct mbox_client *cl, void *msg)
 		list_add_tail(&xfer->node, &info->rx_pending);
 		spin_unlock_irqrestore(&info->rx_lock, flags);
 	} else {
-		spin_unlock_irqrestore(&xfer->lock, flags);
+		/*do noting*/
 	}
 }
 
@@ -379,6 +379,8 @@ static void tcc_sc_fw_tx_done(struct mbox_client *cl, void *msg, int r)
 		put_tcc_sc_fw_xfer(xfer, info);
 	} else if (xfer->status == TCC_SC_FW_XFER_STAT_TX_START){
 		tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_RX_PEND);
+	} else {
+		/*do noting*/
 	}
 }
 
