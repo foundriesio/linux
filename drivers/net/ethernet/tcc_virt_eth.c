@@ -1,4 +1,5 @@
-/* dummy.c: a dummy net driver
+/*
+ * dummy.c: a dummy net driver
 
 	The purpose of this driver is to provide a device to point a
 	route through, but not to actually transmit packets.
@@ -6,7 +7,7 @@
 	Why?  If you have a machine whose only connection is an occasional
 	PPP/SLIP/PLIP link, you can only connect to your own hostname
 	when the link is up.  Otherwise you have to use localhost.
-	This isn't very consistent.
+	This isn't very consistent..
 
 	One solution is to set up a dummy link using PPP/SLIP/PLIP,
 	but this seems (to me) too much overhead for too little gain.
@@ -52,10 +53,9 @@
 static int numdummies = 1;
 static int num_vfs = 1;
 
-static int shmem_port = 0;
+static int shmem_port;
 
 struct tcc_shm_callback virt_eth_callback;
-int32_t virt_eth_rx(unsigned long data, char* received_data, uint32_t received_num);
 
 struct vf_data_storage {
 	u8	vf_mac[ETH_ALEN];
@@ -128,6 +128,37 @@ static void dummy_get_stats64(struct net_device *dev,
 	}
 }
 
+int32_t virt_eth_rx(unsigned long data, char *received_data,
+	uint32_t received_num)
+{
+
+	struct net_device *dev = (struct net_device *)data;
+	struct sk_buff *skb;
+	//u_char *ptr;
+
+	//pr_info("%s: test : %s\n", __func__, received_data);
+
+	skb = netdev_alloc_skb(dev, received_num);
+
+	if (skb == NULL) {
+		dev->stats.rx_dropped++;
+		return -1;
+	}
+
+	skb_reserve(skb, 2);
+	memcpy(skb_put(skb, received_num), received_data, received_num);
+	//ptr = skb->data;
+	//memcpy(ptr, received_data, received_num);
+	skb->dev = dev;
+	skb->ip_summed = CHECKSUM_UNNECESSARY;
+	skb->protocol = eth_type_trans(skb, dev);
+	dev->stats.rx_packets++;
+	dev->stats.rx_bytes += received_num;
+	netif_rx(skb);
+
+	return 0;
+}
+
 static netdev_tx_t dummy_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct pcpu_dstats *dstats = this_cpu_ptr(dev->dstats);
@@ -141,22 +172,24 @@ static netdev_tx_t dummy_xmit(struct sk_buff *skb, struct net_device *dev)
 	len = skb->len;
 	ret = tcc_shmem_transfer_port_nodev(shmem_port, len, skb->data);
 
-	if(ret < 0) {
+	if (ret < 0) {
 		val = tcc_shmem_is_valid();
-		if(val != 0) {
-			tcc_shmem_request_port_by_name("eth", 52428800);//50MB, 50*1024*1024
+		if (val != 0) {
+			//50MB, 50*1024*1024
+			tcc_shmem_request_port_by_name("eth", 52428800);
 			val = tcc_shmem_find_port_by_name("eth");
 			shmem_port = val;
 
-			if(!(val < 0)) {
-				virt_eth_callback.data = dev;
+			if (!(val < 0)) {
+				virt_eth_callback.data = (unsigned long)dev;
 				virt_eth_callback.callback_func = virt_eth_rx;
-				tcc_shmem_register_callback(val, virt_eth_callback);
+				tcc_shmem_register_callback(val,
+					virt_eth_callback);
 			}
 
-		} else {
-			printk("%s: tcc shared memory is not valid\n", __func__);
-		}
+		} else
+			pr_err("%s: tcc shared memory is not valid\n",
+				__func__);
 	}
 
 	u64_stats_update_begin(&dstats->syncp);
@@ -208,17 +241,19 @@ static int dummy_change_carrier(struct net_device *dev, bool new_carrier)
 }
 
 
-int dummy_open(struct net_device *dev) {
+int dummy_open(struct net_device *dev)
+{
 
-	printk("dummy open\n");
-   netif_start_queue(dev);
-   return 0;
+	pr_info("dummy open\n");
+	netif_start_queue(dev);
+	return 0;
 }
 
-int dummy_release(struct net_device *dev) {
-	printk("dummy close\n");
-   netif_stop_queue(dev);
-   return 0;
+int dummy_release(struct net_device *dev)
+{
+	pr_info("dummy close\n");
+	netif_stop_queue(dev);
+	return 0;
 }
 
 static const struct net_device_ops dummy_netdev_ops = {
@@ -265,37 +300,6 @@ static void dummy_free_netdev(struct net_device *dev)
 	kfree(priv->vfinfo);
 }
 
-
-int32_t virt_eth_rx(unsigned long data, char* received_data, uint32_t received_num) {
-
-	struct net_device *dev = (struct net_device *)data;
-	struct sk_buff *skb;
-	//u_char *ptr;
-
-	//printk("%s: test : %s\n", __func__, received_data);
-
-	skb = netdev_alloc_skb(dev, received_num);
-
-	if (skb == NULL) {
-		dev->stats.rx_dropped++;
-		return -1;
-	} else {
-		skb_reserve(skb,2);
-		memcpy(skb_put(skb, received_num), received_data, received_num);
-		//ptr = skb->data;
-		//memcpy(ptr, received_data, received_num);
-		skb->dev = dev;
-		skb->ip_summed = CHECKSUM_UNNECESSARY;
-		skb->protocol = eth_type_trans(skb, dev);
-		dev->stats.rx_packets++;
-		dev->stats.rx_bytes += received_num;
-		netif_rx(skb);
-	}
-
-	return 0;
-}
-
-
 static void dummy_setup(struct net_device *dev)
 {
 
@@ -318,20 +322,22 @@ static void dummy_setup(struct net_device *dev)
 
 
 	val = tcc_shmem_is_valid();
-	if(val != 0) {
-		tcc_shmem_request_port_by_name("eth", 52428800);//50MB, 50*1024*1024
+	if (val != 0) {
+		//50MB, 50*1024*1024
+		tcc_shmem_request_port_by_name("eth", 52428800);
 
 		val = tcc_shmem_find_port_by_name("eth");
 		shmem_port = val;
-		//printk("%s:tcc_sh val : %d\n",__func__, val);
+		//pr_info("%s:tcc_sh val : %d\n",__func__, val);
 
-		if(!(val < 0)) {
-			virt_eth_callback.data = dev;
+		if (!(val < 0)) {
+			virt_eth_callback.data = (unsigned long)dev;
 			virt_eth_callback.callback_func = virt_eth_rx;
-			tcc_shmem_register_callback(shmem_port, virt_eth_callback);
+			tcc_shmem_register_callback(shmem_port,
+				virt_eth_callback);
 		}
 	} else {
-		printk("%s: tcc shared memory is not valid\n", __func__);
+		pr_err("%s: tcc shared memory is not valid\n", __func__);
 	}
 }
 
@@ -367,10 +373,10 @@ static int __init dummy_init_one(void)
 	struct net_device *dev_dummy;
 	int err;
 
-	//printk("%s: init one\n", __func__);
+	//pr_info("%s: init one\n", __func__);
 
-	dev_dummy = alloc_netdev(sizeof(struct dummy_priv),
-				 "tcc_virt_eth%d", NET_NAME_UNKNOWN, dummy_setup);
+	dev_dummy = alloc_netdev(sizeof(struct dummy_priv), "tcc_virt_eth%d",
+		NET_NAME_UNKNOWN, dummy_setup);
 	if (!dev_dummy)
 		return -ENOMEM;
 
