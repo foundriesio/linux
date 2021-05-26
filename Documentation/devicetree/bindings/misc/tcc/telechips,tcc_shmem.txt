@@ -1,0 +1,21 @@
+Telechips Shared Memory driver
+
+Required properties:
+
+- compatible  : Should be "telechips,tcc_shmem".
+- reg         : Specifies base physical address and size of the registers map.
+- interrupts  : Describes interrupt source.
+- dist-regs   : Specifies address of GIC's distributor of maincore and subcore.
+- memory-region : Covers the memory area shared by maincore and subcore.
+- core-num    : indicates that '0' is maincore and '1' is 'subcore'.
+
+    tcc_shared_memory: tcc_shared_memory {
+        compatible = "telechips,tcc_shmem";
+        reg = <0x0 0x38000000 0x0 0x8000000>;
+        reg-names = "tcc_shmem";
+        interrupts = <GIC_SPI 50 0>;
+        leble = "TCC shared memory";
+        memory-region = <&pmap_tcc_shmem>;
+        dist_regs = <0x17301000 0x1000 0x17C01000 0x1000>;
+        core-num = <0>;
+    };
