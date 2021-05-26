@@ -70,6 +70,7 @@ enum {
 #define I2C_DEF_RETRIES         2
 
 #define I2C_CMD_TIMEOUT         500  /* in msec */
+#define I2C7_ARB_TIMEOUT        5    /* in msec */
 
 #define i2c_readl       __raw_readl
 #define i2c_writel      __raw_writel
@@ -257,7 +258,7 @@ static int32_t wait_intr(struct tcc_i2c *i2c)
 			dev_err(i2c->dev, "[ERROR][I2C] i2c cmd timeout (check sclk status)\n");
 			return -ETIMEDOUT;
 		}
-	} else{
+	} else {
 		/* Check whether command is cleared */
 		timeout_jiffies = jiffies + msecs_to_jiffies(I2C_CMD_TIMEOUT);
 		while ((i2c_readl(i2c->regs + I2C_CMD) & CMD_MASK) != 0UL) {
@@ -436,7 +437,7 @@ static int32_t tcc_i2c_access_arbitration(struct tcc_i2c *i2c, bool on)
 	}
 
 	/* Read status whether i2c 7 is idle */
-	tmo_jiffies = jiffies + msecs_to_jiffies(i2c->ack_timeout);
+	tmo_jiffies = jiffies + msecs_to_jiffies(I2C7_ARB_TIMEOUT);
 	orig_jiffies = jiffies;
 	while ((i2c_readl(regs + I2C_ACR) & 0xF0UL) != 0U) {
 		if (time_after(jiffies, (orig_jiffies + tmo_jiffies))) {
@@ -449,7 +450,7 @@ static int32_t tcc_i2c_access_arbitration(struct tcc_i2c *i2c, bool on)
 	i2c_writel(1, regs + I2C_ACR);
 
 	/* Check status for permission */
-	tmo_jiffies = jiffies + msecs_to_jiffies(i2c->ack_timeout);
+	tmo_jiffies = jiffies + msecs_to_jiffies(I2C7_ARB_TIMEOUT);
 	orig_jiffies = jiffies;
 	while ((i2c_readl(regs + I2C_ACR) & 0x10UL) == 0U) {
 		if (time_after(jiffies, (orig_jiffies + tmo_jiffies))) {
