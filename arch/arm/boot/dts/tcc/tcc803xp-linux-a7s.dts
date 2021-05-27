@@ -199,28 +199,28 @@
 			compatible = "shared-dma-pool";
 			reg = <CAMERA_PREVIEW3_BASE PMAP_SIZE_CAMERA_PREVIEW3>;
 			alignment = <0x1000>;
-//			no-map;
+			no-map;
 		};
 
 		pmap_rearcamera4: pmap_rearcamera4 {
 			compatible = "shared-dma-pool";
 			reg = <CAMERA_PREVIEW4_BASE PMAP_SIZE_CAMERA_PREVIEW4>;
 			alignment = <0x1000>;
-//			no-map;
+			no-map;
 		};
 
 		pmap_rearcamera5: pmap_rearcamera5 {
 			compatible = "shared-dma-pool";
 			reg = <CAMERA_PREVIEW5_BASE PMAP_SIZE_CAMERA_PREVIEW5>;
 			alignment = <0x1000>;
-//			no-map;
+			no-map;
 		};
 
 		pmap_rearcamera6: pmap_rearcamera6 {
 			compatible = "shared-dma-pool";
 			reg = <CAMERA_PREVIEW6_BASE PMAP_SIZE_CAMERA_PREVIEW6>;
 			alignment = <0x1000>;
-//			no-map;
+			no-map;
 		};
 	};
 
