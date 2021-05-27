@@ -488,7 +488,8 @@ static int tccvin_v4l2_enum_frameintervals(struct tccvin_streaming *stream,
 		fie.pad = idx_subdev;
 		ret = v4l2_subdev_call(subdev,
 			pad, enum_frame_interval, NULL, &fie);
-		logd("v4l2_subdev_call, ret: %d\n", ret);
+		logd("idx_subdev: %d, v4l2_subdev_call, ret: %d\n",
+			idx_subdev, ret);
 		switch (ret) {
 		case -ENODEV:
 			loge("subdev is null\n");
@@ -920,13 +921,15 @@ static int tccvin_ioctl_enum_input(struct file *file, void *fh,
 				subdev->name);
 			break;
 		default:
-			logd("%s - status: 0x%08x\n", subdev->name, status);
+			logd("VIN[%d] %s - status: 0x%08x\n",
+				stream->dev->pdev->id, subdev->name, status);
 			input->status |= status;
 			break;
 		}
 	}
 
-	logi("%s - type: 0x%08x, status: 0x%08x\n",
+	logi("VIN[%d] %s - type: 0x%08x, status: 0x%08x\n",
+		stream->dev->pdev->id,
 		input->name, input->type, input->status);
 
 	return 0;
@@ -1053,7 +1056,7 @@ static int tccvin_ioctl_g_parm(struct file *file, void *fh,
 
 	if ((a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
 	    (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-		loge("type(%u) is wrong\n", stream->type);
+		loge("V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE is supported only\n");
 		return -EINVAL;
 	}
 
@@ -1080,13 +1083,12 @@ static int tccvin_ioctl_s_parm(struct file *file, void *fh,
 
 	if ((a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
 	    (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-		loge("type(%u) is wrong\n", stream->type);
+		loge("V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE is supported only\n");
 		return -EINVAL;
 	}
 
 	if (a->parm.capture.capability != V4L2_CAP_TIMEPERFRAME) {
-		loge("capability(0x%x) is not V4L2_CAP_TIMEPERFRAME\n",
-			a->parm.capture.capability);
+		loge("V4L2_CAP_TIMEPERFRAME is supported only\n");
 		return -EINVAL;
 	}
 
@@ -1112,8 +1114,9 @@ static int tccvin_ioctl_enum_framesizes(struct file *file, void *fh,
 	int ret = 0;
 
 	ret = tccvin_v4l2_enum_framesizes(stream, fsize);
-	if ((ret < 0) && (ret != -EINVAL)) {
-		loge("tccvin_v4l2_set_frameinterval, ret: %d\n", ret);
+	if (ret < 0) {
+		logd("VIN[%d] tccvin_v4l2_enum_framesizes(%d), ret: %d\n",
+			stream->dev->pdev->id, fsize->index, ret);
 		return ret;
 	}
 
@@ -1134,8 +1137,9 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 	int ret = 0;
 
 	ret = tccvin_v4l2_enum_frameintervals(stream, fival);
-	if ((ret < 0) && (ret != -EINVAL)) {
-		loge("tccvin_v4l2_enum_frameintervals, ret: %d\n", ret);
+	if (ret < 0) {
+		logd("VIN[%d] tccvin_v4l2_enum_frameintervals(%d), ret: %d\n",
+			stream->dev->pdev->id, fival->index, ret);
 		return ret;
 	}
 
@@ -1171,7 +1175,6 @@ static long tccvin_ioctl_default(struct file *file, void *fh, bool valid_prio,
 
 	return ret;
 }
-
 
 static int tccvin_v4l2_mmap(struct file *file, struct vm_area_struct *vma)
 {

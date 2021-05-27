@@ -602,7 +602,6 @@ static int tccvin_core_probe(struct platform_device *pdev)
 
 e_tccvin_unregister_video:
 	tccvin_unregister_video(dev);
-e_v4l2_dev_unregister:
 	v4l2_device_unregister(dev->stream->vdev.v4l2_dev);
 error:
 	kfree(stream);
