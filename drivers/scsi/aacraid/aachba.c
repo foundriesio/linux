@@ -3336,7 +3336,6 @@ int aac_scsi_cmd(struct scsi_cmnd * scsicmd)
 	case START_STOP:
 		return aac_start_stop(scsicmd);
 
-	/* FALLTHRU */
 	default:
 	/*
 	 *	Unhandled commands
