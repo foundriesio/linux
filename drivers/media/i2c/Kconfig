@@ -35,6 +35,16 @@ config VIDEO_ISL79988
 
 comment "CIS and ISP"
 
+config VIDEO_ARXXXX
+	tristate "Onsemiconductor ARXXXX CIS"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  Say Y to include support for Onsemiconductor ARXXXX CIS.
+	  By default, this is disabled in Telechips EVB.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called arxxxx.
+
 config VIDEO_AR0144
 	tristate "Onsemiconductor AR0144 CIS"
 	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API

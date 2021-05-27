@@ -19,7 +19,8 @@
 
 //#define USE_FHD_VIDEOSOURCES
 #if !defined(USE_FHD_VIDEOSOURCES)
-//#define ENABLE_SENSOR_CONTROL
+#define USE_ARXXXX
+//#define USE_AR0144
 #endif//!defined(USE_FHD_VIDEOSOURCES)
 //#define USE_TELECHIPS_ISP
 
@@ -4359,7 +4360,19 @@
 	};
 
 #if !defined(USE_FHD_VIDEOSOURCES)
-#if defined(ENABLE_SENSOR_CONTROL)
+#if defined(USE_ARXXXX)
+	arxxxx: arxxxx@50 {
+		status		= "okay";
+		compatible	= "onnn,arxxxx";
+		reg		= <0x50>;
+		port {
+			arxxxx_out: endpoint {
+				remote-endpoint = <&max96701_in>;
+				io-direction	= "output";
+			};
+		};
+	};
+#elif defined(USE_AR0147)
 	/*
 	 * ISPless camera module.
 	 * mcnex(for ecarx demo) camera module: max96701, max9286
@@ -4377,7 +4390,7 @@
 			};
 		};
 	};
-#endif//defined(ENABLE_SENSOR_CONTROL)
+#endif
 
 	/* HD camera module & max9286 using MIPI CSI2 output */
 	max96701: max96701@40 {
@@ -4388,15 +4401,17 @@
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
-#if defined(ENABLE_SENSOR_CONTROL)
 			port@0 {
 				reg = <0>;
 				max96701_in: endpoint {
+#if defined(USE_ARXXXX)
+					remote-endpoint = <&arxxxx_out>;
+#elif defined(USE_AR0147)
 					remote-endpoint = <&ar0147_out>;
+#endif
 					io-direction	= "input";
 				};
 			};
-#endif//defined(ENABLE_SENSOR_CONTROL)
 			port@1 {
 				reg = <1>;
 				max96701_out: endpoint {
@@ -4433,7 +4448,6 @@
 					channel		= <0>;
 				};
 			};
-#if 0
 			port@1 {
 				reg = <1>;
 				max9286_in1: endpoint {
@@ -4458,7 +4472,6 @@
 					channel		= <3>;
 				};
 			};
-#endif
 			port@4 {
 				reg = <4>;
 				max9286_out: endpoint {
@@ -4539,7 +4552,6 @@
 					channel		= <0>;
 				};
 			};
-#if 0
 			port@1 {
 				reg = <1>;
 				max96712_in1: endpoint {
@@ -4564,7 +4576,6 @@
 					channel		= <3>;
 				};
 			};
-#endif
 			port@4 {
 				reg = <4>;
 				max96712_out: endpoint {
