@@ -781,6 +781,16 @@ lpfc_rcv_logo(struct lpfc_vport *vport, struct lpfc_nodelist *ndlp,
 		lpfc_els_rsp_acc(vport, ELS_CMD_PRLO, cmdiocb, ndlp, NULL);
 	else
 		lpfc_els_rsp_acc(vport, ELS_CMD_ACC, cmdiocb, ndlp, NULL);
+
+	/* This clause allows the initiator to ACC the LOGO back to the
+	 * Fabric Domain Controller.  It does deliberately skip all other
+	 * steps because some fabrics send RDP requests after logging out
+	 * from the initiator.
+	 */
+	if (ndlp->nlp_type & NLP_FABRIC &&
+	    ((ndlp->nlp_DID & WELL_KNOWN_DID_MASK) != WELL_KNOWN_DID_MASK))
+		return 0;
+
 	if (ndlp->nlp_DID == Fabric_DID) {
 		if (vport->port_state <= LPFC_FDISC)
 			goto out;
@@ -1414,6 +1424,8 @@ lpfc_cmpl_plogi_plogi_issue(struct lpfc_vport *vport,
 		switch (ndlp->nlp_DID) {
 		case NameServer_DID:
 			mbox->mbox_cmpl = lpfc_mbx_cmpl_ns_reg_login;
+			/* Fabric Controller Node needs these parameters. */
+			memcpy(&ndlp->fc_sparam, sp, sizeof(struct serv_parm));
 			break;
 		case FDMI_DID:
 			mbox->mbox_cmpl = lpfc_mbx_cmpl_fdmi_reg_login;
