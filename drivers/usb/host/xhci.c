@@ -87,78 +87,7 @@ int xhci_set_test_mode(struct xhci_hcd *xhci, int mode)
 			(unsigned long)&xhci->op_regs->port_power_base, reg);
 	return 0;
 }
-
-static ssize_t show_xhci_testmode(struct device *dev,
-                struct device_attribute *attr, char *buf)
-{
-        struct usb_hcd *hcd = dev_get_drvdata(dev);
-        struct xhci_hcd *xhci = hcd_to_xhci(hcd);
-        unsigned long flags;
-        u32 reg;
-
-        spin_lock_irqsave(&xhci->lock, flags);
-        reg = readl(&xhci->op_regs->port_power_base);
-        reg &= PORT_TSTCTRL_MASK;
-        reg >>= 28;
-        spin_unlock_irqrestore(&xhci->lock, flags);
-
-        switch (reg) {
-                case 0:
-                        pr_info("no test\n");
-                        break;
-                case TEST_J:
-                        pr_info("test_j\n");
-                        break;
-                case TEST_K:
-                        pr_info("test_k\n");
-                        break;
-                case TEST_SE0_NAK:
-                        pr_info("test_se0_nak\n");
-                        break;
-                case TEST_PACKET:
-                        pr_info("test_packet\n");
-                        break;
-                case TEST_FORCE_EN:
-                        pr_info("test_force_enable\n");
-                        break;
-                default:
-                        pr_info("UNKNOWN test mode\n");
-        }
-
-        return 0;
-}
-
-static ssize_t store_xhci_testmode(struct device *dev,
-                struct device_attribute *attr,
-                const char *buf, size_t count)
-{
-        struct usb_hcd *hcd = dev_get_drvdata(dev);
-        struct xhci_hcd *xhci = hcd_to_xhci(hcd);
-        unsigned long flags;
-        u32 testmode = 0;
-
-        if (!strncmp(buf, "test_j", 6)) {
-                testmode = TEST_J;
-        } else if (!strncmp(buf, "test_k", 6)) {
-                testmode = TEST_K;
-        } else if (!strncmp(buf, "test_se0_nak", 12)) {
-                testmode = TEST_SE0_NAK;
-        } else if (!strncmp(buf, "test_packet", 11)) {
-                testmode = TEST_PACKET;
-        } else if (!strncmp(buf, "test_force_enable", 17)) {
-                testmode = TEST_FORCE_EN;
-        } else {
-                testmode = 0;
-        }
-
-        spin_lock_irqsave(&xhci->lock, flags);
-        xhci_set_test_mode(xhci, testmode);
-        spin_unlock_irqrestore(&xhci->lock, flags);
-
-        return (ssize_t)count;
-}
-
-static DEVICE_ATTR(testmode, 0644, show_xhci_testmode, store_xhci_testmode);
+EXPORT_SYMBOL_GPL(xhci_set_test_mode);
 
 static bool td_on_ring(struct xhci_td *td, struct xhci_ring *ring)
 {
@@ -694,7 +623,6 @@ int xhci_run(struct usb_hcd *hcd)
 	u64 temp_64;
 	int ret;
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
-	struct device *dev = hcd->self.controller;
 
 	/* Start the xHCI host controller running only after the USB 2.0 roothub
 	 * is setup.
@@ -756,12 +684,6 @@ int xhci_run(struct usb_hcd *hcd)
 		if (ret)
 			xhci_free_command(xhci, command);
 	}
-
-	ret = device_create_file(dev, &dev_attr_testmode);
-	if (ret != 0) {
-		dev_err(dev, "[ERROR][USB] failed to create testmode\n");
-	}
-
 	xhci_dbg_trace(xhci, trace_xhci_dbg_init,
 			"Finished xhci_run for USB2 roothub");
 	return 0;
@@ -781,11 +703,8 @@ static void xhci_stop(struct usb_hcd *hcd)
 {
 	u32 temp;
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
-	struct device *dev = hcd->self.controller;
 
 	mutex_lock(&xhci->mutex);
-
-	device_remove_file(dev, &dev_attr_testmode);
 
 	/* Only halt host and free memory after both hcds are removed */
 	if (!usb_hcd_is_primary_hcd(hcd)) {

@@ -57,6 +57,78 @@ static ssize_t xhci_tpl_support_store(struct device *dev,
 DEVICE_ATTR(xhci_tpl_support, 0644,
 		xhci_tpl_support_show, xhci_tpl_support_store);
 
+static ssize_t show_xhci_testmode(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct usb_hcd *hcd = dev_get_drvdata(dev);
+	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+	unsigned long flags;
+	u32 reg;
+
+	spin_lock_irqsave(&xhci->lock, flags);
+	reg = readl(&xhci->op_regs->port_power_base);
+	reg &= PORT_TSTCTRL_MASK;
+	reg >>= 28;
+	spin_unlock_irqrestore(&xhci->lock, flags);
+
+	switch (reg) {
+		case 0:
+			pr_info("no test\n");
+			break;
+		case TEST_J:
+			pr_info("test_j\n");
+			break;
+		case TEST_K:
+			pr_info("test_k\n");
+			break;
+		case TEST_SE0_NAK:
+			pr_info("test_se0_nak\n");
+			break;
+		case TEST_PACKET:
+			pr_info("test_packet\n");
+			break;
+		case TEST_FORCE_EN:
+			pr_info("test_force_enable\n");
+			break;
+		default:
+			pr_info("UNKNOWN test mode\n");
+	}
+
+	return 0;
+}
+
+static ssize_t store_xhci_testmode(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct usb_hcd *hcd = dev_get_drvdata(dev);
+	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+	unsigned long flags;
+	u32 testmode = 0;
+
+	if (!strncmp(buf, "test_j", 6)) {
+		testmode = TEST_J;
+	} else if (!strncmp(buf, "test_k", 6)) {
+		testmode = TEST_K;
+	} else if (!strncmp(buf, "test_se0_nak", 12)) {
+		testmode = TEST_SE0_NAK;
+	} else if (!strncmp(buf, "test_packet", 11)) {
+		testmode = TEST_PACKET;
+	} else if (!strncmp(buf, "test_force_enable", 17)) {
+		testmode = TEST_FORCE_EN;
+	} else {
+		testmode = 0;
+	}
+
+	spin_lock_irqsave(&xhci->lock, flags);
+	xhci_set_test_mode(xhci, testmode);
+	spin_unlock_irqrestore(&xhci->lock, flags);
+
+	return (ssize_t)count;
+}
+
+static DEVICE_ATTR(testmode, 0644, show_xhci_testmode, store_xhci_testmode);
+
 static int xhci_plat_setup(struct usb_hcd *hcd);
 static int xhci_plat_start(struct usb_hcd *hcd);
 
@@ -345,6 +417,13 @@ static int xhci_plat_probe(struct platform_device *pdev)
 		}
 	}
 
+	ret = device_create_file(&pdev->dev, &dev_attr_testmode);
+	if (ret != 0) {
+		pr_err("[ERROR][USB] Cannot register USB testmode attributes: %d\n",
+				ret);
+		goto put_usb3_hcd;
+	}
+
 	xhci_debugfs_init(xhci);
 
 
@@ -392,6 +471,9 @@ static int xhci_plat_remove(struct platform_device *dev)
 
 	pm_runtime_get_sync(&dev->dev);
 	xhci->xhc_state |= XHCI_STATE_REMOVING;
+
+	device_remove_file(&dev->dev, &dev_attr_xhci_tpl_support);
+	device_remove_file(&dev->dev, &dev_attr_testmode);
 
 	usb_remove_hcd(shared_hcd);
 	xhci->shared_hcd = NULL;
