@@ -4848,11 +4848,9 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 	struct scsi_cmnd *cmd;
 	int result;
 	int index;
-	struct scatterlist *sg;
 	int sg_segment;
-	int i = 0;
 	struct ufshcd_sg_entry *prd_table;
-	void *base_addr;
+
 	for_each_set_bit(index, &completed_reqs, hba->nutrs) {
 		lrbp = &hba->lrb[index];
 		cmd = lrbp->cmd;
@@ -6283,6 +6281,7 @@ static void ufshcd_init_icc_levels(struct ufs_hba *hba)
  * Returns zero on success (all required W-LUs are added successfully),
  * non-zero error value on failure (if failed to add any of the required W-LU).
  */
+#if !defined(CONFIG_SCSI_UFS_TCC)
 static int ufshcd_scsi_add_wlus(struct ufs_hba *hba)
 {
 	int ret = 0;
@@ -6327,6 +6326,7 @@ remove_sdev_ufs_device:
 out:
 	return ret;
 }
+#endif
 
 static int ufs_get_device_desc(struct ufs_hba *hba,
 			       struct ufs_dev_desc *dev_desc)
@@ -6622,8 +6622,8 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 {
 	struct ufs_dev_desc card = {0};
 	int ret;
-	struct scsi_device *sdp;
 	ktime_t start = ktime_get();
+
 	ret = ufshcd_link_startup(hba);
 	if (ret)
 		goto out;
@@ -8150,10 +8150,13 @@ EXPORT_SYMBOL_GPL(ufshcd_dealloc_host);
  */
 static int ufshcd_set_dma_mask(struct ufs_hba *hba)
 {
+/* TCC's UFS Controller only handles DMA up to 32bit range */
+#if !defined(CONFIG_SCSI_UFS_TCC)
 	if (hba->capabilities & MASK_64_ADDRESSING_SUPPORT) {
 		if (!dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(64)))
 			return 0;
 	}
+#endif
 	return dma_set_mask_and_coherent(hba->dev, DMA_BIT_MASK(32));
 }
 

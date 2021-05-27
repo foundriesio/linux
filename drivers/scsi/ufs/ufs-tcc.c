@@ -452,7 +452,7 @@ static void ufs_tcc_post_init(struct ufs_hba *hba)
 #endif
 
 	ufshcd_writel(hba, 0xA, HCI_DATA_REORDER);
-	ufshcd_writel(hba, 0xDFC2E492, FMP_FMPRSECURITY);
+	ufs_fmp_writel(host, 0xDFC2E492, FMP_FMPRSECURITY);
 
 }
 static int ufs_tcc_hce_enable_notify(struct ufs_hba *hba,
