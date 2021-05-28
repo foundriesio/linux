@@ -1524,16 +1524,27 @@ static void ath10k_htt_rx_h_csum_offload(struct sk_buff *msdu)
 	msdu->ip_summed = ath10k_htt_rx_get_csum_state(msdu);
 }
 
+static bool ath10k_htt_rx_h_frag_multicast_check(struct ath10k *ar,
+                                                struct sk_buff *skb,
+                                                u16 offset)
+{
+       struct ieee80211_hdr *hdr;
+
+       hdr = (struct ieee80211_hdr *)(skb->data + offset);
+       return !is_multicast_ether_addr(hdr->addr1);
+}
+
 static void ath10k_htt_rx_h_mpdu(struct ath10k *ar,
 				 struct sk_buff_head *amsdu,
 				 struct ieee80211_rx_status *status,
 				 bool fill_crypt_header,
 				 u8 *rx_hdr,
-				 enum ath10k_pkt_rx_err *err)
+				 enum ath10k_pkt_rx_err *err,
+				 bool frag)
 {
 	struct sk_buff *first;
 	struct sk_buff *last;
-	struct sk_buff *msdu;
+	struct sk_buff *msdu, *temp;
 	struct htt_rx_desc *rxd;
 	struct ieee80211_hdr *hdr;
 	enum htt_rx_mpdu_encrypt_type enctype;
@@ -1546,6 +1557,7 @@ static void ath10k_htt_rx_h_mpdu(struct ath10k *ar,
 	bool is_decrypted;
 	bool is_mgmt;
 	u32 attention;
+	bool multicast_check = true;
 
 	if (skb_queue_empty(amsdu))
 		return;
@@ -1644,7 +1656,26 @@ static void ath10k_htt_rx_h_mpdu(struct ath10k *ar,
 	}
 
 	skb_queue_walk(amsdu, msdu) {
+		if (frag)
+			multicast_check = ath10k_htt_rx_h_frag_multicast_check(ar,
+									       msdu,
+									       0);
+
+		if (!multicast_check) {
+			/* Discard the fragment with invalid PN or multicast DA
+			 */
+			temp = msdu->prev;
+			__skb_unlink(msdu, amsdu);
+			msdu = temp;
+			multicast_check = true;
+			continue;
+		}
+
 		ath10k_htt_rx_h_csum_offload(msdu);
+
+		if (frag && enctype == HTT_RX_MPDU_ENCRYPT_TKIP_WPA)
+			status->flag &= ~RX_FLAG_MMIC_STRIPPED;
+
 		ath10k_htt_rx_h_undecap(ar, msdu, status, first_hdr, enctype,
 					is_decrypted);
 
@@ -1662,6 +1693,10 @@ static void ath10k_htt_rx_h_mpdu(struct ath10k *ar,
 
 		hdr = (void *)msdu->data;
 		hdr->frame_control &= ~__cpu_to_le16(IEEE80211_FCTL_PROTECTED);
+
+		if (frag && enctype == HTT_RX_MPDU_ENCRYPT_TKIP_WPA)
+			status->flag &= ~RX_FLAG_IV_STRIPPED &
+					~RX_FLAG_MMIC_STRIPPED;
 	}
 }
 
@@ -1769,14 +1804,62 @@ static void ath10k_htt_rx_h_unchain(struct ath10k *ar,
 	ath10k_unchain_msdu(amsdu, unchain_cnt);
 }
 
+static bool ath10k_htt_rx_validate_amsdu(struct ath10k *ar,
+                                        struct sk_buff_head *amsdu)
+{
+       u8 *subframe_hdr;
+       struct sk_buff *first;
+       bool is_first, is_last;
+       struct htt_rx_desc *rxd;
+       struct ieee80211_hdr *hdr;
+       size_t hdr_len, crypto_len;
+       enum htt_rx_mpdu_encrypt_type enctype;
+       int bytes_aligned = ar->hw_params.decap_align_bytes;
+
+       first = skb_peek(amsdu);
+
+       rxd = (void *)first->data - sizeof(*rxd);
+       hdr = (void *)rxd->rx_hdr_status;
+
+       is_first = !!(rxd->msdu_end.common.info0 &
+                     __cpu_to_le32(RX_MSDU_END_INFO0_FIRST_MSDU));
+       is_last = !!(rxd->msdu_end.common.info0 &
+                    __cpu_to_le32(RX_MSDU_END_INFO0_LAST_MSDU));
+
+       /* Return in case of non-aggregated msdu */
+       if (is_first && is_last)
+               return true;
+
+       /* First msdu flag is not set for the first msdu of the list */
+       if (!is_first)
+               return false;
+
+       enctype = MS(__le32_to_cpu(rxd->mpdu_start.info0),
+                    RX_MPDU_START_INFO0_ENCRYPT_TYPE);
+
+       hdr_len = ieee80211_hdrlen(hdr->frame_control);
+       crypto_len = ath10k_htt_rx_crypto_param_len(ar, enctype);
+
+       subframe_hdr = (u8 *)hdr + round_up(hdr_len, bytes_aligned) +
+                      crypto_len;
+
+       /* Validate if the amsdu has a proper first subframe.
+        * There are chances a single msdu can be received as amsdu when
+        * the unauthenticated amsdu flag of a QoS header
+        * gets flipped in non-SPP AMSDU's, in such cases the first
+        * subframe has llc/snap header in place of a valid da.
+        * return false if the da matches rfc1042 pattern
+        */
+       if (ether_addr_equal(subframe_hdr, rfc1042_header))
+               return false;
+
+       return true;
+}
+
 static bool ath10k_htt_rx_amsdu_allowed(struct ath10k *ar,
 					struct sk_buff_head *amsdu,
 					struct ieee80211_rx_status *rx_status)
 {
-	/* FIXME: It might be a good idea to do some fuzzy-testing to drop
-	 * invalid/dangerous frames.
-	 */
-
 	if (!rx_status->freq) {
 		ath10k_dbg(ar, ATH10K_DBG_HTT, "no channel configured; ignoring frame(s)!\n");
 		return false;
@@ -1784,6 +1867,11 @@ static bool ath10k_htt_rx_amsdu_allowed(struct ath10k *ar,
 
 	if (test_bit(ATH10K_CAC_RUNNING, &ar->dev_flags)) {
 		ath10k_dbg(ar, ATH10K_DBG_HTT, "htt rx cac running\n");
+		return false;
+	}
+
+	if (!ath10k_htt_rx_validate_amsdu(ar, amsdu)) {
+		ath10k_dbg(ar, ATH10K_DBG_HTT, "invalid amsdu received\n");
 		return false;
 	}
 
@@ -1849,7 +1937,7 @@ static int ath10k_htt_rx_handle_amsdu(struct ath10k_htt *htt)
 		ath10k_htt_rx_h_unchain(ar, &amsdu, &drop_cnt, &unchain_cnt);
 
 	ath10k_htt_rx_h_filter(ar, &amsdu, rx_status, &drop_cnt_filter);
-	ath10k_htt_rx_h_mpdu(ar, &amsdu, rx_status, true, first_hdr, &err);
+	ath10k_htt_rx_h_mpdu(ar, &amsdu, rx_status, true, first_hdr, &err, false);
 	msdus_to_queue = skb_queue_len(&amsdu);
 	ath10k_htt_rx_h_enqueue(ar, &amsdu, rx_status);
 
@@ -2200,7 +2288,7 @@ static int ath10k_htt_rx_in_ord_ind(struct ath10k *ar, struct sk_buff *skb)
 			ath10k_htt_rx_h_ppdu(ar, &amsdu, status, vdev_id);
 			ath10k_htt_rx_h_filter(ar, &amsdu, status, NULL);
 			ath10k_htt_rx_h_mpdu(ar, &amsdu, status, false, NULL,
-					     NULL);
+					     NULL, frag);
 			ath10k_htt_rx_h_enqueue(ar, &amsdu, status);
 			break;
 		case -EAGAIN:
