@@ -642,7 +642,7 @@ static int32_t gpio_to_f_in(uint32_t gpio_base, uint32_t gpio_bit,
 		struct device *dev)
 {
 
-	uint32_t count, i, f_in_gpio_num;
+	uint32_t count, i, f_in_gpio_num = 0;
 	int32_t pin_valid = 0, ret = 0;
 	struct ictc_dev *idev = dev_get_drvdata(dev);
 	struct ictc_pin_map *pin_v = idev->ictc_pin_map_val;
@@ -766,12 +766,16 @@ static int32_t ictc_probe(struct platform_device *pdev)
 				if (ret != SUCCESS) {
 					err_ictc("irq req. fail: %d irq: %x\n",
 						 ret, idev->irq);
+					devm_kfree(&pdev->dev, idev);
+					clk_disable_unprepare(pPClk);
 					return ret;
 				}
 
 				ret = ictc_parse_dt(np, &pdev->dev);
 
 				if (ret != SUCCESS) {
+					devm_kfree(&pdev->dev, idev);
+					clk_disable_unprepare(pPClk);
 					err_ictc("ictc:No dev node\n");
 					return ret;
 				}
@@ -795,6 +799,9 @@ static int32_t ictc_probe(struct platform_device *pdev)
 						 0,
 						 &f_in_gpio_base);
 					if (ret != SUCCESS) {
+						iounmap(ictc_base);
+						clk_disable_unprepare(pPClk);
+						devm_kfree(&pdev->dev, idev);
 						return -EINVAL;
 						//for coding style
 					}
@@ -803,6 +810,9 @@ static int32_t ictc_probe(struct platform_device *pdev)
 						(np, "f-in-gpio", 1,
 						 &f_in_gpio_bit);
 					if (ret != SUCCESS) {
+						iounmap(ictc_base);
+						clk_disable_unprepare(pPClk);
+						devm_kfree(&pdev->dev, idev);
 						return -EINVAL;
 						//for coding style
 					}
@@ -817,6 +827,9 @@ static int32_t ictc_probe(struct platform_device *pdev)
 							(
 							 "ictc: invalid gpio\n"
 							);
+						iounmap(ictc_base);
+						clk_disable_unprepare(pPClk);
+						devm_kfree(&pdev->dev, idev);
 						return -EINVAL;
 					}
 
@@ -830,12 +843,6 @@ static int32_t ictc_probe(struct platform_device *pdev)
 
 				ictc_enable();
 
-
-
-				if (ret != SUCCESS) {
-					clk_disable_unprepare(pPClk);
-					//for coding style
-				}
 
 			}
 
