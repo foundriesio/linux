@@ -38,6 +38,9 @@
     If it's non-zero, we mark only out of window RST segments as INVALID. */
 static int nf_ct_tcp_be_liberal __read_mostly = 0;
 
+/* If it's non-zero, we turn off RST sequence number check */
+static int nf_ct_tcp_ignore_invalid_rst __read_mostly = 0;
+
 /* If it is set to zero, we disable picking up already established
    connections. */
 static int nf_ct_tcp_loose __read_mostly = 1;
@@ -1044,7 +1047,8 @@ static int tcp_packet(struct nf_conn *ct,
 			if (seq == 0 && !nf_conntrack_tcp_established(ct))
 				break;
 
-			if (before(seq, ct->proto.tcp.seen[!dir].td_maxack)) {
+			if (before(seq, ct->proto.tcp.seen[!dir].td_maxack) &&
+				   !tn->tcp_ignore_invalid_rst) {
 				/* Invalid RST  */
 				spin_unlock_bh(&ct->lock);
 				nf_log_packet(net, pf, 0, skb, NULL, NULL,
@@ -1544,6 +1548,12 @@ static struct ctl_table tcp_sysctl_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
 	},
+	{
+		.procname       = "nf_conntrack_tcp_ignore_invalid_rst",
+		.maxlen         = sizeof(unsigned int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec,
+	},
 	{ }
 };
 #endif /* CONFIG_SYSCTL */
@@ -1574,6 +1584,7 @@ static int tcp_kmemdup_sysctl_table(struct nf_proto_net *pn,
 	pn->ctl_table[10].data = &tn->tcp_loose;
 	pn->ctl_table[11].data = &tn->tcp_be_liberal;
 	pn->ctl_table[12].data = &tn->tcp_max_retrans;
+	pn->ctl_table[13].data = &tn->tcp_ignore_invalid_rst;
 #endif
 	return 0;
 }
@@ -1592,6 +1603,7 @@ static int tcp_init_net(struct net *net, u_int16_t proto)
 		tn->tcp_loose = nf_ct_tcp_loose;
 		tn->tcp_be_liberal = nf_ct_tcp_be_liberal;
 		tn->tcp_max_retrans = nf_ct_tcp_max_retrans;
+		tn->tcp_ignore_invalid_rst = nf_ct_tcp_ignore_invalid_rst;
 	}
 
 	return tcp_kmemdup_sysctl_table(pn, tn);
