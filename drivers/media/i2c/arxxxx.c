@@ -84,11 +84,11 @@ static const struct regmap_config arxxxx_regmap = {
 };
 
 static struct frame_size arxxxx_framesizes[] = {
-	{	1920,	1080	},
+	{	DEFAULT_WIDTH,	DEFAULT_HEIGHT	},
 };
 
 static u32 arxxxx_framerates[] = {
-	30,
+	DEFAULT_FRAMERATE,
 };
 
 static void arxxxx_init_format(struct arxxxx *dev)
