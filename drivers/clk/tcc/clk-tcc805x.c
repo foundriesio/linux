@@ -14,7 +14,7 @@
 #include <asm/system_info.h>
 #endif
 
-#include <linux/arm-smccc.h>
+#include <soc/tcc/chipinfo.h>
 #include <soc/tcc/tcc-sip.h>
 
 #define TCC805X_CKC_DRIVER
@@ -479,29 +479,28 @@ static int tcc_clk_suspend(void) {
 static void __iomem *pmureg;
 
 static void tcc_clk_resume(void) {
+	u32 coreid = get_core_identity();
+	u32 val = 0;
+
 	tcc_ckc_restore();
 
-	{
-		/*
-		 * TODO: This code block is a workaround to avoid sync issue
-		 *       between main/subcore.  It will be removed after clock
-		 *       configuration sequence be improved.
-		 */
-#if defined(CONFIG_TCC805X_CA53Q)
-		u32 val = 0;
-
-		do {
-			/* Wait until CA72 set clock resume ready field */
-			val = readl(PMU_USSTATUS(pmureg)) & CLOCK_RESUME_READY;
-		} while (val == 0);
-
-		/* Clear clock resume ready field */
-		writel(val & ~CLOCK_RESUME_READY, PMU_USSTATUS(pmureg));
-#else
-		/* Set clock resume ready field to let CA53 know */
-		u32 val = readl(PMU_USSTATUS(pmureg));
+	/*
+	 * TODO: This code block is a workaround to avoid sync issue
+	 *       between main/subcore.  It will be removed after clock
+	 *       configuration sequence be improved.
+	 */
+	if (is_main_core(coreid)) {
+		/* Set "clock resume ready" flag */
+		val = readl(PMU_USSTATUS(pmureg));
 		writel(val | CLOCK_RESUME_READY, PMU_USSTATUS(pmureg));
-#endif
+	} else {
+		/* Wait "clock resume ready" be flagged */
+		do {
+			val = readl(PMU_USSTATUS(pmureg));
+		} while ((val & CLOCK_RESUME_READY) == 0);
+
+		/* Clear "clock resume ready" flag */
+		writel(val & ~CLOCK_RESUME_READY, PMU_USSTATUS(pmureg));
 	}
 }
 
