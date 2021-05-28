@@ -1630,16 +1630,6 @@ call_reserveresult(struct rpc_task *task)
 		return;
 	}
 
-	/*
-	 * Even though there was an error, we may have acquired
-	 * a request slot somehow.  Make sure not to leak it.
-	 */
-	if (task->tk_rqstp) {
-		printk(KERN_ERR "%s: status=%d, request allocated anyway\n",
-				__func__, status);
-		xprt_release(task);
-	}
-
 	switch (status) {
 	case -ENOMEM:
 		rpc_delay(task, HZ >> 2);
