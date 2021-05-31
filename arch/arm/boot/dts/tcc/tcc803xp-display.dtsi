@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
+/*
+* Copyright (C) Telechips Inc.
+* Device tree for Telechips TCC803xp AVN board
+*/
+
+/ {
+	/*
+	 * Describe here after remove this statement if you have something to
+	 * be override.
+	 */
+	lcd_drm_dummy {
+		compatible = "telechips,lcd_drm_dummy";
+		status = "disabled";
+	};
+
+	tcc_drm_primary: tcc-drm-lcd  {
+		compatible = "telechips,tcc-drm-lcd-v1.0";
+		display_device = <&vioc_disp VIOC_DISP0>;
+		wmixer = <&vioc_wmix VIOC_WMIX0>;
+		rdma = <&vioc_rdma VIOC_RDMA00>;
+		planes = "primary";
+		status = "disabled";
+		display-timings {
+			native-mode = <&timing_dpv14_0>;
+			timing_dpv14_0: 1920x720p60 {
+				clock-frequency = <88200000>;
+				hactive = <1920>;
+				vactive = <720>;
+				hfront-porch = <30>;
+				hback-porch = <30>;
+				hsync-len = <4>;
+				hsync-active = <0>;
+				vback-porch = <9>;
+				vfront-porch = <10>;
+				vsync-len = <2>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	tcc_drm_ext: tcc-drm-ext {
+		compatible = "telechips,tcc-drm-ext-v1.0";
+		display_device = <&vioc_disp VIOC_DISP1>;
+		wmixer = <&vioc_wmix VIOC_WMIX1>;
+		rdma = <&vioc_rdma VIOC_RDMA04>;
+		planes = "primary";
+		status = "disabled";
+		display-timings {
+			native-mode = <&timing_tm123xdhp90>;
+			timing_tm123xdhp90: 1920x720p60 {
+				clock-frequency = <88200000>;
+				hactive = <1920>;
+				vactive = <720>;
+				hfront-porch = <28>;
+				hback-porch = <28>;
+				hsync-len = <8>;
+				hsync-active = <0>;
+				vback-porch = <10>;
+				vfront-porch = <10>;
+				vsync-len = <2>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+
+	tcc_drm_third: tcc-drm-third {
+		compatible = "telechips,tcc-drm-third-v1.0";
+		display_device = <&vioc_disp VIOC_DISP2>;
+		wmixer = <&vioc_wmix VIOC_WMIX2>;
+		rdma = <&vioc_rdma VIOC_RDMA08>;
+		planes = "primary";
+		status = "disabled";
+		display-timings {
+			native-mode = <&timing_fld0800>;
+			timing_fld0800: 1024x600p60 {
+				clock-frequency = <51200000>;
+				hactive = <1024>;
+				vactive = <600>;
+				hfront-porch = <147>;
+				hback-porch = <147>;
+				hsync-len = <19>;
+				hsync-active = <0>;
+				vback-porch = <10>;
+				vfront-porch = <25>;
+				vsync-len = <2>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <1>;
+			};
+		};
+	};
+};
+

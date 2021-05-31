@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
+/*
+ * Copyright (C) Telechips Inc.
+ * Device tree for Telechips TCC8059 AVN board
+ */
+
+#include "tcc803xp-display.dtsi"
+/ {
+	/*
+	 * Describe here after remove this statement if you have something to
+	 * be override.
+	 */
+	lcd_drm_dummy {
+		status = "okay";
+		base_display = <&tcc_drm_primary>;
+	};
+
+	tcc-drm-lcd {
+		status = "okay";
+		connector_type = "LVDS";
+	};
+
+	tcc-drm-ext {
+		status = "okay";
+		connector_type = "LVDS";
+	};
+
+	tcc-drm-third {
+		status = "okay";
+	};
+
+	tcc-drm-screen-share {
+		status = "okay";
+	};
+};
+
