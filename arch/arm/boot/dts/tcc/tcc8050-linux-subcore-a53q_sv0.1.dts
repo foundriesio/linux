@@ -2442,7 +2442,6 @@
 		compatible = "telechips,tcc_ehci_phy";
 		reg = <0x11DA0010 0x30>;
 		interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
 		status = "disabled";
 	};
 
@@ -2451,7 +2450,6 @@
 		reg = <0x11A00000 0x108>,
 		      <0x11DA0010 0x54>;
 		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
 		telechips,ehci_phy = <&ehci_phy>;
 		status = "disabled";
 	};
@@ -2461,7 +2459,6 @@
 		reg = <0x11A80000 0x60>,
 		      <0x11DA0010 0x54>;
 		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk_hsio HSIOBUS_USB20H /*&clk_isoip_top ISOIP_TOP_U20H*/>;
 		status = "disabled";
 	};
 
