@@ -2794,6 +2794,7 @@ static void
 nvme_fc_delete_association(struct nvme_fc_ctrl *ctrl)
 {
 	unsigned long flags;
+	int q;
 
 	if (!ctrl->assoc_active)
 		return;
@@ -2803,6 +2804,16 @@ nvme_fc_delete_association(struct nvme_fc_ctrl *ctrl)
 	ctrl->flags |= FCCTRL_TERMIO;
 	ctrl->iocnt = 0;
 	spin_unlock_irqrestore(&ctrl->lock, flags);
+
+	/*
+	 * if aborting io, the queues are no longer good, mark them
+	 * all as not live.
+	 */
+	if (ctrl->ctrl.queue_count > 1) {
+		for (q = 1; q < ctrl->ctrl.queue_count; q++)
+			clear_bit(NVME_FC_Q_LIVE, &ctrl->queues[q].flags);
+	}
+	clear_bit(NVME_FC_Q_LIVE, &ctrl->queues[0].flags);
 
 	/*
 	 * If io queues are present, stop them and terminate all outstanding
