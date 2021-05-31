@@ -406,6 +406,7 @@ int kvm_set_ipa_limit(void)
 		pr_info("kvm: Limiting the IPA size due to kernel %s Address limit\n",
 			(va_max < pa_max) ? "Virtual" : "Physical");
 
+	kvm_ipa_limit = ipa_max;
 	kvm_info("IPA Size Limit: %d bits%s\n", kvm_ipa_limit,
 		 ((kvm_ipa_limit < KVM_PHYS_SHIFT) ?
 		  " (Reduced IPA size, limited VM/VMM compatibility)" : ""));
