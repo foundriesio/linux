@@ -105,6 +105,7 @@ static void tcc_spi_regs_dump(struct tcc_spi *tccspi)
 }
 #endif
 
+static void tcc_spi_hwinit(struct tcc_spi *tccspi);
 /* Clear TCC GPSB DMA Packet counter */
 static void tcc_spi_clear_packet_cnt(struct tcc_spi *tccspi)
 {
@@ -139,15 +140,33 @@ static void tcc_spi_set_packet_size(struct tcc_spi *tccspi, uint32_t size)
 }
 
 /* Clear Tx and Rx FIFO counter */
-static void tcc_spi_clear_fifo(struct tcc_spi *tccspi)
+static int32_t tcc_spi_clear_fifo(struct tcc_spi *tccspi)
 {
+	uint32_t status;
+	int32_t ret;
+
 	dev_dbg(tccspi->dev, "[DEBUG][SPI] [%s]\n", __func__);
 
-	/* Clear Tx and Rx FIFO counter */
-	TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE,
-			TCC_GPSB_MODE_CRF | TCC_GPSB_MODE_CWF);
-	TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE,
-			TCC_GPSB_MODE_CRF | TCC_GPSB_MODE_CWF);
+	status = tcc_spi_readl(tccspi->base + TCC_GPSB_STAT);
+	if ((status & TCC_GPSB_STAT_CNT) == 0U) {
+		return 0;
+	}
+
+	dev_dbg(tccspi->dev, "[DEBUG][SPI] FIFO is not empty. (STAT: 0x%08X)\n",
+			status);
+	/* Clear FIFO : SW reset */
+	clk_disable_unprepare(tccspi->pd->hclk);
+	ret = clk_prepare_enable(tccspi->pd->hclk);
+	if (ret < 0) {
+		dev_err(tccspi->dev, "[ERROR][SPI] Failed to enable hclk\n");
+		clk_disable_unprepare(tccspi->pd->hclk);
+		return ret;
+	}
+
+	/* re-init GPSB */
+	tcc_spi_hwinit(tccspi);
+
+	return 0;
 }
 
 #ifdef TCC_USE_GFB_PORT
@@ -379,7 +398,7 @@ static int32_t tcc_spi_set_clk(struct tcc_spi *tccspi, uint32_t clk,
 }
 
 /* Set SPI modes */
-static int32_t tcc_spi_set_mode(struct tcc_spi *tccspi, uint32_t mode)
+static void tcc_spi_set_mode(struct tcc_spi *tccspi, uint32_t mode)
 {
 	bool is_slave;
 
@@ -453,7 +472,6 @@ static int32_t tcc_spi_set_mode(struct tcc_spi *tccspi, uint32_t mode)
 			__func__,
 			mode,
 			tcc_spi_readl(tccspi->base + TCC_GPSB_MODE));
-	return 0;
 }
 
 /* Initialize GPSB register settings */
@@ -477,11 +495,16 @@ static void tcc_spi_hwinit(struct tcc_spi *tccspi)
 		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_DMAICR, 0xFFFFFFFFU);
 	}
 
+	/* Check CONTM support */
+	TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_EVTCTRL,
+			TCC_GPSB_EVTCTRL_CONTM(0x3U));
+	tccspi->pd->contm_support = (bool)true;
+
 	/* Disable operation */
 	TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_EN);
 
 	/* Set bitwidth (Default: 8) */
-	tcc_spi_set_bit_width(tccspi, 8);
+	tcc_spi_set_bit_width(tccspi, tccspi->bits);
 
 	/* Set operation mode (SPI compatible) */
 	TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_MD_MASK);
@@ -516,6 +539,8 @@ static void tcc_spi_hwinit(struct tcc_spi *tccspi)
 		TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE,
 				TCC_GPSB_MODE_SLV);
 	}
+
+	tcc_spi_set_mode(tccspi, tccspi->mode);
 
 	/* Enable operation */
 	TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_EN);
@@ -1195,7 +1220,6 @@ static int32_t tcc_spi_setup(struct spi_device *spi)
 {
 	int32_t status;
 	struct tcc_spi *tccspi = spi_master_get_devdata(spi->master);
-	uint32_t bits;
 	bool valid_gpio;
 
 	if (tccspi == NULL) {
@@ -1238,14 +1262,12 @@ static int32_t tcc_spi_setup(struct spi_device *spi)
 	}
 
 	/* Set the bitwidth */
-	bits = spi->bits_per_word;
-	tcc_spi_set_bit_width(tccspi, bits);
+	tccspi->bits = spi->bits_per_word;
+	tcc_spi_set_bit_width(tccspi, tccspi->bits);
 
 	/* Set spi mode (clock and loopback)*/
-	status = tcc_spi_set_mode(tccspi, spi->mode);
-	if (status < 0) {
-		return status;
-	}
+	tccspi->mode = spi->mode;
+	tcc_spi_set_mode(tccspi, tccspi->mode);
 
 	/* Set the clock */
 	status = tcc_spi_set_clk(tccspi, spi->max_speed_hz, 0, 1);
@@ -1397,6 +1419,13 @@ static int32_t tcc_spi_transfer_one(struct spi_master *master,
 					len);
 		}
 
+		/* Reset FIFO and Packet counter */
+		status = tcc_spi_clear_fifo(tccspi);
+		if (status != 0)
+			goto exit;
+		tcc_spi_clear_packet_cnt(tccspi);
+		tcc_spi_set_packet_size(tccspi, len);
+
 		/* Set TXBASE and RXBASE registers */
 		tcc_spi_set_dma_addr(tccspi,
 				tccspi->tx_buf.dma_addr,
@@ -1404,11 +1433,6 @@ static int32_t tcc_spi_transfer_one(struct spi_master *master,
 
 		/* Copy client txbuf to spi txbuf */
 		tcc_spi_txbuf_copy_client_to_spi(tccspi, xfer, len);
-
-		/* Reset FIFO and Packet counter */
-		tcc_spi_clear_fifo(tccspi);
-		tcc_spi_clear_packet_cnt(tccspi);
-		tcc_spi_set_packet_size(tccspi, len);
 
 		/* Setup GDMA, if use */
 		if (gdma_enable != 0) {
@@ -1513,11 +1537,6 @@ static int32_t tcc_spi_init(struct tcc_spi *tccspi)
 		return status;
 	}
 
-	/* Check CONTM support */
-	TCC_GPSB_BITSET(tccspi->base + TCC_GPSB_EVTCTRL,
-			TCC_GPSB_EVTCTRL_CONTM(0x3U));
-	tccspi->pd->contm_support = (bool)true;
-
 	/* access control */
 	if (!IS_ERR(tccspi->ac)) {
 		if (of_property_read_u32_array(np,
@@ -1555,7 +1574,6 @@ static int32_t tcc_spi_init(struct tcc_spi *tccspi)
 	}
 
 	/* Initialize GPSB registers */
-	tcc_spi_clear_fifo(tccspi);
 	tcc_spi_clear_packet_cnt(tccspi);
 	tcc_spi_stop_dma(tccspi);
 	tcc_spi_hwinit(tccspi);
@@ -1822,6 +1840,8 @@ static int32_t tcc_spi_probe(struct platform_device *pdev)
 	tccspi->dev = dev;
 	tccspi->master = master;
 	tccspi->pd = pd;
+	tccspi->bits = 8;
+	tccspi->mode = TCC_SPI_MODE_BITS;
 
 	spin_lock_init(&(tccspi->lock));
 

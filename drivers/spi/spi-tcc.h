@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * Copyright (C) Telechips Inc.
  */
@@ -85,6 +85,7 @@
  * GPSB STAT Register
  */
 #define TCC_GPSB_STAT_ERR          ((u32)0x1FU << 5U)
+#define TCC_GPSB_STAT_CNT          ((u32)0x1F1FU << 16U)
 
 /*
  * GPSB INTEN Register
@@ -384,6 +385,9 @@ struct tcc_spi {
 
 	/* Bitwidth */
 	uint32_t		bits;
+
+	/* SPI Clocking mode */
+	uint32_t		mode;
 
 	/* SCLK */
 	uint32_t		clk;
