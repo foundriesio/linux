@@ -518,7 +518,8 @@ static int dwc2_soffn_monitor_thread(void *w)
 		 */
 
 		if (!dwc2_hsotg_read_frameno(hsotg) ||
-				dwc2_hsotg_read_suspend_state(hsotg)) {
+				dwc2_hsotg_read_suspend_state(hsotg) ||
+				dwc2_hsotg_read_erratic_error(hsotg)) {
 			retry--;
 			if (discon_chk == true && retry <= 0)
 				break;

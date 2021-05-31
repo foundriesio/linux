@@ -1247,6 +1247,7 @@ int dwc2_hsotg_tx_fifo_total_depth(struct dwc2_hsotg *hsotg);
 int dwc2_hsotg_tx_fifo_average_depth(struct dwc2_hsotg *hsotg);
 u32 dwc2_hsotg_read_frameno(struct dwc2_hsotg *hsotg);
 u32 dwc2_hsotg_read_suspend_state(struct dwc2_hsotg *hsotg);
+u32 dwc2_hsotg_read_erratic_error(struct dwc2_hsotg *hsotg);
 #else
 static inline int dwc2_hsotg_remove(struct dwc2_hsotg *dwc2)
 { return 0; }

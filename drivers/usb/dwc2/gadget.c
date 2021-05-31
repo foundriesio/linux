@@ -692,6 +692,26 @@ u32 dwc2_hsotg_read_suspend_state(struct dwc2_hsotg *hsotg)
 
 	return dsts;
 }
+
+/**
+ * dwc2_hsotg_read_erratic_error - read erratic error
+ * @hsotg: The device instance
+ *
+ * Return whether an erratic error has occurred.
+ */
+u32 dwc2_hsotg_read_erratic_error(struct dwc2_hsotg *hsotg)
+{
+	u32 dsts;
+
+	dsts = dwc2_readl(hsotg->regs + DSTS);
+	dsts &= DSTS_ERRATICERR;
+
+	if (dsts)
+		dev_info(hsotg->dev, "[INFO][USB] Erratic error has occurred!\n");
+
+	return dsts;
+}
+
 /**
  * dwc2_gadget_get_chain_limit - get the maximum data payload value of the
  * DMA descriptor chain prepared for specific endpoint
