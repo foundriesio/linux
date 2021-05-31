@@ -56,8 +56,6 @@ static void __iomem *pmgpio_base;
 
 #define IS_GPK(addr) ((((ulong)addr) == ((ulong)pmgpio_base)) ? 1 : 0)
 
-static struct tcc_pinctrl_soc_data soc_data;
-
 enum tcc_pinconf_param {
 	TCC_PINCONF_PARAM_DRIVE_STRENGTH,
 	TCC_PINCONF_PARAM_NO_PULL,
@@ -175,6 +173,8 @@ struct tcc_pin_group {
 
 u32 tcc_irq_get_reverse(u32 irq);
 bool tcc_is_exti(u32 irq);
+
+static struct tcc_pinctrl_soc_data soc_data;
 
 u32 tcc_pinconf_pack(u32 param, u32 value);
 u32 tcc_pinconf_unpack_param(u32 config);

@@ -828,7 +828,7 @@ static void tcc_gpio_pinconf_extra
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	reg = reg - base_offset_sc;
-	(void)request_gpio_to_sc(reg, offset, 1U, (ulong)value);
+	(void)request_gpio_to_sc((phys_addr_t)reg, offset, 1U, (ulong)value);
 #else
 	data = readl(reg);
 	data &= ~(1 << offset);
@@ -863,10 +863,10 @@ static int tcc_gpio_set_direction(void __iomem *base, u32 offset, int input)
 	reg = reg - base_offset_sc;
 	if (input == 0) {
 		return request_gpio_to_sc
-			(reg, offset, 1U, 1U);
+			((phys_addr_t)reg, offset, 1U, 1U);
 	} else {
 		return request_gpio_to_sc
-			(reg, offset, 1U, 0U);
+			((phys_addr_t)reg, offset, 1U, 0U);
 	}
 
 #else
@@ -904,7 +904,7 @@ static int tcc_gpio_set_function(void __iomem *base, u32 offset, int func)
 	}
 
 	reg = reg - base_offset_sc;
-	return request_gpio_to_sc(reg, shift, width, (ulong)func_value);
+	return request_gpio_to_sc((phys_addr_t)reg, shift, width, (ulong)func_value);
 #else
 	data = readl(reg) & ~mask;
 	data |= func << shift;
@@ -959,7 +959,7 @@ static int tcc_gpio_set_drive_strength(void __iomem *base, u32 offset,
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	bit_num = (offset % 16U) << 1U;
 	reg = reg - base_offset_sc;
-	return request_gpio_to_sc(reg, (ulong)bit_num, 2U, (ulong)value);
+	return request_gpio_to_sc((phys_addr_t)reg, (ulong)bit_num, 2U, (ulong)value);
 #else
 	data = readl(reg);
 	data &= ~((u32)0x3U << (2U * (offset % 16U)));

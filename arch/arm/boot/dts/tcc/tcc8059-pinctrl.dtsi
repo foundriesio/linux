@@ -1218,12 +1218,12 @@
 	};
 
 
-/*****************************************************
-* Audio PinCtrl Start
-******************************************************/
-/*****************************************************
-* Multi DAI Port_0 m1:multi, dai0:port0
-******************************************************/
+/*
+ * Audio PinCtrl Start
+ */
+/*
+ * Multi DAI Port_0 m1:multi, dai0:port0
+ */
 
     m1dai0_mclk: m1dai0_mclk{
         telechips,pins = "gpa-25";
@@ -1353,9 +1353,9 @@
 	telechips,output-low = <0>;
     };
 
-/*****************************************************
-* Multi DAI Port_1 m1:multi, dai1:port1
-******************************************************/
+/*
+ * Multi DAI Port_1 m1:multi, dai1:port1
+ */
 
     m1dai1_mclk: m1dai1_mclk{
         telechips,pins = "gpc-19";
@@ -1485,9 +1485,9 @@
 	telechips,output-low = <0>;
     };
 
-/*****************************************************
-* Multi DAI Port_2 m1:multi, dai2:port2
-******************************************************/
+/*
+ * Multi DAI Port_2 m1:multi, dai2:port2
+ */
 
     m1dai2_mclk: m1dai2_mclk{
         telechips,pins = "gpg-0";
@@ -1617,9 +1617,9 @@
 	telechips,output-low = <0>;
     };
 
-/*****************************************************
-* Multi DAI Port_3 m1:multi, dai3:port3
-******************************************************/
+/*
+ * Multi DAI Port_3 m1:multi, dai3:port3
+ */
 
     m1dai3_mclk: m1dai3_mclk{
         telechips,pins = "gpe-0";
@@ -1749,9 +1749,9 @@
 	telechips,output-low = <0>;
     };
 
-/*****************************************************
-* Stereo DAI Port_0 m0:Stereo, dai0:port0
-******************************************************/
+/*
+ * Stereo DAI Port_0 m0:Stereo, dai0:port0
+ */
 
     m0dai0_mclk: m0dai0_mclk{
         telechips,pins = "gpc-25";
@@ -1812,9 +1812,9 @@
 	telechips,output-low = <0>;
     };
 
-/*****************************************************
-* Stereo DAI Port_1 m0:Stereo, dai1:port1
-******************************************************/
+/*
+ * Stereo DAI Port_1 m0:Stereo, dai1:port1
+ */
 
     m0dai1_mclk: m0dai1_mclk{
         telechips,pins = "gpg-0";
@@ -1875,9 +1875,9 @@
 	telechips,output-low = <0>;
     };
 
-/*****************************************************
-* Stereo DAI Port_2 m0:Stereo, dai2:port2
-******************************************************/
+/*
+ * Stereo DAI Port_2 m0:Stereo, dai2:port2
+ */
 
     m0dai2_mclk: m0dai2_mclk{
         telechips,pins = "gpg-6";
@@ -1938,9 +1938,9 @@
 	telechips,output-low = <0>;
     };
 
-/*****************************************************
-* Stereo DAI Port_3 m0:Stereo, dai3:port3
-******************************************************/
+/*
+ * Stereo DAI Port_3 m0:Stereo, dai3:port3
+ */
 
     m0dai3_mclk: m0dai3_mclk{
         telechips,pins = "gpe-0";
@@ -2001,9 +2001,9 @@
         telechips,output-low = <0>;
     };
 
-/*****************************************************
-* Stereo DAI Port_4 m0:Stereo, dai4:port4
-******************************************************/
+/*
+ * Stereo DAI Port_4 m0:Stereo, dai4:port4
+ */
 
     m0dai4_mclk: m0dai4_mclk{
         telechips,pins = "gpe-10";
@@ -2064,9 +2064,9 @@
         telechips,output-low = <0>;
     };
 
-/*****************************************************
-* Stereo DAI Port_5 m0:Stereo, dai5:port5
-******************************************************/
+/*
+ * Stereo DAI Port_5 m0:Stereo, dai5:port5
+ */
 
     m0dai5_mclk: m0dai5_mclk{
         telechips,pins = "gpe-15";
@@ -2127,9 +2127,9 @@
         telechips,output-low = <0>;
     };
 
-/*****************************************************
-* SPDIF Port spdif0:port0
-******************************************************/
+/*
+ * SPDIF Port spdif0:port0
+ */
 
     spdif0_tx: spdif0_tx{
         telechips,pins = "gpe-5";
@@ -2292,14 +2292,14 @@
         telechips,output-low = <0>;
     };
 
-/*****************************************************
-* Audio PinCtrl END
-******************************************************/
+/*
+ * Audio PinCtrl END
+ */
 
 
-/***************************************************************/
-/* Remote Controller & GMAC
-/***************************************************************/
+/*
+ * Remote Controller & GMAC
+ */
 
 	gmac1_txclk: gmac1_txclk {
 		telechips,pins = "gpb-0";
@@ -2643,6 +2643,4 @@
 		telechips,input-enable;
 		telechips,input_buffer_enable;
 	};
-
-/***************************************************************/
 };
