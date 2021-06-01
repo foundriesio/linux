@@ -429,18 +429,15 @@ static int32_t tcc_thermal_read(struct tcc_thermal_data *data)
 	int32_t celsius_temp;
 #else
 	int32_t celsius_temp;
-	uint32_t i = 0;
+	uint32_t i;
 #endif
 	mutex_lock(&data->lock);
 #if defined(CONFIG_ARCH_TCC805X)
-	if (data != NULL) {
-		celsius_temp = code_to_temp(data,
-				data->temp_trim1[data->probe_num],
-				data->temp_trim2[data->probe_num],
-				(int32_t)readl_relaxed(data->temp_code[i]));
-	} else {
-		celsius_temp = 0;
-	}
+	i = data->probe_num;
+	celsius_temp = code_to_temp(data,
+			data->temp_trim1[i],
+			data->temp_trim2[i],
+			(int32_t)readl_relaxed(data->temp_code[i]));
 #else
 	code_temp = readl_relaxed(data->temp_code);
 
@@ -456,180 +453,72 @@ static int32_t tcc_thermal_read(struct tcc_thermal_data *data)
 	return celsius_temp;
 }
 #if defined(CONFIG_ARCH_TCC805X)
-static ssize_t cpu_temp_read(struct device *dev,
+static ssize_t main_temp_read(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct tcc_thermal_data *data = dev_get_drvdata(dev);
 	int32_t celsius_temp;
-	int32_t attr_check;
 
-	if ((attr != NULL) && (attr->attr.name != NULL)) {
-		attr_check =
-			strncmp("main_temp",
-					attr->attr.name,
-					strnlen(attr->attr.name, 30));
-		if (attr_check == 0) {
-			data->probe_num = 0;
-			/**/
-		} else {
-			/**/
-			/**/
-		}
-
-		attr_check =
-			strncmp("probe0_temp",
-					attr->attr.name,
-					strnlen(attr->attr.name, 30));
-		if (attr_check == 0) {
-			data->probe_num = 1;
-			/**/
-		} else {
-			/**/
-			/**/
-		}
-
-		attr_check =
-			strncmp("probe1_temp",
-					attr->attr.name,
-					strnlen(attr->attr.name, 30));
-		if (attr_check == 0) {
-			data->probe_num = 2;
-			/**/
-		} else {
-			/**/
-			/**/
-		}
-
-		attr_check =
-			strncmp("probe2_temp",
-					attr->attr.name,
-					strnlen(attr->attr.name, 30));
-		if (attr_check == 0) {
-			data->probe_num = 3;
-			/**/
-		} else {
-			/**/
-			/**/
-		}
-
-		attr_check =
-			strncmp("probe3_temp",
-					attr->attr.name,
-					strnlen(attr->attr.name, 30));
-		if (attr_check == 0) {
-			data->probe_num = 4;
-		} else {
-			/**/
-			/**/
-		}
-
-		attr_check =
-			strncmp("probe4_temp",
-					attr->attr.name,
-					strnlen(attr->attr.name, 30));
-		if (attr_check == 0) {
-			data->probe_num = 5;
-			/**/
-		} else {
-			/**/
-			/**/
-		}
-	}
+	data->probe_num = 0;
 	celsius_temp = tcc_thermal_read(data);
 	return sprintf(buf, "%d.%02d", (celsius_temp/100), (celsius_temp%100));
 }
 
-static ssize_t occurred_irq_temp_read(struct device *dev,
+static ssize_t probe0_temp_read(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-	uint32_t celsius_temp = 0;
-	uint32_t high_temp;
-	uint32_t low_temp;
-	void __iomem *irq_main_temp = ioremap(IRQ_MAIN_PROBE, (size_t)0x4);
-	void __iomem *irq_probe0_temp = ioremap(IRQ_PROBE0, (size_t)0x4);
-	void __iomem *irq_probe1_temp = ioremap(IRQ_PROBE1, (size_t)0x4);
-	void __iomem *irq_probe2_temp = ioremap(IRQ_PROBE2, (size_t)0x4);
-	void __iomem *irq_probe3_temp = ioremap(IRQ_PROBE3, (size_t)0x4);
-	void __iomem *irq_probe4_temp = ioremap(IRQ_PROBE4, (size_t)0x4);
-	int32_t irq_check = 0;
+	struct tcc_thermal_data *data = dev_get_drvdata(dev);
+	int32_t celsius_temp;
 
-	if ((attr != NULL) && (attr->attr.name != NULL)) {
-		irq_check =
-			strncmp("occurred_irq_main_temp",
-				attr->attr.name, strnlen(attr->attr.name, 30));
-		if (irq_check == 0) {
-			celsius_temp = readl_relaxed(irq_main_temp);
-			/**/
-		} else {
-			/**/
-			/**/
-		}
-
-		irq_check =
-			strncmp("occurred_irq_probe0_temp",
-				attr->attr.name, strnlen(attr->attr.name, 30));
-		if (irq_check == 0) {
-			celsius_temp = readl_relaxed(irq_probe0_temp);
-			/**/
-		} else {
-			/**/
-			/**/
-		}
-
-		irq_check =
-			strncmp("occurred_irq_probe1_temp",
-				attr->attr.name, strnlen(attr->attr.name, 30));
-		if (irq_check == 0) {
-			celsius_temp = readl_relaxed(irq_probe1_temp);
-			/**/
-		} else {
-			/**/
-			/**/
-		}
-
-		irq_check =
-			strncmp("occurred_irq_probe2_temp",
-				attr->attr.name, strnlen(attr->attr.name, 30));
-		if (irq_check == 0) {
-			celsius_temp = readl_relaxed(irq_probe2_temp);
-			/**/
-		} else {
-			/**/
-			/**/
-		}
-
-		irq_check =
-			strncmp("occurred_irq_probe3_temp",
-				attr->attr.name, strnlen(attr->attr.name, 30));
-		if (irq_check == 0) {
-			celsius_temp = readl_relaxed(irq_probe3_temp);
-			/**/
-		} else {
-			/**/
-			/**/
-		}
-
-		irq_check =
-			strncmp("occurred_irq_probe4_temp",
-				attr->attr.name, strnlen(attr->attr.name, 30));
-		if (irq_check == 0) {
-			celsius_temp = readl_relaxed(irq_probe4_temp);
-			/**/
-		} else {
-			/**/
-			/**/
-		}
-	}
-	high_temp = celsius_temp & (uint32_t)0xFFF;
-	low_temp = (celsius_temp >> (uint32_t)16) & (uint32_t)0xFFF;
-	iounmap((void *)irq_main_temp);
-	iounmap((void *)irq_probe0_temp);
-	iounmap((void *)irq_probe1_temp);
-	iounmap((void *)irq_probe2_temp);
-	iounmap((void *)irq_probe3_temp);
-	iounmap((void *)irq_probe4_temp);
-	return sprintf(buf, "high = %d, low = %d", high_temp, low_temp);
+	data->probe_num = 1;
+	celsius_temp = tcc_thermal_read(data);
+	return sprintf(buf, "%d.%02d", (celsius_temp/100), (celsius_temp%100));
 }
+
+static ssize_t probe1_temp_read(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct tcc_thermal_data *data = dev_get_drvdata(dev);
+	int32_t celsius_temp;
+
+	data->probe_num = 2;
+	celsius_temp = tcc_thermal_read(data);
+	return sprintf(buf, "%d.%02d", (celsius_temp/100), (celsius_temp%100));
+}
+
+static ssize_t probe2_temp_read(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct tcc_thermal_data *data = dev_get_drvdata(dev);
+	int32_t celsius_temp;
+
+	data->probe_num = 3;
+	celsius_temp = tcc_thermal_read(data);
+	return sprintf(buf, "%d.%02d", (celsius_temp/100), (celsius_temp%100));
+}
+
+static ssize_t probe3_temp_read(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct tcc_thermal_data *data = dev_get_drvdata(dev);
+	int32_t celsius_temp;
+
+	data->probe_num = 4;
+	celsius_temp = tcc_thermal_read(data);
+	return sprintf(buf, "%d.%02d", (celsius_temp/100), (celsius_temp%100));
+}
+
+static ssize_t probe4_temp_read(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct tcc_thermal_data *data = dev_get_drvdata(dev);
+	int32_t celsius_temp;
+
+	data->probe_num = 5;
+	celsius_temp = tcc_thermal_read(data);
+	return sprintf(buf, "%d.%02d", (celsius_temp/100), (celsius_temp%100));
+}
+
 
 static ssize_t temp_mode_read(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -686,7 +575,7 @@ static ssize_t temp_irq_en_read(struct device *dev,
 	return sprintf(buf, "0x%x", celsius_temp);
 }
 
-static ssize_t temp_probe_read(struct device *dev,
+static ssize_t selected_probe_read(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct tcc_thermal_data *data = dev_get_drvdata(dev);
@@ -704,48 +593,55 @@ static ssize_t temp_probe_read(struct device *dev,
 
 #ifdef CONFIG_TCC_THERMAL_IRQ
 
-static void tcc_temp_irq_reg_set (struct tcc_thermal_data *dev)
+static void tcc_temp_irq_reg_set(struct tcc_thermal_data *dev)
 {
 	struct tcc_thermal_data *data = dev;
 	uint32_t threshold_low_temp[6];
 	uint32_t threshold_high_temp[6];
 	int32_t i = 0;
+	int32_t j = 0;
+	int32_t k = 0;
+
+	if (data->pdata != NULL) {
+		j = data->pdata->dest_trip;
+		k = data->pdata->cur_trip;
+	}
 
 	if (data->pdata->core == 0) {
-	for (i = 1; i < 6; i++) {
-	threshold_high_temp[i] =
-		(data->pdata->freq_tab[data->pdata->dest_trip].temp_level);
-	}
-	writel(threshold_high_temp[1], data->threshold_up_data1);
-	writel(threshold_high_temp[2], data->threshold_up_data2);
-	writel(threshold_high_temp[3], data->threshold_up_data3);
-	writel(threshold_high_temp[4], data->threshold_up_data4);
-	writel(threshold_high_temp[5], data->threshold_up_data5);
+		for (i = 1; i < 6; i++) {
+			threshold_high_temp[i] =
+				(data->pdata->freq_tab[j].temp_level);
+		}
+		writel(threshold_high_temp[1], data->threshold_up_data1);
+		writel(threshold_high_temp[2], data->threshold_up_data2);
+		writel(threshold_high_temp[3], data->threshold_up_data3);
+		writel(threshold_high_temp[4], data->threshold_up_data4);
+		writel(threshold_high_temp[5], data->threshold_up_data5);
 
-	for (i = 1; i < 6; i++) {
-	threshold_low_temp[i] =
-		(data->pdata->freq_tab[data->pdata->cur_trip].temp_level);
-	}
-	writel(threshold_low_temp[1], data->threshold_down_data1);
-	writel(threshold_low_temp[2], data->threshold_down_data2);
-	writel(threshold_low_temp[3], data->threshold_down_data3);
-	writel(threshold_low_temp[4], data->threshold_down_data4);
-	writel(threshold_low_temp[5], data->threshold_down_data5);
+		for (i = 1; i < 6; i++) {
+			threshold_low_temp[i] =
+				(data->pdata->freq_tab[k].temp_level);
+		}
+		writel(threshold_low_temp[1], data->threshold_down_data1);
+		writel(threshold_low_temp[2], data->threshold_down_data2);
+		writel(threshold_low_temp[3], data->threshold_down_data3);
+		writel(threshold_low_temp[4], data->threshold_down_data4);
+		writel(threshold_low_temp[5], data->threshold_down_data5);
 	} else {
-	threshold_high_temp[0] = (uint32_t)temp_to_code(data,
-		data->temp_trim1[0],
-		data->temp_trim2[0],
-		(data->pdata->freq_tab[data->pdata->dest_trip].temp_level));
-	writel(threshold_high_temp[0], data->threshold_up_data0);
-	threshold_low_temp[0] = (uint32_t)temp_to_code(data,
-		data->temp_trim1[0],
-		data->temp_trim2[0],
-		(data->pdata->freq_tab[data->pdata->cur_trip].temp_level));
-	writel(threshold_low_temp[0], data->threshold_down_data0);
+		threshold_high_temp[0] = (uint32_t)temp_to_code(data,
+				data->temp_trim1[0],
+				data->temp_trim2[0],
+				(data->pdata->freq_tab[j].temp_level));
+		writel(threshold_high_temp[0], data->threshold_up_data0);
+		threshold_low_temp[0] = (uint32_t)temp_to_code(data,
+				data->temp_trim1[0],
+				data->temp_trim2[0],
+				(data->pdata->freq_tab[k].temp_level));
+		writel(threshold_low_temp[0], data->threshold_down_data0);
 	}
 }
 
-static void tcc_temp_irq_freq_set (struct tcc_thermal_data *dev,
+static void tcc_temp_irq_freq_set(struct tcc_thermal_data *dev,
 					uint32_t core, int32_t freq)
 {
 	struct tcc_thermal_data *data = dev;
@@ -757,7 +653,7 @@ static void tcc_temp_irq_freq_set (struct tcc_thermal_data *dev,
 			0, 0, 0, 0, &res);
 }
 
-static irqreturn_t tcc_thermal_irq (int32_t irq, void *dev)
+static irqreturn_t tcc_thermal_irq(int32_t irq, void *dev)
 {
 	/* For print irq message for test.
 	 * If need to change CPU frequency depending on CPU temperature,
@@ -771,11 +667,11 @@ static irqreturn_t tcc_thermal_irq (int32_t irq, void *dev)
 	mutex_lock(&data->lock);
 	writel(0, data->interrupt_enable); // Default interrupt disable
 	checker = readl_relaxed(data->interrupt_status);
-	if (data->pdata->core == 0) {
+	if (data->pdata->core == 0)
 		temp = readl_relaxed(data->temp_code[1]);
-	} else {
+	else
 		temp = readl_relaxed(data->temp_code[0]);
-	}
+
 	writel((CAPTURE_IRQ|LOW_TEMP_IRQ|HIGH_TEMP_IRQ),
 			data->interrupt_mask);
 
@@ -829,7 +725,7 @@ static int32_t tcc_thermal_init(struct tcc_thermal_data *data)
 	v_temp = readl_relaxed(data->probe_select);
 
 	for (i = 0; i < 6; i++) {
-	threshold_high_temp[i] = (uint32_t)temp_to_code(data,
+		threshold_high_temp[i] = (uint32_t)temp_to_code(data,
 				data->temp_trim1[i],
 				data->temp_trim2[i],
 				data->pdata->threshold_high_temp);
@@ -842,7 +738,7 @@ static int32_t tcc_thermal_init(struct tcc_thermal_data *data)
 	writel(threshold_high_temp[5], data->threshold_up_data5);
 
 	for (i = 0; i < 6; i++) {
-	threshold_low_temp[i] = (uint32_t)temp_to_code(data,
+		threshold_low_temp[i] = (uint32_t)temp_to_code(data,
 				data->temp_trim1[i],
 				data->temp_trim2[i],
 				data->pdata->threshold_low_temp);
@@ -903,12 +799,10 @@ static int32_t tcc_thermal_init(struct tcc_thermal_data *data)
 
 	writel(v_temp, data->control);
 	writel(1, data->enable);
-	if (data->pdata->core == 0) {
-		data->probe_num = 1;
-	} else if (data->pdata->core == 1) {
+	if (data->pdata->core == 1)
 		data->probe_num = 0;
-	} else {
-	}
+	else
+		data->probe_num = 1;
 #else
 
 	v_temp = readl_relaxed(data->control);
@@ -1557,25 +1451,24 @@ static void tcc_thermal_otp_data_checker(struct tcc_thermal_data *data)
 	int32_t i = 0;
 
 	for (i = 0; i < 6; i++) {
-		if (data->temp_trim1[i] == (uint32_t)0) {
+		if (data->temp_trim1[i] == (uint32_t)0)
 			data->temp_trim1[i] = 1596;
-		}
-		if (data->temp_trim2[i] == (uint32_t)0) {
+
+		if (data->temp_trim2[i] == (uint32_t)0)
 			data->temp_trim2[i] = 2552;
-		}
 	}
-	if (data->calib_sel > (uint32_t)4) {
+	if (data->calib_sel > (uint32_t)4)
 		data->calib_sel = 2;
-	}
-	if (data->d_otp_slope == (uint32_t)0) {
+
+	if (data->d_otp_slope == (uint32_t)0)
 		data->d_otp_slope = 6;
-	}
-	if (data->ts_test_info_high == (uint32_t)0) {
+
+	if (data->ts_test_info_high == (uint32_t)0)
 		data->ts_test_info_high = 10500;
-	}
-	if (data->ts_test_info_low == (uint32_t)0) {
+
+	if (data->ts_test_info_low == (uint32_t)0)
 		data->ts_test_info_low = 2500;
-	}
+
 	(void)pr_info("[INFO][TSENSOR] %s. main_temp_trim1: %d\n",
 			__func__, data->temp_trim1[0]);
 	(void)pr_info("[INFO][TSENSOR] %s. main_temp_trim2: %d\n",
@@ -1613,9 +1506,9 @@ static int32_t tcc_thermal_get_otp(struct platform_device *pdev)
 
 		mutex_lock(&data->lock);
 
-		for (i = 0; i < 8; i++) {
+		for (i = 0; i < 8; i++)
 			thermal_otp_read(data, i);
-		}
+
 		tcc_thermal_otp_data_checker(data);
 
 		mutex_unlock(&data->lock);
@@ -1917,11 +1810,10 @@ static struct tcc_thermal_platform_data *tcc_thermal_parse_dt(
 		pdata->core = 0;
 	} else {
 		ret = strncmp(tmp_str, "CPU1", strnlen(tmp_str, 30));
-		if (ret == 0) {
+		if (ret == 0)
 			pdata->core = 1;
-		} else {
+		else
 			pdata->core = 0;
-		}
 	}
 
 	ret = of_property_read_s32(np, "threshold_low_temp",
@@ -1962,40 +1854,18 @@ err_parse_dt:
 }
 
 #if defined(CONFIG_ARCH_TCC805X)
-static DEVICE_ATTR(main_temp, 0644, cpu_temp_read, NULL);
-static DEVICE_ATTR(probe0_temp, 0644, cpu_temp_read, NULL);
-static DEVICE_ATTR(probe1_temp, 0644, cpu_temp_read, NULL);
-static DEVICE_ATTR(probe2_temp, 0644, cpu_temp_read, NULL);
-static DEVICE_ATTR(probe3_temp, 0644, cpu_temp_read, NULL);
-static DEVICE_ATTR(probe4_temp, 0644, cpu_temp_read, NULL);
+static DEVICE_ATTR(main_temp, 0644, main_temp_read, NULL);
+static DEVICE_ATTR(probe0_temp, 0644, probe0_temp_read, NULL);
+static DEVICE_ATTR(probe1_temp, 0644, probe1_temp_read, NULL);
+static DEVICE_ATTR(probe2_temp, 0644, probe2_temp_read, NULL);
+static DEVICE_ATTR(probe3_temp, 0644, probe3_temp_read, NULL);
+static DEVICE_ATTR(probe4_temp, 0644, probe4_temp_read, NULL);
 static DEVICE_ATTR(tsensor_mode, 0644,
 				temp_mode_read, NULL);
 static DEVICE_ATTR(tsensor_probe_sel, 0644,
-				temp_probe_read, NULL);
+				selected_probe_read, NULL);
 static DEVICE_ATTR(tsensor_irq_set, 0644,
 				temp_irq_en_read, NULL);
-static DEVICE_ATTR(occurred_irq_main_temp, 0444,
-				occurred_irq_temp_read, NULL);
-static DEVICE_ATTR(occurred_irq_probe0_temp, 0444,
-				occurred_irq_temp_read, NULL);
-static DEVICE_ATTR(occurred_irq_probe1_temp, 0444,
-				occurred_irq_temp_read, NULL);
-static DEVICE_ATTR(occurred_irq_probe2_temp, 0444,
-				occurred_irq_temp_read, NULL);
-static DEVICE_ATTR(occurred_irq_probe3_temp, 0444,
-				occurred_irq_temp_read, NULL);
-static DEVICE_ATTR(occurred_irq_probe4_temp, 0444,
-				occurred_irq_temp_read, NULL);
-
-static struct attribute *irq_temp_entries[] = {
-	&dev_attr_occurred_irq_main_temp.attr,
-	&dev_attr_occurred_irq_probe0_temp.attr,
-	&dev_attr_occurred_irq_probe1_temp.attr,
-	&dev_attr_occurred_irq_probe2_temp.attr,
-	&dev_attr_occurred_irq_probe3_temp.attr,
-	&dev_attr_occurred_irq_probe4_temp.attr,
-	NULL,
-};
 
 static struct attribute *main_temp_entries[] = {
 	&dev_attr_main_temp.attr,
@@ -2010,11 +1880,6 @@ static struct attribute *main_temp_entries[] = {
 static struct attribute_group main_temp_attr_group = {
 	.name   = NULL,
 	.attrs  = main_temp_entries,
-};
-
-static struct attribute_group irq_temp_attr_group = {
-	.name   = NULL,
-	.attrs  = irq_temp_entries,
 };
 
 static struct attribute *temp_con_entries[] = {
@@ -2048,11 +1913,9 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	} else {
 		/**/
 	}
-	if (pdev->dev.platform_data != NULL) {
+	if (pdev->dev.platform_data != NULL)
 		pdata = pdev->dev.platform_data;
-	} else {
-		/**/
-	}
+
 	if (pdev->dev.of_node != NULL) {
 		use_dt = pdev->dev.of_node;
 	} else {
@@ -2077,15 +1940,13 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 
 	data = devm_kzalloc(&pdev->dev,
 			sizeof(struct tcc_thermal_data), GFP_KERNEL);
-	if (data == NULL) {
+	if (data == NULL)
 		return -ENOMEM;
-	}
 
 	data->cal_data = devm_kzalloc(&pdev->dev,
 			sizeof(struct cal_thermal_data), GFP_KERNEL);
-	if (data->cal_data == NULL) {
+	if (data->cal_data == NULL)
 		return -ENOMEM;
-	}
 #if defined(CONFIG_ARCH_TCC805X)
 	//enable register
 	if (use_dt != NULL) {
@@ -2101,9 +1962,8 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	}
 
 	ret = (int32_t)IS_ERR(data->enable);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->enable);
-	}
 
 	//control register
 	if (use_dt != NULL) {
@@ -2118,9 +1978,8 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	}
 
 	ret = (int32_t)IS_ERR(data->control);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->control);
-	}
 
 	//probe select register
 	if (use_dt != NULL) {
@@ -2136,35 +1995,35 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	}
 
 	ret = (int32_t)IS_ERR(data->probe_select);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->probe_select);
-	}
 
 	//main probe temperature register
 	for (i = 0; i < 6; i++) {
 		if (use_dt != NULL) {
 			data->temp_code[i] = of_iomap(use_dt, (3+i));
 		} else {
-			data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+			data->res =
+				platform_get_resource(pdev, IORESOURCE_MEM, 0);
 			if (data->res == NULL) {
 				dev_err(&pdev->dev,
 					"Failed to get thermal platform resource\n");
 			}
-			data->temp_code[i] = devm_ioremap_resource(&pdev->dev, data->res);
+			data->temp_code[i] =
+				devm_ioremap_resource(&pdev->dev, data->res);
 		}
 		ret = (int32_t)IS_ERR(data->temp_code[i]);
-		if (ret != 0) {
+		if (ret != 0)
 			return (int32_t)PTR_ERR(data->temp_code[i]);
-		}
 	}
 	//interrupt enable register
 	if (use_dt != NULL) {
 		data->interrupt_enable = of_iomap(use_dt, 9);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "[ERROR][TSENSOR]Failed to get thermal platform resource\n");
-		}
+
 		data->interrupt_enable =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
@@ -2174,9 +2033,9 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 		data->interrupt_status = of_iomap(use_dt, 10);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "[ERROR][TSENSOR]Failed to get thermal platform resource\n");
-		}
+
 		data->interrupt_status =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
@@ -2186,240 +2045,238 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 		data->threshold_up_data0 = of_iomap(use_dt, 11);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->threshold_up_data0 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->threshold_up_data0);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->threshold_up_data0);
-	}
 
 	//threshold register value at low temperature of main probe
 	if (use_dt != NULL) {
 		data->threshold_down_data0 = of_iomap(use_dt, 12);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->threshold_down_data0 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->threshold_down_data0);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->threshold_down_data0);
-	}
+
 
 	//threshold register value at high temperature of probe0
 	if (use_dt != NULL) {
 		data->threshold_up_data1 = of_iomap(use_dt, 13);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->threshold_up_data1 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->threshold_up_data1);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->threshold_up_data1);
-	}
+
 
 	//threshold register value at low temperature of probe0
 	if (use_dt != NULL) {
 		data->threshold_down_data1 = of_iomap(use_dt, 14);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->threshold_down_data1 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->threshold_down_data1);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->threshold_down_data1);
-	}
+
 
 	//threshold register value at high temperature of probe1
 	if (use_dt != NULL) {
 		data->threshold_up_data2 = of_iomap(use_dt, 15);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->threshold_up_data2 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->threshold_up_data2);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->threshold_up_data2);
-	}
+
 
 	//threshold register value at low temperature of probe1
 	if (use_dt != NULL) {
 		data->threshold_down_data2 = of_iomap(use_dt, 16);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->threshold_down_data2 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->threshold_down_data2);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->threshold_down_data2);
-	}
+
 
 	//threshold register value at high temperature of probe2
 	if (use_dt != NULL) {
 		data->threshold_up_data3 = of_iomap(use_dt, 17);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->threshold_up_data3 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->threshold_up_data3);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->threshold_up_data3);
-	}
+
 
 	//threshold register value at low temperature of probe2
 	if (use_dt != NULL) {
 		data->threshold_down_data3 = of_iomap(use_dt, 18);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->threshold_down_data3 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->threshold_down_data3);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->threshold_down_data3);
-	}
+
 
 	//threshold register value at high temperature of probe3
 	if (use_dt != NULL) {
 		data->threshold_up_data4 = of_iomap(use_dt, 19);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->threshold_up_data4 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->threshold_up_data4);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->threshold_up_data4);
-	}
 
 	//threshold register value at low temperature of probe3
 	if (use_dt != NULL) {
 		data->threshold_down_data4 = of_iomap(use_dt, 20);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->threshold_down_data4 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->threshold_down_data4);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->threshold_down_data4);
-	}
+
 
 	//threshold register value at high temperature of probe4
 	if (use_dt != NULL) {
 		data->threshold_up_data5 = of_iomap(use_dt, 21);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->threshold_up_data5 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->threshold_up_data5);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->threshold_up_data5);
-	}
+
 
 	//threshold register value at low temperature of probe4
 	if (use_dt != NULL) {
 		data->threshold_down_data5 = of_iomap(use_dt, 22);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->threshold_down_data5 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->threshold_down_data5);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->threshold_down_data5);
-	}
+
 
 	//interrupt clear register
 	if (use_dt != NULL) {
 		data->interrupt_clear = of_iomap(use_dt, 23);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->interrupt_clear =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->interrupt_clear);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->interrupt_clear);
-	}
+
 
 	//interrupt mask register
 	if (use_dt != NULL) {
 		data->interrupt_mask = of_iomap(use_dt, 24);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->interrupt_mask =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->interrupt_mask);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->interrupt_mask);
-	}
+
 
 	//time interval register
 	if (use_dt != NULL) {
 		data->time_interval_reg = of_iomap(use_dt, 25);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->time_interval_reg =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->time_interval_reg);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->time_interval_reg);
-	}
+
 #else
 	if (use_dt != NULL) {
 		data->control = of_iomap(use_dt, 0);
@@ -2432,9 +2289,9 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 		data->control = devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->control);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->control);
-	}
+
 
 	if (use_dt != NULL) {
 		data->temp_code = of_iomap(use_dt, 1);
@@ -2448,17 +2305,17 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	}
 
 	ret = (int32_t)IS_ERR(data->temp_code);
-	if (ret != 0) {
+	if (ret != 0)
 		return (int32_t)PTR_ERR(data->temp_code);
-	}
+
 
 	if (use_dt != NULL) {
 		data->ecid_conf = of_iomap(use_dt, 2);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "[ERROR][TSENSOR]Failed to get thermal platform resource\n");
-		}
+
 		data->ecid_conf = devm_ioremap_resource(&pdev->dev, data->res);
 	}
 
@@ -2466,9 +2323,9 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 		data->ecid_user0_reg1 = of_iomap(use_dt, 3);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "[ERROR][TSENSOR]Failed to get thermal platform resource\n");
-		}
+
 		data->ecid_user0_reg1 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
@@ -2477,9 +2334,9 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 		data->ecid_user0_reg0 = of_iomap(use_dt, 4);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->ecid_user0_reg0 =
 				devm_ioremap_resource(&pdev->dev, data->res);
 	}
@@ -2488,9 +2345,9 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 		data->slop_sel = of_iomap(use_dt, 5);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->slop_sel = devm_ioremap_resource(&pdev->dev, data->res);
 	}
 
@@ -2498,18 +2355,17 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 		data->vref_sel = of_iomap(use_dt, 6);
 	} else {
 		data->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (data->res == NULL) {
+		if (data->res == NULL)
 			dev_err(&pdev->dev, "Failed to get thermal platform resource\n");
-		}
+
 		data->vref_sel = devm_ioremap_resource(&pdev->dev, data->res);
 	}
 #endif
 #if defined(CONFIG_ARCH_TCC898X)
 	data->tsen_power = of_clk_get(pdev->dev.of_node, 0);
 	if (data->tsen_power) {
-		if (clk_prepare_enable(data->tsen_power) != 0) {
+		if (clk_prepare_enable(data->tsen_power) != 0)
 			dev_err(&pdev->dev, "[ERROR][TSENSOR]fail to enable temp sensor power\n");
-		}
 	}
 #endif
 
@@ -2630,7 +2486,6 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	}
 #if defined(CONFIG_ARCH_TCC805X)
 	ret = sysfs_create_group(&pdev->dev.kobj, &main_temp_attr_group);
-	ret = sysfs_create_group(&pdev->dev.kobj, &irq_temp_attr_group);
 	ret = sysfs_create_group(&pdev->dev.kobj, &temp_con_attr_group);
 #endif
 	(void)pr_info("[INFO][TSENSOR]%s:TCC thermal zone is registered\n",
