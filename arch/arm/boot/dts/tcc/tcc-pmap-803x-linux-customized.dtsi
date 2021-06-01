@@ -16,7 +16,7 @@
 
 //for HEVC/VPU framebuffer_size Calculation
 #define WAVE_CAL_PROCBUFFER(use,w,h,f) \
-	(((0x700000 /*the rest except framebuffer and workbuffer*/) + \
+	(((0x900000 /*the rest except framebuffer and workbuffer*/) + \
 	 (ARRAY_MBYTE(((w*h*2014)/1000)*(f+7))))*use)
 
 #define VPU_CAL_PROCBUFFER(use,w,h,f) \
@@ -86,7 +86,7 @@
  * INST_XXX_VIDEO_HEIGHT : Set the width of the video (HEVC: 32x alignment,
  *                      Other: 16x alignment)
  * INST_XXX_MAX_FRAMEBUFFER : Set the number of frame buffers (HEVC-4K: 7,
- *                      Others: 1~24)
+ *                      Others: 24)
  */
 #define INST_1ST_USE                    (1)
 #define INST_1ST_IS_HEVC_TYPE           (0)
