@@ -241,8 +241,8 @@
 		pmap_fb_video: fb_video {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "fb_video";
-			alloc-ranges = <RESERVED_HEAP_BASE RESERVED_HEAP_SIZE>;
-			size = <PMAP_SIZE_FB_VIDEO>;
+			reg = <FB_VIDEO_BASE PMAP_SIZE_FB_VIDEO>;
+			alignment = <0x1000>;
 			no-map;
 		};
 
