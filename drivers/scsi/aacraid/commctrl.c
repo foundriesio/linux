@@ -530,6 +530,7 @@ static int aac_send_raw_srb(struct aac_dev* dev, void __user * arg)
 	user_srbcmd = memdup_user(user_srb, fibsize);
 	if (IS_ERR(user_srbcmd)) {
 		rcode = PTR_ERR(user_srbcmd);
+		user_srbcmd = NULL;
 		goto cleanup;
 	}
 
