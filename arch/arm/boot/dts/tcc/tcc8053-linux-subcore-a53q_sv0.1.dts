@@ -20,7 +20,7 @@
 //#define USE_FHD_VIDEOSOURCES
 #if !defined(USE_FHD_VIDEOSOURCES)
 #define USE_ARXXXX
-//#define USE_AR0144
+//#define USE_AR0147
 #endif//!defined(USE_FHD_VIDEOSOURCES)
 //#define USE_TELECHIPS_ISP
 
