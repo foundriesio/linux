@@ -44,6 +44,12 @@
 #define COOKIE_PRE_MAPPED	(0x1)
 #define COOKIE_MAPPED		(0x2)
 
+enum {
+	UFS_DESC = 0,
+	UFS_ATTR,
+	UFS_FLAG
+};
+
 struct tcc_sc_ufs_host {
 	struct device *dev;
 	const struct tcc_sc_fw_handle *handle;
@@ -58,6 +64,7 @@ struct tcc_sc_ufs_host {
 
 	struct tasklet_struct finish_tasklet;	/* Tasklet structures */
 	struct timer_list timer;	/* Timer for timeouts */
+	//struct completion complete;
 
 	int32_t	nutrs;
 	spinlock_t lock;	/* Mutex */
@@ -72,7 +79,7 @@ static bool tcc_sc_ufs_transfer_req_compl(struct tcc_sc_ufs_host *host)
 	unsigned long flags;
 
 	if (host == NULL) {
-		(void)pr_err("%s : No host\n", __func__);
+		(void)pr_err("[ERROR][TCC_SC_UFS] %s : No host\n", __func__);
 		return (bool)true;
 	}
 	spin_lock_irqsave((&host->lock), (flags));
@@ -84,7 +91,7 @@ static bool tcc_sc_ufs_transfer_req_compl(struct tcc_sc_ufs_host *host)
 		return (bool)true;
 	}
 
-	dev_dbg(host->dev, "%s : sg_count = %d\n",
+	dev_dbg(host->dev, "[DEBUG][TCC_SC_UFS] %s : sg_count = %d\n",
 			__func__, cmd->sdb.table.nents);
 	scsi_dma_unmap(cmd);
 	cmd->result = 0;
@@ -135,20 +142,20 @@ static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host,
 	uint32_t direction;
 
 	if (host == NULL) {
-		(void)pr_err("%s: [ERROR][TCC_SC_UFS] scsi_host is null\n",
+		(void)pr_err("[ERROR][TCC_SC_UFS] %s: scsi_host is null\n",
 				__func__);
 		return -ENODEV;
 	}
 
 	sc_host = shost_priv(host);
 	if (sc_host == NULL) {
-		(void)pr_err("%s: [ERROR][TCC_SC_UFS] sc_host is null\n",
+		(void)pr_err("[ERROR][TCC_SC_UFS] %s: sc_host is null\n",
 		       __func__);
 		return -ENODEV;
 	}
 
 	if (cmd == NULL) {
-		dev_err(sc_host->dev, "%s: [ERROR][TCC_SC_UFS] scsi_cmd is null\n",
+		dev_err(sc_host->dev, "[ERROR][TCC_SC_UFS] %s: scsi_cmd is null\n",
 		       __func__);
 		return -ENODEV;
 	}
@@ -158,7 +165,7 @@ static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host,
 	tag = cmd->request->tag;
 	if (!((tag >= 0) && (tag < sc_host->nutrs))) {
 		dev_err(sc_host->dev,
-			"%s: invalid command tag %d: cmd=0x%p, cmd->request=0x%p",
+			"[ERROR][TCC_SC_UFS] %s: invalid command tag %d: cmd=0x%p, cmd->request=0x%p",
 			__func__, tag, cmd, cmd->request);
 		BUG();
 	}
@@ -201,9 +208,80 @@ static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host,
 			&tcc_sc_ufs_complete, sc_host);
 
 	if (ret < 0) {
-		dev_err(sc_host->dev, "error retuned(%d)\n", ret);
+		dev_err(sc_host->dev, "[ERROR][TCC_SC_UFS] error retuned(%d)\n",
+				ret);
 	} else {
 		ret = 0;
+	}
+
+	return ret;
+}
+
+static int tcc_sc_ufs_request_sc(struct tcc_sc_ufs_host *sc_host,
+		uint32_t Req_type, uint32_t index,
+		uint32_t direction, uint32_t value)
+{
+	int32_t ret;
+	const struct tcc_sc_fw_handle *handle;
+	struct tcc_sc_fw_ufs_cmd sc_cmd;
+	uint64_t *conf_buff;
+	dma_addr_t buf_addr;
+
+	if (sc_host == NULL) {
+		(void)pr_err("%s: [ERROR][TCC_SC_UFS] sc_host is null\n",
+				__func__);
+		return -ENODEV;
+	}
+
+	dma_set_mask_and_coherent(sc_host->dev, DMA_BIT_MASK(32));
+	conf_buff = dmam_alloc_coherent(sc_host->dev,
+			256, &buf_addr, GFP_KERNEL);
+
+	if (conf_buff == NULL) {
+		dev_err(sc_host->dev, "[ERROR][TCC_SC_UFS] failed to allocate buffer\n");
+		return -ENOMEM;
+	}
+	handle = sc_host->handle;
+
+	sc_cmd.datsz = Req_type; //0:Flag 1:Descriptor 2:Attribute
+	sc_cmd.sg_count = 0;
+	sc_cmd.lba = index;
+	sc_cmd.lun = (uint32_t)buf_addr;
+	sc_cmd.tag = direction;
+	sc_cmd.dir = 0xf;
+	sc_cmd.blocks = 0;
+	sc_cmd.error = 0;
+	sc_cmd.op = 0;
+	sc_cmd.cdb = 0;
+	sc_cmd.cdb0 = 0;
+	sc_cmd.cdb1 = 0;
+	sc_cmd.cdb2 = 0;
+	sc_cmd.cdb3 = 0;
+
+	if (handle == NULL) {
+		BUG();
+	}
+
+	if (direction == 1) {
+		memcpy(conf_buff, &value, sizeof(uint32_t));
+	}
+
+	dev_dbg(sc_host->dev, "[DEBUG][TCC_SC_UFS] conf_buff=0x%px / dma buff = 0x%llx\n",
+			conf_buff, (uint64_t)sc_cmd.lun);
+	ret = handle->ops.ufs_ops->request_command(handle, &sc_cmd,
+			&tcc_sc_ufs_complete, sc_host);
+
+	if (ret < 0) {
+		dev_err(sc_host->dev, "[ERROR][TCC_SC_UFS] error retuned(%d)\n",
+				ret);
+	} else {
+		if (Req_type == UFS_ATTR || Req_type == UFS_FLAG) {
+			memcpy(&ret, conf_buff, sizeof(int32_t));
+			dev_dbg(sc_host->dev, "[DEBUG][TCC_SC_UFS] Resp(type=0x%x)=0x%x\n",
+					Req_type, ret);
+		} else {
+			ret = 0;
+		}
 	}
 
 	return ret;
@@ -219,7 +297,7 @@ static int tcc_sc_ufs_slave_alloc(struct scsi_device *sdev)
 	struct tcc_sc_ufs_host *sc_host;
 
 	if (sdev == NULL) {
-		(void)pr_err("%s:[ERROR][TCC_SC_ufs] No scsi dev\n", __func__);
+		(void)pr_err("%s:[ERROR][TCC_SC_UFS] No scsi dev\n", __func__);
 		return -ENODEV;
 	}
 	sc_host = shost_priv(sdev->host);
@@ -236,7 +314,7 @@ static int tcc_sc_ufs_slave_alloc(struct scsi_device *sdev)
 	sdev->no_write_same = 1;
 
 	if (sc_host == NULL) {
-		(void)pr_err("%s:[ERROR][TCC_SC_ufs] No sc_host\n", __func__);
+		(void)pr_err("%s:[ERROR][TCC_SC_UFS] No sc_host\n", __func__);
 		return -ENODEV;
 	}
 
@@ -249,7 +327,7 @@ static int tcc_sc_ufs_slave_configure(struct scsi_device *sdev)
 	struct request_queue *q;
 
 	if (sdev == NULL) {
-		(void)pr_err("%s:[ERROR][TCC_SC_ufs] No scsi dev\n", __func__);
+		(void)pr_err("%s:[ERROR][TCC_SC_UFS] No scsi dev\n", __func__);
 		return -ENODEV;
 	}
 
@@ -264,7 +342,7 @@ static int tcc_sc_ufs_slave_configure(struct scsi_device *sdev)
 static void tcc_sc_ufs_slave_destroy(struct scsi_device *sdev)
 {
 	if (sdev == NULL) {
-		(void)pr_err("%s:[ERROR]No scsi dev\n", __func__);
+		(void)pr_err("%s:[ERROR][TCC_SC_UFS] No scsi dev\n", __func__);
 	}
 }
 
@@ -276,14 +354,14 @@ static int tcc_sc_ufs_change_queue_depth(struct scsi_device *sdev, int depth)
 	tmp_depth = depth;
 
 	if (sdev == NULL) {
-		(void)pr_err("%s:[ERROR][TCC_SC_ufs] No scsi dev\n", __func__);
+		(void)pr_err("%s:[ERROR][TCC_SC_UFS] No scsi dev\n", __func__);
 		return -ENODEV;
 	}
 
 	sc_host = shost_priv(sdev->host);
 
 	if (sc_host == NULL) {
-		(void)pr_err("%s:[ERROR][TCC_SC_ufs] No sc_host\n", __func__);
+		(void)pr_err("%s:[ERROR][TCC_SC_UFS] No sc_host\n", __func__);
 		return -ENODEV;
 	}
 
@@ -296,7 +374,8 @@ static int tcc_sc_ufs_change_queue_depth(struct scsi_device *sdev, int depth)
 static int tcc_sc_ufs_eh_device_reset_handler(struct scsi_cmnd *cmd)
 {
 	if (cmd == NULL) {
-		(void)pr_err("%s:[ERROR] No scsi command\n", __func__);
+		(void)pr_err("%s:[ERROR][TCC_SC_UFS] No scsi command\n",
+				__func__);
 	}
 
 	return SUCCESS;
@@ -337,6 +416,148 @@ static void tcc_sc_ufs_async_scan(void *data, async_cookie_t cookie)
 	scsi_scan_host(host->scsi_host);
 }
 
+// sysfs for refresh operation
+static ssize_t refresh_method_show(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	struct tcc_sc_ufs_host *sc_host = dev_get_drvdata(dev);
+	char str[16] = { 0 };
+	uint32_t conf_val;
+
+	conf_val = tcc_sc_ufs_request_sc(sc_host, UFS_ATTR, 0x2F, 0x0, 0);
+	sprintf(str, "0x%x\n", conf_val);
+
+	return sprintf(buf, "%s", str);
+}
+
+static ssize_t refresh_method_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct tcc_sc_ufs_host *sc_host = dev_get_drvdata(dev);
+	uint32_t val;
+	int ret;
+
+	ret = kstrtouint(buf, 10, &val);
+	if (ret) {
+		dev_err(dev, "[ERROR][UFS] %s(%d)\n", __func__, ret);
+		return ret;
+	}
+
+	if (val == 0x1) {
+		dev_info(dev, "[INFO][TCC_SC_UFS] Manual-force\n");
+	} else if (val == 0x2) {
+		dev_info(dev, "[INFO][TCC_SC_UFS] Manual-selective\n");
+	} else {
+		dev_info(dev, "[INFO][TCC_SC_UFS] Not defined\n");
+		val = 0;
+	}
+
+	ret = tcc_sc_ufs_request_sc(sc_host, UFS_ATTR, 0x2F, 0x1, val);
+
+	if (ret < 0) {
+		count = ret;
+	}
+
+	return count;
+}
+static DEVICE_ATTR_RW(refresh_method);
+
+static ssize_t refresh_unit_show(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	struct tcc_sc_ufs_host *sc_host = dev_get_drvdata(dev);
+	char str[16] = { 0 };
+	uint32_t conf_val;
+
+	conf_val = tcc_sc_ufs_request_sc(sc_host, UFS_ATTR, 0x2E, 0x0, 0);
+	sprintf(str, "0x%x\n", conf_val);
+
+	return sprintf(buf, "%s", str);
+}
+
+static ssize_t refresh_unit_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct tcc_sc_ufs_host *sc_host = dev_get_drvdata(dev);
+	uint32_t val;
+	int ret;
+
+	ret = kstrtouint(buf, 10, &val);
+	if (ret) {
+		dev_err(dev, "[ERROR][UFS] %s(%d)\n", __func__, ret);
+		return ret;
+	}
+
+	if (val == 0) {
+		dev_info(dev, "[INFO][TCC_SC_UFS]Minimum\n");
+	} else if (val == 1) {
+		dev_info(dev, "[INFO][TCC_SC_UFS]Maximum\n");
+	} else {
+		dev_err(dev, "[ERROR][TCC_SC_UFS]Wrong value (0x%x)\n", val);
+		return 0;
+	}
+
+	ret = tcc_sc_ufs_request_sc(sc_host, UFS_ATTR, 0x2E, 0x1, val);
+	if (ret < 0) {
+		count = ret;
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(refresh_unit);
+
+static ssize_t refresh_status_show(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	struct tcc_sc_ufs_host *sc_host = dev_get_drvdata(dev);
+	char str[16] = { 0 };
+	uint32_t conf_val;
+
+	conf_val = tcc_sc_ufs_request_sc(sc_host, UFS_ATTR, 0x2C, 0x0, 0);
+	sprintf(str, "0x%x\n", conf_val);
+
+	return sprintf(buf, "%s", str);
+}
+static DEVICE_ATTR_RO(refresh_status);
+
+static ssize_t refresh_enable_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct tcc_sc_ufs_host *sc_host = dev_get_drvdata(dev);
+	uint32_t val;
+	int ret;
+
+	ret = kstrtouint(buf, 10, &val);
+	if (ret) {
+		pr_err("[ERROR][UFS] %s(%d)\n", __func__, ret);
+		return ret;
+	}
+
+	if (val == 0) {
+		dev_info(dev, "[INFO][TCC_SC_UFS]Refresh operation is disabled\n");
+	} else if (val == 1) {
+		dev_info(dev, "[INFO][TCC_SC_UFS]Refresh operation is enbled\n");
+	} else {
+		dev_err(dev, "[ERROR][TCC_SC_UFS]Wrong value (0x%x)\n", val);
+		return 0;
+	}
+
+	ret = tcc_sc_ufs_request_sc(sc_host, UFS_FLAG, 0x7, 0x1, val);
+	if (ret < 0) {
+		count = ret;
+	}
+
+	return count;
+}
+static DEVICE_ATTR_WO(refresh_enable);
+
 static int tcc_sc_ufs_probe(struct platform_device *pdev)
 {
 	int32_t ret;
@@ -346,32 +567,32 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 	struct tcc_sc_ufs_host *host;
 
 	if (pdev == NULL) {
-		(void)pr_err("[ERROR][TCC_SC_ufs] No pdev\n");
+		(void)pr_err("[ERROR][TCC_SC_UFS] No pdev\n");
 		return -ENODEV;
 	}
 
 	fw_np = of_parse_phandle(pdev->dev.of_node, "sc-firmware", 0);
 	if (fw_np == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] No sc-firmware node\n");
+		dev_err(&pdev->dev, "[ERROR][TCC_SC_UFS] No sc-firmware node\n");
 		return -ENODEV;
 	}
 
 	handle = tcc_sc_fw_get_handle(fw_np);
 	if (handle == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] Failed to get handle\n");
+		dev_err(&pdev->dev, "[ERROR][TCC_SC_UFS] Failed to get handle\n");
 		return -ENODEV;
 	}
 
 	if (handle->ops.ufs_ops->request_command == NULL) {
-		dev_err(&pdev->dev, "[ERROR][TCC_SC_ufs] request_command callback function is not registered\n");
+		dev_err(&pdev->dev, "[ERROR][TCC_SC_UFS] request_command callback function is not registered\n");
 		return -ENODEV;
 	}
-	dev_info(&pdev->dev, "[INFO][TCC_SC_ufs] regitser tcc-sc-ufs\n");
+	dev_info(&pdev->dev, "[INFO][TCC_SC_UFS] regitser tcc-sc-ufs\n");
 
 	scsi_host = scsi_host_alloc(&tcc_sc_ufs_driver_template,
 				(int)sizeof(struct tcc_sc_ufs_host));
 	if (scsi_host == NULL) {
-		dev_err(&pdev->dev, "scsi_host_alloc failed\n");
+		dev_err(&pdev->dev, "[ERROR][TCC_SC_UFS] scsi_host_alloc failed\n");
 		return -ENOMEM;
 	}
 	host = shost_priv(scsi_host);
@@ -405,7 +626,31 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 
 	ret = scsi_add_host(scsi_host, host->dev);
 	if (ret != 0) {
-		dev_err(&pdev->dev, "scsi_add_host failed\n");
+		dev_err(&pdev->dev, "[ERROR][TCC_SC_UFS] scsi_add_host failed\n");
+	}
+
+	ret = device_create_file(&pdev->dev, &dev_attr_refresh_method);
+	if (ret != 0) {
+		dev_err(&pdev->dev, "[ERROR][TCC_SC_UFS] failed to create refresh_method\n");
+		return -1;
+	}
+
+	ret = device_create_file(&pdev->dev, &dev_attr_refresh_unit);
+	if (ret != 0) {
+		dev_err(&pdev->dev, "[ERROR][TCC_SC_UFS] failed to create refresh_uint\n");
+		return -1;
+	}
+
+	ret = device_create_file(&pdev->dev, &dev_attr_refresh_status);
+	if (ret != 0) {
+		dev_err(&pdev->dev, "[ERROR][TCC_SC_UFS] failed to create refresh_status\n");
+		return -1;
+	}
+
+	ret = device_create_file(&pdev->dev, &dev_attr_refresh_enable);
+	if (ret != 0) {
+		dev_err(&pdev->dev, "[ERROR][TCC_SC_UFS] failed to create refresh_enable\n");
+		return -1;
 	}
 
 	(void)async_schedule(&tcc_sc_ufs_async_scan, host);
@@ -415,7 +660,7 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 static int tcc_sc_ufs_remove(struct platform_device *pdev)
 {
 	if (pdev == NULL) {
-		(void)pr_err("%s:pdev is null\n", __func__);
+		(void)pr_err("[ERROR][TCC_SC_UFS] %s:pdev is null\n", __func__);
 		return -ENODEV;
 	}
 	return 0;

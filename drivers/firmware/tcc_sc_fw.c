@@ -596,7 +596,7 @@ int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 {
 	struct tcc_sc_fw_info *info = NULL;
 	struct tcc_sc_fw_xfer *xfer;
-	struct tcc_sc_fw_cmd req_cmd = { 0, };
+	struct tcc_sc_fw_cmd req_cmd = { 0, }, res_cmd = { 0, };
 	struct scatterlist *sg;
 	dma_addr_t addr;
 	s32 ret, i;
@@ -647,7 +647,26 @@ int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 
 	xfer->complete = complete;
 	xfer->args = args;
-	ret = tcc_sc_fw_xfer_async(info, xfer);
+	if(sc_cmd->dir == 0xf) {
+		dev_dbg(info->dev, "[INFO][TCC_SC_FW] ufs sync msg\n");
+		ret = tcc_sc_fw_xfer_sync(info, xfer, &res_cmd);
+		if (ret != 0) {
+			dev_err(info->dev, "[ERROR][TCC_SC_FW] Failed to send mbox (%d)\n",
+					ret);
+		} else {
+			if ((res_cmd.bsid != info->bsid)
+					|| (res_cmd.cid != (u8)TCC_SC_CID_SC)) {
+				dev_err(info->dev,
+						"[ERROR][TCC_SC_FW] Receive NAK for CMD 0x%x (BSID 0x%x CID 0x%x)\n",
+						req_cmd.cmd, res_cmd.bsid, res_cmd.cid);
+				ret = -ENODEV;
+			} else {
+				;
+			}
+		}
+	} else {
+		ret = tcc_sc_fw_xfer_async(info, xfer);
+	}
 
 	return ret;
 }
