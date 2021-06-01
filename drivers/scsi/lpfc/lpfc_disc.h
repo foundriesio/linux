@@ -79,6 +79,7 @@ struct lpfc_node_rrqs {
 
 struct lpfc_nodelist {
 	struct list_head nlp_listp;
+	struct serv_parm fc_sparam;		/* buffer for service params */
 	struct lpfc_name nlp_portname;
 	struct lpfc_name nlp_nodename;
 
