@@ -1,6 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 #
-# Telechips SOC drivers
-#
+# Copyright (C) Telechips Inc.
+
 menuconfig SOC_TCC
 	bool "Telechips SOC drivers support"
 
