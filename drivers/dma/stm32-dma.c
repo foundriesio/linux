@@ -887,24 +887,25 @@ static void stm32_dma_configure_next_sg(struct stm32_dma_chan *chan)
 	id = chan->id;
 	dma_scr = stm32_dma_read(dmadev, STM32_DMA_SCR(id));
 
-	if (dma_scr & STM32_DMA_SCR_DBM) {
-		if (chan->next_sg == chan->desc->num_sgs)
-			chan->next_sg = 0;
+	if (chan->next_sg == chan->desc->num_sgs)
+		chan->next_sg = 0;
 
-		sg_req = &chan->desc->sg_req[chan->next_sg];
+	sg_req = &chan->desc->sg_req[chan->next_sg];
 
-		if (dma_scr & STM32_DMA_SCR_CT) {
-			dma_sm0ar = sg_req->chan_reg.dma_sm0ar;
-			stm32_dma_write(dmadev, STM32_DMA_SM0AR(id), dma_sm0ar);
-			dev_dbg(chan2dev(chan), "CT=1 <=> SM0AR: 0x%08x\n",
-				stm32_dma_read(dmadev, STM32_DMA_SM0AR(id)));
-		} else {
-			dma_sm1ar = sg_req->chan_reg.dma_sm1ar;
-			stm32_dma_write(dmadev, STM32_DMA_SM1AR(id), dma_sm1ar);
-			dev_dbg(chan2dev(chan), "CT=0 <=> SM1AR: 0x%08x\n",
-				stm32_dma_read(dmadev, STM32_DMA_SM1AR(id)));
-		}
+	if (dma_scr & STM32_DMA_SCR_CT) {
+		dma_sm0ar = sg_req->chan_reg.dma_sm0ar;
+		stm32_dma_write(dmadev, STM32_DMA_SM0AR(id), dma_sm0ar);
+		dev_dbg(chan2dev(chan), "CT=1 <=> SM0AR: 0x%08x\n",
+			stm32_dma_read(dmadev, STM32_DMA_SM0AR(id)));
+	} else {
+		dma_sm1ar = sg_req->chan_reg.dma_sm1ar;
+		stm32_dma_write(dmadev, STM32_DMA_SM1AR(id), dma_sm1ar);
+		dev_dbg(chan2dev(chan), "CT=0 <=> SM1AR: 0x%08x\n",
+			stm32_dma_read(dmadev, STM32_DMA_SM1AR(id)));
 	}
+
+	//TODO: to remove
+	dev_dbg(chan2dev(chan), "SCR: 0x%08x\n", stm32_dma_read(dmadev, STM32_DMA_SCR(chan->id)));
 }
 
 static void stm32_dma_start_transfer(struct stm32_dma_chan *chan)
@@ -1013,7 +1014,7 @@ static void stm32_dma_start_transfer(struct stm32_dma_chan *chan)
 	dev_dbg(chan2dev(chan), "vchan %pK: started\n", &chan->vchan);
 }
 
-static void stm32_dma_handle_chan_done(struct stm32_dma_chan *chan)
+static void stm32_dma_handle_chan_done(struct stm32_dma_chan *chan, u32 scr)
 {
 	if (!chan->desc)
 		return;
@@ -1023,7 +1024,8 @@ static void stm32_dma_handle_chan_done(struct stm32_dma_chan *chan)
 		if (chan->use_mdma)
 			return;
 		chan->next_sg++;
-		stm32_dma_configure_next_sg(chan);
+		if (scr & STM32_DMA_SCR_DBM)
+			stm32_dma_configure_next_sg(chan);
 	} else {
 		chan->busy = false;
 		if (chan->use_mdma && chan->mchan.dir != DMA_MEM_TO_DEV)
@@ -1070,7 +1072,7 @@ static irqreturn_t stm32_dma_chan_irq(int irq, void *devid)
 	if (status & STM32_DMA_TCI) {
 		stm32_dma_irq_clear(chan, STM32_DMA_TCI);
 		if (scr & STM32_DMA_SCR_TCIE)
-			stm32_dma_handle_chan_done(chan);
+			stm32_dma_handle_chan_done(chan, scr);
 		status &= ~STM32_DMA_TCI;
 	}
 
