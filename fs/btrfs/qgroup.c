@@ -3490,7 +3490,7 @@ static int try_flush_qgroup(struct btrfs_root *root)
 		return 0;
 	}
 
-	ret = btrfs_start_delalloc_inodes(root, 1);
+	ret = btrfs_start_delalloc_snapshot(root);
 	if (ret < 0)
 		goto out;
 	btrfs_wait_ordered_extents(root, U64_MAX, 0, (u64)-1);
@@ -3657,7 +3657,7 @@ static int __btrfs_qgroup_release_data(struct inode *inode,
 	if (free && reserved)
 		return qgroup_free_reserved_data(inode, reserved, start, len);
 	extent_changeset_init(&changeset);
-	ret = clear_record_extent_bits(&BTRFS_I(inode)->io_tree, start, 
+	ret = clear_record_extent_bits(&BTRFS_I(inode)->io_tree, start,
 			start + len -1, EXTENT_QGROUP_RESERVED, &changeset);
 	if (ret < 0)
 		goto out;

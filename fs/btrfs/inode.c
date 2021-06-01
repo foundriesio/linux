@@ -10186,8 +10186,7 @@ void btrfs_wait_and_free_delalloc_work(struct btrfs_delalloc_work *work)
  * some fairly slow code that needs optimization. This walks the list
  * of all the inodes with pending delalloc and forces them to disk.
  */
-static int __start_delalloc_inodes(struct btrfs_root *root, int delay_iput,
-				   int nr)
+static int start_delalloc_inodes(struct btrfs_root *root, int nr, bool snapshot)
 {
 	struct btrfs_inode *binode;
 	struct inode *inode;
@@ -10215,12 +10214,13 @@ static int __start_delalloc_inodes(struct btrfs_root *root, int delay_iput,
 		}
 		spin_unlock(&root->delalloc_lock);
 
-		work = btrfs_alloc_delalloc_work(inode, delay_iput);
+		if (snapshot)
+			set_bit(BTRFS_INODE_SNAPSHOT_FLUSH,
+				&binode->runtime_flags);
+
+		work = btrfs_alloc_delalloc_work(inode, 0);
 		if (!work) {
-			if (delay_iput)
-				btrfs_add_delayed_iput(inode);
-			else
-				iput(inode);
+			iput(inode);
 			ret = -ENOMEM;
 			goto out;
 		}
@@ -10250,7 +10250,7 @@ out:
 	return ret;
 }
 
-int btrfs_start_delalloc_inodes(struct btrfs_root *root, int delay_iput)
+int btrfs_start_delalloc_snapshot(struct btrfs_root *root)
 {
 	struct btrfs_fs_info *fs_info = root->fs_info;
 	int ret;
@@ -10258,7 +10258,7 @@ int btrfs_start_delalloc_inodes(struct btrfs_root *root, int delay_iput)
 	if (test_bit(BTRFS_FS_STATE_ERROR, &fs_info->fs_state))
 		return -EROFS;
 
-	ret = __start_delalloc_inodes(root, delay_iput, -1);
+	ret = start_delalloc_inodes(root, -1, true);
 	if (ret > 0)
 		ret = 0;
 	/*
@@ -10301,7 +10301,7 @@ int btrfs_start_delalloc_roots(struct btrfs_fs_info *fs_info, int delay_iput,
 			       &fs_info->delalloc_roots);
 		spin_unlock(&fs_info->delalloc_root_lock);
 
-		ret = __start_delalloc_inodes(root, delay_iput, nr);
+		ret = start_delalloc_inodes(root, nr, false);
 		btrfs_put_fs_root(root);
 		if (ret < 0)
 			goto out;
