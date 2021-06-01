@@ -588,7 +588,7 @@ lpfc_gen_req(struct lpfc_vport *vport, struct lpfc_dmabuf *bmp,
 	     struct lpfc_dmabuf *inp, struct lpfc_dmabuf *outp,
 	     void (*cmpl) (struct lpfc_hba *, struct lpfc_iocbq *,
 		     struct lpfc_iocbq *),
-	     struct lpfc_nodelist *ndlp, uint32_t usr_flg, uint32_t num_entry,
+	     struct lpfc_nodelist *ndlp, uint32_t event_tag, uint32_t num_entry,
 	     uint32_t tmo, uint8_t retry)
 {
 	struct lpfc_hba  *phba = vport->phba;
@@ -609,14 +609,13 @@ lpfc_gen_req(struct lpfc_vport *vport, struct lpfc_dmabuf *bmp,
 	icmd->un.genreq64.bdl.bdeFlags = BUFF_TYPE_BLP_64;
 	icmd->un.genreq64.bdl.bdeSize = (num_entry * sizeof(struct ulp_bde64));
 
-	if (usr_flg)
-		geniocb->context3 = NULL;
-	else
-		geniocb->context3 = (uint8_t *) bmp;
+	geniocb->context3 = (uint8_t *) bmp;
 
 	/* Save for completion so we can release these resources */
 	geniocb->context1 = (uint8_t *) inp;
 	geniocb->context2 = (uint8_t *) outp;
+
+	geniocb->event_tag = event_tag;
 
 	/* Fill in payload, bp points to frame payload */
 	icmd->ulpCommand = CMD_GEN_REQUEST64_CR;
@@ -708,8 +707,8 @@ lpfc_ct_cmd(struct lpfc_vport *vport, struct lpfc_dmabuf *inmp,
 	 * lpfc_alloc_ct_rsp.
 	 */
 	cnt += 1;
-	status = lpfc_gen_req(vport, bmp, inmp, outmp, cmpl, ndlp, 0,
-			      cnt, 0, retry);
+	status = lpfc_gen_req(vport, bmp, inmp, outmp, cmpl, ndlp,
+			phba->fc_eventTag, cnt, 0, retry);
 	if (status) {
 		lpfc_free_ct_rsp(phba, outmp);
 		return -ENOMEM;
@@ -958,6 +957,13 @@ lpfc_cmpl_ct_cmd_gid_ft(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 		 "GID_FT cmpl:     status:x%x/x%x rtry:%d",
 		irsp->ulpStatus, irsp->un.ulpWord[4], vport->fc_ns_retry);
 
+	/* Ignore response if link flipped after this request was made */
+	if (cmdiocb->event_tag != phba->fc_eventTag) {
+		lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
+				 "9043 Event tag mismatch. Ignoring NS rsp\n");
+		goto out;
+	}
+
 	/* Don't bother processing response if vport is being torn down. */
 	if (vport->load_flag & FC_UNLOADING) {
 		if (vport->fc_flag & FC_RSCN_MODE)
@@ -1168,6 +1174,13 @@ lpfc_cmpl_ct_cmd_gid_pt(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 			      irsp->ulpStatus, irsp->un.ulpWord[4],
 			      vport->fc_ns_retry);
 
+	/* Ignore response if link flipped after this request was made */
+	if (cmdiocb->event_tag != phba->fc_eventTag) {
+		lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
+				 "9044 Event tag mismatch. Ignoring NS rsp\n");
+		goto out;
+	}
+
 	/* Don't bother processing response if vport is being torn down. */
 	if (vport->load_flag & FC_UNLOADING) {
 		if (vport->fc_flag & FC_RSCN_MODE)
@@ -1367,6 +1380,13 @@ lpfc_cmpl_ct_cmd_gff_id(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 		"GFF_ID cmpl:     status:x%x/x%x did:x%x",
 		irsp->ulpStatus, irsp->un.ulpWord[4], did);
 
+	/* Ignore response if link flipped after this request was made */
+	if (cmdiocb->event_tag != phba->fc_eventTag) {
+		lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
+				 "9045 Event tag mismatch. Ignoring NS rsp\n");
+		goto iocb_free;
+	}
+
 	if (irsp->ulpStatus == IOSTAT_SUCCESS) {
 		/* Good status, continue checking */
 		CTrsp = (struct lpfc_sli_ct_request *) outp->virt;
@@ -1480,6 +1500,7 @@ out:
 		lpfc_disc_start(vport);
 	}
 
+iocb_free:
 	free_ndlp = cmdiocb->context_un.ndlp;
 	lpfc_ct_free_iocb(phba, cmdiocb);
 	lpfc_nlp_put(free_ndlp);
@@ -1506,6 +1527,13 @@ lpfc_cmpl_ct_cmd_gft_id(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 	lpfc_debugfs_disc_trc(vport, LPFC_DISC_TRC_CT,
 			      "GFT_ID cmpl: status:x%x/x%x did:x%x",
 			      irsp->ulpStatus, irsp->un.ulpWord[4], did);
+
+	/* Ignore response if link flipped after this request was made */
+	if ((uint32_t) cmdiocb->event_tag != phba->fc_eventTag) {
+		lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
+				 "9046 Event tag mismatch. Ignoring NS rsp\n");
+		goto out;
+	}
 
 	/* Preserve the nameserver node to release the reference. */
 	ns_ndlp = cmdiocb->context_un.ndlp;
@@ -1573,6 +1601,7 @@ lpfc_cmpl_ct_cmd_gft_id(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 		lpfc_printf_vlog(vport, KERN_ERR, LOG_TRACE_EVENT,
 				 "3065 GFT_ID failed x%08x\n", irsp->ulpStatus);
 
+out:
 	lpfc_ct_free_iocb(phba, cmdiocb);
 	lpfc_nlp_put(ns_ndlp);
 }
