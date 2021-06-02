@@ -414,8 +414,13 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 #if defined(CONFIG_OVERLAY_PGL)
 	vioc_path->pgl = -1;
 	vdev->cif.use_pgl = -1;
-	/* VIDEO_IN04~06 don't have RDMA */
+#if defined(CONFIG_ARCH_TCC803X)
+	/* VIDEO_IN00~02 have RDMA */
+	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN20)) {
+#elif defined(CONFIG_ARCH_TCC805X)
+	/* VIDEO_IN00~03 have RDMA */
 	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN30)) {
+#endif
 		vioc_node = of_parse_phandle(main_node, "rdma", 0);
 		if (vioc_node != NULL) {
 			of_property_read_u32_index(main_node,
@@ -525,7 +530,11 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 	}
 
 #if defined(CONFIG_OVERLAY_PGL)
+#if defined(CONFIG_ARCH_TCC803X)
+	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN20)) {
+#elif defined(CONFIG_ARCH_TCC805X)
 	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN30)) {
+#endif
 		/* pmap_pgl */
 		pmap_node = of_parse_phandle(main_node, "memory-region", 0);
 		if (pmap_node != NULL) {
@@ -546,7 +555,11 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 	}
 #endif/* defined(CONFIG_OVERLAY_PGL) */
 
+#if defined(CONFIG_ARCH_TCC803X)
+	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN20)) {
+#elif defined(CONFIG_ARCH_TCC805X)
 	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN30)) {
+#endif
 		/* pmap_viqe */
 		pmap_node = of_parse_phandle(main_node, "memory-region", 1);
 		if (pmap_node != NULL) {

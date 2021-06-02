@@ -12,6 +12,9 @@
 #include <dt-bindings/mailbox/tcc803x_multi_mailbox/tcc_mbox_ch.h>
 #include <dt-bindings/pmap/tcc803x/pmap-tcc803x-linux-ivi-subcore-a7s.h>
 
+#define USE_ARXXXX
+//#define USE_AR0147
+
 / {
 	compatible = "telechips,tcc803x";
 	interrupt-parent = <&gic>;
@@ -789,17 +792,31 @@
 				isl79988_out: endpoint {
 					remote-endpoint = <&videoinput0_in>;
 					io-direction	= "output";
-					bus-width       = <8>;
+					bus-width	= <8>;
 				};
 			};
 		};
 
+#if defined(USE_ARXXXX)
+		arxxxx: arxxxx@50 {
+			status		= "okay";
+			compatible	= "onnn,arxxxx";
+			reg		= <0x50>;
+			port {
+				arxxxx_out: endpoint {
+					remote-endpoint = <&max96701_in>;
+					io-direction	= "output";
+				};
+			};
+		};
+#elif defined(USE_AR0147)
 		/*
+		 * ISPless camera module.
 		 * mcnex(for ecarx demo) camera module: max96701, max9286
 		 */
-		ar0147: ar0147 {
+		ar0147: ar0147@10 {
 			/* Camera Image Sensor */
-			status		= "disabled";
+			status		= "okay";
 			compatible	= "onnn,ar0147";
 			reg		= <0x10>;
 			port {
@@ -809,10 +826,12 @@
 				};
 			};
 		};
+#endif
+
 		/* HD camera module & max9286 using MIPI CSI2 output */
-		max96701: max96701 {
+		max96701: max96701@40 {
 			/* serializer */
-			status		= "disabled";
+			status		= "okay";
 			compatible	= "maxim,max96701";
 			reg		= <0x40>;
 			ports {
@@ -821,8 +840,12 @@
 			        port@0 {
 					reg = <0>;
 					max96701_in: endpoint {
-						//remote-endpoint = <&ar0147_out>;
-						//io-direction	= "input";
+#if defined(USE_ARXXXX)
+						remote-endpoint = <&arxxxx_out>;
+#elif defined(USE_AR0147)
+						remote-endpoint = <&ar0147_out>;
+#endif
+						io-direction	= "input";
 					};
 				};
 			        port@1 {
@@ -835,9 +858,9 @@
 	                };
 		};
 
-		max9286: max9286 {
+		max9286: max9286@48 {
 			/* deserializer */
-			status		= "disabled";
+			status		= "okay";
 			compatible	= "maxim,max9286";
 			pwd-gpios	= <&gpg 5 1>;
 			intb-gpios	= <&gph 11 1>;
@@ -1275,7 +1298,7 @@
 	mipi_csi2_0:mipi_csi@123c0000 {
 		compatible = "telechips,tcc803x-mipi-csi2";
 
-		status = "disabled";
+		status = "okay";
 
 		reg = <0x123c0000 0x120>,
 		      <0x123c0200 0x5c>;
@@ -1288,14 +1311,40 @@
 
 		interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>,// MIPI0 CSIS
 		             <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;// MIPI0 Generic
+		/*
+		 * 0: select output of MIPI0
+		 * 1: select output of MIPI1
+		 */
+		mipi-chmux-0 = <0>;
+		mipi-chmux-1 = <0>;
+		mipi-chmux-2 = <0>;
+		mipi-chmux-3 = <0>;
+
+		/*
+		 * 0: select output of MIPI1
+		 * 1: select output of MIPI0
+		 */
+		mipi-chmux-4 = <0>;
+		mipi-chmux-5 = <0>;
+		mipi-chmux-6 = <0>;
+		mipi-chmux-7 = <0>;
+
+		/*
+		 * 1: bypass isp
+		 * 0: use isp
+		 */
+		isp0-bypass = <1>;
+		isp1-bypass = <1>;
+		isp2-bypass = <1>;
+		isp3-bypass = <1>;
 
 		ports {
 			/*
-			 * 0 ~ 3
+			 * 0
 			 * input port.
 			 *
-			 * 4
-			 * output ports. The number is matched with VC
+			 * 1 ~ 4
+			 * output ports. (1: VC0 ~ 4: VC3)
 			 */
 			port@0 {
 				reg = <0>;
@@ -1311,15 +1360,15 @@
 					 * 3: VC and DT
 					 */
 					interleave-mode = <3>;
-					//hs-settle = <2>;
-					hs-settle = <17>;
+					//hs-settle = <2>; // for mcnex ispless 1ch
+					//hs-settle = <19>; // for sekonix ispless 4ch
+					hs-settle = <17>; // for HD 4ch
 					data-lanes = <1 2 3 4>;
 				};
 			};
-
-		        port@1 {
+			port@1 {
 				reg = <1>;
-		                mipi_csi2_0_out0: endpoint {
+				mipi_csi2_0_out0: endpoint {
 		                        remote-endpoint = <&videoinput3_in>;
 					io-direction	= "output";
 					channel		= <0>;
@@ -1330,7 +1379,7 @@
 					 * 3: Invalid
 					 */
 					pixel-mode = <1>;
-		                };
+				};
 			};
 			port@2 {
 				reg = <2>;
@@ -1348,7 +1397,6 @@
 					io-direction	= "output";
 					channel		= <2>;
 					pixel-mode = <1>;
-
 				};
 			};
 			port@4 {
@@ -1460,23 +1508,23 @@
 	videoinput0: videoinput0 {
 		status		= "okay";
 		compatible	= "telechips,video-input";
-		cifport		= <&cifport 0>;
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		rdma		= <&vioc_rdma VIOC_RDMA16>;
+		cifport		= <&cifport		0>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA16>;
 		use_pgl		= <0>;
-		vin		= <&vioc_vin VIOC_VIN00>;
-		viqe		= <&vioc_viqe VIOC_VIQE1>;
-		deintls		= <&vioc_deintls VIOC_DEINTLS0>;
-		scaler		= <&vioc_scaler VIOC_SCALER2>;
-		wmixer		= <&vioc_wmix VIOC_WMIX5>;
-		wdma		= <&vioc_wdma VIOC_WDMA05>;
-		fifo		= <&vioc_fifo VIOC_FIFO0>;
+		vin		= <&vioc_vin		VIOC_VIN00>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
+		wdma		= <&vioc_wdma		VIOC_WDMA05>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
 		memory-region	= <&pmap_parking_gui &pmap_rearcamera_viqe &pmap_rearcamera>;
 		port {
 			videoinput0_in: endpoint {
 				remote-endpoint	= <&isl79988_out>;
 				io-direction	= "input";
-                	        bus-type	= <0>;
+				bus-type	= <0>;
 				bus-with	= <8>;
 				stream-enable	= <0>;	// VIN_CTRL.SE
 				flush-vsync	= <0>;	// VIN_MISC.FVS
@@ -1488,16 +1536,16 @@
 		status		= "disabled";
 		compatible	= "telechips,video-input";
 		cifport		= <&cifport 1>;
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		rdma		= <&vioc_rdma VIOC_RDMA17>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA17>;
 		use_pgl		= <0>;
-		vin		= <&vioc_vin VIOC_VIN10>;
-		viqe		= <&vioc_viqe VIOC_VIQE1>;
-		deintls		= <&vioc_deintls VIOC_DEINTLS0>;
-		scaler		= <&vioc_scaler VIOC_SCALER4>;
-		wmixer		= <&vioc_wmix VIOC_WMIX6>;
-		wdma		= <&vioc_wdma VIOC_WDMA07>;
-		fifo		= <&vioc_fifo VIOC_FIFO0>;
+		vin		= <&vioc_vin		VIOC_VIN10>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER4>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX6>;
+		wdma		= <&vioc_wdma		VIOC_WDMA07>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
 		memory-region	= <0 0 &pmap_rearcamera1>;
 	};
 
@@ -1505,33 +1553,33 @@
 		status		= "disabled";
 		compatible	= "telechips,video-input";
 		cifport		= <&cifport 2>;
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		rdma		= <&vioc_rdma VIOC_RDMA13>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA13>;
 		use_pgl		= <0>;
-		vin		= <&vioc_vin VIOC_VIN20>;
-		viqe		= <&vioc_viqe VIOC_VIQE1>;
-		deintls		= <&vioc_deintls VIOC_DEINTLS0>;
-		scaler		= <&vioc_scaler VIOC_SCALER5>;
-		wmixer		= <&vioc_wmix VIOC_WMIX3>;
-		wdma		= <&vioc_wdma VIOC_WDMA03>;
-		fifo		= <&vioc_fifo VIOC_FIFO0>;
+		vin		= <&vioc_vin		VIOC_VIN20>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER5>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX3>;
+		wdma		= <&vioc_wdma		VIOC_WDMA03>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
 		memory-region	= <0 0 &pmap_rearcamera2>;
 	};
 
 	videoinput3: videoinput3 {
-		status		= "disabled";
+		status		= "okay";
 		compatible	= "telechips,video-input";
-		cifport		= <&cifport 5>;
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		rdma		= <&vioc_rdma VIOC_RDMA15>;
+		cifport		= <&cifport		5>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA15>;
 		use_pgl		= <0>;
-		vin		= <&vioc_vin VIOC_VIN30>;
-		viqe		= <&vioc_viqe VIOC_VIQE1>;
-		deintls		= <&vioc_deintls VIOC_DEINTLS0>;
-		scaler		= <&vioc_scaler VIOC_SCALER6>;
-		wmixer		= <&vioc_wmix VIOC_WMIX4>;
-		wdma		= <&vioc_wdma VIOC_WDMA04>;
-		fifo		= <&vioc_fifo VIOC_FIFO0>;
+		vin		= <&vioc_vin		VIOC_VIN30>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER6>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX4>;
+		wdma		= <&vioc_wdma		VIOC_WDMA04>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
 		memory-region	= <0 0 &pmap_rearcamera3>;
 		port {
 			videoinput3_in: endpoint {
@@ -1546,10 +1594,10 @@
 	};
 
 	videoinput4: videoinput4 {
-		status		= "disabled";
+		status		= "okay";
 		compatible	= "telechips,video-input";
-		cifport		= <&cifport 6>;
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		6>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN40>;
 		wdma		= <&vioc_wdma		VIOC_WDMA09>;
@@ -1567,10 +1615,10 @@
 	};
 
 	videoinput5: videoinput5 {
-		status		= "disabled";
+		status		= "okay";
 		compatible	= "telechips,video-input";
-		cifport		= <&cifport 7>;
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		7>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN50>;
 		wdma		= <&vioc_wdma		VIOC_WDMA10>;
@@ -1588,10 +1636,10 @@
 	};
 
 	videoinput6: videoinput6 {
-		status		= "disabled";
+		status		= "okay";
 		compatible	= "telechips,video-input";
-		cifport		= <&cifport 8>;
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		cifport		= <&cifport		8>;
+		clocks		= <&clk_ddi		DDIBUS_VIOC>;
 		use_pgl		= <0>;
 		vin		= <&vioc_vin		VIOC_VIN60>;
 		wdma		= <&vioc_wdma		VIOC_WDMA11>;
