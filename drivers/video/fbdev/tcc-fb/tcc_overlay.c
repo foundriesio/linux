@@ -210,6 +210,7 @@ static int tcc_overlay_display_shared_screen(
 	dprintk("%s addr:0x%x  fmt : 0x%x position:%d %d  size: %d %d\n",
 		__func__, buffer_cfg.src_addr, buffer_cfg.fmt, buffer_cfg.dst_x,
 		buffer_cfg.dst_y, buffer_cfg.dst_w, buffer_cfg.dst_h);
+	dprintk("rgb_swap:%d\n", buffer_cfg.rgb_swap);
 	if ((buffer_cfg.layer < 0) || (buffer_cfg.layer >= OVERLAY_LAYER_MAX)) {
 		pr_err("[ERR][OVERLAY] %s: invalid layer:%d\n", __func__,
 		       buffer_cfg.layer);
@@ -247,7 +248,8 @@ static int tcc_overlay_display_shared_screen(
 		VIOC_RDMA_SetImageOffset(
 			overlay_drv->rdma[layer].reg, buffer_cfg.fmt,
 			buffer_cfg.frm_w);
-
+		VIOC_RDMA_SetImageRGBSwapMode(
+			overlay_drv->rdma[layer].reg, buffer_cfg.rgb_swap);
 		VIOC_RDMA_SetImageBase(
 			overlay_drv->rdma[layer].reg, buffer_cfg.src_addr,
 			buffer_cfg.src_addr, buffer_cfg.src_addr);

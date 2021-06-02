@@ -105,6 +105,7 @@ typedef struct {
 	unsigned int frm_h;
 	unsigned int fmt;
 	unsigned int layer;
+	unsigned int rgb_swap;
 } overlay_shared_buffer_t;
 #endif
 
