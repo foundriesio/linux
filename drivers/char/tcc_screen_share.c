@@ -333,7 +333,7 @@ static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd,
 	mutex_lock(&tcc_scrshare->tx.lock);
 
 	switch (cmd) {
-	case IOCTL_TCC_SCRSHARE_SET_DSTINFO:	//set in a7s
+	case IOCTL_TCC_SCRSHARE_SET_DSTINFO:	//set in subcore
 		ret =
 		    copy_from_user(tcc_scrshare_info->dstinfo, (void *)arg,
 				   sizeof(struct tcc_scrshare_dstinfo));
@@ -349,12 +349,12 @@ static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd,
 			tcc_scrshare_info->dstinfo->height,
 			tcc_scrshare_info->dstinfo->img_num);
 		goto err_ioctl;
-	case IOCTL_TCC_SCRSHARE_GET_DSTINFO:	//call in a53
+	case IOCTL_TCC_SCRSHARE_GET_DSTINFO:	//call in maincore
 	case IOCTL_TCC_SCRSHARE_GET_DSTINFO_KERNEL:
 		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
 		data.cmd[1] = (SCRSHARE_CMD_GET_DSTINFO & 0xFFFF) << 16;
 		break;
-	case IOCTL_TCC_SCRSHARE_SET_SRCINFO:	//set in a53
+	case IOCTL_TCC_SCRSHARE_SET_SRCINFO:	//set in maincore
 		ret =
 		    copy_from_user(tcc_scrshare_info->srcinfo, (void *)arg,
 				   sizeof(struct tcc_scrshare_srcinfo));
@@ -369,13 +369,13 @@ static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd,
 			tcc_scrshare_info->srcinfo->width,
 			tcc_scrshare_info->srcinfo->height);
 		goto err_ioctl;
-	case IOCTL_TCC_SCRSHARE_ON:	//set in a53
-	case IOCTL_TCC_SCRSHARE_ON_KERNEL:	//set in a53
+	case IOCTL_TCC_SCRSHARE_ON:	//set in maincore
+	case IOCTL_TCC_SCRSHARE_ON_KERNEL:	//set in maincore
 		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
 		data.cmd[1] = (SCRSHARE_CMD_ON & 0xFFFF) << 16;
 		break;
-	case IOCTL_TCC_SCRSHARE_OFF:	//set in a53
-	case IOCTL_TCC_SCRSHARE_OFF_KERNEL:	//set in a53
+	case IOCTL_TCC_SCRSHARE_OFF:	//set in maincore
+	case IOCTL_TCC_SCRSHARE_OFF_KERNEL:	//set in maincore
 		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
 		data.cmd[1] = (SCRSHARE_CMD_OFF & 0xFFFF) << 16;
 		break;
@@ -466,10 +466,11 @@ void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth,
 		ret =
 		    wait_event_interruptible_timeout(mbox_waitq, mbox_done == 1,
 						     msecs_to_jiffies(100));
-		if (ret <= 0)
+		if (ret <= 0) {
 			pr_err("%s: Timeout send_message(%ld)(%d)\n",
 				 __func__, ret, mbox_done);
-			pr_err("A7S seems to have some problem\n");
+			pr_err("subcore seems to have some problem\n");
+		}
 		mbox_done = 0;
 		mutex_unlock(&tcc_scrshare_device->tx.lock);
 	}
