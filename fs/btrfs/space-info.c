@@ -355,29 +355,6 @@ again:
 	up_read(&info->groups_sem);
 }
 
-static void btrfs_writeback_inodes_sb_nr(struct btrfs_fs_info *fs_info,
-					 unsigned long nr_pages, u64 nr_items)
-{
-	struct super_block *sb = fs_info->sb;
-
-	if (down_read_trylock(&sb->s_umount)) {
-		writeback_inodes_sb_nr(sb, nr_pages, WB_REASON_FS_FREE_SPACE);
-		up_read(&sb->s_umount);
-	} else {
-		/*
-		 * We needn't worry the filesystem going from r/w to r/o though
-		 * we don't acquire ->s_umount mutex, because the filesystem
-		 * should guarantee the delalloc inodes list be empty after
-		 * the filesystem is readonly(all dirty pages are written to
-		 * the disk).
-		 */
-		btrfs_start_delalloc_roots(fs_info, nr_items);
-		if (!current->journal_info)
-			btrfs_wait_ordered_roots(fs_info, nr_items, 0, (u64)-1);
-	}
-}
-
-
 static inline u64 calc_reclaim_items_nr(struct btrfs_fs_info *fs_info,
 					u64 to_reclaim)
 {
@@ -403,12 +380,9 @@ static void shrink_delalloc(struct btrfs_fs_info *fs_info,
 	struct btrfs_trans_handle *trans;
 	u64 delalloc_bytes;
 	u64 dio_bytes;
-	u64 max_reclaim;
 	u64 items;
 	long time_left;
-	unsigned long nr_pages;
 	int loops;
-	enum btrfs_reserve_flush_enum flush;
 
 	/* Calc the number of the pages we need flush for space reservation */
 	if (to_reclaim == U64_MAX) {
@@ -448,30 +422,8 @@ static void shrink_delalloc(struct btrfs_fs_info *fs_info,
 
 	loops = 0;
 	while ((delalloc_bytes || dio_bytes) && loops < 3) {
-		max_reclaim = min(delalloc_bytes, to_reclaim);
-		nr_pages = max_reclaim >> PAGE_SHIFT;
-		btrfs_writeback_inodes_sb_nr(fs_info, nr_pages, items);
-		/*
-		 * We need to wait for the async pages to actually start before
-		 * we do anything.
-		 */
-		max_reclaim = atomic_read(&fs_info->async_delalloc_pages);
-		if (!max_reclaim)
-			goto skip_async;
+		btrfs_start_delalloc_roots(fs_info, items);
 
-		if (max_reclaim <= nr_pages)
-			max_reclaim = 0;
-		else
-			max_reclaim -= nr_pages;
-
-		wait_event(fs_info->async_submit_wait,
-			   atomic_read(&fs_info->async_delalloc_pages) <=
-			   (int)max_reclaim);
-skip_async:
-		if (!trans)
-			flush = BTRFS_RESERVE_FLUSH_ALL;
-		else
-			flush = BTRFS_RESERVE_NO_FLUSH;
 		spin_lock(&space_info->lock);
 		if (list_empty(&space_info->tickets) &&
 		    list_empty(&space_info->priority_tickets)) {
