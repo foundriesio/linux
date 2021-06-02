@@ -604,16 +604,16 @@ void *tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 	u32 len;
 
 	if (handle == NULL)
-		return -EINVAL;
+		return NULL;
 
 	info = handle_to_tcc_sc_fw_info(handle);
 
 	if (info == NULL)
-		return -EINVAL;
+		return NULL;
 
 	xfer = get_tcc_sc_fw_xfer(info);
 	if (xfer == NULL)
-		return -ENOMEM;
+		return NULL;
 
 	memset(xfer->rx_mssg.cmd, 0, xfer->rx_cmd_buf_len);
 
