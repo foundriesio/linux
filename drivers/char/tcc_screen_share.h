@@ -19,6 +19,6 @@
 
 void tcc_scrshare_set_sharedBuffer(
 	unsigned int addr, unsigned int frameWidth,
-	unsigned int frameHeight, unsigned int fmt);
+	unsigned int frameHeight, unsigned int fmt, unsigned int rgb_swap);
 
 #endif

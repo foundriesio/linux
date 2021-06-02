@@ -123,11 +123,10 @@ static void tcc_scrshare_get_dstinfo(struct tcc_mbox_data *mssg)
 	mssg->data[2] = tcc_scrshare_info->dstinfo->width;
 	mssg->data[3] = tcc_scrshare_info->dstinfo->height;
 	mssg->data[4] = tcc_scrshare_info->dstinfo->img_num;
-	mssg->data[5] = tcc_scrshare_info->dstinfo->rgb_swap;
-	mssg->data_len = 6;
-	pr_debug("%s x:%d, y:%d, w:%d, h:%d, img_num:%d, rgb_swap:%d\n",
+	mssg->data_len = 5;
+	pr_debug("%s x:%d, y:%d, w:%d, h:%d, img_num:%d\n",
 		 __func__, mssg->data[0], mssg->data[1], mssg->data[2],
-		 mssg->data[3], mssg->data[4], mssg->data[5]);
+		 mssg->data[3], mssg->data[4]);
 }
 
 static void
@@ -137,9 +136,9 @@ tcc_scrshare_display(
 	long ret = 0;
 	overlay_shared_buffer_t buffer_cfg;
 
-	pr_debug("%s shared_enable:%d base:%d, frm_w:%d, frm_h:%d, fmt:%d\n",
+	pr_debug("%s shared_enable:%d base:%d, frm_w:%d, frm_h:%d, fmt:%d, rgb_swap:%d\n",
 		 __func__, tcc_scrshare_info->share_enable, mssg->data[0],
-		 mssg->data[1], mssg->data[2], mssg->data[3]);
+		 mssg->data[1], mssg->data[2], mssg->data[3], mssg->data[4]);
 	pr_debug("%s dst x:%d, y:%d, w:%d, h:%d\n", __func__,
 		 tcc_scrshare_info->dstinfo->x,
 		 tcc_scrshare_info->dstinfo->y,
@@ -163,12 +162,12 @@ tcc_scrshare_display(
 		buffer_cfg.frm_w = mssg->data[1];
 		buffer_cfg.frm_h = mssg->data[2];
 		buffer_cfg.fmt = mssg->data[3];
+		buffer_cfg.rgb_swap = mssg->data[4];
 		buffer_cfg.dst_x = tcc_scrshare_info->dstinfo->x;
 		buffer_cfg.dst_y = tcc_scrshare_info->dstinfo->y;
 		buffer_cfg.dst_w = tcc_scrshare_info->dstinfo->width;
 		buffer_cfg.dst_h = tcc_scrshare_info->dstinfo->height;
 		buffer_cfg.layer = tcc_scrshare_info->dstinfo->img_num;
-		buffer_cfg.rgb_swap = tcc_scrshare_info->dstinfo->rgb_swap;
 
 		if (!IS_ERR_OR_NULL(overlay_file))
 			ret = overlay_file->f_op->unlocked_ioctl(overlay_file,
@@ -276,8 +275,6 @@ static void tcc_scrshare_receive_message(struct mbox_client *client, void *mssg)
 					    msg->data[3];
 					tcc_scrshare_info->dstinfo->img_num =
 					    msg->data[4];
-					tcc_scrshare_info->dstinfo->rgb_swap =
-						msg->data[5];
 				} else if (command == SCRSHARE_CMD_ON) {
 					pr_info("%s SCRSHARE_CMD_ON ok\n",
 						__func__);
@@ -346,13 +343,12 @@ static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd,
 				__func__, ret);
 			goto err_ioctl;
 		}
-		pr_info("%s SET_DSTINFO x:%d, y:%d, w:%d, h:%d, img_num:%d, rgb_swap:%d\n",
+		pr_info("%s SET_DSTINFO x:%d, y:%d, w:%d, h:%d, img_num:%d\n",
 			__func__, tcc_scrshare_info->dstinfo->x,
 			tcc_scrshare_info->dstinfo->y,
 			tcc_scrshare_info->dstinfo->width,
 			tcc_scrshare_info->dstinfo->height,
-			tcc_scrshare_info->dstinfo->img_num,
-			tcc_scrshare_info->dstinfo->rgb_swap);
+			tcc_scrshare_info->dstinfo->img_num);
 		goto err_ioctl;
 	case IOCTL_TCC_SCRSHARE_GET_DSTINFO:	//call in maincore
 	case IOCTL_TCC_SCRSHARE_GET_DSTINFO_KERNEL:
@@ -425,12 +421,12 @@ err_ioctl:
 }
 
 void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth,
-				   unsigned int frameHeight, unsigned int fmt)
+				   unsigned int frameHeight, unsigned int fmt, unsigned int rgb_swap)
 {
 	if ((tcc_scrshare_info == NULL) || (addr <= 0) || (frameWidth <= 0)
-	    || (frameHeight <= 0) || (fmt <= 0)) {
-		pr_err("%s Invalid args addr:0x%08x, w:%d, h:%d, fmt:0x%x\n",
-			__func__, addr, frameWidth, frameHeight, fmt);
+	    || (frameHeight <= 0) || (fmt <= 0) || (rgb_swap < 0)) {
+		pr_err("%s Invalid args addr:0x%08x, w:%d, h:%d, fmt:0x%x, rgb_swap:0x%x\n",
+			__func__, addr, frameWidth, frameHeight, fmt, rgb_swap);
 		return;
 	}
 
@@ -450,6 +446,7 @@ void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth,
 		tcc_scrshare_info->frm_w = frameWidth;
 		tcc_scrshare_info->frm_h = frameHeight;
 		tcc_scrshare_info->fmt = fmt;
+		tcc_scrshare_info->rgb_swap = rgb_swap;
 
 		mutex_lock(&tcc_scrshare_device->tx.lock);
 		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
@@ -458,7 +455,8 @@ void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth,
 		data.data[1] = tcc_scrshare_info->frm_w;
 		data.data[2] = tcc_scrshare_info->frm_h;
 		data.data[3] = tcc_scrshare_info->fmt;
-		data.data_len = 4;
+		data.data[4] = tcc_scrshare_info->rgb_swap;
+		data.data_len = 5;
 
 		/* Increase tx-sequence ID */
 		atomic_inc(&tcc_scrshare_device->tx.seq);
