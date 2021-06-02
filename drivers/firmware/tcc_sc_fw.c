@@ -590,7 +590,7 @@ static s32 tcc_sc_fw_cmd_get_mmc_prot_info(
 	return ret;
 }
 
-int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
+void *tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 				struct tcc_sc_fw_ufs_cmd *sc_cmd,
 				void (*complete)(void *, void *), void *args)
 {
@@ -598,6 +598,7 @@ int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 	struct tcc_sc_fw_xfer *xfer;
 	struct tcc_sc_fw_cmd req_cmd = { 0, }, res_cmd = { 0, };
 	struct scatterlist *sg;
+	void *xfer_handle;
 	dma_addr_t addr;
 	s32 ret, i;
 	u32 len;
@@ -668,7 +669,13 @@ int tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 		ret = tcc_sc_fw_xfer_async(info, xfer);
 	}
 
-	return ret;
+	if (ret < 0) {
+		xfer_handle = NULL;
+	} else {
+		xfer_handle = (void *)xfer;
+	}
+
+	return xfer_handle;
 }
 
 static s32 tcc_sc_fw_cmd_get_revision(struct tcc_sc_fw_info *info)
@@ -910,6 +917,7 @@ static struct tcc_sc_fw_mmc_ops sc_fw_mmc_ops = {
 
 static struct tcc_sc_fw_ufs_ops sc_fw_ufs_ops = {
 	.request_command = tcc_sc_fw_cmd_request_ufs_cmd,
+	.halt_cmd = tcc_sc_fw_halt_cmd,
 };
 
 static struct tcc_sc_fw_gpio_ops sc_fw_gpio_ops = {

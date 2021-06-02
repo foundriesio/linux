@@ -112,10 +112,11 @@ struct tcc_sc_fw_mmc_ops {
 };
 
 struct tcc_sc_fw_ufs_ops {
-	s32 (*request_command)(const struct tcc_sc_fw_handle *handle,
+	void* (*request_command)(const struct tcc_sc_fw_handle *handle,
 		struct tcc_sc_fw_ufs_cmd *cmd,
 		void (*complete)(void *, void *), void *args);
-
+	void (*halt_cmd)(const struct tcc_sc_fw_handle *handle,
+		void *xfer);
 };
 
 struct tcc_sc_fw_gpio_ops {

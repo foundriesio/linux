@@ -62,6 +62,8 @@ struct tcc_sc_ufs_host {
 	struct ufs_host *ufs;	/* ufs structure */
 	u64 dma_mask;		/* custom DMA mask */
 
+	void *xfer_handle;
+
 	struct tasklet_struct finish_tasklet;	/* Tasklet structures */
 	struct timer_list timer;	/* Timer for timeouts */
 	//struct completion complete;
@@ -91,14 +93,16 @@ static bool tcc_sc_ufs_transfer_req_compl(struct tcc_sc_ufs_host *host)
 		return (bool)true;
 	}
 
+	del_timer(&host->timer);
+
 	dev_dbg(host->dev, "[DEBUG][TCC_SC_UFS] %s : sg_count = %d\n",
 			__func__, cmd->sdb.table.nents);
 	scsi_dma_unmap(cmd);
-	cmd->result = 0;
 	/* Mark completed command as NULL in LRB */
 	host->cmd = NULL;
 	/* Do not touch lrbp after scsi done */
 	cmd->scsi_done(cmd);
+	host->xfer_handle = NULL;
 
 	spin_unlock_irqrestore(&host->lock, flags);
 
@@ -110,6 +114,33 @@ static void tcc_sc_ufs_tasklet_finish(unsigned long param)
 	struct tcc_sc_ufs_host *host = (struct tcc_sc_ufs_host *)param;
 
 	(void)tcc_sc_ufs_transfer_req_compl(host);
+}
+
+static void tcc_sc_ufs_timeout_timer(unsigned long data)
+{
+	struct tcc_sc_ufs_host *host;
+	const struct tcc_sc_fw_handle *handle;
+	unsigned long flags;
+
+	host = (struct tcc_sc_ufs_host *)data;
+
+	handle = host->handle;
+	if (host->xfer_handle != NULL) {
+		handle->ops.ufs_ops->halt_cmd(handle, host->xfer_handle);
+		host->xfer_handle = NULL;
+	}
+
+	spin_lock_irqsave((&host->lock), (flags));
+
+	if (host->cmd != NULL) {
+		pr_err("%s: [ERROR][TCC_SC_UFS]Timeout waiting for hardware cmd interrupt.\n",
+		       __func__);
+		set_host_byte(host->cmd, DID_ERROR);
+		/* Finish request */
+		tasklet_schedule(&host->finish_tasklet);
+	}
+
+	spin_unlock_irqrestore(&host->lock, flags);
 }
 
 static uint32_t tcc_sc_ufs_scsi_to_upiu_lun(uint32_t scsi_lun)
@@ -125,9 +156,14 @@ static uint32_t tcc_sc_ufs_scsi_to_upiu_lun(uint32_t scsi_lun)
 static void tcc_sc_ufs_complete(void *args, void *msg)
 {
 	struct tcc_sc_ufs_host *sc_host = (struct tcc_sc_ufs_host *)args;
+	unsigned long flags;
 	//int *rx_msg = (int *)msg;
 
 	/* Finish request */
+	spin_lock_irqsave((&sc_host->lock), (flags));
+	set_host_byte(sc_host->cmd, DID_OK);
+	spin_unlock_irqrestore(&sc_host->lock, flags);
+
 	tasklet_schedule(&sc_host->finish_tasklet);
 }
 
@@ -136,10 +172,11 @@ static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host,
 {
 	struct tcc_sc_ufs_host *sc_host;
 	int32_t tag;
-	int32_t ret;
 	const struct tcc_sc_fw_handle *handle;
 	struct tcc_sc_fw_ufs_cmd sc_cmd;
+	unsigned long timeout;
 	uint32_t direction;
+	int ret;
 
 	if (host == NULL) {
 		(void)pr_err("[ERROR][TCC_SC_UFS] %s: scsi_host is null\n",
@@ -204,15 +241,18 @@ static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host,
 		BUG();
 	}
 
-	ret = handle->ops.ufs_ops->request_command(handle, &sc_cmd,
+	sc_host->xfer_handle = handle->ops.ufs_ops->request_command(handle, &sc_cmd,
 			&tcc_sc_ufs_complete, sc_host);
 
-	if (ret < 0) {
-		dev_err(sc_host->dev, "[ERROR][TCC_SC_UFS] error retuned(%d)\n",
-				ret);
-	} else {
+	timeout = jiffies;
+	timeout += (unsigned long) (10U * HZ);
+
+	mod_timer(&sc_host->timer, timeout);
+
+	if (sc_host->xfer_handle)
 		ret = 0;
-	}
+	else
+		ret = -ENODEV;
 
 	return ret;
 }
@@ -226,6 +266,7 @@ static int tcc_sc_ufs_request_sc(struct tcc_sc_ufs_host *sc_host,
 	struct tcc_sc_fw_ufs_cmd sc_cmd;
 	uint64_t *conf_buff;
 	dma_addr_t buf_addr;
+	void *xfer_handle;
 
 	if (sc_host == NULL) {
 		(void)pr_err("%s: [ERROR][TCC_SC_UFS] sc_host is null\n",
@@ -268,10 +309,11 @@ static int tcc_sc_ufs_request_sc(struct tcc_sc_ufs_host *sc_host,
 
 	dev_dbg(sc_host->dev, "[DEBUG][TCC_SC_UFS] conf_buff=0x%px / dma buff = 0x%llx\n",
 			conf_buff, (uint64_t)sc_cmd.lun);
-	ret = handle->ops.ufs_ops->request_command(handle, &sc_cmd,
+	xfer_handle = handle->ops.ufs_ops->request_command(handle, &sc_cmd,
 			&tcc_sc_ufs_complete, sc_host);
 
-	if (ret < 0) {
+	if (xfer_handle == NULL) {
+		ret = -ENODEV;
 		dev_err(sc_host->dev, "[ERROR][TCC_SC_UFS] error retuned(%d)\n",
 				ret);
 	} else {
@@ -617,8 +659,11 @@ static int tcc_sc_ufs_probe(struct platform_device *pdev)
 						  &host->scsi_cdb_dma_addr,
 						  GFP_KERNEL);
 
+	setup_timer(&host->timer,
+		tcc_sc_ufs_timeout_timer, (unsigned long)host);
+
 	tasklet_init(&host->finish_tasklet,
-		&tcc_sc_ufs_tasklet_finish, (unsigned long)host);
+		tcc_sc_ufs_tasklet_finish, (unsigned long)host);
 
 	platform_set_drvdata(pdev, host);
 
