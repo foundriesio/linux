@@ -38,6 +38,7 @@ struct tcc_scrshare_dstinfo {
 	unsigned int width;
 	unsigned int height;
 	unsigned int img_num;
+	unsigned int rgb_swap;
 };
 
 struct tcc_scrshare_info {

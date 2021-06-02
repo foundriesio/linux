@@ -123,10 +123,11 @@ static void tcc_scrshare_get_dstinfo(struct tcc_mbox_data *mssg)
 	mssg->data[2] = tcc_scrshare_info->dstinfo->width;
 	mssg->data[3] = tcc_scrshare_info->dstinfo->height;
 	mssg->data[4] = tcc_scrshare_info->dstinfo->img_num;
-	mssg->data_len = 5;
-	pr_debug("%s x:%d, y:%d, w:%d, h:%d, img_num:%d\n",
+	mssg->data[5] = tcc_scrshare_info->dstinfo->rgb_swap;
+	mssg->data_len = 6;
+	pr_debug("%s x:%d, y:%d, w:%d, h:%d, img_num:%d, rgb_swap:%d\n",
 		 __func__, mssg->data[0], mssg->data[1], mssg->data[2],
-		 mssg->data[3], mssg->data[4]);
+		 mssg->data[3], mssg->data[4], mssg->data[5]);
 }
 
 static void
@@ -167,6 +168,7 @@ tcc_scrshare_display(
 		buffer_cfg.dst_w = tcc_scrshare_info->dstinfo->width;
 		buffer_cfg.dst_h = tcc_scrshare_info->dstinfo->height;
 		buffer_cfg.layer = tcc_scrshare_info->dstinfo->img_num;
+		buffer_cfg.rgb_swap = tcc_scrshare_info->dstinfo->rgb_swap;
 
 		if (!IS_ERR_OR_NULL(overlay_file))
 			ret = overlay_file->f_op->unlocked_ioctl(overlay_file,
@@ -274,6 +276,8 @@ static void tcc_scrshare_receive_message(struct mbox_client *client, void *mssg)
 					    msg->data[3];
 					tcc_scrshare_info->dstinfo->img_num =
 					    msg->data[4];
+					tcc_scrshare_info->dstinfo->rgb_swap =
+						msg->data[5];
 				} else if (command == SCRSHARE_CMD_ON) {
 					pr_info("%s SCRSHARE_CMD_ON ok\n",
 						__func__);
@@ -342,12 +346,13 @@ static long tcc_scrshare_ioctl(struct file *filp, unsigned int cmd,
 				__func__, ret);
 			goto err_ioctl;
 		}
-		pr_info("%s SET_DSTINFO x:%d, y:%d, w:%d, h:%d, img_num:%d\n",
+		pr_info("%s SET_DSTINFO x:%d, y:%d, w:%d, h:%d, img_num:%d, rgb_swap:%d\n",
 			__func__, tcc_scrshare_info->dstinfo->x,
 			tcc_scrshare_info->dstinfo->y,
 			tcc_scrshare_info->dstinfo->width,
 			tcc_scrshare_info->dstinfo->height,
-			tcc_scrshare_info->dstinfo->img_num);
+			tcc_scrshare_info->dstinfo->img_num,
+			tcc_scrshare_info->dstinfo->rgb_swap);
 		goto err_ioctl;
 	case IOCTL_TCC_SCRSHARE_GET_DSTINFO:	//call in maincore
 	case IOCTL_TCC_SCRSHARE_GET_DSTINFO_KERNEL:
