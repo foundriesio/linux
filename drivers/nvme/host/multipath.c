@@ -69,7 +69,6 @@ bool nvme_failover_req(struct request *req)
 {
 	struct nvme_ns *ns = req->q->queuedata;
 	u16 status = nvme_req(req)->status;
-	struct block_device *bdev;
 	unsigned long flags;
 	struct bio *bio;
 
@@ -109,15 +108,12 @@ bool nvme_failover_req(struct request *req)
 			return false;
 	}
 
-	bdev = bdget_disk(ns->head->disk, 0);
-	WARN_ON(!bdev);
 	spin_lock_irqsave(&ns->head->requeue_lock, flags);
 	for (bio = req->bio; bio; bio = bio->bi_next)
-		bio_set_dev(bio, bdev);
+		bio->bi_disk = ns->head->disk;
 	blk_steal_bios(&ns->head->requeue_list, req);
 	spin_unlock_irqrestore(&ns->head->requeue_lock, flags);
 	blk_mq_end_request(req, 0);
-	bdput(bdev);
 
 	kblockd_schedule_work(&ns->head->requeue_work);
 	return true;
@@ -178,9 +174,18 @@ void nvme_mpath_clear_ctrl_paths(struct nvme_ctrl *ctrl)
 
 static bool nvme_path_is_disabled(struct nvme_ns *ns)
 {
-	return ns->ctrl->state != NVME_CTRL_LIVE ||
-		test_bit(NVME_NS_ANA_PENDING, &ns->flags) ||
-		test_bit(NVME_NS_REMOVING, &ns->flags);
+	/*
+	 * We don't treat NVME_CTRL_DELETING as a disabled path as I/O should
+	 * still be able to complete assuming that the controller is connected.
+	 * Otherwise it will fail immediately and return to the requeue list.
+	 */
+	if (ns->ctrl->state != NVME_CTRL_LIVE &&
+	    ns->ctrl->state != NVME_CTRL_DELETING)
+		return true;
+	if (test_bit(NVME_NS_ANA_PENDING, &ns->flags) ||
+	    test_bit(NVME_NS_REMOVING, &ns->flags))
+		return true;
+	return false;
 }
 
 static struct nvme_ns *__nvme_find_path(struct nvme_ns_head *head, int node)
@@ -592,6 +597,9 @@ out_unlock:
 static void nvme_ana_work(struct work_struct *work)
 {
 	struct nvme_ctrl *ctrl = container_of(work, struct nvme_ctrl, ana_work);
+
+	if (ctrl->state != NVME_CTRL_LIVE)
+		return;
 
 	nvme_read_ana_log(ctrl);
 }
