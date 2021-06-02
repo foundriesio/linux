@@ -21,13 +21,13 @@
 
 
 #if defined(CONFIG_DWMAC_TCC_373A)
-#define  GMAC_CONFIG_INTF_SEL_MASK	(0x7 << 18)
+#define  GMAC_CONFIG_INTF_SEL_MASK	GENMASK(20,18)
 #define  GMAC_CONFIG_INTF_RGMII		(0x1 << 18)
 #define  GMAC_CONFIG_INTF_GMII		(0x0 << 18)
 #define  GMAC_CONFIG_INTF_RMII		(0x4 << 18)
 #define  GMAC_CONFIG_INTF_MII		(0x6 << 18)
 #else // default 510A setting
-#define  GMAC_CONFIG_INTF_SEL_MASK	(0x7 << 20)
+#define  GMAC_CONFIG_INTF_SEL_MASK	GENMASK(22,20)
 #define  GMAC_CONFIG_INTF_RGMII		(0x1 << 20)
 #define  GMAC_CONFIG_INTF_GMII		(0x0 << 20)
 #define  GMAC_CONFIG_INTF_RMII		(0x4 << 20)
