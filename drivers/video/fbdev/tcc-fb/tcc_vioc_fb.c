@@ -189,11 +189,7 @@ unsigned int fb_lock;// = false;   //TO FORBID UPDATE
 #endif
 
 #ifdef CONFIG_TCC_SCREEN_SHARE
-extern void tcc_scrshare_set_sharedBuffer(
-	unsigned int addr,
-	unsigned int frameWidth,
-	unsigned int frameHeight,
-	unsigned int fmt);
+#include <tcc_screen_share.h>
 #endif
 
 #ifdef CONFIG_HDMI_DISPLAY_LASTFRAME
@@ -1934,7 +1930,8 @@ static int tccfb_ioctl(
 
 	#ifdef CONFIG_TCC_SCREEN_SHARE
 		tcc_scrshare_set_sharedBuffer(BaseAddr, sc_info.width,
-			sc_info.height, TCC_LCDC_IMG_FMT_RGB888);
+			sc_info.height, TCC_LCDC_IMG_FMT_RGB888,
+			VIOC_SWAP_RGB);
 	#endif
 	}
 		break;
