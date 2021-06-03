@@ -275,6 +275,7 @@ static void screen_share_update_plane(
 	unsigned int cpp = fb->format->cpp[0];
 	unsigned int pitch = fb->pitches[0];
 	unsigned int vioc_fmt;
+	unsigned int vioc_swap = VIOC_SWAP_RGB;
 
 	if (win >= ctx->hw_data.rdma_counts) {
 		pr_err(
@@ -300,36 +301,47 @@ static void screen_share_update_plane(
 			LOG_TAG, __func__, win);
 		return;
 	}
+
 	switch (fb->format->format) {
 	case DRM_FORMAT_BGR565:
-		//vioc_swap = 5;  /* B-G-R */
+		vioc_swap = VIOC_SWAP_BGR;  /* B-G-R */
+		vioc_fmt = TCC_LCDC_IMG_FMT_RGB565;
+		break;
 	case DRM_FORMAT_RGB565:
 		vioc_fmt = TCC_LCDC_IMG_FMT_RGB565;
 		break;
 	case DRM_FORMAT_BGR888:
-		//vioc_swap = 5;  /* B-G-R */
+		vioc_swap = VIOC_SWAP_BGR;  /* B-G-R */
+		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888_3;
+		break;
 	case DRM_FORMAT_RGB888:
 		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888_3;
 		break;
 	case DRM_FORMAT_XBGR8888:
+		vioc_swap = VIOC_SWAP_BGR;  /* B-G-R */
+		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888;
+		break;
 	case DRM_FORMAT_ABGR8888:
-		//vioc_swap = 5;  /* B-G-R */
+		vioc_swap = VIOC_SWAP_BGR;  /* B-G-R */
+		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888;
+		break;
 	case DRM_FORMAT_XRGB8888:
+		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888;
+		break;
 	case DRM_FORMAT_ARGB8888:
 		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888;
 		break;
 	case DRM_FORMAT_NV12:
 		vioc_fmt = TCC_LCDC_IMG_FMT_YUV420ITL0;
-		//vioc_y2r = 1;
 		break;
 	case DRM_FORMAT_NV21:
 		vioc_fmt = TCC_LCDC_IMG_FMT_YUV420ITL1;
-		//vioc_y2r = 1;
 		break;
 	case DRM_FORMAT_YVU420:
+		vioc_fmt = TCC_LCDC_IMG_FMT_YUV420SP;
+		break;
 	case DRM_FORMAT_YUV420:
 		vioc_fmt = TCC_LCDC_IMG_FMT_YUV420SP;
-		//vioc_y2r = 1;
 		break;
 	default:
 		vioc_fmt = TCC_LCDC_IMG_FMT_RGB888;
@@ -337,7 +349,7 @@ static void screen_share_update_plane(
 
 	tcc_scrshare_set_sharedBuffer(
 		lower_32_bits(dma_addr),
-		state->crtc.w, state->crtc.h, vioc_fmt);
+		state->crtc.w, state->crtc.h, vioc_fmt, vioc_swap);
 }
 
 static void screen_share_enable(struct tcc_drm_crtc *crtc)
