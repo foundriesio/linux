@@ -421,7 +421,8 @@ err_ioctl:
 }
 
 void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth,
-				   unsigned int frameHeight, unsigned int fmt, unsigned int rgb_swap)
+				   unsigned int frameHeight, unsigned int fmt,
+				   unsigned int rgb_swap)
 {
 	if ((tcc_scrshare_info == NULL) || (addr <= 0) || (frameWidth <= 0)
 	    || (frameHeight <= 0) || (fmt <= 0) || (rgb_swap < 0)) {
@@ -446,7 +447,6 @@ void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth,
 		tcc_scrshare_info->frm_w = frameWidth;
 		tcc_scrshare_info->frm_h = frameHeight;
 		tcc_scrshare_info->fmt = fmt;
-		tcc_scrshare_info->rgb_swap = rgb_swap;
 
 		mutex_lock(&tcc_scrshare_device->tx.lock);
 		memset(&data, 0x0, sizeof(struct tcc_mbox_data));
@@ -455,7 +455,7 @@ void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth,
 		data.data[1] = tcc_scrshare_info->frm_w;
 		data.data[2] = tcc_scrshare_info->frm_h;
 		data.data[3] = tcc_scrshare_info->fmt;
-		data.data[4] = tcc_scrshare_info->rgb_swap;
+		data.data[4] = rgb_swap;
 		data.data_len = 5;
 
 		/* Increase tx-sequence ID */
