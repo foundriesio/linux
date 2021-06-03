@@ -49,7 +49,6 @@ struct tcc_scrshare_info {
 	unsigned int fmt;
 	unsigned int src_addr;
 	unsigned int share_enable;
-	unsigned int rgb_swap;
 };
 
 /* control commands */
