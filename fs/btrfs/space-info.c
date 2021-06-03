@@ -510,8 +510,9 @@ static int may_commit_transaction(struct btrfs_fs_info *fs_info,
 	 * possibly do a chunk allocation the next loop through.
 	 */
 	if (test_bit(BTRFS_TRANS_HAVE_FREE_BGS, &trans->transaction->flags) ||
-	    percpu_counter_compare(&space_info->total_bytes_pinned,
-				   bytes_needed) >= 0)
+	    __percpu_counter_compare(&space_info->total_bytes_pinned,
+				   bytes_needed,
+				   BTRFS_TOTAL_BYTES_PINNED_BATCH) >= 0)
 		goto commit;
 
 	/*
@@ -539,8 +540,9 @@ static int may_commit_transaction(struct btrfs_fs_info *fs_info,
 		goto commit;
 	bytes_needed -= reclaim_bytes;
 
-	if (percpu_counter_compare(&space_info->total_bytes_pinned,
-				   bytes_needed) < 0) {
+	if (__percpu_counter_compare(&space_info->total_bytes_pinned,
+				   bytes_needed,
+				   BTRFS_TOTAL_BYTES_PINNED_BATCH) < 0) {
 		goto enospc;
 	}
 

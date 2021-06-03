@@ -119,7 +119,8 @@ static void add_pinned_bytes(struct btrfs_fs_info *fs_info,
 
 	space_info = btrfs_find_space_info(fs_info, flags);
 	ASSERT(space_info);
-	percpu_counter_add(&space_info->total_bytes_pinned, num_bytes);
+	percpu_counter_add_batch(&space_info->total_bytes_pinned, num_bytes,
+		    BTRFS_TOTAL_BYTES_PINNED_BATCH);
 }
 
 /* simple helper to search for an existing data extent at a given offset */
@@ -1942,8 +1943,9 @@ void btrfs_cleanup_ref_head_accounting(struct btrfs_fs_info *fs_info,
 			flags = BTRFS_BLOCK_GROUP_METADATA;
 		space_info = btrfs_find_space_info(fs_info, flags);
 		ASSERT(space_info);
-		percpu_counter_add(&space_info->total_bytes_pinned,
-				   -head->num_bytes);
+		percpu_counter_add_batch(&space_info->total_bytes_pinned,
+				   -head->num_bytes,
+				   BTRFS_TOTAL_BYTES_PINNED_BATCH);
 
 		/*
 		 * We had csum deletions accounted for in our delayed refs rsv,
@@ -2814,7 +2816,8 @@ static int pin_down_extent(struct btrfs_fs_info *fs_info,
 
 	trace_btrfs_space_reservation(fs_info, "pinned",
 				      cache->space_info->flags, num_bytes, 1);
-	percpu_counter_add(&cache->space_info->total_bytes_pinned, num_bytes);
+	percpu_counter_add_batch(&cache->space_info->total_bytes_pinned,
+		    num_bytes, BTRFS_TOTAL_BYTES_PINNED_BATCH);
 	set_extent_dirty(fs_info->pinned_extents, bytenr,
 			 bytenr + num_bytes - 1, GFP_NOFS | __GFP_NOFAIL);
 	return 0;
@@ -3071,7 +3074,8 @@ static int unpin_extent_range(struct btrfs_fs_info *fs_info,
 		cache->pinned -= len;
 		btrfs_space_info_update_bytes_pinned(fs_info, space_info, -len);
 		space_info->max_extent_size = 0;
-		percpu_counter_add(&space_info->total_bytes_pinned, -len);
+		percpu_counter_add_batch(&space_info->total_bytes_pinned,
+			    -len, BTRFS_TOTAL_BYTES_PINNED_BATCH);
 		if (cache->ro) {
 			space_info->bytes_readonly += len;
 			readonly = true;
