@@ -482,7 +482,6 @@ void tcc_scrshare_set_sharedBuffer(unsigned int addr, unsigned int frameWidth,
 
 static int tcc_scrshare_release(struct inode *inode, struct file *filp)
 {
-	tcc_scrshare_off();
 	return 0;
 }
 
