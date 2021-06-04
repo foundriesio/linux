@@ -141,7 +141,7 @@ static void tcc_i2c_reg_dump(struct tcc_i2c *i2c)
 	}
 	pr_debug("[DEBUG][I2C] I2C_PORT_CFG0: 0x%08x\n",
 			i2c_readl(i2c->port_cfg + I2C_PORT_CFG0));
-	pr_debug("[DEBUG][I2C] I2C_PORT_CFG0: 0x%08x\n",
+	pr_debug("[DEBUG][I2C] I2C_PORT_CFG1: 0x%08x\n",
 			i2c_readl(i2c->port_cfg + I2C_PORT_CFG1));
 	pr_debug("[DEBUG][I2C] I2C_PORT_CFG2: 0x%08x\n",
 			i2c_readl(i2c->port_cfg + I2C_PORT_CFG2));
@@ -593,78 +593,72 @@ static const struct i2c_algorithm tcc_i2c_algo = {
 /* tcc_i2c_set_port
  * set the port of i2c
  */
+static uint8_t tcc_i2c_get_pcfg(void __iomem *base, int32_t core)
+{
+	uint32_t res, shift;
+
+	if (core < 4) {
+		base += I2C_PORT_CFG0;
+	} else {
+		base += I2C_PORT_CFG2;
+		core -= 4;
+	}
+
+	res = readl(base);
+	shift = core << 3;
+	res >>= shift;
+
+	return (res & 0xFFU);
+}
+
+static void tcc_i2c_set_pcfg(void __iomem *base, int32_t core, uint32_t port)
+{
+	uint32_t val, shift;
+
+	if (core < 4) {
+		base += I2C_PORT_CFG0;
+	} else {
+		base += I2C_PORT_CFG2;
+		core -= 4;
+	}
+
+	val = readl(base);
+	shift = core << 3;
+	val &= ~(0xFFU << shift);
+	val |= (port << shift);
+	writel(val, base);
+}
+
 static int32_t tcc_i2c_set_port(struct tcc_i2c *i2c)
 {
-	int32_t i, offset;
-	uint32_t reg_shift, pcfg_val;
-	uint8_t port = (u8)i2c->port_mux;
+	uint8_t port, conflict;
+	int32_t i;
+
+	port = i2c->port_mux;
 
 	if (port == 0xFFU) {
 		return -EINVAL;
 	}
 
-	/* Check conflict of i2c master port */
-	pcfg_val = i2c_readl(i2c->port_cfg + I2C_PORT_CFG0);
+	tcc_i2c_set_pcfg(i2c->port_cfg, i2c->core, port);
+
+	/* clear conflict for each i2c master core */
+	for (i = 0; i < 8; i++) {
+		if (i == i2c->core)
+			continue;
+		conflict = tcc_i2c_get_pcfg(i2c->port_cfg, i);
+		if (port == conflict)
+			tcc_i2c_set_pcfg(i2c->port_cfg, i, 0xff);
+	}
+
+	/* clear conflict for each i2c slave core */
 	for (i = 0; i < 4; i++) {
-		reg_shift = (u32)i << 3;
-		if (port == ((pcfg_val >> reg_shift) & 0xFFU)) {
-			/* Clear duplicated port */
-			pcfg_val |= ((u32)0xFFU << reg_shift);
-		}
+		conflict = tcc_i2c_get_pcfg(i2c->port_cfg+I2C_PORT_CFG1, i);
+		if (port == conflict)
+			tcc_i2c_set_pcfg(i2c->port_cfg+I2C_PORT_CFG1, i, 0xff);
 	}
-	i2c_writel(pcfg_val, i2c->port_cfg + I2C_PORT_CFG0);
 
-	pcfg_val = i2c_readl(i2c->port_cfg + I2C_PORT_CFG2);
-	for (i = 0; i < 4; i++) {
-		reg_shift = (u32)i << 3;
-		if (port == ((pcfg_val >> reg_shift) & 0xFFU)) {
-			/* Clear duplicated port */
-			pcfg_val |= ((u32)0xFFU << reg_shift);
-		}
-	}
-	i2c_writel(pcfg_val, i2c->port_cfg + I2C_PORT_CFG2);
-
-	pcfg_val = i2c_readl(i2c->port_cfg + I2C_PORT_CFG1);
-	for (i = 0; i < 4; i++) {
-		reg_shift = (u32)i << 3;
-		if (port == ((pcfg_val >> reg_shift) & 0xFFU)) {
-			/* Clear duplicated port */
-			pcfg_val |= ((u32)0xFFU << reg_shift);
-		}
-	}
-	i2c_writel(pcfg_val, i2c->port_cfg + I2C_PORT_CFG1);
-
-	/* Set i2c port-mux */
-	if (i2c->core < 4) {
-		offset = I2C_PORT_CFG0;
-		reg_shift = (u32)i2c->core << 3;
-	} else {
-		offset = I2C_PORT_CFG2;
-		reg_shift = ((u32)i2c->core - 4U) << 3U;
-	}
-	pcfg_val = i2c_readl(i2c->port_cfg + offset);
-	pcfg_val &= ~((u32)0xFFU << reg_shift);
-	pcfg_val |= ((u32)port << reg_shift);
-	i2c_writel(pcfg_val, i2c->port_cfg + offset);
-
-	dev_info(i2c->dev, "[INFO][I2C] PORT MUX: %d\n", port);
 	return 0;
-}
-
-static uint32_t tcc_i2c_get_port(struct tcc_i2c *i2c)
-{
-	uint32_t pcfg, port;
-
-	if (i2c->core < 4) {
-		pcfg = i2c_readl(i2c->port_cfg + I2C_PORT_CFG0);
-		port = (pcfg >> ((u32)i2c->core << 3U));
-	} else {
-		pcfg = i2c_readl(i2c->port_cfg + I2C_PORT_CFG2);
-		port = (pcfg >> (((u32)i2c->core - 4U) << 3U));
-	}
-	port &= 0xFFU;
-
-	return port;
 }
 
 /* Before disable clock, TCC805x have to check corresponding i2c core.
@@ -1143,7 +1137,7 @@ static ssize_t tcc_i2c_show(struct device *dev,
 	ret = sprintf(buf, "[DEBUG][I2C] channel %d, speed %d kHz, ",
 			i2c->core, (i2c->i2c_clk_rate / 1000U));
 
-	port_value = tcc_i2c_get_port(i2c);
+	port_value = tcc_i2c_get_pcfg(i2c->port_cfg, i2c->core);
 	ret += sprintf(buf + strnlen(buf, (size_t)ret), " PORT: %d\n",
 			port_value);
 	return ret;
