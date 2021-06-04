@@ -1,0 +1,36 @@
+* Device Tree Bindings for MAX9295
+
+Required properties:
+
+- status     : disable or enable the device node
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'maxim,max9295'
+- reg        : I2C slave address
+- port       : specifies the endpoint of the sensor
+
+example
+-------
+	max9295: max9295 {
+		/* serializer */
+		status		= "okay";
+		compatible	= "maxim,max9295";
+		reg		= <0x62>;
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@0 {
+				reg = <0>;
+				max9295_in: endpoint {
+					remote-endpoint = <&ar0820_out>;
+					io-direction	= "input";
+				};
+			};
+			port@1 {
+				reg = <1>;
+				max9295_out: endpoint {
+					remote-endpoint = <&max96712_in0>;
+					io-direction	= "output";
+				};
+			};
+		};
+	};

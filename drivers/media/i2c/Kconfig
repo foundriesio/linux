@@ -45,6 +45,16 @@ config VIDEO_ARXXXX
 	  To compile this driver as a module, choose M here: the
 	  module will be called arxxxx.
 
+config VIDEO_AR0820
+	tristate "Onsemiconductor AR0820 CIS"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  Say Y to include support for Onsemiconductor AR0820 CIS. AR0820 is
+	  ISP-less camera module. By default, this is disabled in Telechips EVB.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ar0820.
+
 config VIDEO_AR0144
 	tristate "Onsemiconductor AR0144 CIS"
 	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
@@ -85,6 +95,19 @@ config VIDEO_MAX9275
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called max9275.
+
+config VIDEO_MAX9295
+	tristate "Maxim MAX9295 Serializer"
+	depends on GPIOLIB && VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	select REGMAP_I2C
+	---help---
+	  Maxim MAX9295 14-Bit GMSL Serializer is a compact serializer in a
+	  4mmx4mm TQFN package that is especially suited for automotive camera
+	  application. Say Y to include support for the Maxim MAX9295
+	  Serializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called MAX9295.
 
 config VIDEO_MAX96701
 	tristate "Maxim MAX96701 Serializer"

@@ -51,8 +51,19 @@
 #define DEFAULT_WIDTH			(1920)
 #define DEFAULT_HEIGHT			(1080)
 
+/******* input link mode *******/
 #define MAX96712_LINK_MODE		MAX96712_GMSL1_4CH
+//#define MAX96712_LINK_MODE		(MAX96712_GMSL2_A | MAX96712_LINK_EN_A)
 
+/******* camera type *******/
+/* RAW12 (Bayer RGB) */
+/* ISPless Camera moudle 1280 x 800 */
+#define MAX96712_INPUT_RAW12_GRBG_AR0147_MAX96701
+/* ISPless Camera moudle 2560 x 1600 */
+//#define MAX96712_INPUT_RAW12_GRBG_AR0820_MAX9295
+
+/******* alias *******/
+#define MAX96712_ENABLE_ALIAS
 /*
  * TODO
  * The defines below must be modified according to your device
@@ -281,6 +292,7 @@ const struct reg_sequence max96712_reg_defaults[] = {
 
 /* for raw12 4ch input */
 const struct reg_sequence max96712_reg_defaults_raw12[] = {
+#ifdef MAX96712_INPUT_RAW12_GRBG_AR0147_MAX96701
 	//----- DeSerializer MAX96712 GMSL1 mode setting -----
 	{0x0006, 0x00, 0}, // GMSL1 mode  All LINK Disable.
 
@@ -402,6 +414,36 @@ const struct reg_sequence max96712_reg_defaults_raw12[] = {
 	{0x0006, MAX96712_LINK_MODE, 0},
 
 	{0x0018, 0x0F, 100*1000},  //i MAX96712 one shot reset
+#endif
+#ifdef MAX96712_INPUT_RAW12_GRBG_AR0820_MAX9295
+	/************* De-Serializer MAX96712 ******************/
+	/* Des Reset */
+	{0x0006, 0x00, 0},
+	{0x0013, 0x75, 0},
+	{0x0006, 0xF1, 0},		/* GMSL2 mode for all links */
+	{0x0010, 0x22, 0},		/* Link A 6Gbps mode */
+	{0x0011, 0x22, 0},
+	{0x0018, 0x0F, 100 * 1000},	/* Oneshot reset */
+	{0x08A3, 0xE4, 0},		/* lane mapping */
+	{0x08A4, 0xE4, 0},
+	/* Pipe and PHY setting */
+	{0x00F0, 0x40, 0},		/*
+					 * pipeline X in link 1 to video pipe 1
+					 * pipeline X in link 0 to video pipe 0
+					 */
+	/* MIPI mode */
+	{0x08A0, 0x04, 0},		/* 2x4 mode */
+	{0x08A2, 0xF0, 0},		/* Turn on all PHYs */
+	/* raw12, video pipeline 0 */
+	{0x090B, 0x07, 0},
+	{0x092D, 0x15, 0},		/* CSI2 controller 1 */
+	{0x090D, 0x2C, 0},
+	{0x090E, 0x2C, 0},
+	{0x090F, 0x00, 0},
+	{0x0910, 0x00, 0},
+	{0x0911, 0x01, 0},
+	{0x0912, 0x01, 0},
+#endif
 };
 
 const struct reg_sequence max96712_reg_defaults_raw8[] = {
@@ -1075,12 +1117,14 @@ static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 		}
 		if (dev->fmt.code == MEDIA_BUS_FMT_SGRBG12_1X12) {
 			/* format is MEDIA_BUS_FMT_SGRBG12_1X12 */
+#ifdef MAX96712_ENABLE_ALIAS
 			ret = max96712_set_alias_remote_slave_addr(sd,
 					MAX96712_LINK_MODE);
 			if (ret < 0) {
 				/* failure of changing remote device address */
 				loge("Fail set alias of remote address\n");
 			}
+#endif
 			reg_val = 0x62;
 		} else if (dev->fmt.code == MEDIA_BUS_FMT_Y8_1X8) {
 			/* format is MEDIA_BUS_FMT_Y8_1X8 */
@@ -1094,6 +1138,14 @@ static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 			/* failure of enabling output  */
 			loge("Fail enable output of max96712 device\n");
 		}
+#if 0
+		/* RESET data path(keep register settings) */
+		ret = regmap_write(dev->regmap, 0x0018, 0x0f);
+		if (ret < 0) {
+			/* failure of enabling output  */
+			loge("Fail enable output of max96712 device\n");
+		}
+#endif
 	} else if ((dev->s_cnt == 1) && (enable == 0)) {
 		if (dev->fmt.code == MEDIA_BUS_FMT_SGRBG12_1X12)
 			reg_val = 0x60;

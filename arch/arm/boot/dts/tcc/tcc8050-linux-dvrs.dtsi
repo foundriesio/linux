@@ -785,6 +785,45 @@
 			};
 		};
 #else
+#if 0 /* sekonix QHD ispless camera module */
+		ar0820: ar0820 {
+			/* Camera Image Sensor */
+			status		= "okay";
+			compatible	= "onnn,ar0820";
+			reg		= <0x10>;
+			port {
+				ar0820_out: endpoint {
+					remote-endpoint = <&max9295_in>;
+					io-direction	= "output";
+				};
+			};
+		};
+
+		max9295: max9295 {
+			/* serializer */
+			status		= "okay";
+			compatible	= "maxim,max9295";
+			reg		= <0x62>;
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				port@0 {
+					reg = <0>;
+					max9295_in: endpoint {
+						remote-endpoint = <&ar0820_out>;
+						io-direction	= "input";
+					};
+				};
+				port@1 {
+					reg = <1>;
+					max9295_out: endpoint {
+						remote-endpoint = <&max96712_in0>;
+						io-direction	= "output";
+					};
+				};
+			};
+		};
+#endif
 
 		/* FHD camera module & max96712 using MIPI CSI2 output */
 		cxd5700: cxd5700@18 {
@@ -955,6 +994,7 @@
 					interleave-mode = <3>;
 					//hs-settle = <2>; // for mcnex ispless 1ch
 					//hs-settle = <19>; // for sekonix ispless 4ch
+					//hs-settle = <33>; // for sekonix ispless 1ch(qhd)
 #if !defined(USE_FHD_VIDEOSOURCES)
 					hs-settle = <17>; // for HD 4ch
 #else

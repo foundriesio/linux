@@ -1,0 +1,26 @@
+* Device Tree Bindings for AR0820
+
+AR0820 is camera image sensor. 
+Basically, it is disabled by default for Telechips EVB.
+
+Required properties:
+
+- status     : disable or enable the device node
+- compatible : property name that conveys the platform architecture identifiers,
+               as 'onnn,ar0820'
+- reg        : I2C slave address
+- port       : specifies the endpoint of the sensor (output only)
+
+example
+-------
+	ar0820: ar0820 {
+		status		= "disabled";
+		compatible	= "onnn,ar0820";
+		reg		= <0x10>;
+		port {
+			ar0820_out: endpoint {
+				remote-endpoint = <&max9295_in>;
+				io-direction	= "output";
+			};
+		};
+	};
