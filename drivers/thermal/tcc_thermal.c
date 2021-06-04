@@ -260,14 +260,12 @@ static int32_t temp_to_code(struct tcc_thermal_data *data, uint32_t temp_trim1,
 					(int32_t)10000)/(int32_t)625) +
 					(int32_t)temp_trim1;
 		} else if (temp < (int32_t)25) {
-			temp_code = (((temp - (int32_t)25)*
-					((int32_t)10000)*((int32_t)57+
-					(int32_t)data->d_otp_slope))/
-					((int32_t)625*
-					(((int32_t)data->ts_test_info_high -
-					(int32_t)data->ts_test_info_low)/
-					(int32_t)100))) +
-					(int32_t)temp_trim1;
+			temp_code = (temp - 25);
+			temp_code = temp_code * (57 + (int32_t)data->d_otp_slope);
+			temp_code = temp_code / 65;
+			temp_code = temp_code * 10000;
+			temp_code = temp_code/(625);
+			temp_code = temp_code + temp_trim1;
 		} else {
 		/**/
 		/**/
@@ -282,16 +280,13 @@ static int32_t temp_to_code(struct tcc_thermal_data *data, uint32_t temp_trim1,
 					(int32_t)100)) +
 					(int32_t)temp_trim1;
 		} else if (temp < (int32_t)25) {
-			temp_code = (((temp - (int32_t)25)*
-					((int32_t)57+
-					(int32_t)data->d_otp_slope)*
-					((int32_t)temp_trim2 -
-					(int32_t)temp_trim1)) /
-					((int32_t)65 *
-					(((int32_t)data->ts_test_info_high -
-					(int32_t)data->ts_test_info_low)/
-					(int32_t)100))) +
-					(int32_t)temp_trim1;
+			temp_code = (temp - 25);
+			temp_code = temp_code * (57 + (int32_t)data->d_otp_slope);
+			temp_code = temp_code / 65;
+			temp_code = temp_code * ((int32_t)temp_trim2 - (int32_t)temp_trim1);
+			temp_code = temp_code/(((int32_t)data->ts_test_info_high -
+					(int32_t)data->ts_test_info_low)/100);
+			temp_code = temp_code + temp_trim1;
 		} else {
 		/**/
 		/**/
@@ -664,7 +659,6 @@ static irqreturn_t tcc_thermal_irq(int32_t irq, void *dev)
 	int32_t i = 0;
 	uint32_t checker = 0;
 
-	mutex_lock(&data->lock);
 	writel(0, data->interrupt_enable); // Default interrupt disable
 	checker = readl_relaxed(data->interrupt_status);
 	if (data->pdata->core == 0)
@@ -698,7 +692,6 @@ static irqreturn_t tcc_thermal_irq(int32_t irq, void *dev)
 			data->interrupt_mask);
 	writel((CA53_IRQ_EN | CA72_IRQ_EN), data->interrupt_enable);
 
-	mutex_unlock(&data->lock);
 	return IRQ_HANDLED;
 }
 #endif

@@ -3511,12 +3511,12 @@
 		core = "CPU0";
 
 		threshold_high_temp = <75>;
-		threshold_low_temp = <(-15)>;
+		threshold_low_temp = <(-40)>;
 		interval_time = <262143>;
 
 		throttle_table {
 			throttle_tab_0 {
-				temp = <0>;
+				temp = <(-40)>;
 				freq_max_cluster0 = <1690>;
 			};
 			throttle_tab_1 {

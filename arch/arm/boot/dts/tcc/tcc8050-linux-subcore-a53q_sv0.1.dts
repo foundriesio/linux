@@ -2604,29 +2604,29 @@
                 core = "CPU1";
 
                 threshold_high_temp = <75>;
-                threshold_low_temp = <(-15)>;
+                threshold_low_temp = <(-40)>;
                 interval_time = <262143>;
 
                 throttle_table {
                         throttle_tab_0 {
-                                temp = <0>;
-                                freq_max_cluster0 = <1690>;
+                                temp = <(-40)>;
+                                freq_max_cluster0 = <1450>;
                         };
                         throttle_tab_1 {
                                 temp = <75>;
-                                freq_max_cluster0 = <1500>;
+                                freq_max_cluster0 = <1400>;
                         };
                         throttle_tab_2 {
                                 temp = <80>;
-                                freq_max_cluster0 = <1460>;
+                                freq_max_cluster0 = <1100>;
                         };
                         throttle_tab_3 {
                                 temp = <85>;
-                                freq_max_cluster0 = <950>;
+                                freq_max_cluster0 = <1000>;
                         };
                         throttle_tab_4 {
                                 temp = <125>;
-                                freq_max_cluster0 = <950>;
+                                freq_max_cluster0 = <1000>;
                         };
                 };
         };
