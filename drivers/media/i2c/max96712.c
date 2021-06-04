@@ -419,7 +419,7 @@ const struct reg_sequence max96712_reg_defaults_raw12[] = {
 	/************* De-Serializer MAX96712 ******************/
 	/* Des Reset */
 	{0x0006, 0x00, 0},
-	{0x0013, 0x75, 0},
+	{0x0013, 0x75, 50 * 1000},	/* Device Reset */
 	{0x0006, 0xF1, 0},		/* GMSL2 mode for all links */
 	{0x0010, 0x22, 0},		/* Link A 6Gbps mode */
 	{0x0011, 0x22, 0},
