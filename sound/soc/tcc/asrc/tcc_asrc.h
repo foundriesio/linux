@@ -738,6 +738,24 @@ enum tcc_asrc_ramp_time_t {
 	(((x)<<0) & TCC_ASRC_VOL_RAMP_WAIT_MASK)
 
 // IRQ Raw Status/Mask/Clear/Enable Register
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+#define TCC_ASRC_IRQ_FIFO_OUT3_COMPLETE\
+	(0x01<<31)
+#define TCC_ASRC_IRQ_FIFO_OUT2_COMPLETE\
+	(0x01<<30)
+#define TCC_ASRC_IRQ_FIFO_OUT1_COMPLETE\
+	(0x01<<29)
+#define TCC_ASRC_IRQ_FIFO_OUT0_COMPLETE\
+	(0x01<<28)
+#define TCC_ASRC_IRQ_FIFO_IN3_COMPLETE\
+	(0x01<<27)
+#define TCC_ASRC_IRQ_FIFO_IN2_COMPLETE\
+	(0x01<<26)
+#define TCC_ASRC_IRQ_FIFO_IN1_COMPLETE\
+	(0x01<<25)
+#define TCC_ASRC_IRQ_FIFO_IN0_COMPLETE\
+	(0x01<<24)
+#endif
 #define TCC_ASRC_IRQ_PAIR3_OVERFLOW\
 	(0x01<<23)
 #define TCC_ASRC_IRQ_PAIR2_OVERFLOW\
@@ -791,6 +809,15 @@ enum tcc_asrc_ramp_time_t {
 #define TCC_ASRC_FIFO_DMA_EN\
 	(0x01<<31)
 #if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+#define TCC_ASRC_IRQ_PAIR3_EMPTY\
+	(0x01<<3)
+#define TCC_ASRC_IRQ_PAIR2_EMPTY\
+	(0x01<<2)
+#define TCC_ASRC_IRQ_PAIR1_EMPTY\
+	(0x01<<1)
+#define TCC_ASRC_IRQ_PAIR0_EMPTY\
+	(0x01<<0)
+
 #define TCC_ASRC_FIFO_SIZE_MASK\
 	(0x07<<20)
 #define TCC_ASRC_FIFO_SIZE(x)\
@@ -822,15 +849,15 @@ enum tcc_asrc_fifo_mode_t {
 };
 
 #if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
-enum tcc_asrc_fifo_size_t {
-	TCC_ASRC_FIFO_SIZE_256WORD = 0,
-	TCC_ASRC_FIFO_SIZE_128WORD = 1,
-	TCC_ASRC_FIFO_SIZE_64WORD = 2,
-	TCC_ASRC_FIFO_SIZE_32WORD = 3,
-	TCC_ASRC_FIFO_SIZE_16WORD = 4,
-	TCC_ASRC_FIFO_SIZE_8WORD = 5,
-	TCC_ASRC_FIFO_SIZE_4WORD = 6,
-	TCC_ASRC_FIFO_SIZE_2WORD = 7,
+enum tcc_asrc_fifo_in_size_t {
+	TCC_ASRC_FIFO_IN_SIZE_256WORD = 0,
+	TCC_ASRC_FIFO_IN_SIZE_128WORD = 1,
+	TCC_ASRC_FIFO_IN_SIZE_64WORD = 2,
+	TCC_ASRC_FIFO_IN_SIZE_32WORD = 3,
+	TCC_ASRC_FIFO_IN_SIZE_16WORD = 4,
+	TCC_ASRC_FIFO_IN_SIZE_8WORD = 5,
+	TCC_ASRC_FIFO_IN_SIZE_4WORD = 6,
+	TCC_ASRC_FIFO_IN_SIZE_2WORD = 7,
 };
 #endif//defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 
@@ -995,7 +1022,7 @@ void tcc_asrc_fifo_in_config(void __iomem *asrc_reg,
 	int asrc_ch,
 	enum tcc_asrc_fifo_fmt_t fmt,
 	enum tcc_asrc_fifo_mode_t mode,
-	enum tcc_asrc_fifo_size_t size,
+	enum tcc_asrc_fifo_in_size_t size,
 	uint32_t threshold);
 #else
 void tcc_asrc_fifo_in_config(void __iomem *asrc_reg,
@@ -1051,6 +1078,28 @@ void tcc_asrc_set_outport_format(void __iomem *asrc_reg,
 	enum tcc_asrc_ext_io_fmt_t fmt,
 	int swap);
 
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+void tcc_asrc_irq0_fifo_in_read_complete_enable(void __iomem *asrc_reg,
+	int asrc_ch);
+void tcc_asrc_irq0_fifo_in_read_complete_disable(void __iomem *asrc_reg,
+	int asrc_ch);
+void tcc_asrc_irq0_fifo_out_read_complete_enable(void __iomem *asrc_reg,
+	int asrc_ch);
+void tcc_asrc_irq0_fifo_out_read_complete_disable(void __iomem *asrc_reg,
+	int asrc_ch);
+void tcc_asrc_irq1_ringbuf_empty_enable(void __iomem *asrc_reg,
+	int asrc_ch);
+void tcc_asrc_irq1_ringbuf_empty_disable(void __iomem *asrc_reg,
+	int asrc_ch);
+void tcc_asrc_set_fifo_in_read_cnt_threshold(void __iomem *asrc_reg, int asrc_ch,
+	uint32_t buffer_size);
+void tcc_asrc_clear_fifo_in_read_cnt(void __iomem *asrc_reg,
+	int asrc_ch);
+void tcc_asrc_set_fifo_out_read_cnt_threshold(void __iomem *asrc_reg,
+	int asrc_ch, uint32_t buffer_size);
+void tcc_asrc_clear_fifo_out_read_cnt(void __iomem *asrc_reg,
+	int asrc_ch);
+#endif
 void tcc_asrc_reg_backup(void __iomem *asrc_reg,
 	struct asrc_reg_t *regs);
 void tcc_asrc_reg_restore(void __iomem *asrc_reg,

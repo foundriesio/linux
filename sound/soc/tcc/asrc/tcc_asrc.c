@@ -584,7 +584,7 @@ void tcc_asrc_fifo_in_config(
 	int asrc_ch,
 	enum tcc_asrc_fifo_fmt_t fmt,
 	enum tcc_asrc_fifo_mode_t mode,
-	enum tcc_asrc_fifo_size_t size,
+	enum tcc_asrc_fifo_in_size_t size,
 	uint32_t threshold)
 {
 	uint32_t val;
@@ -936,6 +936,155 @@ void tcc_asrc_set_outport_format(
 
 	writel(val, asrc_reg + TCC_ASRC_EXT_IO_FMT_OFFSET);
 }
+
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+void tcc_asrc_irq0_fifo_in_read_complete_enable(void __iomem *asrc_reg, int asrc_ch)
+{
+	uint32_t val;
+	uint32_t offset = TCC_ASRC_IRQ_ENABLE0_OFFSET;
+
+	val = readl(asrc_reg + offset);
+
+	val |= (asrc_ch == 0) ? TCC_ASRC_IRQ_FIFO_IN0_COMPLETE :
+		(asrc_ch == 1) ? TCC_ASRC_IRQ_FIFO_IN1_COMPLETE :
+		(asrc_ch == 2) ? TCC_ASRC_IRQ_FIFO_IN2_COMPLETE : TCC_ASRC_IRQ_FIFO_IN3_COMPLETE;
+
+	writel(val, asrc_reg + offset);
+}
+
+void tcc_asrc_irq0_fifo_in_read_complete_disable(void __iomem *asrc_reg, int asrc_ch)
+{
+	uint32_t val;
+	uint32_t offset = TCC_ASRC_IRQ_ENABLE0_OFFSET;
+
+	val = readl(asrc_reg + offset);
+
+	val &= (asrc_ch == 0) ? (~TCC_ASRC_IRQ_FIFO_IN0_COMPLETE) :
+		(asrc_ch == 1) ? (~TCC_ASRC_IRQ_FIFO_IN1_COMPLETE) :
+		(asrc_ch == 2) ? (~TCC_ASRC_IRQ_FIFO_IN2_COMPLETE) : (~TCC_ASRC_IRQ_FIFO_IN3_COMPLETE);
+
+	writel(val, asrc_reg + offset);
+}
+
+void tcc_asrc_irq0_fifo_out_read_complete_enable(void __iomem *asrc_reg, int asrc_ch)
+{
+	uint32_t val;
+	uint32_t offset = TCC_ASRC_IRQ_ENABLE0_OFFSET;
+
+	val = readl(asrc_reg + offset);
+
+	val |= (asrc_ch == 0) ? TCC_ASRC_IRQ_FIFO_OUT0_COMPLETE :
+		(asrc_ch == 1) ? TCC_ASRC_IRQ_FIFO_OUT1_COMPLETE :
+		(asrc_ch == 2) ? TCC_ASRC_IRQ_FIFO_OUT2_COMPLETE : TCC_ASRC_IRQ_FIFO_OUT3_COMPLETE;
+
+	writel(val, asrc_reg + offset);
+}
+
+void tcc_asrc_irq0_fifo_out_read_complete_disable(void __iomem *asrc_reg, int asrc_ch)
+{
+	uint32_t val;
+	uint32_t offset = TCC_ASRC_IRQ_ENABLE0_OFFSET;
+
+	val = readl(asrc_reg + offset);
+
+	val &= (asrc_ch == 0) ? (~TCC_ASRC_IRQ_FIFO_OUT0_COMPLETE) :
+		(asrc_ch == 1) ? (~TCC_ASRC_IRQ_FIFO_OUT1_COMPLETE) :
+		(asrc_ch == 2) ? (~TCC_ASRC_IRQ_FIFO_OUT2_COMPLETE) : (~TCC_ASRC_IRQ_FIFO_OUT3_COMPLETE);
+
+	writel(val, asrc_reg + offset);
+}
+
+
+void tcc_asrc_irq1_ringbuf_empty_enable(void __iomem *asrc_reg, int asrc_ch)
+{
+	uint32_t val;
+	uint32_t offset = TCC_ASRC_IRQ_ENABLE1_OFFSET;
+
+	val = readl(asrc_reg + offset);
+
+	val |= (asrc_ch == 0) ? TCC_ASRC_IRQ_PAIR0_EMPTY :
+		(asrc_ch == 1) ? TCC_ASRC_IRQ_PAIR1_EMPTY :
+		(asrc_ch == 2) ? TCC_ASRC_IRQ_PAIR2_EMPTY : TCC_ASRC_IRQ_PAIR3_EMPTY;
+
+	writel(val, asrc_reg + offset);
+}
+
+void tcc_asrc_irq1_ringbuf_empty_disable(void __iomem *asrc_reg, int asrc_ch)
+{
+	uint32_t val;
+	uint32_t offset = TCC_ASRC_IRQ_ENABLE1_OFFSET;
+
+	val = readl(asrc_reg + offset);
+
+	val &= (asrc_ch == 0) ? (~TCC_ASRC_IRQ_PAIR0_EMPTY) :
+		(asrc_ch == 1) ? (~TCC_ASRC_IRQ_PAIR1_EMPTY) :
+		(asrc_ch == 2) ? (~TCC_ASRC_IRQ_PAIR2_EMPTY) : (~TCC_ASRC_IRQ_PAIR3_EMPTY);
+
+	writel(val, asrc_reg + offset);
+}
+
+void tcc_asrc_set_fifo_in_read_cnt_threshold(void __iomem *asrc_reg, int asrc_ch, uint32_t buffer_size)
+{
+	uint32_t val;
+	uint32_t offset;
+	offset = (asrc_ch == 0) ? TCC_ASRC_FIFO_IN0_CTRL1_OFFSET :
+		(asrc_ch == 1) ? TCC_ASRC_FIFO_IN1_CTRL1_OFFSET :
+		(asrc_ch == 2) ? TCC_ASRC_FIFO_IN2_CTRL1_OFFSET : TCC_ASRC_FIFO_IN3_CTRL1_OFFSET;
+
+	val = readl(asrc_reg + offset);
+
+	val &= ~TCC_ASRC_FIFO_RD_CNT_THR_MASK;
+	val |= TCC_ASRC_FIFO_RD_CNT_THR(buffer_size - 1);
+
+	writel(val, asrc_reg + offset);
+}
+
+void tcc_asrc_clear_fifo_in_read_cnt(void __iomem *asrc_reg, int asrc_ch)
+{
+	uint32_t val;
+	uint32_t offset;
+	offset = (asrc_ch == 0) ? TCC_ASRC_FIFO_IN0_CTRL1_OFFSET :
+		(asrc_ch == 1) ? TCC_ASRC_FIFO_IN1_CTRL1_OFFSET :
+		(asrc_ch == 2) ? TCC_ASRC_FIFO_IN2_CTRL1_OFFSET : TCC_ASRC_FIFO_IN3_CTRL1_OFFSET;
+
+	val = readl(asrc_reg + offset);
+
+	val |= TCC_ASRC_FIFO_RD_CNT_CLR;
+
+	writel(val, asrc_reg + offset);
+}
+
+void tcc_asrc_set_fifo_out_read_cnt_threshold(void __iomem *asrc_reg, int asrc_ch, uint32_t buffer_size)
+{
+	uint32_t val;
+	uint32_t offset;
+	offset = (asrc_ch == 0) ? TCC_ASRC_FIFO_OUT0_CTRL1_OFFSET :
+		(asrc_ch == 1) ? TCC_ASRC_FIFO_OUT1_CTRL1_OFFSET :
+		(asrc_ch == 2) ? TCC_ASRC_FIFO_OUT2_CTRL1_OFFSET : TCC_ASRC_FIFO_OUT3_CTRL1_OFFSET;
+
+	val = readl(asrc_reg + offset);
+
+	val &= ~TCC_ASRC_FIFO_RD_CNT_THR_MASK;
+	val |= TCC_ASRC_FIFO_RD_CNT_THR(buffer_size - 1);
+
+	writel(val, asrc_reg + offset);
+}
+
+void tcc_asrc_clear_fifo_out_read_cnt(void __iomem *asrc_reg, int asrc_ch)
+{
+	uint32_t val;
+	uint32_t offset;
+	offset = (asrc_ch == 0) ? TCC_ASRC_FIFO_OUT0_CTRL1_OFFSET :
+		(asrc_ch == 1) ? TCC_ASRC_FIFO_OUT1_CTRL1_OFFSET :
+		(asrc_ch == 2) ? TCC_ASRC_FIFO_OUT2_CTRL1_OFFSET : TCC_ASRC_FIFO_OUT3_CTRL1_OFFSET;
+
+	val = readl(asrc_reg + offset);
+
+	val |= TCC_ASRC_FIFO_RD_CNT_CLR;
+
+	writel(val, asrc_reg + offset);
+}
+#endif
 
 void tcc_asrc_reg_backup(
 	void __iomem *asrc_reg,

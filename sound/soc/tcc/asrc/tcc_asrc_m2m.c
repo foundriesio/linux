@@ -320,6 +320,9 @@ int tcc_asrc_m2m_start(struct tcc_asrc_t *asrc,
 	asrc->pair[asrc_pair].cfg.ratio_shift22 = ratio_shift22;
 	asrc->pair[asrc_pair].cfg.channels = channels;
 
+#ifdef ASRC_M2M_INTERRUPT_MODE
+	tcc_asrc_irq0_fifo_in_read_complete_enable(asrc->asrc_reg, asrc_pair);
+#endif
 	asrc->pair[asrc_pair].stat.started = 1;
 	asrc_m2m_dbg("%s - Device is started(%d)\n", __func__, asrc_pair);
 
@@ -336,6 +339,9 @@ int tcc_asrc_m2m_stop(struct tcc_asrc_t *asrc, int asrc_pair)
 	if (!asrc->pair[asrc_pair].stat.started)
 		return -EINVAL;
 
+#ifdef ASRC_M2M_INTERRUPT_MODE
+	tcc_asrc_irq0_fifo_in_read_complete_disable(asrc->asrc_reg, asrc_pair);
+#endif
 	tcc_asrc_stop(asrc, asrc_pair);
 
 	asrc->pair[asrc_pair].stat.readable_size = 0;
@@ -431,6 +437,11 @@ static int __tcc_asrc_m2m_push_data(
 #ifdef LLI_DEBUG
 	tcc_pl080_dump_txbuf_lli(asrc, asrc_pair);
 	tcc_pl080_dump_rxbuf_lli(asrc, asrc_pair);
+#endif
+#ifdef ASRC_M2M_INTERRUPT_MODE
+	tcc_asrc_clear_fifo_in_read_cnt(asrc->asrc_reg, asrc_pair);
+	asrc_m2m_dbg("[%s] size=%d\n", __func__, size);
+	tcc_asrc_set_fifo_in_read_cnt_threshold(asrc->asrc_reg, asrc_pair, size/TRANSFER_UNIT_BYTES);
 #endif
 
 	tcc_asrc_rx_dma_start(asrc, asrc_pair);
@@ -558,6 +569,7 @@ static int tcc_asrc_m2m_pop_data_to_user(
 		asrc->pair[asrc_pair].stat.readable_size;
 	int ret;
 
+
 	asrc_m2m_dbg("%s - size:%d\n", __func__, size);
 
 	if (tcc_asrc_m2m_pair_chk(asrc, asrc_pair) < 0)
@@ -586,6 +598,8 @@ static int tcc_asrc_m2m_pop_data_to_user(
 
 	asrc->pair[asrc_pair].stat.read_offset += rxsize;
 	asrc->pair[asrc_pair].stat.readable_size -= rxsize;
+
+	asrc_m2m_dbg("%s - size:%d, rxsize:%d, ret:%d\n", __func__, size, rxsize, ret);
 
 	return rxsize;
 }
@@ -717,13 +731,28 @@ static int tcc_asrc_resources_allocation(
 	return 0;
 }
 
-int tcc_pl080_asrc_m2m_txisr_ch(
+#ifdef ASRC_M2M_INTERRUPT_MODE
+//#define CHECK_INTERRUPT_TIME	//for debug
+
+int tcc_asrc_m2m_txisr_ch(
 	struct tcc_asrc_t *asrc,
 	int asrc_pair)
 {
 	uint32_t dma_tx_ch = asrc_pair;
 	uint32_t dma_rx_ch = asrc_pair+ASRC_RX_DMA_OFFSET;
+
 	uint32_t rx_dst_addr;
+	uint32_t ring_buf_empty;
+	uint32_t fifo_in_out_read_comp;
+	uint32_t fifo_in_status1;
+	uint32_t fifo_out_status1;
+	uint32_t i;
+
+#ifdef CHECK_INTERRUPT_TIME
+	struct timeval start, end;
+	u64 intr_usecs64;
+	unsigned int intr_usecs;
+#endif
 	uint32_t pl080_tx_ch_cfg_reg;
 	uint32_t pl080_rx_ch_cfg_reg;
 	uint32_t asrc_fifo_in_status;
@@ -736,8 +765,13 @@ int tcc_pl080_asrc_m2m_txisr_ch(
 		return -1;
 	}
 
+#ifdef CHECK_INTERRUPT_TIME
+	do_gettimeofday(&start);
+#endif
+
 	tcc_asrc_tx_dma_halt(asrc, asrc_pair);
-	while (1) {
+
+	for(i=0; i < 1000; i++) {
 		pl080_tx_ch_cfg_reg =
 			readl(asrc->pl080_reg + PL080_Cx_CONFIG(dma_tx_ch));
 
@@ -747,7 +781,144 @@ int tcc_pl080_asrc_m2m_txisr_ch(
 		}
 	}
 
-	while (1) {
+	for(i=0; i < 1000; i++) {
+		ring_buf_empty = readl(asrc->asrc_reg + TCC_ASRC_IRQ_RAW_STATUS1_OFFSET);
+		fifo_in_out_read_comp = readl(asrc->asrc_reg + TCC_ASRC_IRQ_RAW_STATUS0_OFFSET);
+		fifo_out_status1 = readl(asrc->asrc_reg + TCC_ASRC_FIFO_OUT0_STATUS1_OFFSET + (asrc_pair * 0x4));
+		fifo_in_status1 = readl(asrc->asrc_reg + TCC_ASRC_FIFO_IN0_STATUS1_OFFSET + (asrc_pair * 0x4));
+		asrc_fifo_in_status = tcc_asrc_get_fifo_in_status(asrc->asrc_reg, asrc_pair);
+		asrc_fifo_out_status = tcc_asrc_get_fifo_out_status(asrc->asrc_reg, asrc_pair);
+
+		/*
+		 * In normal case, if set ring buffer empty interrupt(IRQ_RAW_STATUS[32:35]),
+		 * IRQ notify conversion completion.
+		 */
+
+		if(((ring_buf_empty) & (1 << asrc_pair))) {
+
+			asrc_m2m_dbg(
+				"asrc[%d] complete!! ring_buf_empty[0x%08x], "
+				"fifo_in_out_read_comp[0x%08X], "
+				"fifo_in_status1[0x%08X], "
+				"fifo_out_status1[0x%08X], "
+				"fifo_in_status[0x%08X], "
+				"fifo_out_status[0x%08X]\n",
+				asrc_pair,
+				ring_buf_empty,
+				fifo_in_out_read_comp,
+				fifo_in_status1,
+				fifo_out_status1,
+				asrc_fifo_in_status,
+				asrc_fifo_out_status);
+
+			writel(1 << (asrc_pair+24), asrc->asrc_reg + TCC_ASRC_IRQ_CLEAR0_OFFSET);
+			break;
+		}else{
+
+			asrc_m2m_dbg(
+				"asrc[%d] Not complete!! ring_buf_empty[0x%08x], "
+				"fifo_in_out_read_comp[0x%08X], "
+				"fifo_in_status1[0x%08X], "
+				"fifo_out_status1[0x%08X], "
+				"fifo_in_status[0x%08X], "
+				"fifo_out_status[0x%08X]\n",
+				asrc_pair,
+				ring_buf_empty,
+				fifo_in_out_read_comp,
+				fifo_in_status1,
+				fifo_out_status1,
+				asrc_fifo_in_status,
+				asrc_fifo_out_status);
+		}
+	}
+
+	udelay(FIFO_STATUS_CHECK_DELAY);
+
+	for(i=0; i < 1000; i++) {
+		asrc_fifo_out_status =
+			tcc_asrc_get_fifo_out_status(asrc->asrc_reg, asrc_pair);
+		if (asrc_fifo_out_status & (1 << 30)) {
+
+			asrc_m2m_dbg("FIFO Out Cleared\n");
+			break;
+		}
+	}
+
+	udelay(FIFO_STATUS_CHECK_DELAY);
+
+	tcc_asrc_rx_dma_halt(asrc, asrc_pair);
+
+	for(i=0; i < 1000; i++) {
+		pl080_rx_ch_cfg_reg =
+			readl(asrc->pl080_reg + PL080_Cx_CONFIG(dma_rx_ch));
+
+		if (!(pl080_rx_ch_cfg_reg & PL080_CONFIG_ACTIVE)) {
+			asrc_m2m_dbg("DMA Tx/Rx De-activated\n");
+			break;
+		}
+	}
+
+	rx_dst_addr = readl(asrc->pl080_reg + PL080_Cx_DST_ADDR(dma_rx_ch));
+	asrc->pair[asrc_pair].stat.readable_size =
+		rx_dst_addr - asrc->pair[asrc_pair].rxbuf.phys;
+	asrc->pair[asrc_pair].stat.read_offset = 0;
+
+	asrc_m2m_dbg("rx_dst_addr	   : 0x%08x\n", rx_dst_addr);
+	asrc_m2m_dbg("rxbuf.phys   : 0x%08x\n", asrc->pair[asrc_pair].rxbuf.phys);
+	asrc_m2m_dbg("readable_size : 0x%08x\n",
+		asrc->pair[asrc_pair].stat.readable_size);
+
+	tcc_asrc_rx_dma_stop(asrc, asrc_pair);
+	tcc_asrc_tx_dma_stop(asrc, asrc_pair);
+
+	complete(&asrc->pair[asrc_pair].comp);
+
+#ifdef CHECK_INTERRUPT_TIME
+	do_gettimeofday(&end);
+
+	intr_usecs64 = timeval_to_ns(&end) - timeval_to_ns(&start);
+	do_div(intr_usecs64, NSEC_PER_USEC);
+	intr_usecs = intr_usecs64;
+	printk("interrupt time : %03d usec\n", intr_usecs);
+#endif
+
+	return 0;
+}
+
+#else
+
+int tcc_pl080_asrc_m2m_txisr_ch(
+	struct tcc_asrc_t *asrc,
+	int asrc_pair)
+{
+	uint32_t dma_tx_ch = asrc_pair;
+	uint32_t dma_rx_ch = asrc_pair+ASRC_RX_DMA_OFFSET;
+	uint32_t rx_dst_addr;
+	uint32_t pl080_tx_ch_cfg_reg;
+	uint32_t pl080_rx_ch_cfg_reg;
+	uint32_t asrc_fifo_in_status;
+	uint32_t asrc_fifo_out_status;
+	uint32_t i;
+
+	asrc_m2m_dbg("%s(%d)\n", __func__, asrc_pair);
+
+	if (asrc->pair[asrc_pair].hw.path != TCC_ASRC_M2M_PATH) {
+		asrc_m2m_dbg("%s - it's not m2m path\n", __func__);
+		return -1;
+	}
+
+	tcc_asrc_tx_dma_halt(asrc, asrc_pair);
+	for(i=0; i < 1000; i++) {
+		pl080_tx_ch_cfg_reg =
+			readl(asrc->pl080_reg + PL080_Cx_CONFIG(dma_tx_ch));
+
+		if (!(pl080_tx_ch_cfg_reg & PL080_CONFIG_ACTIVE)) {
+			asrc_m2m_dbg("DMA Tx De-activated\n");
+			break;
+		}
+	}
+
+	for(i=0; i < 1000; i++) {
 		asrc_fifo_in_status =
 			tcc_asrc_get_fifo_in_status(asrc->asrc_reg, asrc_pair);
 
@@ -759,7 +930,7 @@ int tcc_pl080_asrc_m2m_txisr_ch(
 
 	udelay(FIFO_STATUS_CHECK_DELAY);
 
-	while (1) {
+	for(i=0; i < 1000; i++) {
 		asrc_fifo_out_status =
 			tcc_asrc_get_fifo_out_status(asrc->asrc_reg, asrc_pair);
 
@@ -773,7 +944,7 @@ int tcc_pl080_asrc_m2m_txisr_ch(
 
 	tcc_asrc_rx_dma_halt(asrc, asrc_pair);
 
-	while (1) {
+	for(i=0; i < 1000; i++) {
 		pl080_rx_ch_cfg_reg =
 			readl(asrc->pl080_reg + PL080_Cx_CONFIG(dma_rx_ch));
 
@@ -789,7 +960,7 @@ int tcc_pl080_asrc_m2m_txisr_ch(
 	asrc->pair[asrc_pair].stat.read_offset = 0;
 
 	asrc_m2m_dbg("rx_dst_addr      : 0x%08x\n", rx_dst_addr);
-	asrc_m2m_dbg("rxbuf.phys   : 0x%p\n", asrc->pair[asrc_pair].rxbuf.phys);
+	asrc_m2m_dbg("rxbuf.phys   : 0x%08x\n", asrc->pair[asrc_pair].rxbuf.phys);
 	asrc_m2m_dbg("readable_size : 0x%08x\n",
 		asrc->pair[asrc_pair].stat.readable_size);
 
@@ -800,6 +971,8 @@ int tcc_pl080_asrc_m2m_txisr_ch(
 
 	return 0;
 }
+
+#endif
 
 #define _ASRC_M2M_KERNEL_TEST_\
 	(0)

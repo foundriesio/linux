@@ -25,6 +25,7 @@
 struct tcc_asrc_t;
 
 extern int tcc_asrc_m2m_drvinit(struct platform_device *pdev);
+extern int tcc_asrc_m2m_txisr_ch(struct tcc_asrc_t *asrc,	int asrc_pair);
 extern int tcc_pl080_asrc_m2m_txisr_ch(struct tcc_asrc_t *asrc,	int asrc_pair);
 extern int tcc_asrc_m2m_start(
 	struct tcc_asrc_t *asrc,

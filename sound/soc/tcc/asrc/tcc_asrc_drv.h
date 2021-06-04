@@ -47,6 +47,10 @@
 #define DEFAULT_VOLUME_RAMP_GAIN\
 	(0) // 0dB
 
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+#define ASRC_M2M_INTERRUPT_MODE
+#endif
+
 enum tcc_asrc_drv_path_t {
 	TCC_ASRC_M2M_PATH = 0,
 	TCC_ASRC_M2P_PATH = 1,
@@ -65,6 +69,19 @@ enum tcc_asrc_drv_sync_mode_t {
 	TCC_ASRC_SYNC_MODE	= 0,
 	TCC_ASRC_ASYNC_MODE = 1,
 };
+
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+enum tcc_asrc_drv_fifo_size_t {
+	TCC_ASRC_FIFO_SIZE_256WORD = 256,
+	TCC_ASRC_FIFO_SIZE_128WORD = 128,
+	TCC_ASRC_FIFO_SIZE_64WORD = 64,
+	TCC_ASRC_FIFO_SIZE_32WORD = 32,
+	TCC_ASRC_FIFO_SIZE_16WORD = 16,
+	TCC_ASRC_FIFO_SIZE_8WORD = 8,
+	TCC_ASRC_FIFO_SIZE_4WORD = 4,
+	TCC_ASRC_FIFO_SIZE_2WORD = 2,
+};
+#endif
 
 struct tcc_pl080_buf_t {
 	void *virt;
@@ -102,6 +119,9 @@ struct tcc_asrc_t {
 			enum tcc_asrc_peri_t peri_dai;
 			uint32_t peri_dai_rate;
 			enum tcc_asrc_drv_bitwidth_t peri_dai_format;
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+			enum tcc_asrc_drv_fifo_size_t fifo_in_size;
+#endif
 		} hw;
 		struct {
 			enum tcc_asrc_drv_bitwidth_t tx_bitwidth;

@@ -257,6 +257,17 @@ int tcc_asrc_rx_fifo_enable(
 }
 
 // M2M SYNC
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+static void __tcc_asrc_m2m_sync_setup(
+	void __iomem *asrc_reg,
+	int asrc_pair,
+	enum tcc_asrc_fifo_fmt_t tx_fmt,
+	enum tcc_asrc_fifo_mode_t tx_mode,
+	enum tcc_asrc_fifo_fmt_t rx_fmt,
+	enum tcc_asrc_fifo_mode_t rx_mode,
+	uint32_t ratio_shift22,
+	enum tcc_asrc_drv_fifo_size_t fifo_size)
+#else
 static void __tcc_asrc_m2m_sync_setup(
 	void __iomem *asrc_reg,
 	int asrc_pair,
@@ -265,15 +276,26 @@ static void __tcc_asrc_m2m_sync_setup(
 	enum tcc_asrc_fifo_fmt_t rx_fmt,
 	enum tcc_asrc_fifo_mode_t rx_mode,
 	uint32_t ratio_shift22)
+#endif
 {
 	enum tcc_asrc_component_t asrc_comp;
 #if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
-	enum tcc_asrc_fifo_size_t tx_size = TCC_ASRC_FIFO_SIZE_256WORD;
+	enum tcc_asrc_fifo_in_size_t fifo_in_size;
 #endif//defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 	asrc_comp = (asrc_pair == 0) ? TCC_ASRC0
 		: (asrc_pair == 1) ? TCC_ASRC1
 		: (asrc_pair == 2) ? TCC_ASRC2
 		: TCC_ASRC3;
+
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	fifo_in_size =	(fifo_size == TCC_ASRC_FIFO_SIZE_256WORD) ? TCC_ASRC_FIFO_IN_SIZE_256WORD :
+	(fifo_size == TCC_ASRC_FIFO_SIZE_128WORD) ? TCC_ASRC_FIFO_IN_SIZE_128WORD :
+	(fifo_size == TCC_ASRC_FIFO_SIZE_64WORD) ? TCC_ASRC_FIFO_IN_SIZE_64WORD :
+	(fifo_size == TCC_ASRC_FIFO_SIZE_32WORD) ? TCC_ASRC_FIFO_IN_SIZE_32WORD :
+	(fifo_size == TCC_ASRC_FIFO_SIZE_16WORD) ? TCC_ASRC_FIFO_IN_SIZE_16WORD :
+	(fifo_size == TCC_ASRC_FIFO_SIZE_8WORD) ? TCC_ASRC_FIFO_IN_SIZE_8WORD :
+	(fifo_size == TCC_ASRC_FIFO_SIZE_4WORD) ? TCC_ASRC_FIFO_IN_SIZE_4WORD : TCC_ASRC_FIFO_IN_SIZE_2WORD;
+#endif
 
 	tcc_asrc_set_inport_path(asrc_reg, asrc_pair, TCC_ASRC_PATH_DMA);
 	tcc_asrc_set_outport_path(asrc_reg, asrc_pair, TCC_ASRC_PATH_DMA);
@@ -304,7 +326,7 @@ static void __tcc_asrc_m2m_sync_setup(
 		asrc_pair,
 		tx_fmt,
 		tx_mode,
-		tx_size,
+		fifo_in_size,
 		0);
 #else
 	tcc_asrc_fifo_in_config(asrc_reg, asrc_pair, tx_fmt, tx_mode, 0);
@@ -333,6 +355,17 @@ int tcc_asrc_m2m_sync_setup(
 	//disable rx dma channel
 	tcc_pl080_channel_enable(asrc->pl080_reg, dma_rx_ch, 0);
 
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	__tcc_asrc_m2m_sync_setup(
+		asrc->asrc_reg,
+		asrc_pair,
+		tx_fmt,
+		tx_mode,
+		rx_fmt,
+		rx_mode,
+		ratio_shift22,
+		asrc->pair[asrc_pair].hw.fifo_in_size);
+#else
 	__tcc_asrc_m2m_sync_setup(
 		asrc->asrc_reg,
 		asrc_pair,
@@ -341,6 +374,7 @@ int tcc_asrc_m2m_sync_setup(
 		rx_fmt,
 		rx_mode,
 		ratio_shift22);
+#endif
 
 	tcc_asrc_volume_ramp(asrc, asrc_pair);
 	tcc_asrc_volume_gain(asrc, asrc_pair);
@@ -368,6 +402,17 @@ static int tcc_asrc_check_supported_channel(
 }
 
 // M2P
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+static void __tcc_asrc_m2p_setup(void __iomem *asrc_reg,
+	int asrc_pair,
+	enum tcc_asrc_drv_sync_mode_t sync_mode,
+	enum tcc_asrc_drv_bitwidth_t bitwidth,
+	enum tcc_asrc_drv_ch_t channels,
+	enum tcc_asrc_peri_t peri_target,
+	enum tcc_asrc_async_refclk_t refclk,
+	uint32_t ratio_shift22,
+	enum tcc_asrc_drv_fifo_size_t fifo_size)
+#else
 static void __tcc_asrc_m2p_setup(
 	void __iomem *asrc_reg,
 	int asrc_pair,
@@ -377,6 +422,7 @@ static void __tcc_asrc_m2p_setup(
 	enum tcc_asrc_peri_t peri_target,
 	enum tcc_asrc_async_refclk_t refclk,
 	uint32_t ratio_shift22)
+#endif
 {
 	enum tcc_asrc_mode_t asrc_mode;
 	enum tcc_asrc_component_t asrc_comp;
@@ -385,7 +431,7 @@ static void __tcc_asrc_m2p_setup(
 	enum tcc_asrc_fifo_fmt_t fifo_fmt;
 	enum tcc_asrc_fifo_mode_t fifo_mode;
 #if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
-	enum tcc_asrc_fifo_size_t fifo_size = TCC_ASRC_FIFO_SIZE_256WORD;
+	enum tcc_asrc_fifo_in_size_t fifo_in_size;
 #endif//defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 	asrc_mode =
 	    (sync_mode == TCC_ASRC_ASYNC_MODE) ? TCC_ASRC_MODE_ASYNC :
@@ -433,6 +479,16 @@ static void __tcc_asrc_m2p_setup(
 		(channels == TCC_ASRC_NUM_OF_CH_4) ? TCC_ASRC_FIFO_MODE_4CH :
 		TCC_ASRC_FIFO_MODE_2CH;
 
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	fifo_in_size =	(fifo_size == TCC_ASRC_FIFO_SIZE_256WORD) ? TCC_ASRC_FIFO_IN_SIZE_256WORD :
+		(fifo_size == TCC_ASRC_FIFO_SIZE_128WORD) ? TCC_ASRC_FIFO_IN_SIZE_128WORD :
+		(fifo_size == TCC_ASRC_FIFO_SIZE_64WORD) ? TCC_ASRC_FIFO_IN_SIZE_64WORD :
+		(fifo_size == TCC_ASRC_FIFO_SIZE_32WORD) ? TCC_ASRC_FIFO_IN_SIZE_32WORD :
+		(fifo_size == TCC_ASRC_FIFO_SIZE_16WORD) ? TCC_ASRC_FIFO_IN_SIZE_16WORD :
+		(fifo_size == TCC_ASRC_FIFO_SIZE_8WORD) ? TCC_ASRC_FIFO_IN_SIZE_8WORD :
+		(fifo_size == TCC_ASRC_FIFO_SIZE_4WORD) ? TCC_ASRC_FIFO_IN_SIZE_4WORD : TCC_ASRC_FIFO_IN_SIZE_2WORD;
+#endif
+
 	tcc_asrc_set_inport_path(asrc_reg, asrc_pair, TCC_ASRC_PATH_DMA);
 	tcc_asrc_set_outport_path(asrc_reg, peri_target, TCC_ASRC_PATH_EXTIO);
 
@@ -459,7 +515,7 @@ static void __tcc_asrc_m2p_setup(
 		asrc_pair,
 		fifo_fmt,
 		fifo_mode,
-		fifo_size,
+		fifo_in_size,
 		0);
 #else
 	tcc_asrc_fifo_in_config(asrc_reg, asrc_pair, fifo_fmt, fifo_mode, 0);
@@ -507,6 +563,18 @@ int tcc_asrc_m2p_setup(
 		clk_prepare_enable(asrc->aux_pclk[asrc_pair]);
 	}
 
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	__tcc_asrc_m2p_setup(
+		asrc->asrc_reg,
+		asrc_pair,
+		sync_mode,
+		bitwidth,
+		channels,
+		peri_target,
+		refclk,
+		(uint32_t) ratio_shift22,
+		asrc->pair[asrc_pair].hw.fifo_in_size);
+#else
 	__tcc_asrc_m2p_setup(
 		asrc->asrc_reg,
 		asrc_pair,
@@ -516,6 +584,7 @@ int tcc_asrc_m2p_setup(
 		peri_target,
 		refclk,
 		(uint32_t) ratio_shift22);
+#endif
 
 	tcc_asrc_volume_ramp(asrc, asrc_pair);
 	tcc_asrc_volume_gain(asrc, asrc_pair);
@@ -741,12 +810,18 @@ static irqreturn_t tcc_pl080_isr(int irq, void *dev)
 			writel(1 << i, asrc->pl080_reg + PL080_TC_CLEAR);
 			writel(1 << i, asrc->pl080_reg + PL080_ERR_CLEAR);
 			switch (asrc->pair[i].hw.path) {
+#ifdef ASRC_M2M_INTERRUPT_MODE
+			case TCC_ASRC_M2P_PATH:
+				tcc_pl080_asrc_pcm_isr_ch(asrc, i);
+				break;
+#else
 			case TCC_ASRC_M2M_PATH:
 				tcc_pl080_asrc_m2m_txisr_ch(asrc, i);
 				break;
 			case TCC_ASRC_M2P_PATH:
 				tcc_pl080_asrc_pcm_isr_ch(asrc, i);
 				break;
+#endif
 			default:
 				break;
 			}
@@ -770,6 +845,26 @@ static irqreturn_t tcc_pl080_isr(int irq, void *dev)
 	return IRQ_HANDLED;
 }
 
+#ifdef ASRC_M2M_INTERRUPT_MODE
+static irqreturn_t tcc_asrc_isr(int irq, void *dev)
+{
+	struct tcc_asrc_t *asrc = (struct tcc_asrc_t *)dev;
+	uint32_t int_status = readl(asrc->asrc_reg+TCC_ASRC_IRQ_RAW_STATUS1_OFFSET);
+	int i;
+
+	asrc_drv_dbg(" %s(0x%08x)\n", __func__, int_status);
+	for (i=0; i<NUM_OF_ASRC_PAIR; i++) {
+		if (int_status & (1<<i)) {
+			if (asrc->pair[i].hw.path == TCC_ASRC_M2M_PATH) {
+				tcc_asrc_m2m_txisr_ch(asrc, i);
+			}
+		}
+	}
+
+	return IRQ_HANDLED;
+}
+#endif
+
 static int parse_asrc_dt(struct platform_device *pdev, struct tcc_asrc_t *asrc)
 {
 	struct device_node *of_node_asrc = pdev->dev.of_node;
@@ -780,6 +875,9 @@ static int parse_asrc_dt(struct platform_device *pdev, struct tcc_asrc_t *asrc)
 	uint32_t path_type[NUM_OF_ASRC_PAIR];
 	uint32_t sync_mode[NUM_OF_ASRC_PAIR];
 	uint32_t async_refclk[NUM_OF_ASRC_PAIR];
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	uint32_t fifo_in_size[NUM_OF_ASRC_PAIR];
+#endif
 	struct resource res;
 	int i;
 
@@ -863,6 +961,13 @@ static int parse_asrc_dt(struct platform_device *pdev, struct tcc_asrc_t *asrc)
 		"async-refclk",
 		async_refclk,
 		NUM_OF_ASRC_PAIR);
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	of_property_read_u32_array(
+		of_node_asrc,
+		"fifo_in-size",
+		fifo_in_size,
+		NUM_OF_ASRC_PAIR);
+#endif
 
 	for (i = 0; i < NUM_OF_ASRC_PAIR; i++) {
 		asrc->pair[i].hw.path =
@@ -882,6 +987,15 @@ static int parse_asrc_dt(struct platform_device *pdev, struct tcc_asrc_t *asrc)
 		asrc->pair[i].hw.peri_dai = TCC_ASRC_PERI_DAI0;
 		asrc->pair[i].hw.peri_dai_rate = DEFAULT_PERI_DAI_RATE;
 		asrc->pair[i].hw.peri_dai_format = DEFAULT_PERI_DAI_FORMAT;
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+		asrc->pair[i].hw.fifo_in_size =	(fifo_in_size[i] == 256)? TCC_ASRC_FIFO_SIZE_256WORD :
+			(fifo_in_size[i] == 128)? TCC_ASRC_FIFO_SIZE_128WORD :
+			(fifo_in_size[i] == 64)? TCC_ASRC_FIFO_SIZE_64WORD :
+			(fifo_in_size[i] == 32)? TCC_ASRC_FIFO_SIZE_32WORD :
+			(fifo_in_size[i] == 16)? TCC_ASRC_FIFO_SIZE_16WORD :
+			(fifo_in_size[i] == 8)? TCC_ASRC_FIFO_SIZE_8WORD :
+			(fifo_in_size[i] == 4)? TCC_ASRC_FIFO_SIZE_4WORD : TCC_ASRC_FIFO_SIZE_2WORD;
+#endif
 	}
 
 	for (i = 0; i < NUM_OF_ASRC_PAIR; i++) {
@@ -1005,6 +1119,14 @@ static int tcc_asrc_probe(struct platform_device *pdev)
 		       asrc->pl080_irq);
 		goto error;
 	}
+
+#ifdef ASRC_M2M_INTERRUPT_MODE
+	ret = request_irq(asrc->asrc_irq, tcc_asrc_isr, IRQF_TRIGGER_HIGH, "tcc-asrc", (void*)asrc);
+	if (ret < 0) {
+		printk(KERN_ERR "[ERROR][ASRC_DRV] ASRC request_irq(%d) failed\n", asrc->asrc_irq);
+		goto error;
+	}
+#endif
 
 	return ret;
 

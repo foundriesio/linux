@@ -497,6 +497,67 @@ MCAUDIO_MUX_FUNC(1);
 MCAUDIO_MUX_FUNC(2);
 MCAUDIO_MUX_FUNC(3);
 
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+static const char *fifo_in_size_texts[] = {
+	"256 word",
+	"128 word",
+	"64 word",
+	"32 word",
+	"16 word",
+	"8 word",
+	"4 word",
+	"2 word",
+};
+
+static const struct soc_enum fifo_in_size_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(fifo_in_size_texts), fifo_in_size_texts),
+};
+
+static int fifo_in_size_set(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value *ucontrol, uint32_t asrc_pair)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct tcc_asrc_t *asrc = (struct tcc_asrc_t*)snd_soc_component_get_drvdata(component);
+
+	asrc->pair[asrc_pair].hw.fifo_in_size = (ucontrol->value.integer.value[0] == 0)? TCC_ASRC_FIFO_SIZE_256WORD :
+		(ucontrol->value.integer.value[0] == 1)? TCC_ASRC_FIFO_SIZE_128WORD :
+		(ucontrol->value.integer.value[0] == 2)? TCC_ASRC_FIFO_SIZE_64WORD :
+		(ucontrol->value.integer.value[0] == 3)? TCC_ASRC_FIFO_SIZE_32WORD :
+		(ucontrol->value.integer.value[0] == 4)? TCC_ASRC_FIFO_SIZE_16WORD :
+		(ucontrol->value.integer.value[0] == 5)? TCC_ASRC_FIFO_SIZE_8WORD :
+		(ucontrol->value.integer.value[0] == 6)? TCC_ASRC_FIFO_SIZE_4WORD : TCC_ASRC_FIFO_SIZE_2WORD;
+
+	return 0;
+}
+
+static int fifo_in_size_get(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value *ucontrol, uint32_t asrc_pair)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct tcc_asrc_t *asrc = (struct tcc_asrc_t*)snd_soc_component_get_drvdata(component);
+
+	ucontrol->value.integer.value[0] = (asrc->pair[asrc_pair].hw.fifo_in_size == TCC_ASRC_FIFO_SIZE_256WORD)? 0 :
+		(asrc->pair[asrc_pair].hw.fifo_in_size == TCC_ASRC_FIFO_SIZE_128WORD)? 1 :
+		(asrc->pair[asrc_pair].hw.fifo_in_size == TCC_ASRC_FIFO_SIZE_64WORD)? 2 :
+		(asrc->pair[asrc_pair].hw.fifo_in_size == TCC_ASRC_FIFO_SIZE_32WORD)? 3 :
+		(asrc->pair[asrc_pair].hw.fifo_in_size == TCC_ASRC_FIFO_SIZE_16WORD)? 4 :
+		(asrc->pair[asrc_pair].hw.fifo_in_size == TCC_ASRC_FIFO_SIZE_8WORD)? 5 :
+		(asrc->pair[asrc_pair].hw.fifo_in_size == TCC_ASRC_FIFO_SIZE_4WORD)? 6 : 7;
+
+	return 0;
+}
+
+
+#define FIFO_IN_SIZE_FUNC(x)	\
+	int pair##x##_fifo_in_size_set(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value *ucontrol) \
+	{ return fifo_in_size_set(kcontrol, ucontrol, x);} \
+	int pair##x##_fifo_in_size_get(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value *ucontrol) \
+	{ return fifo_in_size_get(kcontrol, ucontrol, x);}
+
+FIFO_IN_SIZE_FUNC(0);
+FIFO_IN_SIZE_FUNC(1);
+FIFO_IN_SIZE_FUNC(2);
+FIFO_IN_SIZE_FUNC(3);
+#endif
+
 static const struct snd_kcontrol_new tcc_asrc_snd_controls[] = {
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
 	defined(CONFIG_ARCH_TCC806X)
@@ -600,6 +661,13 @@ static const struct snd_kcontrol_new tcc_asrc_snd_controls[] = {
 		mcaudio_mux_enum[0],
 		mcaudio3_mux_get,
 		mcaudio3_mux_put),
+
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+	SOC_ENUM_EXT("ASRC Pair0 FIFO In Size", fifo_in_size_enum[0], pair0_fifo_in_size_get, pair0_fifo_in_size_set),
+	SOC_ENUM_EXT("ASRC Pair1 FIFO In Size", fifo_in_size_enum[0], pair1_fifo_in_size_get, pair1_fifo_in_size_set),
+	SOC_ENUM_EXT("ASRC Pair2 FIFO In Size", fifo_in_size_enum[0], pair2_fifo_in_size_get, pair2_fifo_in_size_set),
+	SOC_ENUM_EXT("ASRC Pair3 FIFO In Size", fifo_in_size_enum[0], pair3_fifo_in_size_get, pair3_fifo_in_size_set),
+#endif
 };
 
 struct snd_soc_component_driver const tcc_asrc_component_drv = {
