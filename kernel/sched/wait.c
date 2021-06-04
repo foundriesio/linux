@@ -239,17 +239,27 @@ prepare_to_wait(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_ent
 }
 EXPORT_SYMBOL(prepare_to_wait);
 
-void
-prepare_to_wait_exclusive(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry, int state)
+bool
+prepare_to_wait_exclusive_first(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry, int state)
 {
 	unsigned long flags;
+	bool ret;
 
 	wq_entry->flags |= WQ_FLAG_EXCLUSIVE;
 	spin_lock_irqsave(&wq_head->lock, flags);
+	ret = list_empty(&wq_head->head);
 	if (list_empty(&wq_entry->entry))
 		__add_wait_queue_entry_tail(wq_head, wq_entry);
 	set_current_state(state);
 	spin_unlock_irqrestore(&wq_head->lock, flags);
+	return ret;
+}
+EXPORT_SYMBOL(prepare_to_wait_exclusive_first);
+
+void
+prepare_to_wait_exclusive(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry, int state)
+{
+	prepare_to_wait_exclusive_first(wq_head, wq_entry, state);
 }
 EXPORT_SYMBOL(prepare_to_wait_exclusive);
 
