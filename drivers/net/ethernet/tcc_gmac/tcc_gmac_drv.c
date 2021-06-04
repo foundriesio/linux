@@ -2884,12 +2884,12 @@ static int tcc_gmac_probe(struct platform_device *pdev)
 	dev->base_addr = (unsigned long)devm_ioremap_resource(&pdev->dev, res);
 
 	// If version match is failed, do not proceed probe seqeuence further.
-	if ((unsigned)(readl(dev->base_addr + 0x20)&0xFF) != 0x37) {
+	if ((readl((void *)(dev->base_addr + 0x20))&0xFF) != 0x37) {
 		pr_info("%s.[WARN] Exit gmac probe due to version mismatch\n",
 				__func__);
 		pr_info("%s.[WARN] device driver : 3.7a version.\n", __func__);
 		pr_info("%s.[WARN] version read: %08x\n", __func__,
-				readl(dev->base_addr + 0x20)&0xFF);
+				readl((void *)(dev->base_addr + 0x20))&0xFF);
 		return -ENODEV;
 	}
 
