@@ -2535,7 +2535,7 @@ static void cxgb_down(struct adapter *adapter)
 /*
  * net_device operations
  */
-int cxgb_open(struct net_device *dev)
+static int cxgb_open(struct net_device *dev)
 {
 	struct port_info *pi = netdev_priv(dev);
 	struct adapter *adapter = pi->adapter;
@@ -2562,7 +2562,7 @@ int cxgb_open(struct net_device *dev)
 	return err;
 }
 
-int cxgb_close(struct net_device *dev)
+static int cxgb_close(struct net_device *dev)
 {
 	struct port_info *pi = netdev_priv(dev);
 	struct adapter *adapter = pi->adapter;
