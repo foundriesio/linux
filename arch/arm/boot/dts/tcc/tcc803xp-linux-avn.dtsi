@@ -1242,14 +1242,18 @@
 			pcm = <&adma3>;
 			dai = <&i2s3>;
 		};
-	};				
+	};
 
 	gmac@11C00000 {
 		status = "okay";
-		compatible = "telechips,gmac";
+		compatible = "telechips,gmac","snps,dwmac-3.70a";
 //		phyon-gpio	= <&gpc 27 0>;
 		phyrst-gpio = <&gpc 15 0>;
 		phy-interface = "rgmii";
+		interrupt-names = "macirq";
+		phy-mode = "rgmii";
+		snps,txpbl = <8>;
+		snps,rxpbl = <2>;
 		//ecid-mac-addr;
 		txclk-o-dly = <18>;
 		txclk-o-inv = <0>;
