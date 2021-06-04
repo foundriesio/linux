@@ -1303,9 +1303,17 @@ MODULE_DEVICE_TABLE(of, dwc3_tcc_match);
 
 #endif
 
+static void dwc3_driver_shutdown(struct platform_device *dev)
+{
+	struct dwc3_tcc *tcc = platform_get_drvdata(dev);
+
+	dwc3_tcc_vbus_ctrl(tcc, OFF);
+}
+
 static struct platform_driver dwc3_tcc_driver = {
 	.probe = dwc3_tcc_new_probe,
 	.remove = dwc3_tcc_new_remove,
+	.shutdown = dwc3_driver_shutdown,
 	.driver = {
 		   .name = "tcc-dwc3",
 		   .owner = THIS_MODULE,

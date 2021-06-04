@@ -852,9 +852,12 @@ static void tcc_ehci_hcd_shutdown(struct platform_device *pdev)
 	struct tcc_ehci_hcd *tcc_ehci = platform_get_drvdata(pdev);
 	struct usb_hcd *hcd = ehci_to_hcd(tcc_ehci->ehci);
 
+	tcc_ehci_vbus_ctrl(tcc_ehci, OFF);
+
 	if (hcd == NULL) {
 		return;
 	}
+
 
 	if (hcd->driver->shutdown != NULL) {
 		hcd->driver->shutdown(hcd);

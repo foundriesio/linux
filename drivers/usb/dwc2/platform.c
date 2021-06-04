@@ -1095,6 +1095,10 @@ static int dwc2_driver_remove(struct platform_device *dev)
 static void dwc2_driver_shutdown(struct platform_device *dev)
 {
 	struct dwc2_hsotg *hsotg = platform_get_drvdata(dev);
+
+	if (hsotg->ll_hw_enabled)
+		dwc2_lowlevel_hw_disable(hsotg);
+
 #if defined(CONFIG_USB_DWC2_TCC_MUX)
 	disable_irq(hsotg->ehci_irq);
 #endif
