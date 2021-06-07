@@ -33,6 +33,40 @@
 static struct device_node *ViocWmixer_np;
 static void __iomem *pWMIX_reg[VIOC_WMIX_MAX];
 
+static int OVP_table[30][4] = { /* OVP max = 29, Layer max = 3 */
+/*LAYER  0, 1, 2, 3*/
+		{2, 1, 0, 3}, /*OVP 0*/
+		{2, 0, 1, 3}, /*OVP 1*/
+		{1, 2, 0, 3}, /*OVP 2*/
+		{1, 0, 2, 3}, /*OVP 3*/
+		{0, 2, 1, 3}, /*OVP 4*/
+		{0, 1, 2, 3}, /*OVP 5*/
+		{-1, -1, -1, -1}, /*OVP 6, Non-use*/
+		{-1, -1, -1, -1}, /*OVP 7, Non-use*/
+		{3, 1, 0, 2}, /*OVP 8*/
+		{3, 0, 1, 2}, /*OVP 9*/
+		{1, 3, 0, 2}, /*OVP 10*/
+		{1, 0, 3, 2}, /*OVP 11*/
+		{0, 3, 1, 2}, /*OVP 12*/
+		{0, 1, 3, 2}, /*OVP 13*/
+		{-1, -1, -1, -1}, /*OVP 14, Non-use*/
+		{-1, -1, -1, -1}, /*OVP 15, Non-use*/
+		{3, 2, 0, 1}, /*OVP 16*/
+		{3, 0, 2, 1}, /*OVP 17*/
+		{2, 3, 0, 1}, /*OVP 18*/
+		{2, 0, 3, 1}, /*OVP 19*/
+		{0, 3, 2, 1}, /*OVP 20*/
+		{0, 2, 3, 1}, /*OVP 21*/
+		{-1, -1, -1, -1}, /*OVP 22, Non-use*/
+		{-1, -1, -1, -1}, /*OVP 23, Non-use*/
+		{3, 2, 1, 0}, /*OVP 24*/
+		{3, 1, 2, 0}, /*OVP 25*/
+		{2, 3, 1, 0}, /*OVP 26*/
+		{2, 1, 3, 0}, /*OVP 27*/
+		{1, 3, 2, 0}, /*OVP 28*/
+		{1, 2, 3, 0}, /*OVP 29*/
+};
+
 void VIOC_WMIX_SetOverlayPriority(
 	void __iomem *reg, unsigned int nOverlayPriority)
 {
@@ -53,6 +87,27 @@ void VIOC_WMIX_GetOverlayPriority(
 		 >> MCTRL_OVP_SHIFT);
 }
 EXPORT_SYMBOL(VIOC_WMIX_GetOverlayPriority);
+
+int VIOC_WMIX_GetLayer(
+	void __iomem *reg, unsigned int image_num)
+{
+	unsigned int OverlayPriority;
+	int layer;
+
+	VIOC_WMIX_GetOverlayPriority(reg, &OverlayPriority);
+
+	for (layer = 0; layer < 4; layer++) {
+		if (image_num == OVP_table[OverlayPriority][layer]) {
+
+			return layer;
+		}
+	}
+
+	pr_err("[ERR][WMIX] %s image_num:%d ovp:%d\n",
+		__func__, image_num, OverlayPriority);
+	return -1;
+}
+EXPORT_SYMBOL(VIOC_WMIX_GetLayer);
 
 void VIOC_WMIX_SetUpdate(void __iomem *reg)
 {

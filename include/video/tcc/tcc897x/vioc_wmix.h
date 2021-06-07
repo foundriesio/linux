@@ -316,6 +316,8 @@ extern void VIOC_WMIX_SetOverlayPriority(
 	void __iomem *reg, unsigned int nOverlayPriority);
 extern void VIOC_WMIX_GetOverlayPriority(
 	void __iomem *reg, unsigned int *nOverlayPriority);
+extern int VIOC_WMIX_GetLayer(
+	void __iomem * reg , unsigned int image_num);
 extern void VIOC_WMIX_SetUpdate(void __iomem *reg);
 extern void VIOC_WMIX_SetSize(void __iomem *reg,
 	unsigned int nWidth, unsigned int nHeight);
