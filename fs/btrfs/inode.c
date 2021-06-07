@@ -3360,6 +3360,8 @@ void btrfs_add_delayed_iput(struct inode *inode)
 	ASSERT(list_empty(&binode->delayed_iput));
 	list_add_tail(&binode->delayed_iput, &fs_info->delayed_iputs);
 	spin_unlock(&fs_info->delayed_iput_lock);
+	if (!test_bit(BTRFS_FS_CLEANER_RUNNING, &fs_info->flags))
+		wake_up_process(fs_info->cleaner_kthread);
 }
 
 static void run_delayed_iput_locked(struct btrfs_fs_info *fs_info,
@@ -3395,8 +3397,6 @@ void btrfs_run_delayed_iputs(struct btrfs_fs_info *fs_info)
 		run_delayed_iput_locked(fs_info, inode);
 	}
 	spin_unlock(&fs_info->delayed_iput_lock);
-	if (!test_bit(BTRFS_FS_CLEANER_RUNNING, &fs_info->flags))
-		wake_up_process(fs_info->cleaner_kthread);
 }
 
 /**
