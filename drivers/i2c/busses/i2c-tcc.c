@@ -406,7 +406,7 @@ static int32_t tcc_i2c_acked(struct tcc_i2c *i2c)
 		if (time_after(jiffies, timeout_jiffies)) {
 			dev_dbg(i2c->dev,
 					"[DEBUG][I2C] <%s> No ACK\n", __func__);
-			return -ENXIO;
+			return -EAGAIN;
 		}
 		schedule();
 	}
