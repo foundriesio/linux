@@ -43,6 +43,15 @@ static int VRDMAS[VIOC_RDMA_MAX] = {
 	[3] = {1},  [7] = {1},  [10] = {1}, [11] = {1}, [12] = {1},
 	[13] = {1}, [14] = {1}, [15] = {1}, [16] = {1}, [17] = {1},
 };
+static int IMAGE_NUM[VIOC_RDMA_MAX] = {
+	0, 1, 2, 3, /* RDMA00 - RDMA03 */
+	0, 1, 2, 3, /* RDMA04 - RDMA07 */
+	0, 1, 2, 3, /* RDMA08 - RDMA11 */
+	0, 1, /* RDMA12 - RDMA13 */
+	0, 1, /* RDMA14 - RDMA15 */
+	1, /* RDMA16 */
+	1, /* RDMA17 */
+};
 #endif
 
 #if defined(CONFIG_ARCH_TCC803X)
@@ -50,11 +59,42 @@ static int VRDMAS[VIOC_RDMA_MAX] = {
 	[3] = {1},  [7] = {1}, [11] = {1}, [12] = {1},	[13] = {1},
 	[14] = {1}, [15] = {1}, [16] = {1}, [17] = {1},
 };
+static int IMAGE_NUM[VIOC_RDMA_MAX] = {
+	0, 1, 2, 3, /* RDMA00 - RDMA03 */
+	0, 1, 2, 3, /* RDMA04 - RDMA07 */
+	0, 1, 2, 3, /* RDMA08 - RDMA11 */
+	0, 1, /* RDMA12 - RDMA13 */
+	0, 1, /* RDMA14 - RDMA15 */
+	1, /* RDMA16 */
+	1, /* RDMA17 */
+};
 #endif
 
 #if defined(CONFIG_ARCH_TCC897X)
 static int VRDMAS[VIOC_RDMA_MAX] = {
 	[3] = {1},  [7] = {1}, [13] = {1}, [15] = {1}, [16] = {1},
+};
+static int IMAGE_NUM[VIOC_RDMA_MAX] = {
+	0, 1, 2, 3, /* RDMA00 - RDMA03 */
+	0, 1, -1, 3, /* RDMA04 - RDMA07, RDMA06 NON-use */
+	-1, -1, -1, -1, /* RDMA08 - RDMA11, NON-use */
+	0, 1, /* RDMA12 - RDMA13 */
+	0, 1, /* RDMA14 - RDMA15 */
+	1, /* RDMA16 */
+	-1, /* RDMA17, NON-use */
+};
+#endif
+
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) \
+	|| defined(CONFIG_ARCH_TCC901X)
+static int IMAGE_NUM[VIOC_RDMA_MAX] = {
+	0, 1, 2, 3, /* RDMA00 - RDMA03 */
+	0, 1, -1, 3, /* RDMA04 - RDMA07, RDMA06 NON-use */
+	0, 1, 2, 3, /* RDMA08 - RDMA11 */
+	0, 1, /* RDMA12 - RDMA13 */
+	-1, -1, /* RDMA14 - RDMA15, NON-use*/
+	1, /* RDMA16 */
+	1, /* RDMA17 */
 };
 #endif
 
@@ -902,6 +942,21 @@ err:
 	return 0;
 }
 EXPORT_SYMBOL(VIOC_RDMA_IsVRDMA);
+
+int VIOC_RDMA_GetImageNum(unsigned int vioc_id)
+{
+	int Num = get_vioc_index(vioc_id);
+
+	if (Num >= VIOC_RDMA_MAX || IMAGE_NUM[Num] == -1)
+		goto err;
+
+	return IMAGE_NUM[Num];
+err:
+	pr_err("[ERR][RDMA] %s Num:%d max num:%d\n", __func__, Num,
+	       VIOC_RDMA_MAX);
+	return -1;
+}
+EXPORT_SYMBOL(VIOC_RDMA_GetImageNum);
 
 static int __init vioc_rdma_init(void)
 {

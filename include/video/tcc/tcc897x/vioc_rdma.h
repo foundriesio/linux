@@ -297,5 +297,6 @@ extern unsigned int VIOC_RDMA_Get_CAddress(volatile void __iomem *reg);
 
 extern void __iomem* VIOC_RDMA_GetAddress(unsigned int vioc_id);
 extern int VIOC_RDMA_IsVRDMA(unsigned int vioc_id);
+extern int VIOC_RDMA_GetImageNum(unsigned int vioc_id);
 extern void VIOC_RDMA_DUMP(void __iomem *reg, unsigned int vioc_id);
 #endif
