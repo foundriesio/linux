@@ -245,6 +245,7 @@ struct tccvin_streaming {
 	struct v4l2_rect			rect_crop;
 	struct v4l2_rect			rect_compose;
 
+	struct tccvin_frame 			frame;
 	struct tccvin_format			*def_format;
 	struct tccvin_format			*cur_format;
 	struct tccvin_frame			*cur_frame;

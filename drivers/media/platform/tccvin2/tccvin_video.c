@@ -175,8 +175,6 @@ struct tccvin_format tccvin_format_list[] = {
 	},
 };
 
-struct tccvin_frame cur_frame;
-
 /* ------------------------------------------------------------------------
  * sysfs
  */

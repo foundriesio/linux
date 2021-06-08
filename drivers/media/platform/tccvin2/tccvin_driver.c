@@ -108,7 +108,7 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 		format->index, fcc[0], fcc[1], fcc[2], fcc[3],
 		format->num_planes, format->bpp);
 
-	frame = &cur_frame;
+	frame = &stream->frame;
 
 	logd("size: %u * %u\n", frame->width, frame->height);
 
