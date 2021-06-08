@@ -287,7 +287,7 @@ static int xgpio_remove(struct platform_device *pdev)
 }
 
 /**
- * xgpio_of_probe - Probe method for the GPIO device.
+ * xgpio_probe - Probe method for the GPIO device.
  * @pdev: pointer to the platform device
  *
  * Return:
