@@ -35,6 +35,9 @@ static int event_manager_availability = -EACCES;
 
 #define MAX_BITS	(32U) /* Number of bits available for error mask */
 
+#define FIRMWARE_VERSION_MASK			(0xFFFFU)
+#define REGISTER_NOTIFIER_FIRMWARE_VERSION	(2U)
+
 static DEFINE_HASHTABLE(reg_driver_map, REGISTERED_DRIVER_MAX_ORDER);
 static int sgi_num = XLNX_EVENT_SGI_NUM;
 
@@ -196,7 +199,8 @@ int xlnx_register_event(const enum pm_api_cb_id cb_type, const u32 node_id, cons
 			const bool wake, event_cb_func_t cb_fun, void *data)
 {
 	int ret = 0;
-	u32 eve, pos;
+	u32 eve;
+	int pos;
 
 	if (event_manager_availability)
 		return event_manager_availability;
@@ -520,6 +524,20 @@ static void xlnx_event_cleanup_sgi(struct platform_device *pdev)
 static int xlnx_event_manager_probe(struct platform_device *pdev)
 {
 	int ret;
+
+	ret = zynqmp_pm_feature(PM_REGISTER_NOTIFIER);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Feature check failed with %d\n", ret);
+		return ret;
+	}
+
+	if ((ret & FIRMWARE_VERSION_MASK) <
+	    REGISTER_NOTIFIER_FIRMWARE_VERSION) {
+		dev_err(&pdev->dev, "Register notifier firmware version error. Expected: v%d - Found: v%d\n",
+			REGISTER_NOTIFIER_FIRMWARE_VERSION,
+			ret & FIRMWARE_VERSION_MASK);
+		return -EOPNOTSUPP;
+	}
 
 	/* Initialize the SGI */
 	ret = xlnx_event_init_sgi(pdev);

@@ -23,7 +23,7 @@
 #define ZYNQMP_RSA_MAX_KEY_SIZE	1024
 #define ZYNQMP_RSA_BLOCKSIZE	64
 
-struct zynqmp_rsa_dev;
+static struct zynqmp_rsa_dev *rsa_dd;
 
 struct zynqmp_rsa_op {
 	struct zynqmp_rsa_dev    *dd;
@@ -56,22 +56,16 @@ static struct zynqmp_rsa_drv zynqmp_rsa = {
 
 static struct zynqmp_rsa_dev *zynqmp_rsa_find_dev(struct zynqmp_rsa_op *ctx)
 {
-	struct zynqmp_rsa_dev *rsa_dd = NULL;
-	struct zynqmp_rsa_dev *tmp;
+	struct zynqmp_rsa_dev *dd = rsa_dd;
 
 	spin_lock_bh(&zynqmp_rsa.lock);
-	if (!ctx->dd) {
-		list_for_each_entry(tmp, &zynqmp_rsa.dev_list, list) {
-			rsa_dd = tmp;
-			break;
-		}
-		ctx->dd = rsa_dd;
-	} else {
-		rsa_dd = ctx->dd;
-	}
+	if (!ctx->dd)
+		ctx->dd = dd;
+	else
+		dd = ctx->dd;
 	spin_unlock_bh(&zynqmp_rsa.lock);
 
-	return rsa_dd;
+	return dd;
 }
 
 static int zynqmp_setkey_blk(struct crypto_skcipher *tfm, const u8 *key,
@@ -90,7 +84,7 @@ static int zynqmp_rsa_xcrypt(struct skcipher_request *req, unsigned int flags)
 	struct zynqmp_rsa_op *op = crypto_skcipher_ctx(tfm);
 	struct zynqmp_rsa_dev *dd = zynqmp_rsa_find_dev(op);
 	int err, datasize, src_data = 0, dst_data = 0;
-	struct skcipher_walk walk;
+	struct skcipher_walk walk = {0};
 	unsigned int nbytes;
 	char *kbuf;
 	size_t dma_size;
@@ -103,23 +97,31 @@ static int zynqmp_rsa_xcrypt(struct skcipher_request *req, unsigned int flags)
 		return -ENOMEM;
 
 	err = skcipher_walk_virt(&walk, req, false);
+	if (err)
+		goto out;
 
 	while ((datasize = walk.nbytes)) {
 		op->src = walk.src.virt.addr;
 		memcpy(kbuf + src_data, op->src, datasize);
 		src_data = src_data + datasize;
 		err = skcipher_walk_done(&walk, 0);
+		if (err)
+			goto out;
 	}
 	memcpy(kbuf + nbytes, op->key, op->keylen);
 	zynqmp_pm_rsa(dma_addr, nbytes, flags);
 
 	err = skcipher_walk_virt(&walk, req, false);
+	if (err)
+		goto out;
 
 	while ((datasize = walk.nbytes)) {
 		memcpy(walk.dst.virt.addr, kbuf + dst_data, datasize);
 		dst_data = dst_data + datasize;
 		err = skcipher_walk_done(&walk, 0);
 	}
+
+out:
 	dma_free_coherent(dd->dev, dma_size, kbuf, dma_addr);
 	return err;
 }
@@ -161,7 +163,6 @@ MODULE_DEVICE_TABLE(of, zynqmp_rsa_dt_ids);
 
 static int zynqmp_rsa_probe(struct platform_device *pdev)
 {
-	struct zynqmp_rsa_dev *rsa_dd;
 	struct device *dev = &pdev->dev;
 	int ret;
 

@@ -632,6 +632,8 @@ int zynqmp_pm_sha_hash(const u64 address, const u32 size, const u32 flags);
 int zynqmp_pm_rsa(const u64 address, const u32 size, const u32 flags);
 int zynqmp_pm_config_reg_access(u32 register_access_id, u32 address, u32 mask,
 				u32 value, u32 *out);
+int zynqmp_pm_mmio_read(u32 address, u32 *out);
+int zynqmp_pm_mmio_write(u32 address, u32 mask, u32 value);
 int zynqmp_pm_request_suspend(const u32 node, const enum zynqmp_pm_request_ack ack,
 			      const u32 latency, const u32 state);
 int zynqmp_pm_set_max_latency(const u32 node, const u32 latency);
@@ -682,12 +684,8 @@ int zynqmp_pm_pinctrl_set_config(const u32 pin, const u32 param,
 				 u32 value);
 int zynqmp_pm_register_notifier(const u32 node, const u32 event,
 				const u32 wake, const u32 enable);
+int zynqmp_pm_feature(const u32 api_id);
 #else
-static inline struct zynqmp_eemi_ops *zynqmp_pm_get_eemi_ops(void)
-{
-	return ERR_PTR(-ENODEV);
-}
-
 static inline int zynqmp_pm_get_api_version(u32 *version)
 {
 	return -ENODEV;
@@ -992,6 +990,16 @@ static inline int zynqmp_pm_config_reg_access(u32 register_access_id,
 	return -ENODEV;
 }
 
+static inline int zynqmp_pm_mmio_write(u32 address, u32 mask, u32 value)
+{
+	return -ENODEV;
+}
+
+static inline int zynqmp_pm_mmio_read(u32 address, u32 *out)
+{
+	return -ENODEV;
+}
+
 static inline int zynqmp_pm_request_suspend(const u32 node,
 					    const enum zynqmp_pm_request_ack ack,
 					    const u32 latency, const u32 state)
@@ -1082,6 +1090,10 @@ static inline int zynqmp_pm_get_last_reset_reason(u32 *reset_reason)
 
 static inline int zynqmp_pm_register_notifier(const u32 node, const u32 event,
 					      const u32 wake, const u32 enable)
+{
+	return -ENODEV;
+}
+static inline int zynqmp_pm_feature(const u32 api_id)
 {
 	return -ENODEV;
 }
