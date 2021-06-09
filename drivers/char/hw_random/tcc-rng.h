@@ -5,8 +5,14 @@
 
 #if defined(CONFIG_ARCH_TCC899X)
 #define TEE_TRNG
-#elif defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC803X)
+#elif defined(CONFIG_ARCH_TCC805X)
 #define HSM_TRNG
+#elif defined(CONFIG_ARCH_TCC803X)
+#if defined(CONFIG_TCC_HSM)
+#define HSM_TRNG
+#else
+#define TEE_TRNG
+#endif
 #else
 #define HSB_TRNG
 #endif
