@@ -865,6 +865,9 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c11_bus>;
 
+		/* carplay ack timeout 50msec */
+		ack-timeout = <50>;
+
 		mxt_touch@4b {
 			compatible = "atmel,maxtouch";
 			status = "okay";

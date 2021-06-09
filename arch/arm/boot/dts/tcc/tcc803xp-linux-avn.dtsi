@@ -857,6 +857,9 @@
 		pinctrl-0 = <&i2c11_bus>;
 		clock-frequency = <100000>;
 
+		/* carplay ack timeout 50msec */
+		ack-timeout = <50>;
+
 		tsc_serdes {
 			compatible = "telechips,tcc803x-tsc-serdes";
 			reg = <0x6A>;

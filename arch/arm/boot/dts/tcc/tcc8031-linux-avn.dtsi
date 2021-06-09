@@ -1059,6 +1059,9 @@
 		port-mux = <11>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c11_bus>;
+
+		/* carplay ack timeout 50msec */
+		ack-timeout = <50>;
 	};
 
 	gpsb0@16900000 {

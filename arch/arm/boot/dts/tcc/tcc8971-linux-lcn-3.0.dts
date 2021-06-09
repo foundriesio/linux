@@ -708,6 +708,9 @@
 		port-mux = <23>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c23_bus>;
+
+		/* carplay ack timeout 50msec */
+		ack-timeout = <50>;
 	};
 
 	i2c@76330000 {

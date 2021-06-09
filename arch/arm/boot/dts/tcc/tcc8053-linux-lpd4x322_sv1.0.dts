@@ -524,6 +524,9 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c11_bus>;
 
+		/* carplay ack timeout 50msec */
+		ack-timeout = <50>;
+
 		dp_serializer:max96851@60 {
 			compatible	= "maxim,serdes";
 			reg		= <0x60>;

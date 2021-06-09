@@ -520,6 +520,9 @@ ak4601: ak4601@10 {
 	port-mux = <11>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c11_bus>;
+
+	/* carplay ack timeout 50msec */
+	ack-timeout = <50>;
 };
 
 &i2c4 {
