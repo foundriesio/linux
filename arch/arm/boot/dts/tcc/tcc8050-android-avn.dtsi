@@ -632,16 +632,6 @@
 	status = "disabled";
 };
 
-/*
-&hsic {
-	status = "okay";
-	hcd_id = <2>;       //2 == HSIC
-	phy-type = <1>;     //pico phy = 1, nano phy = 0
-	vbus-ctrl-able;
-	vbus-gpio = <&gpk 25 0>;
-};
-*/
-
 &overlaymixer {
 	status ="okay";
 	contiguousSize = <0x1000000>;  /* 16MB (if > 512MB RAM) refer to Guide 27 Page */

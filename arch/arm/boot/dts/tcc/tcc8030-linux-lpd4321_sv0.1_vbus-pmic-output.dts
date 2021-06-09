@@ -47,38 +47,52 @@
 #include "tcc8030-linux-lpd4321_sv0.1.dts"
 
 / {
+	vbus_supply_ehci: vbus_supply_ehci {
+		compatible = "regulator-gpio";
+		regulator-name = "vbus_supply_ehci";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <0000001>;
+		regulator-max-microvolt = <5000000>;
+		gpios = <&da9063_gpio 5 0x0>;
+		gpios-states = <0x0>;
+		states = <0000001 0x0 5000000 0x1>;
+	};
+
+	vbus_supply_dwc2: vbus_supply_dwc2 {
+		compatible = "regulator-gpio";
+		regulator-name = "vbus_supply_dwc2";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <0000001>;
+		regulator-max-microvolt = <5000000>;
+		gpios = <&da9063_gpio 6 0x0>;
+		gpios-states = <0x0>;
+		states = <0000001 0x0 5000000 0x1>;
+	};
+
+	vbus_supply_dwc3: vbus_supply_dwc3 {
+		compatible = "regulator-gpio";
+		regulator-name = "vbus_supply_dwc3";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <0000001>;
+		regulator-max-microvolt = <5000000>;
+		gpios = <&da9063_gpio 4 0x0>;
+		gpios-states = <0x0>;
+		states = <0000001 0x0 5000000 0x1>;
+	};
+
 	/* USB 3.0 DRD */
 	dwc3_phy@11D90000 {
-		vbus-gpio = <&da9063_gpio 4 0>;
-	};
-	dwc3_platform {
-		vbus-gpio = <&da9063_gpio 4 0>;
+		vbus-supply = <&vbus_supply_dwc3>;
 	};
 
-	/* USB 2.0 OTG */
+	/* USB 2.0 HOST */
 	ehci_phy@11DA0010 {
-		vbus-gpio = <&da9063_gpio 5 0>;
+		vbus-supply = <&vbus_supply_ehci>;
 	};
 
-	ehci@11A00000 {
-		vbus-gpio = <&da9063_gpio 5 0>;
-	};
-
-	ohci@11A80000 {
-		vbus-gpio = <&da9063_gpio 5 0>;
-	};
-
+	/* USB 2.0 DRD */
 	dwc_otg_phy@11DA0100 {
-		vbus-gpio = <&da9063_gpio 6 0>;
+		vbus-supply = <&vbus_supply_dwc2>;
 	};
-
-	mux_host_phy@11DA00DC {
-		vbus-gpio = <&da9063_gpio 6 0>;
-	};
-
-	dwc_otg@11980000 {
-	    vbus-gpio = <&da9063_gpio 6 0>;
-	};
-
 
 };

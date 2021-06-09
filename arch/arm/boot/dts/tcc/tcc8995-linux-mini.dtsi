@@ -325,56 +325,77 @@
 		pinctrl-0 = <&gpsb5_bus>;
 	};
 */
+	vbus_supply_ehci: vbus_supply_ehci {
+		compatible = "regulator-gpio";
+		regulator-name = "vbus_supply_ehci";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <0000001>;
+		regulator-max-microvolt = <5000000>;
+		gpios = <&gpmc 7 0x0>;
+		gpios-states = <0x0>;
+		states = <0000001 0x0 5000000 0x1>;
+	};
+
+	vbus_supply_dwc2: vbus_supply_dwc2 {
+		compatible = "regulator-gpio";
+		regulator-name = "vbus_supply_dwc2";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <0000001>;
+		regulator-max-microvolt = <5000000>;
+		gpios = <&gpmc 6 0x0>;
+		gpios-states = <0x0>;
+		states = <0000001 0x0 5000000 0x1>;
+	};
+
+	vbus_supply_dwc3: vbus_supply_dwc3 {
+		compatible = "regulator-gpio";
+		regulator-name = "vbus_supply_dwc3";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <0000001>;
+		regulator-max-microvolt = <5000000>;
+		gpios = <&gpmc 8 0x0>;
+		gpios-states = <0x0>;
+		states = <0000001 0x0 5000000 0x1>;
+	};
+
+	vbus_supply_dwc3: vbus_supply_dwc3 {
+		compatible = "regulator-gpio";
+		regulator-name = "vbus_supply_dwc3";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <0000001>;
+		regulator-max-microvolt = <5000000>;
+		gpios = <&gpd 19 0x0>;
+		gpios-states = <0x0>;
+		states = <0000001 0x0 5000000 0x1>;
+	};
 
 	/* USB 3.0 DRD */
 	dwc3_phy@11D90000 {
 		status = "okay";
 		vbus-ctrl-able;
-		vbus-gpio = <&gpd 19 0>;
+		vbus-supply = <&vbus_supply_dwc3>;
 	};
 	dwc3_platform {
 		status = "okay";
-		//usb3en-ctrl-able;
-		//usb3en-gpio = <&gpc 20 0>;
-		//vbus-source-ctrl;
-		//vbus-ctrl-able;
-		//vbus-gpio = <&gpd 19 0>;
-		//pinctrl-names = "default";
-		//vdd_dwc-supply = <&vdd_v5p0_reg>;
 	};
 
 	/* USB 2.0 HOST */
 	ehci_phy@11DA0010 {
 		status = "okay";
-		//vbus-ctrl-able;
-		//vbus-gpio = <&gpd 15 0>;
 	};
 
 	mux_host_phy@11DA00DC {
 		status = "okay";
-		//vbus-ctrl-able;
-		//vbus-gpio = <&gpd 18 0>;
 	};
 
 	dwc_otg_phy@11DA0100 {
 		status = "okay";
-		//vbus-ctrl-able;
-		//vbus-gpio = <&gpd 18 0>;
 	};
 
 	ehci@11A00000 {
 		status = "disable";
 		hcd_id = <0>;
 		phy-type = <1>;	    //pico phy = 1, nano phy = 0
-		//hosten-ctrl-able;
-		//hosten-gpio = <&gpe 15 0>;
-		//vbus-ctrl-able;
-		//vbus-gpio = <&gpd 15 0>;
-		//vbus-source-ctrl;
-		//pinctrl-names = "default";
-		//vdd_ehci-supply = <&vdd_v5p0_reg>;
-
-		//sq_level_ctl;
 		TXVRT = <0xB>;
 		TXRISET = <0x3>;
 		TXAT = <0x1>;
@@ -382,21 +403,12 @@
 
 	ohci@11A80000 {
 		status = "disable";
-		//hosten-ctrl-able;
-		//hosten-gpio = <&gpe 15 0>;
-		//vbus-ctrl-able;
-		//vbus-gpio = <&gpd 15 0>;
-		//vbus-source-ctrl;
-		//vdd_ohci-supply = <&vdd_v5p0_reg>;
 	};
 
 	/* USB 2.0 OTG */
 	dwc_otg@11980000 {
 	    status = "okay";
 	    phy-type = <1>;     //pico phy = 1, nano phy = 0
-
-	    //vbus-ctrl-able;
-	    //vbus-gpio = <&gpd 18 0>;
 	};
 
 	audio_chmux@16051000{

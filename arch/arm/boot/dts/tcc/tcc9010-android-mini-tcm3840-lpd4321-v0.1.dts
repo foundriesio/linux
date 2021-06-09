@@ -89,20 +89,11 @@
 };
 &dwc3 {
 	status = "disable";
-	//usb3en-ctrl-able;
-	//usb3en-gpio = <&gpc 22 0>;
-	//vbus-source-ctrl;
-	//vbus-ctrl-able;
-	//vbus-gpio = <&gpd 19 0>;
-	//pinctrl-names = "default";
-	//vdd_dwc-supply = <&vdd_v5p0_reg>;
 };
 
 /* USB 2.0 HOST */
 &ehci_phy {
 	status = "disable";
-	//vbus-ctrl-able;
-	//vbus-gpio = <&gpd 15 0>;
 };
 
 &tcc_bluetooth {

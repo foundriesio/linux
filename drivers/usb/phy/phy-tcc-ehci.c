@@ -9,8 +9,6 @@
 #include <linux/of.h>
 #include <linux/usb/phy.h>
 #include <linux/usb/otg.h>
-#include <linux/of_gpio.h>
-#include <dt-bindings/gpio/gpio.h>
 #include "../host/tcc-hcd.h"
 #include <linux/kthread.h>
 
@@ -33,8 +31,7 @@ struct tcc_ehci_device {
 	void __iomem *base;	/* Phy base address */
 	struct usb_phy phy;
 	int32_t mux_port;
-	int32_t vbus_gpio_num;
-	ulong vbus_gpio_flag;
+	struct regulator *vbus_supply;
 #if defined(CONFIG_ENABLE_BC_20_HOST) || defined(CONFIG_ENABLE_BC_20_DRD)
 	int irq;
 	struct task_struct *ehci_chgdet_thread;
@@ -92,38 +89,38 @@ static int32_t tcc_ehci_vbus_set(struct usb_phy *phy, int32_t on_off)
 		return -ENODEV;
 	}
 
-	/* Check if the GPIO pin number is within the valid range(0 to 511). */
-	if (!gpio_is_valid(phy_dev->vbus_gpio_num)) {
-		dev_err(dev, "[ERROR][USB] VBus GPIO pin number is not valid number, errno %d.\n",
-				phy_dev->vbus_gpio_num);
-		return phy_dev->vbus_gpio_num;
+	if (!phy_dev->vbus_supply) {
+		dev_err(dev, "[ERROR][USB] Vbus Supply is not valid.\n");
+		return -ENODEV;
 	}
 
-	/* Request a single VBus GPIO with initial configuration. */
-	retval = gpio_request_one((uint32_t)phy_dev->vbus_gpio_num,
-			phy_dev->vbus_gpio_flag, "vbus_gpio_phy");
+	if (on_off) {
+		retval = regulator_enable(phy_dev->vbus_supply);
+		if (retval)
+			goto err;
 
-	if (retval != 0) {
-		dev_err(dev, "[ERROR][USB] VBus GPIO can't be requested, errno %d.\n",
-				retval);
+		retval = regulator_set_voltage(phy_dev->vbus_supply,
+				5000000, 5000000);
+		if (retval)
+			goto err;
+
+	} else {
+		retval = regulator_set_voltage(phy_dev->vbus_supply,
+				1, 1);
+		if (retval)
+			goto err;
+
+		retval = regulator_disable(phy_dev->vbus_supply);
+	}
+
+err:
+	if (retval) {
+		dev_err(dev, "[ERROR][USB] Vbus Supply is not controlled.\n");
+		regulator_disable(phy_dev->vbus_supply);
 		return retval;
 	}
 
-	/*
-	 * Set the direction of the VBus GPIO passed through the phy_dev
-	 * structure to output.
-	 */
-	retval = gpiod_direction_output(
-			gpio_to_desc((uint32_t)phy_dev->vbus_gpio_num),
-			on_off);
-
-	if (retval != 0) {
-		dev_err(dev, "[ERROR][USB] VBus GPIO direction can't be set to output errno %d.\n",
-				retval);
-		return retval;
-	}
-
-	gpio_free((uint32_t)phy_dev->vbus_gpio_num);
+	usleep_range(3000, 5000);
 
 	return retval;
 }
@@ -550,7 +547,6 @@ static int32_t tcc_ehci_phy_set_vbus_resource(struct usb_phy *phy)
 	struct tcc_ehci_device *phy_dev =
 		container_of(phy, struct tcc_ehci_device, phy);
 	struct device *dev = phy_dev->dev;
-	uint32_t gpio_flag;
 
 	/*
 	 * Check that the "vbus-ctrl-able" property for the USB PHY driver node
@@ -558,57 +554,22 @@ static int32_t tcc_ehci_phy_set_vbus_resource(struct usb_phy *phy)
 	 */
 	if (of_find_property(dev->of_node, "vbus-ctrl-able", 0) != NULL) {
 		/*
-		 * Get the GPIO pin number and GPIO flag declared in the
-		 * "vbus-gpio" property for the USB PHY driver node.
+		 * Get the vbus regulator declared in the
+		 * "vbus-supply" property for the USB PHY driver node.
 		 */
-		phy_dev->vbus_gpio_num = of_get_named_gpio_flags(dev->of_node,
-				"vbus-gpio", 0, &gpio_flag);
+		if (phy_dev->vbus_supply)
+			goto out;
 
-		/*
-		 * Check if the GPIO pin number is within the valid range(0 to
-		 * 511).
-		 */
-		if (gpio_is_valid(phy_dev->vbus_gpio_num)) {
-			/*
-			 * The GPIO pin number and GPIO flag are declared in the
-			 * "vbus-gpio" property for the USB PHY driver node, as
-			 * in the example below.
-			 *
-			 * e.g.)
-			 *     dwc_otg_phy@11DA0100
-			 *         ...
-			 *         vbus-gpio = <&gpa 27 0>;
-			 *
-			 * The 3rd argument of the "vbus-gpio" property, which
-			 * means the GPIO flag, is declared as default 0 or
-			 * GPIO_ACTIVE_HIGH for the TCC USB PHY driver. However,
-			 * depending on the hardware configuration, it can be
-			 * declared as 1 or GPIO_ACTIVE_LOW. If so, the value of
-			 * GPIOF_ACTIVE_LOW is stored in the phy_dev structure
-			 * so that it can be used in the set_vbus(). The reason
-			 * for saving GPIOF_ACTIVE_LOW rather than
-			 * GPIO_ACTIVE_LOW in the phy_dev structure is that the
-			 * gpio_request_one() used in the set_vbus() is a legacy
-			 * GPIO function using the value defined in linux/gpio.h
-			 */
-			if (gpio_flag == (uint32_t)GPIO_ACTIVE_LOW) {
-				phy_dev->vbus_gpio_flag = GPIOF_ACTIVE_LOW;
-			}
-
-			dev_dbg(dev, "[DEBUG][USB] VBus GPIO pin number is %d\n",
-					phy_dev->vbus_gpio_num);
-			dev_dbg(dev, "[DEBUG][USB] VBus GPIO flag is %s\n",
-					gpio_flag ?
-					"active low(=1)" : "active high(=0)");
-		} else {
-			dev_err(dev, "[ERROR][USB] VBus GPIO pin number is not valid number, errno %d.\n",
-					phy_dev->vbus_gpio_num);
-			return phy_dev->vbus_gpio_num;
+		phy_dev->vbus_supply = devm_regulator_get_optional(dev, "vbus");
+		if (IS_ERR(phy_dev->vbus_supply)) {
+			dev_err(dev, "[ERROR][USB] VBus Supply is not valid.\n");
+			return -ENODEV;
 		}
 	} else {
 		dev_info(dev, "[INFO][USB] vbus-ctrl-able property is not declared in device tree.\n");
 	}
 
+out:
 	return 0;
 }
 
