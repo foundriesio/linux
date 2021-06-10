@@ -533,8 +533,10 @@ static int panel_dpv14_resume(struct device *dev)
 	}
 	return 0;
 }
+
 static const struct dev_pm_ops panel_dpv14_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(panel_dpv14_suspend, panel_dpv14_resume)
+	.suspend = panel_dpv14_suspend,
+	.resume_early = panel_dpv14_resume,
 };
 #endif
 
