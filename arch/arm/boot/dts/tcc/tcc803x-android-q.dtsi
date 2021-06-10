@@ -19,14 +19,14 @@
 			dev = "/dev/block/platform/16440000.sdhc/by-name/system";
 			type = "ext4";
 			mnt_flags = "ro,barrier=1";
-			fsmgr_flags = "wait,avb";
+			fsmgr_flags = "wait,avb,slotselect";
 		};
 		vendor {
 			compatible = "android,vendor";
 			dev = "/dev/block/platform/16440000.sdhc/by-name/vendor";
 			type = "ext4";
 			mnt_flags = "ro,barrier=1";
-			fsmgr_flags = "wait,avb";
+			fsmgr_flags = "wait,avb,slotselect";
 		};
 	};
 };
