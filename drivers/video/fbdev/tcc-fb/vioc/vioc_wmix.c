@@ -66,6 +66,42 @@ static int OVP_table[30][4] = { /* OVP max = 29, Layer max = 3 */
 		{1, 3, 2, 0}, /*OVP 28*/
 		{1, 2, 3, 0}, /*OVP 29*/
 };
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC803X)
+static int WMIXER_TYPE[VIOC_WMIX_MAX] = {
+	VIOC_WMIX_TYPE_4TO2, /* WMIXER 0 */
+	VIOC_WMIX_TYPE_4TO2, /* WMIXER 1 */
+	VIOC_WMIX_TYPE_4TO2, /* WMIXER 2 */
+	VIOC_WMIX_TYPE_2TO2, /* WMIXER 3 */
+	VIOC_WMIX_TYPE_2TO2, /* WMIXER 4 */
+	VIOC_WMIX_TYPE_2TO2, /* WMIXER 5 */
+	VIOC_WMIX_TYPE_2TO2, /* WMIXER 6 */
+};
+#endif
+
+#if defined(CONFIG_ARCH_TCC897X)
+static int WMIXER_TYPE[VIOC_WMIX_MAX] = {
+	VIOC_WMIX_TYPE_4TO2, /* WMIXER 0 */
+	VIOC_WMIX_TYPE_4TO2, /* WMIXER 1 */
+	-1, /* WMIXER 2, NON-use */
+	VIOC_WMIX_TYPE_2TO2, /* WMIXER 3 */
+	VIOC_WMIX_TYPE_2TO2, /* WMIXER 4 */
+	VIOC_WMIX_TYPE_2TO2, /* WMIXER 5 */
+	-1, /* WMIXER 6, NON-use */
+};
+#endif
+
+#if defined(CONFIG_ARCH_TCC898X) || defined(CONFIG_ARCH_TCC899X) \
+	|| defined(CONFIG_ARCH_TCC901X)
+static int WMIXER_TYPE[VIOC_WMIX_MAX] = {
+	VIOC_WMIX_TYPE_4TO2, /* WMIXER 0 */
+	VIOC_WMIX_TYPE_4TO2, /* WMIXER 1 */
+	VIOC_WMIX_TYPE_4TO2, /* WMIXER 2 */
+	VIOC_WMIX_TYPE_2TO2, /* WMIXER 3 */
+	-1, /* WMIXER 4, NON-use */
+	VIOC_WMIX_TYPE_2TO2, /* WMIXER 5 */
+	VIOC_WMIX_TYPE_2TO2, /* WMIXER 6 */
+};
+#endif
 
 void VIOC_WMIX_SetOverlayPriority(
 	void __iomem *reg, unsigned int nOverlayPriority)
@@ -89,25 +125,64 @@ void VIOC_WMIX_GetOverlayPriority(
 EXPORT_SYMBOL(VIOC_WMIX_GetOverlayPriority);
 
 int VIOC_WMIX_GetLayer(
-	void __iomem *reg, unsigned int image_num)
+	unsigned int vioc_id, unsigned int image_num)
 {
 	unsigned int OverlayPriority;
 	int layer;
+	int mixer_type;
+	void __iomem *reg = NULL;
 
+	reg = VIOC_WMIX_GetAddress(vioc_id);
+	mixer_type = VIOC_WMIX_GetMixerType(vioc_id);
 	VIOC_WMIX_GetOverlayPriority(reg, &OverlayPriority);
 
-	for (layer = 0; layer < 4; layer++) {
-		if (image_num == OVP_table[OverlayPriority][layer]) {
-
-			return layer;
+	if (mixer_type == VIOC_WMIX_TYPE_4TO2) {
+		for (layer = 0; layer < 4; layer++) {
+			if (image_num == OVP_table[OverlayPriority][layer]) {
+				return layer;
+			}
 		}
 	}
+	else if (mixer_type == VIOC_WMIX_TYPE_2TO2) {
+		if(OverlayPriority == 3 || OverlayPriority == 5) {
+			for (layer = 0; layer < 2; layer++) {
+				if (image_num == OVP_table[OverlayPriority][layer]) {
+					return layer;
+				}
+			}
+		}
+		else {
+			pr_err("[ERR][WMIX] %s INVALID OVP(%d) in 2 to 2 WMIXER(%d)\n",
+			__func__, OverlayPriority, get_vioc_index(vioc_id));
+			goto err;
+		}
+	}
+	else {
+		goto err;
+	}
 
+err:
 	pr_err("[ERR][WMIX] %s image_num:%d ovp:%d\n",
 		__func__, image_num, OverlayPriority);
 	return -1;
 }
 EXPORT_SYMBOL(VIOC_WMIX_GetLayer);
+
+int VIOC_WMIX_GetMixerType(unsigned int vioc_id)
+{
+	int Num = get_vioc_index(vioc_id);
+
+	if (Num >= VIOC_WMIX_MAX || WMIXER_TYPE[Num] == -1)
+		goto err;
+
+	return WMIXER_TYPE[Num];
+err:
+	pr_err("[ERR][RDMA] %s Num:%d max num:%d\n", __func__, Num,
+		   VIOC_WMIX_MAX);
+	return -1;
+}
+EXPORT_SYMBOL(VIOC_WMIX_GetMixerType);
+
 
 void VIOC_WMIX_SetUpdate(void __iomem *reg)
 {

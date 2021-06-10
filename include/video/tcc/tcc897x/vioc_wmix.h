@@ -103,6 +103,9 @@ enum VIOC_WMIX_ALPHA_CCON1_Type {
 #define VIOC_WMIX_ALPHA_REGION_C		0x2
 #define VIOC_WMIX_ALPHA_REGION_D		0x3
 
+#define VIOC_WMIX_TYPE_2TO2	0x0
+#define VIOC_WMIX_TYPE_4TO2 0x1
+
 /*
  * register offset
  */
@@ -317,7 +320,8 @@ extern void VIOC_WMIX_SetOverlayPriority(
 extern void VIOC_WMIX_GetOverlayPriority(
 	void __iomem *reg, unsigned int *nOverlayPriority);
 extern int VIOC_WMIX_GetLayer(
-	void __iomem * reg , unsigned int image_num);
+	unsigned int vioc_id, unsigned int image_num);
+extern int VIOC_WMIX_GetMixerType(unsigned int vioc_id);
 extern void VIOC_WMIX_SetUpdate(void __iomem *reg);
 extern void VIOC_WMIX_SetSize(void __iomem *reg,
 	unsigned int nWidth, unsigned int nHeight);
