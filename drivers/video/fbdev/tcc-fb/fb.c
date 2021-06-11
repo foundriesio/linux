@@ -72,7 +72,7 @@
 #define FBDC_ALIGNED(w, mul) (((unsigned int)w + (mul - 1)) & ~(mul - 1))
 #endif
 
-#define FB_VERSION "1.0.6"
+#define FB_VERSION "1.0.7"
 #define FB_BUF_MAX_NUM (3)
 #define BYTE_TO_PAGES(range) (((range) + (PAGE_SIZE - 1)) >> PAGE_SHIFT)
 
@@ -123,6 +123,11 @@ struct fb_region {
 	struct fb_scale scale;
 };
 
+struct fb_chroma_info {
+	unsigned int key[3];
+	unsigned int mkey[3];
+};
+
 struct fb_dp_device {
 	enum fb_power_status fb_power_status; // true or false
 	unsigned int FbDeviceType;
@@ -145,6 +150,7 @@ struct fb_dp_device {
 	struct fb_vioc_block rdma_info;   // rdma address
 	struct fb_vioc_block fbdc_info;   // rdma address
 	struct fb_region region;
+	struct fb_chroma_info chroma_info;
 	struct file *filp;
 	unsigned int dst_addr[FB_BUF_MAX_NUM];
 	unsigned int buf_idx;
@@ -912,7 +918,7 @@ static int fbX_activate_var(
 	unsigned int dma_addr, struct fb_var_screeninfo *var,
 	struct fb_info *info)
 {
-	unsigned int width, height, format, channel;
+	unsigned int width, height, format, channel, layer;
 	struct fb_region *region;
 	struct fb_scale *scale;
 	struct fbX_par *par;
@@ -1025,9 +1031,47 @@ static int fbX_activate_var(
 		VIOC_WMIX_SetPosition(
 			par->pdata.wmixer_info.virt_addr, channel,
 			region->x, region->y);
-		VIOC_WMIX_SetChromaKey(
-			par->pdata.wmixer_info.virt_addr, channel, 1, 0x0, 0x0,
-			0x0, 0xF8, 0xFC, 0xF8);
+
+		layer = VIOC_WMIX_GetLayer(par->pdata.wmixer_info.blk_num,
+					VIOC_RDMA_GetImageNum(par->pdata.rdma_info.blk_num));
+		switch (layer) {
+		case 3 :
+			channel = 0;
+			break;
+		case 2 :
+			channel = 1;
+			break;
+		case 1 :
+			if (VIOC_WMIX_GetMixerType(par->pdata.wmixer_info.blk_num))
+				/* 4 to 2 mixer */
+				channel = 2;
+			else
+				/* 2 to 2 mixer */
+				channel = 0;
+			break;
+		default :
+			break;
+		}
+
+		if (format == VIOC_IMG_FMT_RGB565){
+			VIOC_WMIX_SetChromaKey(
+				par->pdata.wmixer_info.virt_addr, channel, 1 /*ON*/,
+				par->pdata.chroma_info.key[0], par->pdata.chroma_info.key[1],
+				par->pdata.chroma_info.key[2], par->pdata.chroma_info.mkey[0],
+				par->pdata.chroma_info.mkey[1], par->pdata.chroma_info.mkey[2]);
+
+			pr_info("[INF][FBX][%s]RGB565 Set Chromakey\n"\
+				"key R : 0x%x\nkey G : 0x%x\nkey B : 0x%x\n"\
+				"mkey R : 0x%x\nmkey G : 0x%x\nmkey B : 0x%x\n", __func__,
+				par->pdata.chroma_info.key[0],par->pdata.chroma_info.key[1],
+				par->pdata.chroma_info.key[2],par->pdata.chroma_info.mkey[0],
+				par->pdata.chroma_info.mkey[1],par->pdata.chroma_info.mkey[2]);
+		} else { // VIOC_IMG_FMT_ARGB8888
+			VIOC_WMIX_SetChromaKey(
+				par->pdata.wmixer_info.virt_addr, channel, 0 /*OFF*/,
+				0, 0, 0, 0, 0, 0);
+			pr_info("[INF][FBX]ARGB888 Disable Chromakey\n");
+		}
 		VIOC_WMIX_SetUpdate(par->pdata.wmixer_info.virt_addr);
 	}
 
@@ -1688,7 +1732,7 @@ static int fb_dt_parse_data(struct fb_info *info)
 	struct fbX_par *par = info->par;
 	struct device_node *np = NULL;
 	int property_idx = 1;
-
+	int chroma_idx;
 #ifdef CONFIG_ARCH_TCC803X
 #ifdef CONFIG_FB_NEW_DISP1
 	if (!strcmp("/fb@0", of_node_full_name(info->dev->of_node))) {
@@ -1726,6 +1770,28 @@ static int fb_dt_parse_data(struct fb_info *info)
 				__func__);
 			ret = -ENODEV;
 			goto err_dt_parse;
+		}
+
+        // get chroma key value only when bpp is 16
+		if (info->var.bits_per_pixel == 16) {
+			for (chroma_idx = 0 ; chroma_idx < 3 ; chroma_idx ++) {
+				if (of_property_read_u32_index(info->dev->of_node, "chroma-key",
+					chroma_idx, &par->pdata.chroma_info.key[chroma_idx]) < 0) {
+					pr_err("[ERROR][FBX] error in %s: can nod find chroma-key \n",
+						__func__);
+					ret = -ENODEV;
+					goto err_dt_parse;
+				}
+			}
+			for (chroma_idx = 0 ; chroma_idx < 3 ; chroma_idx ++) {
+				if (of_property_read_u32_index(info->dev->of_node, "chroma-mkey",
+					chroma_idx, &par->pdata.chroma_info.mkey[chroma_idx]) < 0) {
+					pr_err("[ERROR][FBX] error in %s: can nod find chroma-mkey \n",
+						__func__);
+					ret = -ENODEV;
+					goto err_dt_parse;
+				}
+			}
 		}
 
 		if (of_property_read_u32(info->dev->of_node, "mode", &index)) {
@@ -2257,6 +2323,7 @@ fbx_set_display_controller(struct fb_info *info, struct videomode *vm)
 	u32 vactive;
 	struct fbX_par *par;
 	int ret = -ENODEV;
+	int layer;
 
 	u32 channel;
 
@@ -2344,9 +2411,45 @@ fbx_set_display_controller(struct fb_info *info, struct videomode *vm)
 	VIOC_WMIX_SetPosition(
 		par->pdata.wmixer_info.virt_addr, channel, par->pdata.region.x,
 		par->pdata.region.y);
-	VIOC_WMIX_SetChromaKey(
-		par->pdata.wmixer_info.virt_addr, channel, 1 /*ON*/, 0x0, 0x0,
-		0x0, 0xF8, 0xFC, 0xF8);
+
+	layer = VIOC_WMIX_GetLayer(par->pdata.wmixer_info.blk_num,
+					VIOC_RDMA_GetImageNum(par->pdata.rdma_info.blk_num));
+	switch (layer) {
+	case 3 :
+		channel = 0;
+		break;
+	case 2 :
+		channel = 1;
+		break;
+	case 1 :
+		if (VIOC_WMIX_GetMixerType(par->pdata.wmixer_info.blk_num))
+			/* 4 to 2 mixer */
+			channel = 2;
+		else
+			/* 2 to 2 mixer */
+			channel = 0;
+		break;
+	default :
+		break;
+	}
+	if (info->var.bits_per_pixel == VIOC_IMG_FMT_RGB565){
+		VIOC_WMIX_SetChromaKey(
+				par->pdata.wmixer_info.virt_addr, channel, 1 /*ON*/,
+				par->pdata.chroma_info.key[0], par->pdata.chroma_info.key[1],
+				par->pdata.chroma_info.key[2], par->pdata.chroma_info.mkey[0],
+				par->pdata.chroma_info.mkey[1], par->pdata.chroma_info.mkey[2]);
+			pr_info("[INF][FBX]RGB565 Set Chromakey\n"\
+				"key R : 0x%x\nkey G : 0x%x\nkey B : 0x%x\n"\
+				"mkey R : 0x%x\nmkey G : 0x%x\nmkey B : 0x%x\n",
+				par->pdata.chroma_info.key[0],par->pdata.chroma_info.key[1],
+				par->pdata.chroma_info.key[2],par->pdata.chroma_info.mkey[0],
+				par->pdata.chroma_info.mkey[1],par->pdata.chroma_info.mkey[2]);
+	} else { // VIOC_IMG_FMT_ARGB8888
+			VIOC_WMIX_SetChromaKey(
+				par->pdata.wmixer_info.virt_addr, channel, 0 /*OFF*/,
+				0, 0, 0, 0, 0, 0);
+			pr_info("[INF][FBX]ARGB888 Disable Chromakey\n");
+	}
 
 	VIOC_WMIX_SetOverlayPriority(
 		par->pdata.wmixer_info.virt_addr, par->pdata.FbLayerOrder);

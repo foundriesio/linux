@@ -2509,6 +2509,8 @@
 		xres = <1920>;
 		yres = <720>;
 		bpp = <32>;
+		chroma-key = <0x0 0x0 0x0>;
+		chroma-mkey = <0xF8 0xFC 0xF8>;
 		mode = <FBX_TRIPLE>;
 		update-type = <FBX_RDMA_UPDATE>;
 		device-priority = <FBX_DEVICE_LVDS>;
@@ -2524,6 +2526,8 @@
 		xres = <1920>;
 		yres = <720>;
 		bpp = <32>;
+		chroma-key = <0x0 0x0 0x0>;
+		chroma-mkey = <0xF8 0xFC 0xF8>;
 		mode = <FBX_TRIPLE>;
 		update-type = <FBX_OVERLAY_UPDATE>;
 		device-priority = <FBX_DEVICE_LVDS>;
@@ -2539,6 +2543,8 @@
 		xres = <1920>;
 		yres = <720>;
 		bpp = <32>;
+		chroma-key = <0x0 0x0 0x0>;
+		chroma-mkey = <0xF8 0xFC 0xF8>;
 		mode = <FBX_TRIPLE>;
 		update-type = <FBX_RDMA_UPDATE>;
 		device-priority = <FBX_DEVICE_HDMI>;
@@ -2554,6 +2560,8 @@
 		xres = <1920>;
 		yres = <720>;
 		bpp = <32>;
+		chroma-key = <0x0 0x0 0x0>;
+		chroma-mkey = <0xF8 0xFC 0xF8>;
 		mode = <FBX_TRIPLE>;
 		update-type = <FBX_OVERLAY_UPDATE>;
 		device-priority = <FBX_DEVICE_LVDS>;
