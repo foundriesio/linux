@@ -386,6 +386,7 @@ unsigned int tca_get_scaler_num(
 		iSCNum = VIOC_SCALER3;
 	} else if (Output == TCC_OUTPUT_HDMI
 		|| Output == TCC_OUTPUT_COMPOSITE
+		|| Output == TCC_OUTPUT_DP
 		|| Output == TCC_OUTPUT_COMPONENT) {
 
 		if (Layer == RDMA_FB) {

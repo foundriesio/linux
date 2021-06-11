@@ -736,6 +736,13 @@
 	fbdisplay-overlay = <&fbdisplay>;
 };
 
+&tcc_overlay_drv1 {
+	compatible = "telechips,tcc_overlay";
+	display_num = <1>;
+	rdma_init_layer = <3>;
+	status = "okay";
+};
+
 &tcc_vsync {
 	compatible = "telechips,tcc_vsync";
 	display-vioc0 = <&vioc_disp VIOC_DISP0>;
