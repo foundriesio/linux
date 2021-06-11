@@ -15,7 +15,7 @@
 
 
 //for HEVC/VPU framebuffer_size Calculation
-#define WAVE_CAL_PROCBUFFER(use,w,h,f) (((0x700000 /*the rest except framebuffer and workbuffer*/) + (ARRAY_MBYTE(((w*h*2014)/1000)*(f+7+3))))*use)
+#define WAVE_CAL_PROCBUFFER(use,w,h,f) (((0x900000 /*the rest except framebuffer and workbuffer*/) + (ARRAY_MBYTE(((w*h*2014)/1000)*(f+7+3))))*use)
 #define VPU_CAL_PROCBUFFER(use,w,h,f)  (((0x400000 /*the rest except framebuffer and workbuffer*/) + ARRAY_MBYTE(((w*h*182)/100)*(f+7)))*use)
 #define VPU_CAL_ENC_PROCBUFFER(use,w,h,f) (((0x300000 /*the rest except framebuffer and workbuffer*/) + ARRAY_MBYTE(w*h*3/2) + ARRAY_MBYTE((((w+15)/16*16)*((h+15)/16*16)*3/2)*f))*use)
 
