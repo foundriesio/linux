@@ -14,6 +14,15 @@
 #define CONF_VENC_CNT_1
 ////////////////////////////////////////////////////////////////////////////////
 
+#undef SZ_1MB
+#define SZ_1MB				(1024*1024)
+#define ARRAY_16MBYTE(x)	((((x) + ((16*SZ_1MB)-1))>> 24) << 24)
+#define ARRAY_MBYTE(x)		((((x) + (SZ_1MB-1))>> 20) << 20)
+#define ARRAY_256KBYTE(x)	((((x) + ((SZ_1MB/4)-1))>> 18) << 18)
+#define ALIGNED_BUF256(x)	(((x) + 255) & ~(255))
+#define ALIGNED_BUF64(x)	(((x) + 63) & ~(63))
+
+
 //for HEVC/VPU framebuffer_size Calculation
 #define WAVE_CAL_PROCBUFFER(use,w,h,f) \
 	(((0x900000 /*the rest except framebuffer and workbuffer*/) + \
