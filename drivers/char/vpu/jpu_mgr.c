@@ -18,6 +18,7 @@
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
 #include <linux/time.h>
+#include <soc/tcc/chipinfo.h>
 #include <soc/tcc/pmap.h>
 
 #include "vpu_buffer.h"
@@ -47,7 +48,7 @@ static struct task_struct *kidle_task;	// = NULL;
 
 extern int tcc_jpu_dec(int Op, codec_handle_t *pHandle, void *pParam1,
 		       void *pParam2);
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 extern int tcc_jpu_enc(int Op, codec_handle_t *pHandle, void *pParam1,
 			void *pParam2);
 #endif
@@ -831,7 +832,7 @@ static int _jmgr_process(vputype type, int cmd, long pHandle, void *args)
 			return 0x999;
 		}
 	}
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	else {
 		switch (cmd) {
 		case VPU_ENC_INIT:
@@ -1171,7 +1172,7 @@ static int _jmgr_cmd_open(char *str)
 #ifdef FORCED_ERROR
 		forced_error_count = FORCED_ERR_CNT;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 		jmgr_data.only_decmode = 0;
 #else
 		jmgr_data.only_decmode = 1;

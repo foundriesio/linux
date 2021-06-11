@@ -5,6 +5,7 @@
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2
 
+#include <linux/version.h>
 #include <asm/system_info.h>
 #include <linux/delay.h>
 #include <linux/io.h>
@@ -17,6 +18,7 @@
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
 #include <linux/time.h>
+#include <soc/tcc/chipinfo.h>
 #include <soc/tcc/pmap.h>
 
 #include "vpu_buffer.h"
@@ -903,7 +905,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void *args)
 			vmgr_4k_d2_data.bDiminishInputCopy
 			 = (arg->gsV4kd2DecInit.m_uiDecOptFlags
 			      & (1 << 26)) ? true : false;
-			if (system_rev == 0 /*MPW1*/
+			if (get_chip_rev() == 0 /*replaced from system_rev*/
 			    && arg->gsV4kd2DecInit.m_Reserved[10] == 10) {
 				arg->gsV4kd2DecInit.m_uiDecOptFlags
 				    |= WAVE5_WTL_ENABLE; //disable map converter
@@ -986,7 +988,7 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void *args)
 		case VPU_DEC_SEQ_HEADER_KERNEL:
 		{
 			void *arg = args;
-			int iSize;
+			unsigned long iSize;
 
 			vpu_4K_D2_dec_initial_info_t *gsV4kd2DecInitialInfo
 			 = vmgr_4k_d2_data.bDiminishInputCopy
@@ -994,11 +996,12 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void *args)
 			   : &((VPU_4K_D2_SEQ_HEADER_t *)arg)
 			       ->gsV4kd2DecInitialInfo;
 
-			vmgr_4k_d2_data.szFrame_Len = iSize
-			 = vmgr_4k_d2_data.bDiminishInputCopy
-			    ? ((VPU_4K_D2_DECODE_t *)arg)->gsV4kd2DecInput
-				    .m_iBitstreamDataSize
-			    : (int)((VPU_4K_D2_SEQ_HEADER_t *)arg)->stream_size;
+			iSize
+			 = (unsigned ) (vmgr_4k_d2_data.bDiminishInputCopy
+			   ? ((VPU_4K_D2_DECODE_t *)arg)->gsV4kd2DecInput
+			      .m_iBitstreamDataSize
+			   : ((VPU_4K_D2_SEQ_HEADER_t *)arg)->stream_size);
+			vmgr_4k_d2_data.szFrame_Len = (unsigned int) iSize;
 
 			vmgr_4k_d2_data.check_interrupt_detection = 1;
 			vmgr_4k_d2_data.nDecode_Cmd = 0;
@@ -1011,8 +1014,8 @@ static int _vmgr_4k_d2_process(vputype type, int cmd, long pHandle, void *args)
 			    (codec_handle_t *)&pHandle,
 			    (vmgr_4k_d2_data.bDiminishInputCopy
 			      ? (void *)(&((VPU_4K_D2_DECODE_t *)arg)
-				    ->gsV4kd2DecInput) :
-			      (void *)iSize),
+				->gsV4kd2DecInput) :
+			      (void *) iSize),
 			      (void *)gsV4kd2DecInitialInfo);
 
 			dprintk(
@@ -1290,8 +1293,13 @@ rinse_repeat:
 			ret =
 			    tcc_vpu_4k_d2_dec(cmd & ~VPU_BASE_OP_KERNEL,
 			      (codec_handle_t *)&pHandle,
-			      (void *)(arg->iCopiedSize),
-			      (void *)(arg->iFlushBuf));
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+			      (void *)(uintptr_t)(arg->iCopiedSize),
+			      (void *)(uintptr_t)(arg->iFlushBuf));
+#else
+			      (void *)(unsigned long)(arg->iCopiedSize),
+			      (void *)(unsigned long)(arg->iFlushBuf));
+#endif
 		}
 		break;
 
@@ -1335,7 +1343,7 @@ rinse_repeat:
 			return 0x999;
 		}
 	}
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	else {
 		err(
 		"Enc[%d]: Encoder for VPU-4K-D2 VP9/HEVC do not support. command(0x%x)",
@@ -1491,7 +1499,7 @@ static int _vmgr_4k_d2_cmd_open(char *str)
 #ifdef FORCED_ERROR
 		forced_error_count = FORCED_ERR_CNT;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 		vmgr_4k_d2_data.only_decmode = 0;
 #else
 		vmgr_4k_d2_data.only_decmode = 1;

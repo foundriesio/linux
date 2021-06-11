@@ -5,6 +5,7 @@
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 
+#include <linux/version.h>
 #include <asm/system_info.h>
 #include <linux/delay.h>
 #include <linux/io.h>
@@ -17,6 +18,7 @@
 #include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
+#include <soc/tcc/chipinfo.h>
 #include <soc/tcc/pmap.h>
 
 #include "vpu_buffer.h"
@@ -187,52 +189,52 @@ int vmgr_hevc_enc_set_close(vputype type, int value, int bfreemem)
 
 static void _vmgr_hevc_enc_close_all(int bfreemem)
 {
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	vmgr_hevc_enc_set_close(VPU_ENC, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_3to16)
+#if DEFINED_CONFIG_VENC_CNT_3to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT2, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_4to16)
+#if DEFINED_CONFIG_VENC_CNT_4to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT3, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_5to16)
+#if DEFINED_CONFIG_VENC_CNT_5to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT4, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_6to16)
+#if DEFINED_CONFIG_VENC_CNT_6to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT5, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_7to16)
+#if DEFINED_CONFIG_VENC_CNT_7to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT6, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_8to16)
+#if DEFINED_CONFIG_VENC_CNT_8to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT7, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_9to16)
+#if DEFINED_CONFIG_VENC_CNT_9to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT8, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_10to16)
+#if DEFINED_CONFIG_VENC_CNT_10to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT9, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_11to16)
+#if DEFINED_CONFIG_VENC_CNT_11to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT10, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_12to16)
+#if DEFINED_CONFIG_VENC_CNT_12to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT11, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_13to16)
+#if DEFINED_CONFIG_VENC_CNT_13to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT12, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_14to16)
+#if DEFINED_CONFIG_VENC_CNT_14to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT13, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_15to16)
+#if DEFINED_CONFIG_VENC_CNT_15to16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT14, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_16)
+#if DEFINED_CONFIG_VENC_CNT_16
 	vmgr_hevc_enc_set_close(VPU_ENC_EXT15, 1, bfreemem);
 #endif
 }
@@ -507,8 +509,7 @@ static int _vmgr_hevc_enc_process(vputype type, int cmd, long pHandle,
 	vmgr_hevc_enc_data.check_interrupt_detection = 0;
 	vmgr_hevc_enc_data.current_cmd = cmd;
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
-
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	if (type <= VPU_HEVC_ENC_MAX) {
 		if (cmd != VPU_ENC_INIT) {
 			if (vmgr_hevc_enc_get_close(type)
@@ -826,11 +827,16 @@ static int _vmgr_hevc_enc_operation(void)
 				    != RETCODE_INSUFFICIENT_BITSTREAM_BUF)) {
 					V_DBG(VPU_DBG_ERROR,
 					"- out[0x%x] :: type = %u, vmgr_hevc_enc_data.handle = 0x%lx, cmd = %d, frame_len %u",
-						*oper_data->vpu_result,
-						oper_data->type,
-						oper_data->handle,
-						oper_data->cmd_type,
-						vmgr_hevc_enc_data.szFrame_Len);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+					    (void *)(uintptr_t)*oper_data->vpu_result,
+#else
+					    (void *)(unsigned long)
+					        *oper_data->vpu_result,
+#endif
+					    oper_data->type,
+					    oper_data->handle,
+					    oper_data->cmd_type,
+					    vmgr_hevc_enc_data.szFrame_Len);
 				}
 
 				if (*oper_data->vpu_result

@@ -77,7 +77,7 @@ static MEM_ALLOC_INFO_t gsJpuWork_memInfo;
 static MEM_ALLOC_INFO_t gsVpuHevcEncWork_memInfo;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 static MEM_ALLOC_INFO_t gsVpuEncSeqheader_memInfo[VPU_ENC_MAX_CNT];
 #endif
 
@@ -91,25 +91,25 @@ static phys_addr_t ptr_front_addr_mem, ptr_rear_addr_mem, ptr_ext_addr_mem;
 static unsigned int sz_front_used_mem, sz_rear_used_mem, sz_ext_used_mem;
 static unsigned int sz_remained_mem, sz_enc_mem;
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 static struct pmap pmap_video_ext;
 static phys_addr_t ptr_ext_front_addr_mem, ptr_ext_rear_addr_mem;
 static unsigned int sz_ext_front_used_mem, sz_ext_rear_used_mem;
 static unsigned int sz_ext_remained_mem;
 #endif
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 static struct pmap pmap_video_ext2;
 static phys_addr_t ptr_ext2_front_addr_mem;
 static unsigned int sz_ext2_front_used_mem;
 static unsigned int sz_ext2_remained_mem;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 static struct pmap pmap_enc;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 static struct pmap pmap_enc_ext[15];
 static phys_addr_t ptr_enc_ext_addr_mem[15];
 static unsigned int sz_enc_ext_used_mem[15];
@@ -267,7 +267,7 @@ static void _vmem_release_virtaddr(void *target_virtaddr,
 		iounmap((void *)target_virtaddr);
 }
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 static phys_addr_t _vmem_request_phyaddr_dec_ext23(unsigned int request_size,
 							vputype type)
 {
@@ -356,7 +356,7 @@ static int _vmem_release_phyaddr_dec_ext23(phys_addr_t phyaddr,
 }
 #endif
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 static phys_addr_t _vmem_request_phyaddr_dec_ext4(unsigned int request_size,
 							vputype type)
 {
@@ -427,7 +427,7 @@ static int _vmem_release_phyaddr_dec_ext4(phys_addr_t phyaddr,
 }
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 static phys_addr_t _vmem_request_phyaddr_enc_ext(unsigned int request_size,
 						 vputype type)
 {
@@ -1038,7 +1038,7 @@ int _vmem_alloc_dedicated_buffer(void)
 		      gsVpuWork_memInfo.kernel_remap_addr);
 	}
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	for (type = 0; type < VPU_ENC_MAX_CNT; type++) {
 		if (gsVpuEncSeqheader_memInfo[type].kernel_remap_addr == 0) {
 		// SEQ-HEADER BUFFER FOR ENCODER
@@ -1459,7 +1459,7 @@ void _vmem_free_dedicated_buffer(void)
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	for (type = 0; type < VPU_ENC_MAX_CNT; type++) {
 		if (gsVpuEncSeqheader_memInfo[type].kernel_remap_addr != 0) {
 			V_DBG(VPU_DBG_MEM_SEQ,
@@ -1613,7 +1613,7 @@ static phys_addr_t _vmem_request_seqheader_buff_phyaddr(int type,
 	      enc_type);
 	if (enc_type < 0 || enc_type >= VPU_ENC_MAX_CNT)
 		return 0;
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	*remapped_addr = gsVpuEncSeqheader_memInfo[enc_type].kernel_remap_addr;
 	*request_size = gsVpuEncSeqheader_memInfo[enc_type].request_size;
 
@@ -1717,15 +1717,15 @@ int _vmem_init_memory_info(void)
 
 	ptr_rear_addr_mem = ptr_front_addr_mem + sz_remained_mem;
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	{
 		if (pmap_get_info("enc_main", &pmap_enc) < 0) {
 			ret = -12;
 			goto Error;
 		}
 		sz_enc_mem = pmap_enc.size;
-		V_DBG(VPU_DBG_MEMORY, "size of enc_main: 0x%x (%llu)",
-		      sz_enc_mem, pmap_enc.size);
+		V_DBG(VPU_DBG_MEMORY, "size of enc_main: %lu for 0x%;d",
+		      pmap_enc.size, pmap_enc.base);
 	}
 	only_decmode = 0;
 #else
@@ -1757,7 +1757,7 @@ int _vmem_init_memory_info(void)
 	      ptr_front_addr_mem, ptr_front_addr_mem, ptr_ext_addr_mem,
 	      ptr_ext_addr_mem, ptr_rear_addr_mem, ptr_rear_addr_mem);
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 	// Additional decoder :: ext2,3
 	if (pmap_get_info("video_ext", &pmap_video_ext) < 0) {
 		ret = -13;
@@ -1789,7 +1789,7 @@ int _vmem_init_memory_info(void)
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 	// Additional decoder :: ext4
 	if (pmap_get_info("video_ext2", &pmap_video_ext2) < 0) {
 		ret = -14;
@@ -1812,7 +1812,7 @@ int _vmem_init_memory_info(void)
  * Additional encoder :: ext, ext2, ext3, ext4, ext5, ext6, ext7, ext8,
  * ext9, ext10, ext11, ext12, ext13, ext14, ext15
  */
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 	if (pmap_get_info("enc_ext", &pmap_enc_ext[0]) < 0) {
 		ret = -15;
 		goto Error;
@@ -1822,7 +1822,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[0] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_3to16)
+#if DEFINED_CONFIG_VENC_CNT_3to16
 	if (pmap_get_info("enc_ext2", &pmap_enc_ext[1]) < 0) {
 		ret = -16;
 		goto Error;
@@ -1832,7 +1832,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[1] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_4to16)
+#if DEFINED_CONFIG_VENC_CNT_4to16
 	if (pmap_get_info("enc_ext3", &pmap_enc_ext[2]) < 0) {
 		ret = -17;
 		goto Error;
@@ -1842,7 +1842,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[2] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_5to16)
+#if DEFINED_CONFIG_VENC_CNT_5to16
 	if (pmap_get_info("enc_ext4", &pmap_enc_ext[3]) < 0) {
 		ret = -18;
 		goto Error;
@@ -1852,7 +1852,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[3] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_6to16)
+#if DEFINED_CONFIG_VENC_CNT_6to16
 	if (pmap_get_info("enc_ext5", &pmap_enc_ext[4]) < 0) {
 		ret = -19;
 		goto Error;
@@ -1862,7 +1862,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[4] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_7to16)
+#if DEFINED_CONFIG_VENC_CNT_7to16
 	if (pmap_get_info("enc_ext6", &pmap_enc_ext[5]) < 0) {
 		ret = -20;
 		goto Error;
@@ -1872,7 +1872,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[5] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_8to16)
+#if DEFINED_CONFIG_VENC_CNT_8to16
 	if (pmap_get_info("enc_ext7", &pmap_enc_ext[6]) < 0) {
 		ret = -21;
 		goto Error;
@@ -1882,7 +1882,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[6] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_9to16)
+#if DEFINED_CONFIG_VENC_CNT_9to16
 	if (pmap_get_info("enc_ext8", &pmap_enc_ext[7]) < 0) {
 		ret = -22;
 		goto Error;
@@ -1892,7 +1892,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[7] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_10to16)
+#if DEFINED_CONFIG_VENC_CNT_10to16
 	if (pmap_get_info("enc_ext9", &pmap_enc_ext[8]) < 0) {
 		ret = -23;
 		goto Error;
@@ -1902,7 +1902,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[8] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_11to16)
+#if DEFINED_CONFIG_VENC_CNT_11to16
 	if (pmap_get_info("enc_ext10", &pmap_enc_ext[9]) < 0) {
 		ret = -24;
 		goto Error;
@@ -1912,7 +1912,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[9] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_12to16)
+#if DEFINED_CONFIG_VENC_CNT_12to16
 	if (pmap_get_info("enc_ext11", &pmap_enc_ext[10]) < 0) {
 		ret = -25;
 		goto Error;
@@ -1922,7 +1922,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[10] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_13to16)
+#if DEFINED_CONFIG_VENC_CNT_13to16
 	if (pmap_get_info("enc_ext12", &pmap_enc_ext[11]) < 0) {
 		ret = -26;
 		goto Error;
@@ -1932,7 +1932,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[11] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_14to16)
+#if DEFINED_CONFIG_VENC_CNT_14to16
 	if (pmap_get_info("enc_ext13", &pmap_enc_ext[12]) < 0) {
 		ret = -27;
 		goto Error;
@@ -1942,7 +1942,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[12] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_15to16)
+#if DEFINED_CONFIG_VENC_CNT_15to16
 	if (pmap_get_info("enc_ext14", &pmap_enc_ext[13]) < 0) {
 		ret = -28;
 		goto Error;
@@ -1952,7 +1952,7 @@ int _vmem_init_memory_info(void)
 	sz_enc_ext_used_mem[13] = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_16)
+#if DEFINED_CONFIG_VENC_CNT_16
 	if (pmap_get_info("enc_ext15", &pmap_enc_ext[14]) < 0) {
 		ret = -29;
 		goto Error;
@@ -1988,126 +1988,126 @@ int _vmem_deinit_memory_info(void)
 		pmap_video_sw.base = 0;
 	}
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	if (pmap_enc.base) {
 		pmap_release_info("enc_main");	// pmap_enc
 		pmap_enc.base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 	if (pmap_video_ext.base) {
 		pmap_release_info("video_ext");	// pmap_video_ext
 		pmap_video_ext.base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 	if (pmap_video_ext2.base) {
 		pmap_release_info("video_ext2");	// pmap_video_ext2
 		pmap_video_ext2.base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 	if (pmap_enc_ext[0].base) {
 		pmap_release_info("enc_ext");	// pmap_enc_ext[0]
 		pmap_enc_ext[0].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_3to16)
+#if DEFINED_CONFIG_VENC_CNT_3to16
 	if (pmap_enc_ext[1].base) {
 		pmap_release_info("enc_ext2");	// pmap_enc_ext[1]
 		pmap_enc_ext[1].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_4to16)
+#if DEFINED_CONFIG_VENC_CNT_4to16
 	if (pmap_enc_ext[2].base) {
 		pmap_release_info("enc_ext3");	// pmap_enc_ext[2]
 		pmap_enc_ext[2].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_5to16)
+#if DEFINED_CONFIG_VENC_CNT_5to16
 	if (pmap_enc_ext[3].base) {
 		pmap_release_info("enc_ext4");	// pmap_enc_ext[3]
 		pmap_enc_ext[3].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_6to16)
+#if DEFINED_CONFIG_VENC_CNT_6to16
 	if (pmap_enc_ext[4].base) {
 		pmap_release_info("enc_ext5");	// pmap_enc_ext[4]
 		pmap_enc_ext[4].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_7to16)
+#if DEFINED_CONFIG_VENC_CNT_7to16
 	if (pmap_enc_ext[5].base) {
 		pmap_release_info("enc_ext6");	// pmap_enc_ext[5]
 		pmap_enc_ext[5].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_8to16)
+#if DEFINED_CONFIG_VENC_CNT_8to16
 	if (pmap_enc_ext[6].base) {
 		pmap_release_info("enc_ext7");	// pmap_enc_ext[6]
 		pmap_enc_ext[6].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_9to16)
+#if DEFINED_CONFIG_VENC_CNT_9to16
 	if (pmap_enc_ext[7].base) {
 		pmap_release_info("enc_ext8");	// pmap_enc_ext[7]
 		pmap_enc_ext[7].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_10to16)
+#if DEFINED_CONFIG_VENC_CNT_10to16
 	if (pmap_enc_ext[8].base) {
 		pmap_release_info("enc_ext9");	// pmap_enc_ext[8]
 		pmap_enc_ext[8].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_11to16)
+#if DEFINED_CONFIG_VENC_CNT_11to16
 	if (pmap_enc_ext[9].base) {
 		pmap_release_info("enc_ext10");	// pmap_enc_ext[9]
 		pmap_enc_ext[9].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_12to16)
+#if DEFINED_CONFIG_VENC_CNT_12to16
 	if (pmap_enc_ext[10].base) {
 		pmap_release_info("enc_ext11");	// pmap_enc_ext[10]
 		pmap_enc_ext[10].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_13to16)
+#if DEFINED_CONFIG_VENC_CNT_13to16
 	if (pmap_enc_ext[11].base) {
 		pmap_release_info("enc_ext12");	// pmap_enc_ext[11]
 		pmap_enc_ext[11].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_14to16)
+#if DEFINED_CONFIG_VENC_CNT_14to16
 	if (pmap_enc_ext[12].base) {
 		pmap_release_info("enc_ext13");	// pmap_enc_ext[12]
 		pmap_enc_ext[12].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_15to16)
+#if DEFINED_CONFIG_VENC_CNT_15to16
 	if (pmap_enc_ext[13].base) {
 		pmap_release_info("enc_ext14");	// pmap_enc_ext[13]
 		pmap_enc_ext[13].base = 0;
 	}
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_16)
+#if DEFINED_CONFIG_VENC_CNT_16
 	if (pmap_enc_ext[14].base) {
 		pmap_release_info("enc_ext15");	// pmap_enc_ext[14]
 		pmap_enc_ext[14].base = 0;
@@ -2176,21 +2176,21 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 	    && (end_phyaddr <= (pmap_video_sw.base + pmap_video_sw.size - 1)))
 		return pmap_is_cma_alloc(&pmap_video_sw);
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	// pmap_enc
 	if ((start_phyaddr >= pmap_enc.base)
 	    && (end_phyaddr <= (pmap_enc.base + pmap_enc.size - 1)))
 		return pmap_is_cma_alloc(&pmap_enc);
 #endif
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 	// pmap_video_ext
 	if ((start_phyaddr >= pmap_video_ext.base)
 	    && (end_phyaddr <= (pmap_video_ext.base + pmap_video_ext.size - 1)))
 		return pmap_is_cma_alloc(&pmap_video_ext);
 #endif
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 	// pmap_video_ext2
 	if ((start_phyaddr >= pmap_video_ext2.base)
 	    && (end_phyaddr <=
@@ -2198,7 +2198,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_video_ext2);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 	// pmap_enc_ext[0]
 	if ((start_phyaddr >= pmap_enc_ext[0].base)
 	    && (end_phyaddr <=
@@ -2206,7 +2206,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[0]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_3to16)
+#if DEFINED_CONFIG_VENC_CNT_3to16
 	//pmap_enc_ext[1]
 	if ((start_phyaddr >= pmap_enc_ext[1].base)
 	    && (end_phyaddr <=
@@ -2214,7 +2214,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[1]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_4to16)
+#if DEFINED_CONFIG_VENC_CNT_4to16
 	// pmap_enc_ext[2]
 	if ((start_phyaddr >= pmap_enc_ext[2].base)
 	    && (end_phyaddr <=
@@ -2222,7 +2222,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[2]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_5to16)
+#if DEFINED_CONFIG_VENC_CNT_5to16
 	// pmap_enc_ext[3]
 	if ((start_phyaddr >= pmap_enc_ext[3].base)
 	    && (end_phyaddr <=
@@ -2230,7 +2230,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[3]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_6to16)
+#if DEFINED_CONFIG_VENC_CNT_6to16
 	// pmap_enc_ext[4]
 	if ((start_phyaddr >= pmap_enc_ext[4].base)
 	    && (end_phyaddr <=
@@ -2238,7 +2238,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[4]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_7to16)
+#if DEFINED_CONFIG_VENC_CNT_7to16
 	// pmap_enc_ext[5]
 	if ((start_phyaddr >= pmap_enc_ext[5].base)
 	    && (end_phyaddr <=
@@ -2246,7 +2246,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[5]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_8to16)
+#if DEFINED_CONFIG_VENC_CNT_8to16
 	// pmap_enc_ext[6]
 	if ((start_phyaddr >= pmap_enc_ext[6].base)
 	    && (end_phyaddr <=
@@ -2254,7 +2254,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[6]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_9to16)
+#if DEFINED_CONFIG_VENC_CNT_9to16
 	// pmap_enc_ext[7]
 	if ((start_phyaddr >= pmap_enc_ext[7].base)
 	    && (end_phyaddr <=
@@ -2262,7 +2262,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[7]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_10to16)
+#if DEFINED_CONFIG_VENC_CNT_10to16
 	// pmap_enc_ext[8]
 	if ((start_phyaddr >= pmap_enc_ext[8].base)
 	    && (end_phyaddr <=
@@ -2270,7 +2270,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[8]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_11to16)
+#if DEFINED_CONFIG_VENC_CNT_11to16
 	// pmap_enc_ext[9]
 	if ((start_phyaddr >= pmap_enc_ext[9].base)
 	    && (end_phyaddr <=
@@ -2278,7 +2278,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[9]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_12to16)
+#if DEFINED_CONFIG_VENC_CNT_12to16
 	// pmap_enc_ext[10]
 	if ((start_phyaddr >= pmap_enc_ext[10].base)
 	    && (end_phyaddr <=
@@ -2286,7 +2286,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[10]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_13to16)
+#if DEFINED_CONFIG_VENC_CNT_13to16
 	// pmap_enc_ext[11]
 	if ((start_phyaddr >= pmap_enc_ext[11].base)
 	    && (end_phyaddr <=
@@ -2294,7 +2294,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[11]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_14to16)
+#if DEFINED_CONFIG_VENC_CNT_14to16
 	// pmap_enc_ext[12]
 	if ((start_phyaddr >= pmap_enc_ext[12].base)
 	    && (end_phyaddr <=
@@ -2302,7 +2302,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[12]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_15to16)
+#if DEFINED_CONFIG_VENC_CNT_15to16
 	// pmap_enc_ext[13]
 	if ((start_phyaddr >= pmap_enc_ext[13].base)
 	    && (end_phyaddr <=
@@ -2310,7 +2310,7 @@ int _vmem_is_cma_allocated_phy_region(unsigned int start_phyaddr,
 		return pmap_is_cma_alloc(&pmap_enc_ext[13]);
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_16)
+#if DEFINED_CONFIG_VENC_CNT_16
 	// pmap_enc_ext[14]
 	if ((start_phyaddr >= pmap_enc_ext[14].base)
 	    && (end_phyaddr <=
@@ -2439,7 +2439,7 @@ int vmem_proc_alloc_memory(int codec_type, MEM_ALLOC_INFO_t *alloc_info,
 		}
 #else
 		if (type == VPU_DEC_EXT4) {
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 			alloc_info->phy_addr =
 				_vmem_request_phyaddr_dec_ext4(
 				   alloc_info->request_size, type);
@@ -2453,7 +2453,7 @@ int vmem_proc_alloc_memory(int codec_type, MEM_ALLOC_INFO_t *alloc_info,
 			}
 #endif
 		} else if (type == VPU_DEC_EXT2 || type == VPU_DEC_EXT3) {
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 			alloc_info->phy_addr =
 				_vmem_request_phyaddr_dec_ext23(
 				    alloc_info->request_size, type);
@@ -2474,7 +2474,7 @@ int vmem_proc_alloc_memory(int codec_type, MEM_ALLOC_INFO_t *alloc_info,
 			type == VPU_ENC_EXT11 || type == VPU_ENC_EXT12 ||
 			type == VPU_ENC_EXT13 || type == VPU_ENC_EXT14 ||
 			type == VPU_ENC_EXT15) {
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 			alloc_info->phy_addr =
 				_vmem_request_phyaddr_enc_ext(
 				    alloc_info->request_size, type);
@@ -2577,7 +2577,7 @@ int vmem_proc_free_memory(vputype type)
 				type);
 #else
 			if (type == VPU_DEC_EXT4) {
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 				_vmem_release_phyaddr_dec_ext4(
 				vmem_alloc_info[type][i-1].phy_addr,
 				vmem_alloc_info[type][i-1].request_size,
@@ -2585,7 +2585,7 @@ int vmem_proc_free_memory(vputype type)
 #endif
 			} else if (type == VPU_DEC_EXT2
 				|| type == VPU_DEC_EXT3) {
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 				_vmem_release_phyaddr_dec_ext23(
 				vmem_alloc_info[type][i-1].phy_addr,
 				vmem_alloc_info[type][i-1].request_size,
@@ -2606,7 +2606,7 @@ int vmem_proc_free_memory(vputype type)
 				type == VPU_ENC_EXT13 ||
 				type == VPU_ENC_EXT14 ||
 				type == VPU_ENC_EXT15) {
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 				_vmem_release_phyaddr_enc_ext(
 				vmem_alloc_info[type][i-1].phy_addr,
 				vmem_alloc_info[type][i-1].request_size,
@@ -2684,13 +2684,13 @@ unsigned int vmem_get_free_memory(vputype type)
 	} else if (type == VPU_ENC) {
 		szFreeMem = sz_enc_mem - sz_rear_used_mem;
 	} else if (type == VPU_DEC_EXT2 || type == VPU_DEC_EXT3) {
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 		szFreeMem = sz_ext_remained_mem;
 #else
 		szFreeMem = 0;
 #endif
 	} else if (type == VPU_DEC_EXT4) {
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 		szFreeMem = sz_ext2_remained_mem;
 #else
 		szFreeMem = 0;
@@ -2703,7 +2703,7 @@ unsigned int vmem_get_free_memory(vputype type)
 		type == VPU_ENC_EXT11 || type == VPU_ENC_EXT12 ||
 		type == VPU_ENC_EXT13 || type == VPU_ENC_EXT14 ||
 		type == VPU_ENC_EXT15) {
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 		szFreeMem = sz_enc_ext_remained_mem[type - VPU_ENC_EXT];
 #else
 		szFreeMem = 0;
@@ -2726,23 +2726,23 @@ unsigned int vmem_get_freemem_size(vputype type)
 		V_DBG(VPU_DBG_MEM_SEQ,
 		      "type[%d] mem info for vpu :: remain(0x%x : 0x%x : 0x%x), used mem(0x%x/0x%x, 0x%x : 0x%x/0x%x : 0x%x)",
 		      type, sz_remained_mem,
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 		      sz_ext_remained_mem,
 #else
 		      0,
 #endif
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 		      sz_ext2_remained_mem,
 #else
 		      0,
 #endif
 		      sz_front_used_mem, sz_ext_used_mem, sz_rear_used_mem,
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 		      sz_ext_front_used_mem, sz_ext_rear_used_mem
 #else
 		      0, 0
 #endif
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 		      , sz_ext2_front_used_mem
 #else
 		      , 0
@@ -3074,73 +3074,73 @@ void _vmem_config_zero(void)
 	pmap_video.base = 0;
 	pmap_video_sw.base = 0;
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	pmap_enc.base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 	pmap_video_ext.base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 	pmap_video_ext2.base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 	pmap_enc_ext[0].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_3to16)
+#if DEFINED_CONFIG_VENC_CNT_3to16
 	pmap_enc_ext[1].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_4to16)
+#if DEFINED_CONFIG_VENC_CNT_4to16
 	pmap_enc_ext[2].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_5to16)
+#if DEFINED_CONFIG_VENC_CNT_5to16
 	pmap_enc_ext[3].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_6to16)
+#if DEFINED_CONFIG_VENC_CNT_6to16
 	pmap_enc_ext[4].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_7to16)
+#if DEFINED_CONFIG_VENC_CNT_7to16
 	pmap_enc_ext[5].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_8to16)
+#if DEFINED_CONFIG_VENC_CNT_8to16
 	pmap_enc_ext[6].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_9to16)
+#if DEFINED_CONFIG_VENC_CNT_9to16
 	pmap_enc_ext[7].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_10to16)
+#if DEFINED_CONFIG_VENC_CNT_10to16
 	pmap_enc_ext[8].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_11to16)
+#if DEFINED_CONFIG_VENC_CNT_11to16
 	pmap_enc_ext[9].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_12to16)
+#if DEFINED_CONFIG_VENC_CNT_12to16
 	pmap_enc_ext[10].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_13to16)
+#if DEFINED_CONFIG_VENC_CNT_13to16
 	pmap_enc_ext[11].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_14to16)
+#if DEFINED_CONFIG_VENC_CNT_14to16
 	pmap_enc_ext[12].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_15to16)
+#if DEFINED_CONFIG_VENC_CNT_15to16
 	pmap_enc_ext[13].base = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_16)
+#if DEFINED_CONFIG_VENC_CNT_16
 	pmap_enc_ext[14].base = 0;
 #endif
 
 	sz_front_used_mem = sz_rear_used_mem = sz_ext_used_mem = 0;
 	sz_remained_mem = sz_enc_mem = 0;
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 	sz_ext_front_used_mem = sz_ext_rear_used_mem = 0;
 	sz_ext_remained_mem = 0;
 #endif
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 	sz_ext2_front_used_mem = 0;
 	sz_ext2_remained_mem = 0;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 	sz_enc_ext_used_mem[0] = sz_enc_ext_used_mem[1] =
 	sz_enc_ext_used_mem[2] = sz_enc_ext_used_mem[3] =
 	sz_enc_ext_used_mem[4] = sz_enc_ext_used_mem[5] =
@@ -3177,7 +3177,7 @@ void _vmem_config_zero(void)
 	memset(&gsG2V2_Vp9Work_memInfo, 0x00, sizeof(MEM_ALLOC_INFO_t));
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	memset(&gsVpuEncSeqheader_memInfo, 0x00,
 		sizeof(MEM_ALLOC_INFO_t) * VPU_ENC_MAX_CNT);
 #endif
@@ -3250,17 +3250,17 @@ Error1:
 			    0;
 			sz_remained_mem = sz_enc_mem = 0;
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_345)
+#if DEFINED_CONFIG_VDEC_CNT_345
 			sz_ext_front_used_mem = sz_ext_rear_used_mem = 0;
 			sz_ext_remained_mem = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_5)
+#if DEFINED_CONFIG_VDEC_CNT_5
 			sz_ext2_front_used_mem = 0;
 			sz_ext2_remained_mem = 0;
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 			sz_enc_ext_used_mem[0] = sz_enc_ext_used_mem[1] =
 			sz_enc_ext_used_mem[2] = sz_enc_ext_used_mem[3] =
 			sz_enc_ext_used_mem[4] = sz_enc_ext_used_mem[5] =
@@ -3325,7 +3325,7 @@ void vmem_deinit(void)
 		_vmem_free_dedicated_buffer();
 		_vmem_deinit_memory_info();
 		_vmem_config_zero();
-		V_DBG(VPU_DBG_ERROR,
+		V_DBG(VPU_DBG_MEM_SEQ,
 			"all memory for VPU were released. ref-count :: %d",
 			atomic_read(&cntMem_Reference));
 	}
@@ -3338,7 +3338,7 @@ void vmem_set_only_decode_mode(int bDec_only)
 	{
 		if (vmem_allocated_count[VPU_DEC_EXT] == 0
 		    && vmem_allocated_count[VPU_ENC] == 0) {
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 			only_decmode = bDec_only;
 #else
 			only_decmode = 1;

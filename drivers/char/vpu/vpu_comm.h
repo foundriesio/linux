@@ -420,7 +420,7 @@ struct _vpu_decoder_data {
 };
 #endif
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 struct _vpu_encoder_data {
 	struct miscdevice *misc;
 	struct _vpu_dec_data_t vComm_data;

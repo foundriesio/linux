@@ -16,6 +16,7 @@
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
 #include <linux/time.h>
+#include <soc/tcc/chipinfo.h>
 #include <soc/tcc/pmap.h>
 
 #include "vpu_buffer.h"
@@ -54,7 +55,7 @@ extern codec_result_t tcc_vpu_dec_esc(int Op, codec_handle_t *pHandle,
 extern codec_result_t tcc_vpu_dec_ext(int Op, codec_handle_t *pHandle,
 					void *pParam1, void *pParam2);
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 extern int tcc_vpu_enc(int Op, codec_handle_t *pHandle, void *pParam1,
 		void *pParam2);
 #endif
@@ -130,52 +131,52 @@ static void _vmgr_close_all(int bfreemem)
 	vmgr_set_close(VPU_DEC_EXT3, 1, bfreemem);
 	vmgr_set_close(VPU_DEC_EXT4, 1, bfreemem);
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	vmgr_set_close(VPU_ENC, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_2to16)
+#if DEFINED_CONFIG_VENC_CNT_2to16
 	vmgr_set_close(VPU_ENC_EXT, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_3to16)
+#if DEFINED_CONFIG_VENC_CNT_3to16
 	vmgr_set_close(VPU_ENC_EXT2, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_4to16)
+#if DEFINED_CONFIG_VENC_CNT_4to16
 	vmgr_set_close(VPU_ENC_EXT3, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_5to16)
+#if DEFINED_CONFIG_VENC_CNT_5to16
 	vmgr_set_close(VPU_ENC_EXT4, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_6to16)
+#if DEFINED_CONFIG_VENC_CNT_6to16
 	vmgr_set_close(VPU_ENC_EXT5, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_7to16)
+#if DEFINED_CONFIG_VENC_CNT_7to16
 	vmgr_set_close(VPU_ENC_EXT6, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_8to16)
+#if DEFINED_CONFIG_VENC_CNT_8to16
 	vmgr_set_close(VPU_ENC_EXT7, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_9to16)
+#if DEFINED_CONFIG_VENC_CNT_9to16
 	vmgr_set_close(VPU_ENC_EXT8, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_10to16)
+#if DEFINED_CONFIG_VENC_CNT_10to16
 	vmgr_set_close(VPU_ENC_EXT9, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_11to16)
+#if DEFINED_CONFIG_VENC_CNT_11to16
 	vmgr_set_close(VPU_ENC_EXT10, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_12to16)
+#if DEFINED_CONFIG_VENC_CNT_12to16
 	vmgr_set_close(VPU_ENC_EXT11, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_13to16)
+#if DEFINED_CONFIG_VENC_CNT_13to16
 	vmgr_set_close(VPU_ENC_EXT12, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_14to16)
+#if DEFINED_CONFIG_VENC_CNT_14to16
 	vmgr_set_close(VPU_ENC_EXT13, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_15to16)
+#if DEFINED_CONFIG_VENC_CNT_15to16
 	vmgr_set_close(VPU_ENC_EXT14, 1, bfreemem);
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_16)
+#if DEFINED_CONFIG_VENC_CNT_16
 	vmgr_set_close(VPU_ENC_EXT15, 1, bfreemem);
 #endif
 }
@@ -719,7 +720,7 @@ static int _vmgr_process(vputype type, int cmd, long pHandle, void *args)
 		}
 	}
 #if !defined(VPU_D6)
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 	else {
 		if (cmd != VPU_ENC_INIT) {
 			if (vmgr_get_close(type)
@@ -1086,7 +1087,7 @@ static int _vmgr_cmd_open(char *str)
 #ifdef FORCED_ERROR
 		forced_error_count = FORCED_ERR_CNT;
 #endif
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 		vmgr_data.only_decmode = 0;
 #else
 		vmgr_data.only_decmode = 1;

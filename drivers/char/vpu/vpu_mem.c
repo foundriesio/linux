@@ -189,20 +189,25 @@ long vmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
 static int tcc_dma_buf_attach(struct dma_buf *buf,
-						struct device *dev,
-						struct dma_buf_attachment *attach)
+			struct dma_buf_attachment *attach)
+#else
+static int tcc_dma_buf_attach(struct dma_buf *buf,
+			struct device *dev,
+			struct dma_buf_attachment *attach)
+#endif
 {
 	return 0;
 }
 
 static void tcc_dma_buf_detach(struct dma_buf *buf,
-						struct dma_buf_attachment *attach)
+			struct dma_buf_attachment *attach)
 {
 }
 
 static struct sg_table *tcc_dma_buf_map(struct dma_buf_attachment *attach,
-						enum dma_data_direction dir)
+				enum dma_data_direction dir)
 {
 	struct tcc_dma_buf_priv *dma_buf_priv = attach->dmabuf->priv;
 	struct sg_table *sgt = NULL;
@@ -258,13 +263,13 @@ static void tcc_dma_buf_release(struct dma_buf *buf)
 }
 
 static int tcc_dma_buf_begin_cpu_access(struct dma_buf *buf,
-						enum dma_data_direction direction)
+					enum dma_data_direction direction)
 {
 	return 0;
 }
 
 static int tcc_dma_buf_end_cpu_access(struct dma_buf *buf,
-						enum dma_data_direction direction)
+					enum dma_data_direction direction)
 {
 	return 0;
 }
@@ -280,11 +285,13 @@ static void tcc_dma_buf_kunmap(struct dma_buf *buf,
 {
 }
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(5, 1, 0)
 static void *tcc_dma_buf_kmap_atomic(struct dma_buf *buf,
-						unsigned long page_num)
+				unsigned long page_num)
 {
 	return NULL;
 }
+#endif
 
 static void tcc_dma_buf_vm_open(struct vm_area_struct *vma)
 {
@@ -294,7 +301,11 @@ static void tcc_dma_buf_vm_close(struct vm_area_struct *vma)
 {
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+static vm_fault_t tcc_dma_buf_vm_fault(struct vm_fault *vmf)
+#else
 static int tcc_dma_buf_vm_fault(struct vm_fault *vmf)
+#endif
 {
 	return 0;
 }
@@ -347,7 +358,9 @@ static const struct dma_buf_ops vpu_dma_buf_ops = {
 	.end_cpu_access = tcc_dma_buf_end_cpu_access,
 	.map = tcc_dma_buf_kmap,
 	.unmap = tcc_dma_buf_kunmap,
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(5, 1, 0)
 	.map_atomic = tcc_dma_buf_kmap_atomic
+#endif
 };
 
 #define TEST_VERSION "2021.0504"
@@ -356,6 +369,7 @@ static int tcc_mem_create_dma_buf(stVpuPhysInfo *pmap_info)
 {
 	int ret = 0;
 	struct tcc_dma_buf_priv *dma_buf_priv = NULL;
+	struct dma_buf_export_info export_info;
 
 	dma_buf_priv = kzalloc(sizeof(struct tcc_dma_buf_priv), GFP_KERNEL);
 	if (dma_buf_priv) {
@@ -374,14 +388,13 @@ static int tcc_mem_create_dma_buf(stVpuPhysInfo *pmap_info)
 			goto free_object;
 		}
 
-		struct dma_buf_export_info export_info = {
-			.exp_name = "vpu_dma_exp",
-			.owner = THIS_MODULE,
-			.ops = &vpu_dma_buf_ops,
-			.size = dma_buf_priv->size,
-			.flags = O_CLOEXEC | O_RDWR,
-			.priv = dma_buf_priv,
-		};
+		export_info.exp_name = "vpu_dma_exp";
+		export_info.owner = THIS_MODULE;
+		export_info.ops = &vpu_dma_buf_ops;
+		export_info.size = dma_buf_priv->size;
+		export_info.flags = O_CLOEXEC | O_RDWR;
+		export_info.priv = dma_buf_priv;
+
 		dma_buf_priv->buf = dma_buf_export(&export_info);
 
 		if(dma_buf_priv->buf) {

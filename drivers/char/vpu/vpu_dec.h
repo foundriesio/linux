@@ -8,7 +8,7 @@
 
 #include "vpu_comm.h"
 
-#if defined(DEFINED_CONFIG_VDEC_CNT_12345)
+#if DEFINED_CONFIG_VDEC_CNT_12345
 int vdec_probe(struct platform_device *pdev);
 int vdec_remove(struct platform_device *pdev);
 #endif

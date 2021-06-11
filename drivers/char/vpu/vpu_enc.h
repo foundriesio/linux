@@ -8,7 +8,7 @@
 
 #include "vpu_comm.h"
 
-#if defined(DEFINED_CONFIG_VENC_CNT_1to16)
+#if DEFINED_CONFIG_VENC_CNT_1to16
 int venc_probe(struct platform_device *pdev);
 int venc_remove(struct platform_device *pdev);
 #endif
