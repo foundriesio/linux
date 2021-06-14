@@ -69,6 +69,7 @@ void tcc_dwmac_clk_enable(void *priv)
 				break;
 			case PHY_INTERFACE_MODE_RMII:
 				clk_set_rate(gmac->gmac_clk, 50*1000*1000);
+				break;
 			case PHY_INTERFACE_MODE_MII:
 				clk_set_rate(gmac->gmac_clk, 25*1000*1000);
 				break;
