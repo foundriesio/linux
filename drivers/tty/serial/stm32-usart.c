@@ -505,7 +505,8 @@ static void stm32_usart_transmit_chars_dma(struct uart_port *port)
 	struct circ_buf *xmit = &port->state->xmit;
 	struct dma_async_tx_descriptor *desc = NULL;
 	dma_cookie_t cookie;
-	unsigned int count, ret;
+	unsigned int count;
+	int ret;
 
 	if (stm32_usart_tx_dma_started(stm32port)) {
 		if (!stm32_usart_tx_dma_enabled(stm32port))
