@@ -5,7 +5,7 @@
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC
 
-#include <asm/system_info.h>
+#include <linux/version.h>
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/of.h>
@@ -18,8 +18,13 @@
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
 #include <linux/time.h>
-#include <soc/tcc/pmap.h>
 #include <soc/tcc/chipinfo.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+#include "vpu_pmap.h"
+#else
+#include <soc/tcc/pmap.h>
+#endif
 
 #include "vpu_buffer.h"
 #include "vpu_comm.h"

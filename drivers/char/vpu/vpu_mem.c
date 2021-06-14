@@ -26,7 +26,11 @@
 #include <asm/pgtable.h>
 //#endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+#include "vpu_pmap.h"
+#else
 #include <soc/tcc/pmap.h>
+#endif
 
 #include "vpu_comm.h"
 #include "vpu_devices.h"

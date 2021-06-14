@@ -6,7 +6,6 @@
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 
 #include <linux/version.h>
-#include <asm/system_info.h>
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/of.h>
@@ -19,7 +18,12 @@
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
 #include <soc/tcc/chipinfo.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+#include "vpu_pmap.h"
+#else
 #include <soc/tcc/pmap.h>
+#endif
 
 #include "vpu_buffer.h"
 #include "vpu_comm.h"
@@ -830,8 +834,7 @@ static int _vmgr_hevc_enc_operation(void)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
 					    (void *)(uintptr_t)*oper_data->vpu_result,
 #else
-					    (void *)(unsigned long)
-					        *oper_data->vpu_result,
+					    *oper_data->vpu_result,
 #endif
 					    oper_data->type,
 					    oper_data->handle,

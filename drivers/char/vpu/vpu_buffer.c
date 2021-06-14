@@ -3,6 +3,7 @@
  * Copyright (C) Telechips Inc.
  */
 
+#include <linux/version.h>
 #include <linux/module.h>
 #include <linux/list.h>
 #include <linux/kernel.h>
@@ -20,6 +21,12 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+#include "vpu_pmap.h"
+#else
+#include <soc/tcc/pmap.h>
+#endif
 
 #include "vpu_comm.h"
 #include "vpu_buffer.h"
@@ -39,8 +46,6 @@
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 #include "vpu_hevc_enc_mgr.h"
 #endif
-
-#include <soc/tcc/pmap.h>
 
 #include <video/tcc/tcc_vpu_wbuffer.h>
 
