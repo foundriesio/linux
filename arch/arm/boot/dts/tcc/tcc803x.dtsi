@@ -9,7 +9,7 @@
 #include <dt-bindings/clock/telechips,tcc803x-clks.h>
 #include <dt-bindings/reset/telechips,tcc803x-reset.h>
 #include <dt-bindings/display/tcc803x-vioc.h>
-#include <dt-bindings/power/telechips,boot-mode.h>
+#include <dt-bindings/power/tcc803x,boot-mode.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/mailbox/tcc803x_multi_mailbox/tcc_mbox_ch.h>
 #include <dt-bindings/input/input.h>
