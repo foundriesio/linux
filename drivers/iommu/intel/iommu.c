@@ -2373,7 +2373,10 @@ static int __domain_mapping(struct dmar_domain *domain, unsigned long iov_pfn,
 		}
 	}
 
-	pteval = ((phys_addr_t)phys_pfn << VTD_PAGE_SHIFT) | attr;
+	if (!sg) {
+		sg_res = nr_pages;
+		pteval = ((phys_addr_t)phys_pfn << VTD_PAGE_SHIFT) | attr;
+	}
 
 	while (nr_pages > 0) {
 		uint64_t tmp;
@@ -2603,9 +2606,9 @@ static int domain_setup_first_level(struct intel_iommu *iommu,
 				    struct device *dev,
 				    u32 pasid)
 {
-	int flags = PASID_FLAG_SUPERVISOR_MODE;
 	struct dma_pte *pgd = domain->pgd;
 	int agaw, level;
+	int flags = 0;
 
 	/*
 	 * Skip top levels of page tables for iommu which has
@@ -2621,7 +2624,10 @@ static int domain_setup_first_level(struct intel_iommu *iommu,
 	if (level != 4 && level != 5)
 		return -EINVAL;
 
-	flags |= (level == 5) ? PASID_FLAG_FL5LP : 0;
+	if (pasid != PASID_RID2PASID)
+		flags |= PASID_FLAG_SUPERVISOR_MODE;
+	if (level == 5)
+		flags |= PASID_FLAG_FL5LP;
 
 	if (domain->domain.type == IOMMU_DOMAIN_UNMANAGED)
 		flags |= PASID_FLAG_PAGE_SNOOP;
