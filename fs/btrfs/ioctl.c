@@ -725,7 +725,7 @@ static int create_snapshot(struct btrfs_root *root, struct inode *dir,
 	smp_mb__after_atomic();
 	btrfs_wait_for_no_snapshoting_writes(root);
 
-	ret = btrfs_start_delalloc_inodes(root, 0);
+	ret = btrfs_start_delalloc_snapshot(root);
 	if (ret)
 		goto dec_and_free;
 
@@ -1502,21 +1502,6 @@ int btrfs_defrag_file(struct inode *inode, struct file *file,
 		if (test_bit(BTRFS_INODE_HAS_ASYNC_EXTENT,
 			     &BTRFS_I(inode)->runtime_flags))
 			filemap_flush(inode->i_mapping);
-	}
-
-	if ((range->flags & BTRFS_DEFRAG_RANGE_COMPRESS)) {
-		/* the filemap_flush will queue IO into the worker threads, but
-		 * we have to make sure the IO is actually started and that
-		 * ordered extents get created before we return
-		 */
-		atomic_inc(&fs_info->async_submit_draining);
-		while (atomic_read(&fs_info->nr_async_submits) ||
-		       atomic_read(&fs_info->async_delalloc_pages)) {
-			wait_event(fs_info->async_submit_wait,
-				   (atomic_read(&fs_info->nr_async_submits) == 0 &&
-				    atomic_read(&fs_info->async_delalloc_pages) == 0));
-		}
-		atomic_dec(&fs_info->async_submit_draining);
 	}
 
 	if (range->compress_type == BTRFS_COMPRESS_LZO) {
@@ -5635,7 +5620,7 @@ long btrfs_ioctl(struct file *file, unsigned int
 	case BTRFS_IOC_SYNC: {
 		int ret;
 
-		ret = btrfs_start_delalloc_roots(fs_info, 0, -1);
+		ret = btrfs_start_delalloc_roots(fs_info, U64_MAX);
 		if (ret)
 			return ret;
 		ret = btrfs_sync_fs(inode->i_sb, 1);
