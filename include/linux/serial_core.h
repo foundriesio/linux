@@ -259,6 +259,7 @@ struct uart_port {
 	&& (!defined(CONFIG_TCC803X_CA7S))
 	unsigned int		phy_config_reg;
 	unsigned int		phy_config_reg_size;
+	unsigned int		channel_num;
 	void __iomem		*config_reg;
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	struct device_node	*sc_np;

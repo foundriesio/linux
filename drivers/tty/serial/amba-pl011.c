@@ -2775,6 +2775,13 @@ static int pl011_setup_port(struct device *dev, struct uart_amba_port *uap,
 		return ret;
 	}
 
+	ret = of_property_read_u32_index(dev->of_node, "config-reg", 2,
+		&uap->port.channel_num);
+	if (ret){
+		pr_err("[ERROR][PL011] no configuration address \n");
+		return ret;
+	}
+
 	uap->port.config_reg = ioremap(uap->port.phy_config_reg,
 		uap->port.phy_config_reg_size);
 
@@ -2829,15 +2836,17 @@ static void tcc_set_uart_port_cfg(struct uart_amba_port *uap,
 	struct device_node *np;
 	int node_detect = 0;
 	long cfg_num_len, i;
-	unsigned int offset_reg;
+	unsigned int offset_reg, reg_val, portcfg_val, tmp_val, shift;
 	const char *orin_pinctrl_name;
 	char *pinctrl_name = 0, *string_temp = 0;
 	char cfg_id_string[3];
 	unsigned long cfg_id;
-	unsigned int reg_val;
 	int ret;
+	unsigned int tmp_portcfg;
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	const struct tcc_sc_fw_handle *sc_fw;
+
+	sc_fw = tcc_sc_fw_get_handle(uap->port.sc_np);
 #endif
 
 	np = of_parse_phandle(dev->of_node, "pinctrl-0", 0);
@@ -2867,6 +2876,51 @@ static void tcc_set_uart_port_cfg(struct uart_amba_port *uap,
 					pr_err("[ERROR][PL011] kstroul fail\n"
 						);
 				offset_reg = (uap->port.line/4u)*0x4u;
+
+				for(i = 0; i < uap->port.channel_num; i++) {
+					shift = (i%4)*8;
+					tmp_portcfg =
+						uap->port.phy_config_reg+
+						((i/4u)*0x4u);
+					portcfg_val =
+					    readl_relaxed(uap->port.config_reg+
+						((i/4u)*0x4u));
+					tmp_val = ((portcfg_val>>shift)&0xff);
+
+					if((uap->port.line!=i)&&
+						(tmp_val==cfg_id)) {
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+						if(sc_fw != NULL) {
+							sc_fw->
+						    ops.gpio_ops->request_gpio(
+							sc_fw,
+							(uintptr_t)tmp_portcfg,
+							shift, 8u, 0x3F);
+						} else
+#endif
+						{
+							pr_err(
+							    "[ERROR][PL011] no SC firmware handle\n"
+							);
+							reg_val =
+							    readl_relaxed(
+							    uap->port.config_reg+
+								((i/4u)*0x4u));
+							reg_val =
+							    reg_val&
+							    ~((unsigned int)0xFF<<
+								((i%4u)*8u));
+							reg_val =
+							    reg_val|
+							    ((unsigned int)0x3F<<
+								((i%4u)*8u));
+							writel_relaxed(reg_val,
+							    uap->port.config_reg+
+								((i/4u)*0x4u));
+					    }
+				    }
+			    }
+
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 
