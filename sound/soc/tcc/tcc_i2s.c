@@ -123,9 +123,7 @@ struct tcc_i2s_t {
 	bool tdm_mode;
 	bool frame_invert; //for TDM I2S mode
 	bool tdm_late_mode;
-#if defined(PCM_INTERFACE)
-	bool tdm_pcm_mode;
-#endif
+	bool tdm_multi_port;
 #if defined(TCC805x_CS_SND)
 	bool rx_bclk_delay;
 #endif
@@ -139,6 +137,92 @@ struct tcc_i2s_t {
 	struct dai_reg_t regs_backup; // for suspend/resume
 };
 
+static inline uint32_t check_i2s_hw_params(
+	struct snd_pcm_substream *substream,
+	struct snd_pcm_hw_params *params,
+	struct snd_soc_dai *dai)
+{
+	int ret = 0;
+	struct tcc_i2s_t *i2s =
+		 (struct tcc_i2s_t *)snd_soc_dai_get_drvdata(dai);
+
+	int channels = (int)params_channels(params);
+
+	if (i2s->block_type == (uint32_t)DAI_BLOCK_7_1CH_TYPE) {
+		if ((i2s->tdm_mode == FALSE) && (channels != 1) &&
+			(channels != 2) && (channels != 8)) {
+			i2s_dai_err("%s - This DAI block only supports 1, 2 or 8 channels\n",
+				__func__);
+			ret = -ENOTSUPP;
+		}
+	} else if (i2s->block_type == (uint32_t)DAI_BLOCK_STEREO_TYPE) {
+		if ((i2s->tdm_mode == FALSE) && (channels != 1) &&
+			(channels != 2)) {
+			i2s_dai_err("%s - This DAI block only supports 1 or 2 channels\n",
+						__func__);
+			ret = -ENOTSUPP;
+		}
+	}
+
+#if defined(TCC805x_CS_SND)
+	if ((i2s->tdm_mode == true) && (channels != 2)
+			&& (channels != 4) && (channels != 8)
+			&& (channels != 16) && (channels != 32)) {
+		i2s_dai_err("%s - TDM only supports 2, 4, 8, 16, 32 channels\n",
+					__func__);
+#else
+	if ((i2s->tdm_mode == true) && (channels != 2)
+			&& (channels != 4) && (channels != 8)) {
+		i2s_dai_err("%s - TDM only supports 2, 4, 8 channels\n",
+					__func__);
+#endif
+		ret = -ENOTSUPP;
+	}
+
+	if ((i2s->tdm_mode == true) && (i2s->tdm_multi_port == true)
+			 && (channels != 8) && (i2s->tdm_slots != 2)) {
+		if(((i2s->dai_fmt & (uint32_t)SND_SOC_DAIFMT_FORMAT_MASK) != SND_SOC_DAIFMT_DSP_A)
+			&& ((i2s->dai_fmt & (uint32_t)SND_SOC_DAIFMT_FORMAT_MASK) != SND_SOC_DAIFMT_DSP_B)){
+			i2s_dai_err("%s - TDM multi port mode support only 8 channels and 2 slots\n",
+					__func__);
+		} else {
+			i2s_dai_err("%s - TDM multi port mode support in DSP A/B mode\n",
+					__func__);
+		}
+		ret = -ENOTSUPP;
+	}
+
+#if defined(TCC805x_CS_SND)
+	if ((i2s->tdm_mode == true)
+		&& (i2s->tdm_slot_width != 16)
+		&& (i2s->tdm_slot_width != 24)
+		&& (i2s->tdm_slot_width != 32)) {
+		i2s_dai_err("%s - TDM only supports 16, 24, 32 slot widths\n",
+					__func__);
+#else
+	if ((i2s->tdm_mode == true) && (i2s->tdm_slot_width != 32)) {
+		i2s_dai_err("%s - TDM only supports 32 slot width\n",
+					__func__);
+#endif
+		ret = -ENOTSUPP;
+	}
+
+#if !defined(TCC805x_CS_SND)
+	if ((i2s->tdm_mode == TRUE) && (dai->active > 1u)) {
+		i2s_dai_err("TDM Mode supports only uni-direction");
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+			i2s_dai_err("%s - CAPTURE is already using\n",
+				__func__);
+		else
+			i2s_dai_err("%s - PLAYBACK is already using\n",
+				__func__);
+
+		ret = -ENOTSUPP;
+	}
+#endif
+
+	return ret;
+}
 
 static inline uint32_t calc_mclk(
 	struct tcc_i2s_t *i2s,
@@ -290,71 +374,34 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		break;
 	case SND_SOC_DAIFMT_DSP_A:
 		i2s_dai_dbg("[%d] DSP_A DAIFMT\n", i2s->blk_no);
-#if defined(PCM_INTERFACE)
-		if (i2s->tdm_pcm_mode == TRUE) {
-			if ((i2s->tdm_slot_width == 16)
-					|| (i2s->tdm_slot_width == 24)
-					|| (i2s->tdm_slot_width == 32)) {
-				tcc_dai_set_dsp_pcm_mode(
-					i2s->dai_reg,
-					(uint32_t) i2s->tdm_slots,
-					(uint32_t) i2s->tdm_slot_width, FALSE);
-			} else {
-				i2s_dai_err("[%d] PCM supports ", i2s->blk_no);
-				pr_err("only 16bit or 24bit or 32bit slotwidth\n");
-				ret = -ENOTSUPP;
-			}
+		if (i2s->tdm_mode == TRUE) {
+			tcc_dai_set_dsp_tdm_mode(
+				i2s->dai_reg,
+				(uint32_t) i2s->tdm_slots,
+				(uint32_t) i2s->tdm_slot_width,
+				FALSE);
 		} else {
-#endif	//PCM_INTERFACE
-			if (i2s->tdm_mode == TRUE) {
-				tcc_dai_set_dsp_tdm_mode(
-					i2s->dai_reg,
-					(uint32_t) i2s->tdm_slots,
-					(uint32_t) i2s->tdm_slot_width,
-					FALSE);
-			} else {
-				i2s_dai_err("[%d] DSP_A", i2s->blk_no);
-				pr_err(" supports only TDM Mode\n");
-				ret = -ENOTSUPP;
-			}
-#if defined(PCM_INTERFACE)
+			i2s_dai_err("[%d] DSP_A", i2s->blk_no);
+			pr_err(" supports only TDM Mode\n");
+			ret = -ENOTSUPP;
 		}
-#endif	//PCM_INTERFACE
 		break;
 	case SND_SOC_DAIFMT_DSP_B:
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
 	defined(CONFIG_ARCH_TCC806X) || defined(CONFIG_ARCH_TCC899X) || \
 	defined(CONFIG_ARCH_TCC901X)
 		i2s_dai_dbg("[%d] DSP_B DAIFMT\n", i2s->blk_no);
-#if defined(PCM_INTERFACE)
-		if (i2s->tdm_pcm_mode == TRUE) {
-			if ((i2s->tdm_slot_width == 16)
-					|| (i2s->tdm_slot_width == 24)
-					|| (i2s->tdm_slot_width == 32)) {
-				tcc_dai_set_dsp_pcm_mode(
-						i2s->dai_reg,
-						(uint32_t) i2s->tdm_slots,
-						(uint32_t) i2s->tdm_slot_width,
-						TRUE);
-			} else {
-				i2s_dai_err("[%d] PCM supports ", i2s->blk_no);
-				pr_err("only 16bit or 24bit or 32bit slotwidth\n");
-				ret = -ENOTSUPP;
-			}
+
+		if (i2s->tdm_mode == TRUE) {
+			tcc_dai_set_dsp_tdm_mode(i2s->dai_reg,
+			(uint32_t) i2s->tdm_slots,
+			(uint32_t) i2s->tdm_slot_width, TRUE);
 		} else {
-#endif	//PCM_INTERFACE
-			if (i2s->tdm_mode == TRUE) {
-				tcc_dai_set_dsp_tdm_mode(i2s->dai_reg,
-				(uint32_t) i2s->tdm_slots,
-				(uint32_t) i2s->tdm_slot_width, TRUE);
-			} else {
-				i2s_dai_err("[%d] DSP_B supports only TDM Mode\n",
-						i2s->blk_no);
-				ret = -ENOTSUPP;
-			}
-#if defined(PCM_INTERFACE)
+			i2s_dai_err("[%d] DSP_B supports only TDM Mode\n",
+					i2s->blk_no);
+			ret = -ENOTSUPP;
 		}
-#endif	//PCM_INTERFACE
+
 		break;
 #endif
 	default:
@@ -790,53 +837,9 @@ static int tcc_i2s_hw_params(
 
 	spin_lock(&i2s->lock);
 
-	if (i2s->block_type == (uint32_t)DAI_BLOCK_7_1CH_TYPE) {
-		if ((i2s->tdm_mode == FALSE) && (channels != 1) &&
-			(channels != 2) && (channels != 8)) {
-			i2s_dai_err("%s - This DAI block only supports 1, 2 or 8 channels\n",
-				__func__);
-			ret = -ENOTSUPP;
-			goto hw_params_end;
-		}
-	} else if (i2s->block_type == (uint32_t)DAI_BLOCK_STEREO_TYPE) {
-		if ((i2s->tdm_mode == FALSE) && (channels != 1) &&
-			(channels != 2)) {
-			i2s_dai_err("%s - This DAI block only supports 1 or 2 channels\n",
-						__func__);
-			ret = -ENOTSUPP;
-			goto hw_params_end;
-		}
-	}
-
-#if defined(TCC805x_CS_SND)
-	if ((i2s->tdm_mode == true) && (channels != 2)
-			&& (channels != 4) && (channels != 8)
-			&& (channels != 16) && (channels != 32)) {
-		i2s_dai_err("%s - TDM only supports 2, 4, 8, 16, 32 channels\n",
-					__func__);
-#else
-	if ((i2s->tdm_mode == true) && (channels != 2)
-			&& (channels != 4) && (channels != 8)) {
-		i2s_dai_err("%s - TDM only supports 2, 4, 8 channels\n",
-					__func__);
-#endif
-		ret = -ENOTSUPP;
+	ret = check_i2s_hw_params(substream, params, dai);
+	if(ret == -ENOTSUPP)
 		goto hw_params_end;
-	}
-
-#if defined(TCC805x_CS_SND)
-	if ((i2s->tdm_mode == true) && (i2s->tdm_slot_width != 16)
-			&& (i2s->tdm_slot_width != 24) && (i2s->tdm_slot_width != 32)) {
-		i2s_dai_err("%s - TDM only supports 16, 24, 32 slot widths\n",
-					__func__);
-#else
-	if ((i2s->tdm_mode == true) && (i2s->tdm_slot_width != 32)) {
-		i2s_dai_err("%s - TDM only supports 32 slot width\n",
-					__func__);
-#endif
-		ret = -ENOTSUPP;
-		goto hw_params_end;
-	}
 
 	if (i2s->dai_fmt == 0u) {
 		i2s_dai_err("audio%d can't use because tcc_i2s_set_dai_fmt failed\n",
@@ -848,21 +851,6 @@ static int tcc_i2s_hw_params(
 	/* Rx2Tx loopback Disable */
 	i2s_dai_dbg("[%d] %s Rx2Tx mode Disable\n", i2s->blk_no, __func__);
 	tcc_dai_rx2tx_loopback_enable(i2s->dai_reg, FALSE);
-
-#if !defined(TCC805x_CS_SND)
-	if ((i2s->tdm_mode == TRUE) && (dai->active > 1u)) {
-		i2s_dai_err("TDM Mode supports only uni-direction");
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-			i2s_dai_err("%s - CAPTURE is already using\n",
-				__func__);
-		else
-			i2s_dai_err("%s - PLAYBACK is already using\n",
-				__func__);
-
-		ret = -ENOTSUPP;
-		goto hw_params_end;
-	}
-#endif
 
 	if (i2s->tdm_mode == TRUE) {
 		switch (i2s->dai_fmt & (uint32_t)SND_SOC_DAIFMT_FORMAT_MASK) {
@@ -894,21 +882,17 @@ static int tcc_i2s_hw_params(
 #if !defined(TCC805x_CS_SND)
 /* After TCC805x CS, Audio IPs does not set the vaild data ends in MCCR1 register.
 */
-#if defined(PCM_INTERFACE)
-				if (i2s->tdm_pcm_mode) {
+				if (i2s->tdm_multi_port) {
 					tcc_dai_set_dsp_tdm_mode_valid_data(
 							i2s->dai_reg,
 							i2s->tdm_slots,
 							i2s->tdm_slot_width);
 				} else {
-#endif //PCM_INTERFACE
 					tcc_dai_set_dsp_tdm_mode_valid_data(
 							i2s->dai_reg,
 							channels,
 							i2s->tdm_slot_width);
-#if defined(PCM_INTERFACE)
 				}
-#endif //PCM_INTERFACE
 #endif
 			}
 			break;
@@ -937,19 +921,8 @@ static int tcc_i2s_hw_params(
 	else
 		tcc_dai_set_rx_format(i2s->dai_reg, tcc_fmt);
 
-
-	if (i2s->tdm_mode == TRUE) {
-#if defined(PCM_INTERFACE)
-		if ((i2s->tdm_pcm_mode == TRUE)
-				&& (channels == 8)
-				&& (i2s->tdm_slots == 2)) {
-			tcc_dai_set_multiport_mode(i2s->dai_reg, TRUE);
-		} else {
-			tcc_dai_set_multiport_mode(i2s->dai_reg, FALSE);
-		}
-#else
-		tcc_dai_set_multiport_mode(i2s->dai_reg, FALSE);
-#endif //PCM_INTERFACE
+	if (i2s->tdm_mode == TRUE){
+		tcc_dai_set_multiport_mode(i2s->dai_reg, i2s->tdm_multi_port);
 	} else  {
 		if (channels > 2)
 			tcc_dai_set_multiport_mode(i2s->dai_reg, TRUE);
@@ -960,41 +933,44 @@ static int tcc_i2s_hw_params(
 #if defined(TCC805x_CS_SND)
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		uint32_t chip_rev = (uint32_t)get_chip_rev();
-		uint32_t bclk = 0;
+		uint32_t dai_fmt_msk = 0;
 
 		if (chip_rev >= (uint32_t) 1) {
 			if (i2s->tdm_mode == TRUE)
-				tcc_dai_set_dsp_tdm_mode_rx_channel(i2s->dai_reg, i2s->tdm_slots);
+				tcc_dai_set_dsp_tdm_mode_rx_channel(
+					i2s->dai_reg,
+					i2s->tdm_slots);
 			else
-				tcc_dai_set_dsp_tdm_mode_rx_channel(i2s->dai_reg, 2);
+				tcc_dai_set_dsp_tdm_mode_rx_channel(
+					i2s->dai_reg,
+					2);
 
-			switch (i2s->dai_fmt & (uint32_t)SND_SOC_DAIFMT_MASTER_MASK) {
-			case SND_SOC_DAIFMT_CBS_CFM: /* codec clk slave & FRM master */
-			case SND_SOC_DAIFMT_CBS_CFS: /* codec clk & FRM slave */
-				if (i2s->tdm_mode == TRUE) {
-					bclk = calc_bclk_from_mclk(i2s, mclk);
-					if (i2s->rx_bclk_delay) {
-						tcc_dai_set_rx_bclk_delay(i2s->dai_reg, TRUE);
-						if (i2s->tdm_late_mode == TRUE)
-							tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
-						else
-							tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, TRUE);
-					} else {
-						tcc_dai_set_rx_bclk_delay(i2s->dai_reg, FALSE);
-						tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
-					}
+			dai_fmt_msk = i2s->dai_fmt;
+			dai_fmt_msk &= (uint32_t)SND_SOC_DAIFMT_MASTER_MASK;
+
+			switch (dai_fmt_msk) {
+			case SND_SOC_DAIFMT_CBS_CFM:
+				/* codec clk slave & FRM master */
+			case SND_SOC_DAIFMT_CBS_CFS:
+				/* codec clk & FRM slave */
+				tcc_dai_set_rx_bclk_delay(
+						i2s->dai_reg, i2s->rx_bclk_delay);
+
+				if ((i2s->tdm_mode == TRUE) && (i2s->rx_bclk_delay)) {
+					tcc_dai_set_dsp_tdm_mode_rx_early(
+							i2s->dai_reg,
+							!(i2s->tdm_late_mode));
 				} else {
-					if (i2s->rx_bclk_delay)
-						tcc_dai_set_rx_bclk_delay(i2s->dai_reg, TRUE);
-					else
-						tcc_dai_set_rx_bclk_delay(i2s->dai_reg, FALSE);
-
-					tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
+					tcc_dai_set_dsp_tdm_mode_rx_early(
+							i2s->dai_reg,
+							FALSE);
 				}
 				break;
 			default:
-				tcc_dai_set_rx_bclk_delay(i2s->dai_reg, FALSE);
-				tcc_dai_set_dsp_tdm_mode_rx_early(i2s->dai_reg, FALSE);
+				tcc_dai_set_rx_bclk_delay(
+					i2s->dai_reg, FALSE);
+				tcc_dai_set_dsp_tdm_mode_rx_early(
+					i2s->dai_reg, FALSE);
 				break;
 			}
 		}
@@ -1779,7 +1755,7 @@ static int set_tdm_late_mode(
 	return 0;
 }
 
-static int get_tdm_pcm_mode(
+static int get_tdm_multi_port_mode(
 	struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
@@ -1788,12 +1764,12 @@ static int get_tdm_pcm_mode(
 	struct tcc_i2s_t *i2s =
 		(struct tcc_i2s_t *)snd_soc_component_get_drvdata(component);
 
-	ucontrol->value.integer.value[0] = (long)i2s->tdm_pcm_mode;
+	ucontrol->value.integer.value[0] = (long)i2s->tdm_multi_port;
 
 	return 0;
 }
 
-static int set_tdm_pcm_mode(
+static int set_tdm_multi_port_mode(
 	struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
@@ -1802,7 +1778,7 @@ static int set_tdm_pcm_mode(
 	struct tcc_i2s_t *i2s =
 		(struct tcc_i2s_t *)snd_soc_component_get_drvdata(component);
 
-	i2s->tdm_pcm_mode = (bool)ucontrol->value.integer.value[0];
+	i2s->tdm_multi_port = (bool)ucontrol->value.integer.value[0];
 
 	i2s->is_updated = TRUE;
 
@@ -1822,10 +1798,8 @@ static const struct snd_kcontrol_new tcc_i2s_snd_controls[] = {
 		(get_rx2tx_loopback_mode), (set_rx2tx_loopback_mode)),
 	SOC_SINGLE_BOOL_EXT(("TDM Late Mode"), (0),
 		(get_tdm_late_mode), (set_tdm_late_mode)),
-#if defined(PCM_INTERFACE)
-	SOC_SINGLE_BOOL_EXT(("TDM PCM Mode"), (0),
-		(get_tdm_pcm_mode), (set_tdm_pcm_mode)),
-#endif
+	SOC_SINGLE_BOOL_EXT(("TDM Multi Port Mode"), (0),
+		(get_tdm_multi_port_mode), (set_tdm_multi_port_mode)),
 #if defined(TCC805x_CS_SND)
 	SOC_SINGLE_BOOL_EXT(("Rx BCLK Delay in Master Mode"), (0),
 		(get_rx_bclk_delay), (set_rx_bclk_delay)),
@@ -2099,9 +2073,7 @@ static void set_default_configrations(struct tcc_i2s_t *i2s)
 	i2s->is_updated = FALSE;
 	i2s->tdm_slots = 0;
 	i2s->tdm_slot_width = 0;
-#if defined(PCM_INTERFACE)
-	i2s->tdm_pcm_mode = FALSE;
-#endif //PCM_INTERFACE
+	i2s->tdm_multi_port = FALSE;
 }
 
 static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
@@ -2238,12 +2210,11 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 	else
 		i2s->tdm_late_mode = FALSE;
 
-#if defined(PCM_INTERFACE)
-	if (of_get_property(pdev->dev.of_node, "tdm-pcm-mode", NULL))
-		i2s->tdm_pcm_mode = TRUE;
+	if (of_get_property(pdev->dev.of_node, "tdm-multi-port", NULL))
+		i2s->tdm_multi_port = TRUE;
 	else
-		i2s->tdm_pcm_mode = FALSE;
-#endif //PCM_INTERFACE
+		i2s->tdm_multi_port = FALSE;
+
 #if defined(TCC805x_CS_SND)
 	if (of_get_property(pdev->dev.of_node, "rx-bclk-delay", NULL))
 		i2s->rx_bclk_delay = TRUE;
