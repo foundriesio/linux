@@ -1659,7 +1659,7 @@
 	sec_ipc: mbox@19020000 {
 		compatible = "telechips,multichannel-mailbox";
 		reg = <0x19020000 0x100>;
-		interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_LOW>;
+		interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
 		#mbox-cells = <1>;
 		max-channel = <1>;
 	};
