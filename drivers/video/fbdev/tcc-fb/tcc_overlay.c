@@ -53,7 +53,6 @@
 #include <video/tcc/tcc_overlay_ioctl.h>
 #include <video/tcc/tccfb_ioctrl.h>
 #include <video/tcc/tca_display_config.h>
-#include <video/tcc/tca_map_converter.h>
 
 #include <video/tcc/vioc_outcfg.h>
 #include <video/tcc/vioc_rdma.h>
@@ -67,6 +66,10 @@
 
 #if defined(CONFIG_VIOC_AFBCDEC)
 #include <video/tcc/vioc_afbcdec.h>
+#endif
+
+#ifdef CONFIG_VIOC_MAP_DECOMP
+#include <video/tcc/tca_map_converter.h>
 #endif
 
 #include "tcc_vsync.h"
