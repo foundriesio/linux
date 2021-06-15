@@ -93,7 +93,6 @@
 #define STM32_AUTOSUSPEND_DELAY -1
 
 struct stm32_qspi_flash {
-	struct stm32_qspi *qspi;
 	u32 cs;
 	u32 presc;
 };
@@ -593,7 +592,6 @@ static int stm32_qspi_setup(struct spi_device *spi)
 	presc = DIV_ROUND_UP(qspi->clk_rate, spi->max_speed_hz) - 1;
 
 	flash = &qspi->flash[spi->chip_select];
-	flash->qspi = qspi;
 	flash->cs = spi->chip_select;
 	flash->presc = presc;
 
