@@ -2618,6 +2618,7 @@
 		telechips,pins = "gpb-0";
 		telechips,pin-function = <1>;
 		telechips,drive-strength = <3>;
+		telechips,input_buffer_enable;
 	};
 
 	gmac1_mdc: gmac1_mdc {
