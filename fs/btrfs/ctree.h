@@ -103,6 +103,14 @@ static const int btrfs_csum_sizes[] = { 4 };
 
 #define BTRFS_DIRTY_METADATA_THRESH	SZ_32M
 
+/*
+ * Use large batch size to reduce overhead of metadata updates.  On the reader
+ * side, we only read it when we are close to ENOSPC and the read overhead is
+ * mostly related to the number of CPUs, so it is OK to use arbitrary large
+ * value here.
+ */
+#define BTRFS_TOTAL_BYTES_PINNED_BATCH	SZ_128M
+
 #define BTRFS_MAX_EXTENT_SIZE SZ_128M
 
 /*
@@ -493,7 +501,7 @@ struct btrfs_stripe_hash_table {
 
 #define BTRFS_STRIPE_HASH_TABLE_BITS 11
 
-void btrfs_init_async_reclaim_work(struct work_struct *work);
+void btrfs_init_async_reclaim_work(struct btrfs_fs_info *fs_info);
 
 /* fs_info */
 struct reloc_control;
@@ -724,9 +732,6 @@ struct btrfs_fs_info {
 	struct rb_root tree_mod_log;
 	struct list_head tree_mod_seq_list;
 
-	atomic_t nr_async_submits;
-	atomic_t async_submit_draining;
-	atomic_t nr_async_bios;
 	atomic_t async_delalloc_pages;
 	atomic_t open_ioctl_trans;
 
@@ -797,7 +802,7 @@ struct btrfs_fs_info {
 	/* used to keep from writing metadata until there is a nice batch */
 	struct percpu_counter dirty_metadata_bytes;
 	struct percpu_counter delalloc_bytes;
-	struct percpu_counter dio_bytes;
+	struct percpu_counter ordered_bytes;
 	s32 dirty_metadata_batch;
 	s32 delalloc_batch;
 
@@ -933,6 +938,7 @@ struct btrfs_fs_info {
 
 	/* Used to reclaim the metadata space in the background. */
 	struct work_struct async_reclaim_work;
+	struct work_struct async_data_reclaim_work;
 
 	spinlock_t unused_bgs_lock;
 	struct list_head unused_bgs;
@@ -2604,6 +2610,8 @@ enum btrfs_reserve_flush_enum {
 	BTRFS_RESERVE_FLUSH_LIMIT,
 	BTRFS_RESERVE_FLUSH_EVICT,
 	BTRFS_RESERVE_FLUSH_ALL,
+	BTRFS_RESERVE_FLUSH_DATA,
+	BTRFS_RESERVE_FLUSH_FREE_SPACE_INODE,
 	BTRFS_RESERVE_FLUSH_ALL_STEAL,
 };
 
@@ -3041,9 +3049,8 @@ int btrfs_truncate_inode_items(struct btrfs_trans_handle *trans,
 			       struct inode *inode, u64 new_size,
 			       u32 min_type);
 
-int btrfs_start_delalloc_inodes(struct btrfs_root *root, int delay_iput);
-int btrfs_start_delalloc_roots(struct btrfs_fs_info *fs_info, int delay_iput,
-			       int nr);
+int btrfs_start_delalloc_snapshot(struct btrfs_root *root);
+int btrfs_start_delalloc_roots(struct btrfs_fs_info *fs_info, u64 nr);
 int btrfs_set_extent_delalloc(struct inode *inode, u64 start, u64 end,
 			      unsigned int extra_bits,
 			      struct extent_state **cached_state, int dedupe);

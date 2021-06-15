@@ -811,22 +811,10 @@ static void run_one_async_start(struct btrfs_work *work)
 
 static void run_one_async_done(struct btrfs_work *work)
 {
-	struct btrfs_fs_info *fs_info;
 	struct async_submit_bio *async;
 	int limit;
 
 	async = container_of(work, struct  async_submit_bio, work);
-	fs_info = BTRFS_I(async->inode)->root->fs_info;
-
-	limit = btrfs_async_submit_limit(fs_info);
-	limit = limit * 2 / 3;
-
-	/*
-	 * atomic_dec_return implies a barrier for waitqueue_active
-	 */
-	if (atomic_dec_return(&fs_info->nr_async_submits) < limit &&
-	    waitqueue_active(&fs_info->async_submit_wait))
-		wake_up(&fs_info->async_submit_wait);
 
 	/* If an error occurred we just want to clean up the bio and move on */
 	if (async->status) {
@@ -873,19 +861,10 @@ blk_status_t btrfs_wq_submit_bio(struct btrfs_fs_info *fs_info,
 
 	async->status = 0;
 
-	atomic_inc(&fs_info->nr_async_submits);
-
 	if (op_is_sync(bio->bi_opf))
 		btrfs_set_work_high_priority(&async->work);
 
 	btrfs_queue_work(fs_info->workers, &async->work);
-
-	while (atomic_read(&fs_info->async_submit_draining) &&
-	      atomic_read(&fs_info->nr_async_submits)) {
-		wait_event(fs_info->async_submit_wait,
-			   (atomic_read(&fs_info->nr_async_submits) == 0));
-	}
-
 	return 0;
 }
 
@@ -2519,7 +2498,7 @@ int open_ctree(struct super_block *sb,
 		goto fail;
 	}
 
-	ret = percpu_counter_init(&fs_info->dio_bytes, 0, GFP_KERNEL);
+	ret = percpu_counter_init(&fs_info->ordered_bytes, 0, GFP_KERNEL);
 	if (ret) {
 		err = ret;
 		goto fail_srcu;
@@ -2528,7 +2507,7 @@ int open_ctree(struct super_block *sb,
 	ret = percpu_counter_init(&fs_info->dirty_metadata_bytes, 0, GFP_KERNEL);
 	if (ret) {
 		err = ret;
-		goto fail_dio_bytes;
+		goto fail_ordered_bytes;
 	}
 	fs_info->dirty_metadata_batch = PAGE_SIZE *
 					(1 + ilog2(nr_cpu_ids));
@@ -2586,10 +2565,7 @@ int open_ctree(struct super_block *sb,
 			     BTRFS_BLOCK_RSV_DELOPS);
 	btrfs_init_block_rsv(&fs_info->delayed_refs_rsv,
 			     BTRFS_BLOCK_RSV_DELREFS);
-	atomic_set(&fs_info->nr_async_submits, 0);
 	atomic_set(&fs_info->async_delalloc_pages, 0);
-	atomic_set(&fs_info->async_submit_draining, 0);
-	atomic_set(&fs_info->nr_async_bios, 0);
 	atomic_set(&fs_info->defrag_running, 0);
 	atomic_set(&fs_info->qgroup_op_seq, 0);
 	atomic_set(&fs_info->reada_works_cnt, 0);
@@ -2634,7 +2610,7 @@ int open_ctree(struct super_block *sb,
 	fs_info->check_integrity_print_mask = 0;
 #endif
 	btrfs_init_balance(fs_info);
-	btrfs_init_async_reclaim_work(&fs_info->async_reclaim_work);
+	btrfs_init_async_reclaim_work(fs_info);
 
 	sb->s_blocksize = 4096;
 	sb->s_blocksize_bits = blksize_bits(4096);
@@ -3257,8 +3233,8 @@ fail_delalloc_bytes:
 	percpu_counter_destroy(&fs_info->delalloc_bytes);
 fail_dirty_metadata_bytes:
 	percpu_counter_destroy(&fs_info->dirty_metadata_bytes);
-fail_dio_bytes:
-	percpu_counter_destroy(&fs_info->dio_bytes);
+fail_ordered_bytes:
+	percpu_counter_destroy(&fs_info->ordered_bytes);
 fail_srcu:
 	cleanup_srcu_struct(&fs_info->subvol_srcu);
 fail:
@@ -3925,6 +3901,7 @@ void close_ctree(struct btrfs_fs_info *fs_info)
 	btrfs_cleanup_defrag_inodes(fs_info);
 
 	cancel_work_sync(&fs_info->async_reclaim_work);
+	cancel_work_sync(&fs_info->async_data_reclaim_work);
 
 	if (!(fs_info->sb->s_flags & MS_RDONLY)) {
 		/*
@@ -3955,9 +3932,9 @@ void close_ctree(struct btrfs_fs_info *fs_info)
 		       percpu_counter_sum(&fs_info->delalloc_bytes));
 	}
 
-	if (percpu_counter_sum(&fs_info->dio_bytes))
+	if (percpu_counter_sum(&fs_info->ordered_bytes))
 		btrfs_info(fs_info, "at unmount dio bytes count %lld",
-			   percpu_counter_sum(&fs_info->dio_bytes));
+			   percpu_counter_sum(&fs_info->ordered_bytes));
 
 	btrfs_sysfs_remove_mounted(fs_info);
 	btrfs_sysfs_remove_fsid(fs_info->fs_devices);
@@ -3990,7 +3967,7 @@ void close_ctree(struct btrfs_fs_info *fs_info)
 
 	percpu_counter_destroy(&fs_info->dirty_metadata_bytes);
 	percpu_counter_destroy(&fs_info->delalloc_bytes);
-	percpu_counter_destroy(&fs_info->dio_bytes);
+	percpu_counter_destroy(&fs_info->ordered_bytes);
 	percpu_counter_destroy(&fs_info->bio_counter);
 	cleanup_srcu_struct(&fs_info->subvol_srcu);
 
