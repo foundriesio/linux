@@ -2053,6 +2053,18 @@ config MFD_WCD934X
 	  This driver provides common support WCD934x audio codec and its
 	  associated Pin Controller, Soundwire Controller and Audio codec.
 
+config MFD_AAEON
+	tristate "AAEON WMI MFD devices"
+	depends on ASUS_WMI
+	depends on UBUNTU_ODM_DRIVERS
+	help
+	  Say yes here to support mltiple IO devices on Single Board Computers
+	  produced by AAEON.
+
+	  This driver leverages the ASUS WMI interface to access device
+	  resources.
+
+
 menu "Multimedia Capabilities Port drivers"
 	depends on ARCH_SA1100
 
