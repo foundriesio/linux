@@ -30,24 +30,29 @@
 		#size-cells = <1>;
 		ranges;
 
-		vdev0vring0: vdev0vring0@9ff00000 {
-			reg = <0x9ff00000 0x8000>;
+		vdev0vring0: vdev0vring0@9df00000 {
+                        compatible = "shared-dma-pool";
+			reg = <0x9df00000 0x8000>;
 			no-map;
 		};
-		vdev0vring1: vdev0vring1@9ff08000 {
-			reg = <0x9ff08000 0x8000>;
+		vdev0vring1: vdev0vring1@9df08000 {
+                        compatible = "shared-dma-pool";
+			reg = <0x9df08000 0x8000>;
 			no-map;
 		};
-		vdev1vring0: vdev1vring0@9ff10000 {
-			reg = <0x9ff10000 0x8000>;
+		vdev1vring0: vdev1vring0@9df10000 {
+                        compatible = "shared-dma-pool";
+			reg = <0x9df10000 0x8000>;
 			no-map;
 		};
-		vdev1vring1: vdev1vring1@9ff18000 {
-			reg = <0x9ff18000 0x8000>;
+		vdev1vring1: vdev1vring1@9df18000 {
+                        compatible = "shared-dma-pool";
+			reg = <0x9df18000 0x8000>;
 			no-map;
 		};
 		vdev1vring3 {
-			reg = <0x9ff20000 0xe0000>;
+			compatible = "shared-dma-pool";
+			reg = <0x9df20000 0xe0000>;
 			no-map;
 		};
 	};
