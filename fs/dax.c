@@ -760,7 +760,7 @@ static int __dax_invalidate_mapping_entry(struct address_space *mapping,
 	mapping->nrexceptional--;
 	ret = 1;
 out:
-	put_unlocked_mapping_entry(mapping, index, entry, WAKE_NEXT);
+	put_unlocked_mapping_entry(mapping, index, entry, WAKE_ALL);
 	spin_unlock_irq(&mapping->tree_lock);
 	return ret;
 }
