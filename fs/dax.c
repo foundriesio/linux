@@ -328,13 +328,14 @@ static void put_locked_mapping_entry(struct address_space *mapping,
  * get_unlocked_mapping_entry() and which we didn't lock in the end.
  */
 static void put_unlocked_mapping_entry(struct address_space *mapping,
-				       pgoff_t index, void *entry)
+				       pgoff_t index, void *entry,
+				       enum dax_wake_mode mode)
 {
 	if (!entry)
 		return;
 
 	/* We have to wake up next waiter for the radix tree entry lock */
-	dax_wake_mapping_entry_waiter(mapping, index, entry, WAKE_NEXT);
+	dax_wake_mapping_entry_waiter(mapping, index, entry, mode);
 }
 
 static unsigned long dax_entry_size(void *entry)
@@ -541,7 +542,7 @@ restart:
 		if (size_flag & RADIX_DAX_PMD) {
 			if (dax_is_pte_entry(entry)) {
 				put_unlocked_mapping_entry(mapping, index,
-						entry);
+						entry, WAKE_NEXT);
 				entry = ERR_PTR(-EEXIST);
 				goto out_unlock;
 			}
@@ -715,7 +716,8 @@ struct page *dax_layout_busy_page(struct address_space *mapping)
 				if (i + 1 >= pagevec_count(&pvec))
 					nr_pages = 1UL << dax_radix_order(entry);
 			}
-			put_unlocked_mapping_entry(mapping, index, entry);
+			put_unlocked_mapping_entry(mapping, index, entry,
+						   WAKE_NEXT);
 			spin_unlock_irq(&mapping->tree_lock);
 			if (page)
 				break;
@@ -758,7 +760,7 @@ static int __dax_invalidate_mapping_entry(struct address_space *mapping,
 	mapping->nrexceptional--;
 	ret = 1;
 out:
-	put_unlocked_mapping_entry(mapping, index, entry);
+	put_unlocked_mapping_entry(mapping, index, entry, WAKE_NEXT);
 	spin_unlock_irq(&mapping->tree_lock);
 	return ret;
 }
@@ -1029,7 +1031,7 @@ static int dax_writeback_one(struct dax_device *dax_dev,
 	return ret;
 
  put_unlocked:
-	put_unlocked_mapping_entry(mapping, index, entry2);
+	put_unlocked_mapping_entry(mapping, index, entry2, WAKE_NEXT);
 	spin_unlock_irq(&mapping->tree_lock);
 	return ret;
 }
@@ -1815,7 +1817,7 @@ static int dax_insert_pfn_mkwrite(struct vm_fault *vmf,
 	if (!entry ||
 	    (pe_size == PE_SIZE_PTE && !dax_is_pte_entry(entry)) ||
 	    (pe_size == PE_SIZE_PMD && !dax_is_pmd_entry(entry))) {
-		put_unlocked_mapping_entry(mapping, index, entry);
+		put_unlocked_mapping_entry(mapping, index, entry, WAKE_NEXT);
 		spin_unlock_irq(&mapping->tree_lock);
 		trace_dax_insert_pfn_mkwrite_no_entry(mapping->host, vmf,
 						      VM_FAULT_NOPAGE);
