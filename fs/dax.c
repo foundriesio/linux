@@ -124,6 +124,16 @@ struct wait_exceptional_entry_queue {
 	struct exceptional_entry_key key;
 };
 
+/**
+ * enum dax_wake_mode: waitqueue wakeup behaviour
+ * @WAKE_ALL: wake all waiters in the waitqueue
+ * @WAKE_NEXT: wake only the first waiter in the waitqueue
+ */
+enum dax_wake_mode {
+	WAKE_ALL,
+	WAKE_NEXT,
+};
+
 static wait_queue_head_t *dax_entry_waitqueue(struct address_space *mapping,
 		pgoff_t index, void *entry, struct exceptional_entry_key *key)
 {
@@ -165,7 +175,7 @@ static int wake_exceptional_entry_func(wait_queue_entry_t *wait, unsigned int mo
  * wake them.
  */
 static void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-		pgoff_t index, void *entry, bool wake_all)
+		pgoff_t index, void *entry, enum dax_wake_mode mode)
 {
 	struct exceptional_entry_key key;
 	wait_queue_head_t *wq;
@@ -179,7 +189,7 @@ static void dax_wake_mapping_entry_waiter(struct address_space *mapping,
 	 * must be in the waitqueue and the following check will see them.
 	 */
 	if (waitqueue_active(wq))
-		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
+		__wake_up(wq, TASK_NORMAL, mode == WAKE_ALL ? 0 : 1, &key);
 }
 
 /*
@@ -304,7 +314,7 @@ static void unlock_mapping_entry(struct address_space *mapping, pgoff_t index)
 	}
 	unlock_slot(mapping, slot);
 	spin_unlock_irq(&mapping->tree_lock);
-	dax_wake_mapping_entry_waiter(mapping, index, entry, false);
+	dax_wake_mapping_entry_waiter(mapping, index, entry, WAKE_NEXT);
 }
 
 static void put_locked_mapping_entry(struct address_space *mapping,
@@ -324,7 +334,7 @@ static void put_unlocked_mapping_entry(struct address_space *mapping,
 		return;
 
 	/* We have to wake up next waiter for the radix tree entry lock */
-	dax_wake_mapping_entry_waiter(mapping, index, entry, false);
+	dax_wake_mapping_entry_waiter(mapping, index, entry, WAKE_NEXT);
 }
 
 static unsigned long dax_entry_size(void *entry)
@@ -596,7 +606,7 @@ restart:
 			radix_tree_delete(&mapping->page_tree, index);
 			mapping->nrexceptional--;
 			dax_wake_mapping_entry_waiter(mapping, index, entry,
-					true);
+					WAKE_ALL);
 		}
 
 		entry = dax_radix_locked_entry(0, size_flag | RADIX_DAX_EMPTY);
