@@ -107,10 +107,36 @@ void VIOC_WMIX_SetOverlayPriority(
 	void __iomem *reg, unsigned int nOverlayPriority)
 {
 	unsigned long val;
+	unsigned int num;
 
-	val = (__raw_readl(reg + MCTRL) & ~(MCTRL_OVP_MASK));
-	val |= (nOverlayPriority << MCTRL_OVP_SHIFT);
-	__raw_writel(val, reg + MCTRL);
+	for (num = 0; num < VIOC_WMIX_MAX; num ++) {
+		if (reg == pWMIX_reg[num]) {
+			if (WMIXER_TYPE[num] == VIOC_WMIX_TYPE_4TO2) {
+				val = (__raw_readl(reg + MCTRL) & ~(MCTRL_OVP_MASK));
+				val |= (nOverlayPriority << MCTRL_OVP_SHIFT);
+				__raw_writel(val, reg + MCTRL);
+
+				return;
+			} else if ((WMIXER_TYPE[num] == VIOC_WMIX_TYPE_2TO2)) {
+				if (nOverlayPriority == 3 || nOverlayPriority == 5) {
+					val = (__raw_readl(reg + MCTRL) & ~(MCTRL_OVP_MASK));
+					val |= (nOverlayPriority << MCTRL_OVP_SHIFT);
+					__raw_writel(val, reg + MCTRL);
+
+					return;
+				} else {
+					pr_err("[ERR][WMIX] %s INVALID OVP(%d) in 2 to 2 WMIXER(%d)\n",
+						__func__, nOverlayPriority, num);
+
+					return;
+				}
+			} else {
+				break;
+			}
+		}
+	}
+
+	pr_err("[ERR][WMIX] %s INVALID WMIXER\n", __func__);
 }
 EXPORT_SYMBOL(VIOC_WMIX_SetOverlayPriority);
 
@@ -142,22 +168,19 @@ int VIOC_WMIX_GetLayer(
 				return layer;
 			}
 		}
-	}
-	else if (mixer_type == VIOC_WMIX_TYPE_2TO2) {
-		if(OverlayPriority == 3 || OverlayPriority == 5) {
+	} else if (mixer_type == VIOC_WMIX_TYPE_2TO2) {
+		if (OverlayPriority == 3 || OverlayPriority == 5) {
 			for (layer = 0; layer < 2; layer++) {
 				if (image_num == OVP_table[OverlayPriority][layer]) {
 					return layer;
 				}
 			}
-		}
-		else {
+		} else {
 			pr_err("[ERR][WMIX] %s INVALID OVP(%d) in 2 to 2 WMIXER(%d)\n",
 			__func__, OverlayPriority, get_vioc_index(vioc_id));
 			goto err;
 		}
-	}
-	else {
+	} else {
 		goto err;
 	}
 
