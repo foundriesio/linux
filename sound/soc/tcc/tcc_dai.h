@@ -90,9 +90,7 @@ struct dai_reg_t {
 #define dai_writel(v, c)			writel(v, c)
 #endif
 
-#if defined(CONFIG_ARCH_TCC803X)
-#define TCC803x_ES_SND
-#elif defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
+#if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
 #define TCC805x_CS_SND
 #endif
 
@@ -490,12 +488,7 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 
 	mccr0 |= MCCR0_FRAME_INVERT_DISABLE;
 
-#if defined(TCC803x_ES_SND)
-	if (system_rev == (uint32_t) 0) {	//ES
-		mccr0 |= MCCR0_FRAME_BEGIN_NORMAL_MODE;
-	} else {
-#endif
-		mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE;
+	mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE;
 
 #if defined(TCC805x_CS_SND)
 		if (chip_rev >= (uint32_t) 1) {
@@ -509,9 +502,6 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 				mccr0 |= MCCR0_MODE_SELECT_ENABLE;
 #if defined(TCC805x_CS_SND)
 		}
-#endif
-#if defined(TCC803x_ES_SND)
-	}
 #endif
 
 	dai_writel(damr, base_addr + TCC_DAI_DAMR_OFFSET);
@@ -560,21 +550,10 @@ static inline void tcc_dai_set_dsp_tdm_mode(
 	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
 
 	mccr0 |= MCCR0_FRAME_INVERT_DISABLE;
-#if defined(TCC803x_ES_SND)
-	if (system_rev == (uint32_t) 0) {	//ES
-		mccr0 |= MCCR0_TDM_MODE_1;
-		if (late == TRUE)
-			mccr0 |= MCCR0_FRAME_BEGIN_MODE2;	//DSP-B
-		else
-			mccr0 |= MCCR0_FRAME_BEGIN_EARLY_MODE;	//DSP-A
-	} else {
-#endif
-		mccr0 |= MCCR0_TDM_MODE_0;
-		if (late == TRUE)
-			mccr0 |= MCCR0_MODE_SELECT_ENABLE;	//DSP-B
-#if defined(TCC803x_ES_SND)
-	}
-#endif
+
+	mccr0 |= MCCR0_TDM_MODE_0;
+	if (late == TRUE)
+		mccr0 |= MCCR0_MODE_SELECT_ENABLE;	//DSP-B
 
 	dai_writel(damr, base_addr + TCC_DAI_DAMR_OFFSET);
 	dai_writel(mccr0, base_addr + TCC_DAI_MCCR0_OFFSET);
@@ -694,7 +673,6 @@ static inline void tcc_dai_set_master_mode(
 		value |= (DAMR_DAI_FRAME_CLK_MASTER_SYS);
 	} else
 		value |= (DAMR_DAI_FRAME_CLK_MASTER_EXT);
-
 
 	dai_writel(value, base_addr + TCC_DAI_DAMR_OFFSET);
 }
