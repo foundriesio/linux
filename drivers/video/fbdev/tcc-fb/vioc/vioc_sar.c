@@ -639,28 +639,28 @@ void VIOC_SAR_TurnOn(
 		char *sar_regiter = reg;
 
 		// SAR Register config
-		*(volatile unsigned int *)(sar_regiter + 0x00) = 0x00000033;
-		*(volatile unsigned int *)(sar_regiter + 0x04) = 0x08700880;
-		*(volatile unsigned int *)(sar_regiter + 0x08) = 0x03600360;
-		*(volatile unsigned int *)(sar_regiter + 0x0C) = 0x05488040; //
-		*(volatile unsigned int *)(sar_regiter + 0x10) = 0x40000000;
-		*(volatile unsigned int *)(sar_regiter + 0x14) = 0x40000000;
-		*(volatile unsigned int *)(sar_regiter + 0x18) = 0xc3060742;
-		*(volatile unsigned int *)(sar_regiter + 0x1C) = 0x88087002;
-		*(volatile unsigned int *)(sar_regiter + 0x20) = 0x3c3c020f;
-		*(volatile unsigned int *)(sar_regiter + 0x24) = 0x7f800014;
-		*(volatile unsigned int *)(sar_regiter + 0x28) = 0xf87c6378;
-		*(volatile unsigned int *)(sar_regiter + 0x2C) = 0xc0002111; //
-		*(volatile unsigned int *)(sar_regiter + 0x30) = 0x0a360d85;
-		*(volatile unsigned int *)(sar_regiter + 0x34) = 0x9bceefff;
-		*(volatile unsigned int *)(sar_regiter + 0x38) = 0xfffeedcb;
-		*(volatile unsigned int *)(sar_regiter + 0x3C) = 0xa9865320;
-		*(volatile unsigned int *)(sar_regiter + 0x40) = 0x3ca03600;
-		*(volatile unsigned int *)(sar_regiter + 0x44) = 0x194b0223;
-		*(volatile unsigned int *)(sar_regiter + 0x48) = 0x0f765432;
-		*(volatile unsigned int *)(sar_regiter + 0x4C) = 0x16425440;
-		*(volatile unsigned int *)(sar_regiter + 0x50) = 0x00000000;
-		*(volatile unsigned int *)(sar_regiter + 0x00) = 0x00010033;
+		*(unsigned int *)(sar_regiter + 0x00) = 0x00000033;
+		*(unsigned int *)(sar_regiter + 0x04) = 0x08700880;
+		*(unsigned int *)(sar_regiter + 0x08) = 0x03600360;
+		*(unsigned int *)(sar_regiter + 0x0C) = 0x05488040; //
+		*(unsigned int *)(sar_regiter + 0x10) = 0x40000000;
+		*(unsigned int *)(sar_regiter + 0x14) = 0x40000000;
+		*(unsigned int *)(sar_regiter + 0x18) = 0xc3060742;
+		*(unsigned int *)(sar_regiter + 0x1C) = 0x88087002;
+		*(unsigned int *)(sar_regiter + 0x20) = 0x3c3c020f;
+		*(unsigned int *)(sar_regiter + 0x24) = 0x7f800014;
+		*(unsigned int *)(sar_regiter + 0x28) = 0xf87c6378;
+		*(unsigned int *)(sar_regiter + 0x2C) = 0xc0002111; //
+		*(unsigned int *)(sar_regiter + 0x30) = 0x0a360d85;
+		*(unsigned int *)(sar_regiter + 0x34) = 0x9bceefff;
+		*(unsigned int *)(sar_regiter + 0x38) = 0xfffeedcb;
+		*(unsigned int *)(sar_regiter + 0x3C) = 0xa9865320;
+		*(unsigned int *)(sar_regiter + 0x40) = 0x3ca03600;
+		*(unsigned int *)(sar_regiter + 0x44) = 0x194b0223;
+		*(unsigned int *)(sar_regiter + 0x48) = 0x0f765432;
+		*(unsigned int *)(sar_regiter + 0x4C) = 0x16425440;
+		*(unsigned int *)(sar_regiter + 0x50) = 0x00000000;
+		*(unsigned int *)(sar_regiter + 0x00) = 0x00010033;
 	}
 #endif //
 }

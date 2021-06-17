@@ -833,7 +833,9 @@ int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 	__raw_writel(value, reg);
 
 	if (__raw_readl(reg) & CFG_PATH_ERR_MASK) {
-		//pr_err("[ERR][VIOC_CONFIG] %s, path configuration error(ERR_MASK). device is busy. VIOC(T:%d I:%d) Path:%d\n",
+		//pr_err("[ERR][VIOC_CONFIG] %s,
+		//path configuration error(ERR_MASK).
+		//device is busy. VIOC(T:%d I:%d) Path:%d\n",
 		//       __func__, get_vioc_type(component),
 		//       get_vioc_index(component), path);
 		value = (__raw_readl(reg) & ~(CFG_PATH_EN_MASK));
@@ -850,7 +852,9 @@ int VIOC_CONFIG_PlugIn(unsigned int component, unsigned int select)
 		if (value == VIOC_PATH_CONNECTED)
 			break;
 		if (loop < 1) {
-			//pr_err("[ERR][VIOC_CONFIG] %s, path configuration error(TIMEOUT). device is busy. VIOC(T:%d I:%d) Path:%d\n",
+			//pr_err("[ERR][VIOC_CONFIG] %s,
+			//path configuration error(TIMEOUT).
+			//device is busy. VIOC(T:%d I:%d) Path:%d\n",
 			//       __func__, get_vioc_type(component),
 			//       get_vioc_index(component), path);
 			return VIOC_DEVICE_BUSY;

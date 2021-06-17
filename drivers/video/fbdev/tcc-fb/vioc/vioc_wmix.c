@@ -109,28 +109,34 @@ void VIOC_WMIX_SetOverlayPriority(
 	unsigned long val;
 	unsigned int num;
 
-	for (num = 0; num < VIOC_WMIX_MAX; num ++) {
+	for (num = 0; num < VIOC_WMIX_MAX; num++) {
 		if (reg == pWMIX_reg[num]) {
 			if (WMIXER_TYPE[num] == VIOC_WMIX_TYPE_4TO2) {
-				val = (__raw_readl(reg + MCTRL) & ~(MCTRL_OVP_MASK));
+				val = (__raw_readl(reg + MCTRL) &
+						~(MCTRL_OVP_MASK));
 				val |= (nOverlayPriority << MCTRL_OVP_SHIFT);
 				__raw_writel(val, reg + MCTRL);
 
 				return;
-			} else if ((WMIXER_TYPE[num] == VIOC_WMIX_TYPE_2TO2)) {
-				if (nOverlayPriority == 3 || nOverlayPriority == 5) {
-					val = (__raw_readl(reg + MCTRL) & ~(MCTRL_OVP_MASK));
-					val |= (nOverlayPriority << MCTRL_OVP_SHIFT);
+			} else if (WMIXER_TYPE[num] == VIOC_WMIX_TYPE_2TO2) {
+				if (nOverlayPriority == 3 ||
+					nOverlayPriority == 5) {
+					val = (__raw_readl(reg + MCTRL) &
+							~(MCTRL_OVP_MASK));
+					val |= (nOverlayPriority <<
+							MCTRL_OVP_SHIFT);
 					__raw_writel(val, reg + MCTRL);
 
 					return;
 				} else {
 					pr_err("[ERR][WMIX] %s INVALID OVP(%d) in 2 to 2 WMIXER(%d)\n",
-						__func__, nOverlayPriority, num);
+						__func__, nOverlayPriority,
+						num);
 
 					return;
 				}
 			} else {
+				/* Prevent KCS Warning */
 				break;
 			}
 		}
@@ -165,13 +171,16 @@ int VIOC_WMIX_GetLayer(
 	if (mixer_type == VIOC_WMIX_TYPE_4TO2) {
 		for (layer = 0; layer < 4; layer++) {
 			if (image_num == OVP_table[OverlayPriority][layer]) {
+				/* Prevent KCS Warning */
 				return layer;
 			}
 		}
 	} else if (mixer_type == VIOC_WMIX_TYPE_2TO2) {
 		if (OverlayPriority == 3 || OverlayPriority == 5) {
 			for (layer = 0; layer < 2; layer++) {
-				if (image_num == OVP_table[OverlayPriority][layer]) {
+				if (image_num ==
+					OVP_table[OverlayPriority][layer]) {
+					/* Prevent KCS Warning */
 					return layer;
 				}
 			}

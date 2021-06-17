@@ -1,7 +1,7 @@
 /*
  * linux/include/video/tcc/vioc_pvric_fbdc.h
  * Author:  <linux@telechips.com>
- * Description: TCC VIOC h/w block 
+ * Description: TCC VIOC h/w block
  *
  * Copyright (C) 2020 Telechips
  *
