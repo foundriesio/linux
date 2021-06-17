@@ -1672,7 +1672,7 @@ static int tcc_asrc_m2m_pcm_asrc_stop(struct snd_pcm_substream *substream)
 		}
 
 		timeout++;
-		udelay(1000);
+		msleep(1);
 	}
 /*	//for debug
  *	if (timeout > 2) {
