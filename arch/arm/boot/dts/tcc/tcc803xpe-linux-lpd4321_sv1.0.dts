@@ -44,7 +44,7 @@
 
 /dts-v1/;
 
-#include "tcc803xp-linux-avn.dtsi"
+#include "tcc803xpe-linux-ivi.dtsi"
 
 /* Definition for H/W LCD ports */
 #define LCD_PORT1_PWR "gpa-21"
@@ -58,7 +58,7 @@
 #define LCD_PORT4_PWR "gpmc-23"
 #define LCD_PORT4_RST "gpmc-25"
 #define LCD_PORT4_BLK "gpmc-21"
-#include "tcc803xp-linux-avn-display.dtsi"
+#include "tcc803xpe-linux-ivi-display.dtsi"
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */

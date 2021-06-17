@@ -58,7 +58,7 @@
 		hdmi_i2c_port_disable = <0>;
 
 		/* Source Product Description */
-		product_description = "TCC8031_avn";
+		product_description = "TCC8031_ivi";
 
 		/* fixed video identification code 0: no fixed */
 		fixd_video_id_code = <0>;

@@ -4,7 +4,7 @@
  * Device tree for Telechips TCC8059 AVN board
  */
 
-#include "tcc803xp-display.dtsi"
+#include "tcc803xpe-display.dtsi"
 / {
 	/*
 	 * Describe here after remove this statement if you have something to

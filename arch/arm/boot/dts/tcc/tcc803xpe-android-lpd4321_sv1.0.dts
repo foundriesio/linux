@@ -8,7 +8,7 @@
 #ifndef DT_OVERLAY
 /dts-v1/;
 #endif
-#include "tcc803xp-android-avn.dtsi"
+#include "tcc803xpe-android-ivi.dtsi"
 
 /* Definition for H/W LCD ports */
 #define LCD_PORT1_PWR "gpa-21"
@@ -22,7 +22,7 @@
 #define LCD_PORT4_PWR "gpmc-23"
 #define LCD_PORT4_RST "gpmc-25"
 #define LCD_PORT4_BLK "gpmc-21"
-#include "tcc803xp-android-avn-display.dtsi"
+#include "tcc803xpe-android-ivi-display.dtsi"
 
 / {
 	aux_detect {

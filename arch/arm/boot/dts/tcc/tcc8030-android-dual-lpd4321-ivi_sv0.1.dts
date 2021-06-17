@@ -9,7 +9,7 @@
 /dts-v1/;
 #endif
 
-#include "tcc8031-android-avn.dtsi"
+#include "tcc8031-android-ivi.dtsi"
 
 &i2c0 {
 	pmic@5A {

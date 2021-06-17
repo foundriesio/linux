@@ -8,7 +8,7 @@
 /dts-v1/;
 #endif
 
-#include "tcc8050-android-avn.dtsi"
+#include "tcc8050-android-ivi.dtsi"
 
 /* Definition for H/W LCD ports */
 #define LCD_PORT1_PWR "gpa-21"
@@ -27,7 +27,7 @@
 #define LCD_PORT4_RST "gpc-25"
 #define LCD_PORT4_BLK "gpc-21"
 
-#include "tcc8050-android-avn-display.dtsi"
+#include "tcc8050-android-ivi-display.dtsi"
 
 / {
 	/* Describe here after remove this statement if you have something to be override. */

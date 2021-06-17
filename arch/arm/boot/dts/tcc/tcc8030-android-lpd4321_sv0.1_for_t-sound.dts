@@ -44,7 +44,7 @@
 
 /dts-v1/;
 
-/*#include "tcc8031-linux-avn.dtsi"*/
+/*#include "tcc8031-linux-ivi.dtsi"*/
 #include "tcc8030-android-lpd4321_sv0.1.dts"
 
 / {

@@ -44,7 +44,7 @@
 
 /dts-v1/;
 
-#include "tcc8031-linux-avn.dtsi"
+#include "tcc8031-linux-ivi.dtsi"
 
 / {
 	i2c@16300000 {

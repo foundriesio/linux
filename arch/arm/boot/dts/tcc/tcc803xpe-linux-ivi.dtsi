@@ -846,7 +846,7 @@
 		hdmi_phy_type = <0>; // 0 8031
 
 		/* Source Product Description */
-		product_description = "TCC8031_avn";
+		product_description = "TCC8031_ivi";
 	};
 
 
