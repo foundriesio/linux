@@ -461,7 +461,11 @@ void nvme_sync_queues(struct nvme_ctrl *ctrl);
 void nvme_sync_io_queues(struct nvme_ctrl *ctrl);
 void nvme_unfreeze(struct nvme_ctrl *ctrl);
 void nvme_wait_freeze(struct nvme_ctrl *ctrl);
+#ifdef __GENKSYMS__
+void nvme_wait_freeze_timeout(struct nvme_ctrl *ctrl, long timeout);
+#else
 int nvme_wait_freeze_timeout(struct nvme_ctrl *ctrl, long timeout);
+#endif
 void nvme_start_freeze(struct nvme_ctrl *ctrl);
 
 #define NVME_QID_ANY -1

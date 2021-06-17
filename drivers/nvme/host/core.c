@@ -3882,7 +3882,12 @@ void nvme_unfreeze(struct nvme_ctrl *ctrl)
 }
 EXPORT_SYMBOL_GPL(nvme_unfreeze);
 
-int nvme_wait_freeze_timeout(struct nvme_ctrl *ctrl, long timeout)
+#ifdef __GENKSYMS__
+void /* previous return type, cf. commit 7cf0d7c0f3c */
+#else
+int
+#endif
+nvme_wait_freeze_timeout(struct nvme_ctrl *ctrl, long timeout)
 {
 	struct nvme_ns *ns;
 
@@ -3893,7 +3898,9 @@ int nvme_wait_freeze_timeout(struct nvme_ctrl *ctrl, long timeout)
 			break;
 	}
 	up_read(&ctrl->namespaces_rwsem);
+#ifndef __GENKSYMS__
 	return timeout;
+#endif
 }
 EXPORT_SYMBOL_GPL(nvme_wait_freeze_timeout);
 
