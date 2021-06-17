@@ -908,6 +908,7 @@ static int32_t tcc_get_trend(struct thermal_zone_device *thermal,
 		int32_t trip, enum thermal_trend *trend)
 {
 	int32_t ret = 0;
+#if defined(CONFIG_CPU_FREQ)
 	int32_t trip_temp = 0;
 	int32_t trip_temp_prev = 0;
 	int32_t trip_temp_next = 0;
@@ -963,8 +964,10 @@ static int32_t tcc_get_trend(struct thermal_zone_device *thermal,
 				(thermal->temperature < trip_temp))
 			*trend = THERMAL_TREND_DROPPING;
 	}
-
-	return 0;
+#else
+	*trend = THERMAL_TREND_STABLE;
+#endif
+	return ret;
 }
 
 static int32_t tcc_get_crit_temp(struct thermal_zone_device *thermal,
