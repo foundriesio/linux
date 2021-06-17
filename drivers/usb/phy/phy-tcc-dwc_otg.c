@@ -45,6 +45,8 @@ struct tcc_dwc_otg_device {
 	void __iomem *base;
 	struct usb_phy phy;
 	struct regulator *vbus_supply;
+
+	bool vbus_on;
 };
 
 struct dwc_otg_phy_reg {
@@ -111,7 +113,7 @@ static int32_t dwc_otg_vbus_set(struct usb_phy *phy, int32_t on_off)
 		return -ENODEV;
 	}
 
-	if (on_off) {
+	if (on_off && !phy_dev->vbus_on) {
 		retval = regulator_enable(phy_dev->vbus_supply);
 		if (retval)
 			goto err;
@@ -120,13 +122,21 @@ static int32_t dwc_otg_vbus_set(struct usb_phy *phy, int32_t on_off)
 				5000000, 5000000);
 		if (retval)
 			goto err;
-	} else {
+
+		phy_dev->vbus_on = true;
+	} else if (!on_off && phy_dev->vbus_on) {
 		retval = regulator_set_voltage(phy_dev->vbus_supply,
 				1, 1);
 		if (retval)
 			goto err;
 
 		retval = regulator_disable(phy_dev->vbus_supply);
+
+		phy_dev->vbus_on = false;
+	} else {
+		dev_info(dev, "[INFO][USB] vbus is already enabled or disabled");
+
+		return retval;
 	}
 
 err:
