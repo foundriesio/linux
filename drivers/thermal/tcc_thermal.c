@@ -908,7 +908,7 @@ static int32_t tcc_get_trend(struct thermal_zone_device *thermal,
 		int32_t trip, enum thermal_trend *trend)
 {
 	int32_t ret = 0;
-#if defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_CPU_FREQ) && defined(CONFIG_CPU_THERMAL)
 	int32_t trip_temp = 0;
 	int32_t trip_temp_prev = 0;
 	int32_t trip_temp_next = 0;
@@ -945,8 +945,13 @@ static int32_t tcc_get_trend(struct thermal_zone_device *thermal,
 		return ret;
 	}
 
-	thermal_zone->cool_dev[0]->ops->get_cur_state(thermal_zone->cool_dev[0],
-									&cur);
+	if (thermal_zone->cool_dev[0]->ops->get_cur_state != NULL) {
+		thermal_zone->cool_dev[0]->ops->get_cur_state(thermal_zone->cool_dev[0], &cur);
+	} else {
+		(void)pr_err("cannot get current status. %s\n", __func__);
+		*trend = THERMAL_TREND_STABLE;
+		return 0;
+	}
 
 	if (trip > cur) {
 		if (trend != NULL) {
