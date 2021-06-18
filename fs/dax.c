@@ -124,6 +124,16 @@ struct wait_exceptional_entry_queue {
 	struct exceptional_entry_key key;
 };
 
+/**
+ * enum dax_wake_mode: waitqueue wakeup behaviour
+ * @WAKE_ALL: wake all waiters in the waitqueue
+ * @WAKE_NEXT: wake only the first waiter in the waitqueue
+ */
+enum dax_wake_mode {
+	WAKE_ALL,
+	WAKE_NEXT,
+};
+
 static wait_queue_head_t *dax_entry_waitqueue(struct address_space *mapping,
 		pgoff_t index, void *entry, struct exceptional_entry_key *key)
 {
@@ -165,7 +175,7 @@ static int wake_exceptional_entry_func(wait_queue_entry_t *wait, unsigned int mo
  * wake them.
  */
 static void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-		pgoff_t index, void *entry, bool wake_all)
+		pgoff_t index, void *entry, enum dax_wake_mode mode)
 {
 	struct exceptional_entry_key key;
 	wait_queue_head_t *wq;
@@ -179,7 +189,7 @@ static void dax_wake_mapping_entry_waiter(struct address_space *mapping,
 	 * must be in the waitqueue and the following check will see them.
 	 */
 	if (waitqueue_active(wq))
-		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
+		__wake_up(wq, TASK_NORMAL, mode == WAKE_ALL ? 0 : 1, &key);
 }
 
 /*
@@ -304,7 +314,7 @@ static void unlock_mapping_entry(struct address_space *mapping, pgoff_t index)
 	}
 	unlock_slot(mapping, slot);
 	spin_unlock_irq(&mapping->tree_lock);
-	dax_wake_mapping_entry_waiter(mapping, index, entry, false);
+	dax_wake_mapping_entry_waiter(mapping, index, entry, WAKE_NEXT);
 }
 
 static void put_locked_mapping_entry(struct address_space *mapping,
@@ -318,13 +328,14 @@ static void put_locked_mapping_entry(struct address_space *mapping,
  * get_unlocked_mapping_entry() and which we didn't lock in the end.
  */
 static void put_unlocked_mapping_entry(struct address_space *mapping,
-				       pgoff_t index, void *entry)
+				       pgoff_t index, void *entry,
+				       enum dax_wake_mode mode)
 {
 	if (!entry)
 		return;
 
 	/* We have to wake up next waiter for the radix tree entry lock */
-	dax_wake_mapping_entry_waiter(mapping, index, entry, false);
+	dax_wake_mapping_entry_waiter(mapping, index, entry, mode);
 }
 
 static unsigned long dax_entry_size(void *entry)
@@ -531,7 +542,7 @@ restart:
 		if (size_flag & RADIX_DAX_PMD) {
 			if (dax_is_pte_entry(entry)) {
 				put_unlocked_mapping_entry(mapping, index,
-						entry);
+						entry, WAKE_NEXT);
 				entry = ERR_PTR(-EEXIST);
 				goto out_unlock;
 			}
@@ -596,7 +607,7 @@ restart:
 			radix_tree_delete(&mapping->page_tree, index);
 			mapping->nrexceptional--;
 			dax_wake_mapping_entry_waiter(mapping, index, entry,
-					true);
+					WAKE_ALL);
 		}
 
 		entry = dax_radix_locked_entry(0, size_flag | RADIX_DAX_EMPTY);
@@ -705,7 +716,8 @@ struct page *dax_layout_busy_page(struct address_space *mapping)
 				if (i + 1 >= pagevec_count(&pvec))
 					nr_pages = 1UL << dax_radix_order(entry);
 			}
-			put_unlocked_mapping_entry(mapping, index, entry);
+			put_unlocked_mapping_entry(mapping, index, entry,
+						   WAKE_NEXT);
 			spin_unlock_irq(&mapping->tree_lock);
 			if (page)
 				break;
@@ -748,7 +760,7 @@ static int __dax_invalidate_mapping_entry(struct address_space *mapping,
 	mapping->nrexceptional--;
 	ret = 1;
 out:
-	put_unlocked_mapping_entry(mapping, index, entry);
+	put_unlocked_mapping_entry(mapping, index, entry, WAKE_ALL);
 	spin_unlock_irq(&mapping->tree_lock);
 	return ret;
 }
@@ -1019,7 +1031,7 @@ static int dax_writeback_one(struct dax_device *dax_dev,
 	return ret;
 
  put_unlocked:
-	put_unlocked_mapping_entry(mapping, index, entry2);
+	put_unlocked_mapping_entry(mapping, index, entry2, WAKE_NEXT);
 	spin_unlock_irq(&mapping->tree_lock);
 	return ret;
 }
@@ -1805,7 +1817,7 @@ static int dax_insert_pfn_mkwrite(struct vm_fault *vmf,
 	if (!entry ||
 	    (pe_size == PE_SIZE_PTE && !dax_is_pte_entry(entry)) ||
 	    (pe_size == PE_SIZE_PMD && !dax_is_pmd_entry(entry))) {
-		put_unlocked_mapping_entry(mapping, index, entry);
+		put_unlocked_mapping_entry(mapping, index, entry, WAKE_NEXT);
 		spin_unlock_irq(&mapping->tree_lock);
 		trace_dax_insert_pfn_mkwrite_no_entry(mapping->host, vmf,
 						      VM_FAULT_NOPAGE);
