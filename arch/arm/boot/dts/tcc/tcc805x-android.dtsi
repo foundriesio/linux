@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
 /*
  * Copyright (C) Telechips Inc.
- * Device tree for Telechips TCC805x Android platform
  */
+
 #ifdef CONFIG_ANDROID_SYSTEM_AS_ROOT
 #include "tcc805x-android-p.dtsi"
 #else

@@ -1,9 +1,7 @@
-// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
 /*
- * Device tree for Telechips TCC8990 STB board
- *
- * Copyright (C) 2018 Telechips Inc. - http://www.telechips.com
-*/
+ * Copyright (C) Telechips Inc.
+ */
 
 #ifndef DT_OVERLAY
 /dts-v1/;

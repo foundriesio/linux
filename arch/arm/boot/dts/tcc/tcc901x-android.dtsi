@@ -1,9 +1,8 @@
-// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
 /*
- * Device tree for Telechips TCC901x Android platform
- *
- * Copyright (C) 2019 Telechips Inc.
+ * Copyright (C) Telechips Inc.
  */
+
 #ifdef CONFIG_VIOC_DOLBY_VISION_EDR
 &video_viqe {
 	tcc_video_viqe_external {

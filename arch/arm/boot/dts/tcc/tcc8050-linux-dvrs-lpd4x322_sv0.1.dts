@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
 /*
-* Copyright (C) Telechips Inc.
-* Device tree for Telechips TCC8050 DVRS board
-*/
+ * Copyright (C) Telechips Inc.
+ */
 
 #ifndef DT_OVERLAY
 /dts-v1/;
