@@ -1131,11 +1131,11 @@ dtb-$(CONFIG_ARCH_TCC901X) += \
 
 ifeq ($(CONFIG_TCC805X_CA53Q),y)
 dtb-$(CONFIG_ARCH_TCC805X) += \
-	tcc/tcc8050-linux-subcore-a53q_sv0.1.dtb \
-	tcc/tcc8053-linux-subcore-a53q_sv0.1.dtb \
-	tcc/tcc8059-linux-subcore-a53q_sv0.1.dtb \
-	tcc/tcc8050-linux-subcore-a53q_sv1.0.dtb \
-	tcc/tcc8053-linux-subcore-a53q_sv1.0.dtb
+	tcc/tcc8050-linux-subcore_sv0.1.dtb \
+	tcc/tcc8053-linux-subcore_sv0.1.dtb \
+	tcc/tcc8059-linux-subcore_sv0.1.dtb \
+	tcc/tcc8050-linux-subcore_sv1.0.dtb \
+	tcc/tcc8053-linux-subcore_sv1.0.dtb
 
 else
 dtb-$(CONFIG_ARCH_TCC805X) += \
