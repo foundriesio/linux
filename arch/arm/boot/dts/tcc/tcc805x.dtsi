@@ -2015,7 +2015,7 @@
 		compatible = "telechips,adma";
 		reg = <0x0 0x16100000 0x0 0x200>;
 		clocks = <&clk_io IOBUS_ADMA0>;
-		interrupts = <GIC_SPI 80 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 80 IRQ_TYPE_EDGE_RISING>;
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
 	};
@@ -2024,7 +2024,7 @@
 		compatible = "telechips,adma";
 		reg = <0x0 0x16700000 0x0 0x200>;
 		clocks = <&clk_io IOBUS_ADMA1>;
-		interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 92 IRQ_TYPE_EDGE_RISING>;
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
 	};
@@ -2033,7 +2033,7 @@
 		compatible = "telechips,adma";
 		reg = <0x0 0x16800000 0x0 0x200>;
 		clocks = <&clk_io IOBUS_ADMA2>;
-		interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 94 IRQ_TYPE_EDGE_RISING>;
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
 	};
@@ -2042,7 +2042,7 @@
 		compatible = "telechips,adma";
 		reg = <0x0 0x16200000 0x0 0x200>;
 		clocks = <&clk_io IOBUS_ADMA3>;
-		interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 82 IRQ_TYPE_EDGE_RISING>;
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
 	};
@@ -2051,7 +2051,7 @@
 		compatible = "telechips,adma";
 		reg = <0x0 0x16A00000 0x0 0x200>;
 		clocks = <&clk_io IOBUS_ADMA4>;
-		interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 100 IRQ_TYPE_EDGE_RISING>;
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
 	};
@@ -2060,7 +2060,7 @@
 		compatible = "telechips,adma";
 		reg = <0x0 0x16B00000 0x0 0x200>;
 		clocks = <&clk_io IOBUS_ADMA5>;
-		interrupts = <GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 102 IRQ_TYPE_EDGE_RISING>;
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
 	};
@@ -2069,7 +2069,7 @@
 		compatible = "telechips,adma";
 		reg = <0x0 0x16C00000 0x0 0x200>;
 		clocks = <&clk_io IOBUS_ADMA6>;
-		interrupts = <GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 104 IRQ_TYPE_EDGE_RISING>;
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
 	};
@@ -2078,7 +2078,7 @@
 		compatible = "telechips,adma";
 		reg = <0x0 0x16400000 0x0 0x200>;
 		clocks = <&clk_io IOBUS_ADMA7>;
-		interrupts = <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 115 IRQ_TYPE_EDGE_RISING>;
 		have-hopcnt-clear = <1>;
 		adrcnt-mode = <1>;
 	};
@@ -2089,7 +2089,7 @@
 		      <0x0 0x16100080 0x0 0x8>;
 		clocks = <&clk_peri PERI_MDAI0 &clk_io IOBUS_DAI0 &clk_peri PERI_MFLT0_DAI>;
 		clock-frequency = <48000>;	// Default LRCK
-		interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 81 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <1>; // 0: Stereo 1: 7.1CH
@@ -2103,7 +2103,7 @@
 		      <0x0 0x16700080 0x0 0x8>;
 		clocks = <&clk_peri PERI_MDAI1 &clk_io IOBUS_DAI1 &clk_peri PERI_MFLT1_DAI>;
 		clock-frequency = <48000>;	// Default LRCK
-		interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 93 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <1>; // 0: Stereo 1: 7.1CH
@@ -2117,7 +2117,7 @@
 		      <0x0 0x16800080 0x0 0x8>;
 		clocks = <&clk_peri PERI_MDAI2 &clk_io IOBUS_DAI2 &clk_peri PERI_MFLT2_DAI>;
 		clock-frequency = <48000>;	// Default LRCK
-		interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 95 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <1>; // 0: Stereo 1: 7.1CH
@@ -2131,7 +2131,7 @@
 		      <0x0 0x16200080 0x0 0x8>;
 		clocks = <&clk_peri PERI_SRCH0_CORE &clk_io IOBUS_DAI3 &clk_peri PERI_SRCH0_FILTER>;
 		clock-frequency = <48000>;	// Default LRCK
-		interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 83 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <0>; // 0: Stereo 1: 7.1CH
@@ -2145,7 +2145,7 @@
 		      <0x0 0x16A00080 0x0 0x8>;
 		clocks = <&clk_peri PERI_SRCH1_CORE &clk_io IOBUS_DAI4 &clk_peri PERI_SRCH1_FILTER>;
 		clock-frequency = <48000>;	// Default LRCK
-		interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 101 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <0>; // 0: Stereo 1: 7.1CH
@@ -2159,7 +2159,7 @@
 		      <0x0 0x16B00080 0x0 0x8>;
 		clocks = <&clk_peri PERI_SRCH2_CORE &clk_io IOBUS_DAI5 &clk_peri PERI_SRCH2_FILTER>;
 		clock-frequency = <48000>;	// Default LRCK
-		interrupts = <GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 103 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <0>; // 0: Stereo 1: 7.1CH
@@ -2173,7 +2173,7 @@
 		      <0x0 0x16C00080 0x0 0x8>;
 		clocks = <&clk_peri PERI_SRCH3_CORE &clk_io IOBUS_DAI6 &clk_peri PERI_SRCH3_FILTER>;
 		clock-frequency = <48000>;	// Default LRCK
-		interrupts = <GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 105 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <0>; // 0: Stereo 1: 7.1CH
@@ -2187,7 +2187,7 @@
 		      <0x0 0x16400080 0x0 0x8>;
 		clocks = <&clk_peri PERI_MDAI3 &clk_io IOBUS_DAI7 &clk_peri PERI_MFLT3_DAI>;
 		clock-frequency = <48000>;	// Default LRCK
-		interrupts = <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 116 IRQ_TYPE_EDGE_RISING>;
 		have-fifo-clear = <1>;
 		audio-filter = <0>;	// 0: disable, 1: clock only, 2: data only, 3: data and clock
 		block-type = <1>; // 0: Stereo 1: 7.1CH
