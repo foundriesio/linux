@@ -1451,6 +1451,7 @@
 	rxd7-dly = <0>;
 	crs-dly = <0>;
 	col-dly = <0>;
+	telechips,rmii_tx_clk_off;
 	pinctrl-names = "default", "mii", "rmii", "gmii", "rgmii";
 	pinctrl-0 = <>;
 	pinctrl-1 = <&gmac1_mdc &gmac1_mdio &gmac1_col &gmac1_crs &gmac1_txer &gmac1_rxer

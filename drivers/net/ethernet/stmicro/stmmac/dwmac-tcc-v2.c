@@ -16,7 +16,8 @@
 
 #define GMAC_RESET_CONTROL_REG		0
 // #define GMAC_SW_CONFIG_REG		4
-#define GMAC_SW_CONFIG_REG		(0x6C)
+#define GMAC_SW_CONFIG0_REG		(0x68)
+#define GMAC_SW_CONFIG1_REG		(0x6C)
 // #define GMAC_SW_CONFIG_REG		(0x0)
 
 
@@ -33,6 +34,13 @@
 #define  GMAC_CONFIG_INTF_RMII		(0x4 << 20)
 #define  GMAC_CONFIG_INTF_MII		(0x6 << 20)
 #endif
+
+#define GMAC_CONFIG0_TR			(0x1 << 31)
+#define GMAC_CONFIG0_TXDIV		(0x1 << 20)
+#define GMAC_CONFIG1_TCO_OFF 	(0x0 << 16)
+
+#define GMAC_CONFIG0_TX_CLK_OFF (GMAC_CONFIG0_TR | GMAC_CONFIG0_TXDIV)
+#define GMAC_CONFIG1_TX_CLK_OFF GMAC_CONFIG1_TCO_OFF
 
 #define GMACDLY0_OFFSET         ((0x2000))
 #define GMACDLY1_OFFSET         ((0x2004))
@@ -152,44 +160,49 @@ void tcc_dwmac_phy_reset(void *priv)
 
 int tcc_dwmac_init(struct platform_device *pdev, void *priv)
 {
-	volatile uint32_t sw_config = 0;
-	char *phy_str;
+	volatile uint32_t sw_config0 = 0;
+	volatile uint32_t sw_config1 = 0;
+
 	struct tcc_dwmac *gmac = priv;
 	struct pinctrl *pin;
 
-	sw_config &= ~GMAC_CONFIG_INTF_SEL_MASK;
-
+	sw_config1 &= ~GMAC_CONFIG_INTF_SEL_MASK;
 	pr_info("%s.\n", __func__);
 
 	switch (gmac->phy_mode){
 		case PHY_INTERFACE_MODE_RGMII:
-			sw_config |= (GMAC_CONFIG_INTF_RGMII & GMAC_CONFIG_INTF_SEL_MASK);
+			sw_config1 |= (GMAC_CONFIG_INTF_RGMII & GMAC_CONFIG_INTF_SEL_MASK);
 			pin = devm_pinctrl_get_select(&pdev->dev, "rgmii");
 			break;
 		case PHY_INTERFACE_MODE_GMII:
-			sw_config |= (GMAC_CONFIG_INTF_GMII & GMAC_CONFIG_INTF_SEL_MASK);
+			sw_config1 |= (GMAC_CONFIG_INTF_GMII & GMAC_CONFIG_INTF_SEL_MASK);
 			pin = devm_pinctrl_get_select(&pdev->dev, "gmii");
 			break;
 		case PHY_INTERFACE_MODE_RMII:
-			sw_config |= (GMAC_CONFIG_INTF_RMII & GMAC_CONFIG_INTF_SEL_MASK);
+			sw_config1 |= (GMAC_CONFIG_INTF_RMII & GMAC_CONFIG_INTF_SEL_MASK);
 			pin = devm_pinctrl_get_select(&pdev->dev, "rmii");
 			break;
 		case PHY_INTERFACE_MODE_MII:
-			sw_config |= (GMAC_CONFIG_INTF_MII & GMAC_CONFIG_INTF_SEL_MASK);
+			sw_config1 |= (GMAC_CONFIG_INTF_MII & GMAC_CONFIG_INTF_SEL_MASK);
 			pin = devm_pinctrl_get_select(&pdev->dev, "mii");
 			break;
 		default:
-			sw_config |= (GMAC_CONFIG_INTF_RGMII & GMAC_CONFIG_INTF_SEL_MASK);
+			sw_config1 |= (GMAC_CONFIG_INTF_RGMII & GMAC_CONFIG_INTF_SEL_MASK);
 			pin = devm_pinctrl_get_select(&pdev->dev, "rgmii");
 			break;
 	}
 
-        if (IS_ERR(pin)){
-		pr_err("[ERROR][GMAC] pinctrl error \n");
-        }
+	if (gmac->phy_mode == PHY_INTERFACE_MODE_RMII && gmac->tx_clk_off) {
+		pr_info("[INFO][GMAC] disable gmac clk\n");
+		sw_config0 |= GMAC_CONFIG0_TX_CLK_OFF;
+		tcc_hsio_write_reg(gmac, GMAC_SW_CONFIG0_REG, sw_config0);
+	}
 
-	sw_config |= (1<<31);
-	tcc_hsio_write_reg(gmac, GMAC_SW_CONFIG_REG, sw_config);
+	if (IS_ERR(pin))
+		pr_err("[ERROR][GMAC] pinctrl error \n");
+
+	sw_config1 |= (1 << 31);
+	tcc_hsio_write_reg(gmac, GMAC_SW_CONFIG1_REG, sw_config1);
 
 	tcc_dwmac_clk_enable(gmac);
 	tcc_dwmac_tuning_timing(gmac);
@@ -253,6 +266,9 @@ static struct tcc_dwmac *tcc_config_dt(struct platform_device *pdev)
 		gmac->phy_rst = ret;
 		gpio_request(gmac->phy_rst, "PHY_RST");
 	}
+
+	gmac->tx_clk_off = of_property_read_bool(pdev->dev.of_node,
+										"telechips,rmii_tx_clk_off");
 
 	of_property_read_u32(pdev->dev.of_node, "txclk-o-dly", &gmac->txclk_o_dly);
 	of_property_read_u32(pdev->dev.of_node, "txclk-o-inv", &gmac->txclk_o_inv);

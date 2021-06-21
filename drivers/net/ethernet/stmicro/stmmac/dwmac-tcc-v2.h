@@ -74,6 +74,8 @@ struct tcc_dwmac {
 	unsigned int c45_dev_addr_mask;
 	unsigned int c45_reg_addr_shift;
 	unsigned int c45_reg_addr_mask;
+
+        bool tx_clk_off;
 };
 
 void tcc_dwmac_phy_reset(void *priv);
