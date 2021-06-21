@@ -28,9 +28,10 @@ void snor_updater_event_delete
 	(struct snor_updater_device *updater_dev);
 int32_t snor_updater_wait_event_timeout
 	(struct snor_updater_device *updater_dev,
-	uint32_t reqeustCMD,
 	struct tcc_mbox_data *receiveMsg,
 	uint32_t timeOut);
+void snor_updater_wake_preset(struct snor_updater_device *updater_dev,
+		uint32_t reqeustCMD);
 void snor_updater_wake_up(
 	struct snor_updater_device *updater_dev,
 	struct tcc_mbox_data *receiveMsg);

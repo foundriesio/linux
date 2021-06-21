@@ -38,7 +38,6 @@ void snor_updater_event_delete(
 
 int32_t snor_updater_wait_event_timeout(
 	struct snor_updater_device *updater_dev,
-	uint32_t reqeustCMD,
 	struct tcc_mbox_data *receiveMsg,
 	uint32_t timeOut)
 {
@@ -46,9 +45,6 @@ int32_t snor_updater_wait_event_timeout(
 
 	if (updater_dev != NULL) {
 		long_t wait_ret;
-
-		updater_dev->waitQueue._condition = 1;
-		updater_dev->waitQueue.reqeustCMD = reqeustCMD;
 
 		wait_ret = wait_event_interruptible_timeout(
 			updater_dev->waitQueue._cmdQueue,
@@ -73,6 +69,15 @@ int32_t snor_updater_wait_event_timeout(
 		updater_dev->waitQueue._condition = 0;
 	}
 	return ret;
+}
+
+void snor_updater_wake_preset(struct snor_updater_device *updater_dev,
+		uint32_t reqeustCMD)
+{
+	if (updater_dev != NULL) {
+		updater_dev->waitQueue._condition = 1;
+		updater_dev->waitQueue.reqeustCMD = reqeustCMD;
+	}
 }
 
 void snor_updater_wake_up(
@@ -111,11 +116,12 @@ int32_t send_update_start(struct snor_updater_device *updater_dev)
 
 	sendMsg.cmd[0] = (uint32_t)UPDATE_START;
 
+	snor_updater_wake_preset(updater_dev, (uint32_t)UPDATE_READY);
+
 	ret = snor_updater_mailbox_send(updater_dev, &sendMsg);
 	if (ret == SNOR_UPDATER_SUCCESS) {
 
 		ret = snor_updater_wait_event_timeout(updater_dev,
-			(uint32_t)UPDATE_READY,
 			&receiveMsg,
 			(uint32_t)ACK_TIMEOUT);
 
@@ -177,12 +183,13 @@ int32_t send_update_done(struct snor_updater_device *updater_dev)
 
 	sendMsg.cmd[0] = (uint32_t)UPDATE_DONE;
 
+	snor_updater_wake_preset(updater_dev, (uint32_t)UPDATE_COMPLETE);
+
 	ret = snor_updater_mailbox_send(updater_dev, &sendMsg);
 
 	if (ret == SNOR_UPDATER_SUCCESS) {
 
 		ret = snor_updater_wait_event_timeout(updater_dev,
-			(uint32_t)UPDATE_COMPLETE,
 			&receiveMsg,
 			ACK_TIMEOUT);
 		if (ret != SNOR_UPDATER_SUCCESS) {
@@ -228,11 +235,12 @@ int32_t send_fw_start(struct snor_updater_device *updater_dev,
 	sendMsg.cmd[2] = fwPartitionSize;
 	sendMsg.cmd[3] = fwDataSize;
 
+	snor_updater_wake_preset(updater_dev, (uint32_t)UPDATE_FW_READY);
+
 	ret = snor_updater_mailbox_send(updater_dev, &sendMsg);
 	if (ret == SNOR_UPDATER_SUCCESS) {
 		ret = snor_updater_wait_event_timeout(
 			updater_dev,
-			(uint32_t)UPDATE_FW_READY,
 			&receiveMsg,
 			ERASE_TIMEOUT);
 
@@ -302,13 +310,14 @@ int32_t send_fw_send(struct snor_updater_device *updater_dev,
 	(void)memcpy(&sendMsg.data, fwData, (ulong)fwDataSize);
 	sendMsg.data_len = (fwDataSize + (uint32_t)3)/(uint32_t)4;
 
+	snor_updater_wake_preset(updater_dev, (uint32_t)UPDATE_FW_SEND_ACK);
+
 	ret = snor_updater_mailbox_send(
 		updater_dev,
 		&sendMsg);
 	if (ret == SNOR_UPDATER_SUCCESS) {
 		ret = snor_updater_wait_event_timeout(
 			updater_dev,
-			(uint32_t)UPDATE_FW_SEND_ACK,
 			&receiveMsg,
 			(uint32_t)ACK_TIMEOUT);
 		if (ret != SNOR_UPDATER_SUCCESS) {
@@ -352,12 +361,13 @@ int32_t send_fw_done(struct snor_updater_device *updater_dev)
 
 	sendMsg.cmd[0] = (uint32_t)UPDATE_FW_DONE;
 
+	snor_updater_wake_preset(updater_dev, (uint32_t)UPDATE_FW_COMPLETE);
+
 	ret = snor_updater_mailbox_send(updater_dev, &sendMsg);
 	if (ret == SNOR_UPDATER_SUCCESS) {
 
 		ret = snor_updater_wait_event_timeout(
 			updater_dev,
-			(uint32_t)UPDATE_FW_COMPLETE,
 			&receiveMsg,
 			(uint32_t)ACK_TIMEOUT);
 
