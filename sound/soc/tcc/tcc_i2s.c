@@ -256,10 +256,11 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	struct tcc_i2s_t *i2s =
 		 (struct tcc_i2s_t *)snd_soc_dai_get_drvdata(dai);
 	int32_t ret = 0;
+	unsigned long flags;
 
 	i2s_dai_dbg("[%d] %s\n", i2s->blk_no, __func__);
 
-	spin_lock(&i2s->lock);
+	spin_lock_irqsave(&i2s->lock, flags);
 
 	i2s->dai_fmt = 0;
 
@@ -521,7 +522,7 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	}
 
 dai_fmt_end:
-	spin_unlock(&i2s->lock);
+	spin_unlock_irqrestore(&i2s->lock, flags);
 
 	return ret;
 }
@@ -626,6 +627,7 @@ static void tcc_i2s_shutdown(
 {
 	struct tcc_i2s_t *i2s =
 		 (struct tcc_i2s_t *)snd_soc_dai_get_drvdata(dai);
+	unsigned long flags;
 
 	i2s_dai_dbg("[%d] %s - active : %d\n",
 		i2s->blk_no,
@@ -633,9 +635,9 @@ static void tcc_i2s_shutdown(
 		dai->active);
 
 	if ((i2s->clk_continuous == FALSE) && (dai->active == 0u)) {
-		spin_lock(&i2s->lock);
+		spin_lock_irqsave(&i2s->lock, flags);
 		tcc_dai_enable(i2s->dai_reg, FALSE);
-		spin_unlock(&i2s->lock);
+		spin_unlock_irqrestore(&i2s->lock, flags);
 	}
 }
 
@@ -721,6 +723,7 @@ static int tcc_i2s_hw_params(
 	int32_t sample_rate = (int32_t)params_rate(params);
 	uint32_t mclk = 0;
 	int ret = 0;
+	unsigned long flags;
 
 	enum TCC_DAI_FMT tcc_fmt;
 
@@ -747,7 +750,7 @@ static int tcc_i2s_hw_params(
 	do_gettimeofday(&start);
 #endif
 
-	spin_lock(&i2s->lock);
+	spin_lock_irqsave(&i2s->lock, flags);
 
 	ret = check_i2s_hw_params(substream, params, dai);
 	if(ret == -ENOTSUPP)
@@ -999,7 +1002,7 @@ static int tcc_i2s_hw_params(
 #endif
 
 hw_params_end:
-	spin_unlock(&i2s->lock);
+	spin_unlock_irqrestore(&i2s->lock, flags);
 
 #if	(CHECK_I2S_HW_PARAM_ELAPSED_TIME == 1)
 	do_gettimeofday(&end);
@@ -1030,13 +1033,14 @@ static int tcc_i2s_hw_free(
 {
 	struct tcc_i2s_t *i2s =
 		 (struct tcc_i2s_t *)snd_soc_dai_get_drvdata(dai);
+	 unsigned long flags;
 
 	i2s_dai_dbg("[%d] %s - active:%d\n",
 		i2s->blk_no,
 		__func__,
 		dai->active);
 
-	spin_lock(&i2s->lock);
+	spin_lock_irqsave(&i2s->lock, flags);
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		if (i2s->have_fifo_clear_bit != 0u) {
@@ -1065,7 +1069,7 @@ static int tcc_i2s_hw_free(
 	}
 #endif
 
-	spin_unlock(&i2s->lock);
+	spin_unlock_irqrestore(&i2s->lock, flags);
 
 	return 0;
 }
@@ -1079,10 +1083,11 @@ static int tcc_i2s_trigger(
 	struct tcc_i2s_t *i2s =
 		 (struct tcc_i2s_t *)snd_soc_dai_get_drvdata(dai);
 	int ret = 0;
+	unsigned long flags;
 
 	i2s_dai_dbg("[%d] %s\n", i2s->blk_no, __func__);
 
-	spin_lock(&i2s->lock);
+	spin_lock_irqsave(&i2s->lock, flags);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -1133,7 +1138,7 @@ static int tcc_i2s_trigger(
 		break;
 	}
 
-	spin_unlock(&i2s->lock);
+	spin_unlock_irqrestore(&i2s->lock, flags);
 
 	return ret;
 }
