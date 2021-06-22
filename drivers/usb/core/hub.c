@@ -3014,7 +3014,11 @@ static int hub_port_wait_reset(struct usb_hub *hub, int port1,
 
 	/* Device went away? */
 	if (!(portstatus & USB_PORT_STAT_CONNECTION))
+#if defined(CONFIG_USB_DWC2_TCC)
+		return -ENXIO;
+#else
 		return -ENOTCONN;
+#endif
 
 	/* Retry if connect change is set but status is still connected.
 	 * A USB 3.0 connection may bounce if multiple warm resets were issued,
@@ -3150,6 +3154,9 @@ static int hub_port_reset(struct usb_hub *hub, int port1,
 #endif /* CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT */
 
 done:
+	if (statsu == -ENXIO)
+		status = 0;
+
 	if (status == 0) {
 		/* TRSTRCY = 10 ms; plus some extra */
 		msleep(10 + 40);
