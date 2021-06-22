@@ -3154,7 +3154,7 @@ static int hub_port_reset(struct usb_hub *hub, int port1,
 #endif /* CONFIG_DYNAMIC_DC_LEVEL_ADJUSTMENT */
 
 done:
-	if (statsu == -ENXIO)
+	if (status == -ENXIO)
 		status = 0;
 
 	if (status == 0) {
