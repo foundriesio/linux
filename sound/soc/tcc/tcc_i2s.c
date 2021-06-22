@@ -1093,19 +1093,11 @@ static int tcc_i2s_trigger(
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			if (i2s->have_fifo_clear_bit != 0u)
 				tcc_dai_tx_fifo_clear(i2s->dai_reg);
 
 			tcc_dai_tx_enable(i2s->dai_reg, TRUE);
-			tcc_dai_set_dao_mask(
-				i2s->dai_reg,
-				FALSE,
-				FALSE,
-				FALSE,
-				FALSE,
-				FALSE);
 
 			if (i2s->have_fifo_clear_bit != 0u) {
 				tcc_i2s_fifo_clear_delay(
@@ -1122,13 +1114,6 @@ static int tcc_i2s_trigger(
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			tcc_dai_tx_enable(i2s->dai_reg, FALSE);
-			tcc_dai_set_dao_mask(
-				i2s->dai_reg,
-				TRUE,
-				TRUE,
-				TRUE,
-				TRUE,
-				TRUE);
 		} else {
 			tcc_dai_rx_enable(i2s->dai_reg, FALSE);
 		}
@@ -1142,6 +1127,47 @@ static int tcc_i2s_trigger(
 
 	return ret;
 }
+
+static int tcc_i2s_mute_stream(struct snd_soc_dai *dai,
+									int mute,
+									int stream)
+{
+	struct tcc_i2s_t *i2s =
+		 (struct tcc_i2s_t *)snd_soc_dai_get_drvdata(dai);
+	int ret = 0;
+	unsigned long flags;
+
+	i2s_dai_dbg("[%d] %s\n", i2s->blk_no, __func__);
+
+	spin_lock_irqsave(&i2s->lock, flags);
+
+	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		if (mute) {
+			tcc_dai_set_dao_mask(
+				i2s->dai_reg,
+				TRUE,
+				TRUE,
+				TRUE,
+				TRUE,
+				TRUE);
+		} else {
+			tcc_dai_set_dao_mask(
+				i2s->dai_reg,
+				FALSE,
+				FALSE,
+				FALSE,
+				FALSE,
+				FALSE);
+		}
+	} else {
+		tcc_dai_set_rx_mute(i2s->dai_reg, mute);
+	}
+
+	spin_unlock_irqrestore(&i2s->lock, flags);
+
+	return ret;
+}
+
 
 static int tcc_i2s_set_pll(struct snd_soc_dai *dai,
 									int pll_id,
@@ -1201,16 +1227,6 @@ static int tcc_i2s_digital_mute(struct snd_soc_dai *dai,
 	return ret;
 }
 
-static int tcc_i2s_mute_stream(struct snd_soc_dai *dai,
-									int mute,
-									int stream)
-{
-	int ret = 0;
-
-	i2s_dai_dbg("%s - Not support operation", __func__);
-
-	return ret;
-}
 
 static int tcc_i2s_prepare(struct snd_pcm_substream *substream,
 								struct snd_soc_dai *dai)
@@ -1254,6 +1270,7 @@ static struct snd_soc_dai_ops tcc_i2s_ops = {
 	.trigger        = tcc_i2s_trigger,
 	.set_tdm_slot   = tcc_i2s_set_tdm_slot,
 	.set_sysclk		= tcc_i2s_set_sysclk,
+	.mute_stream	= tcc_i2s_mute_stream,
 
 	/*Do not use below operations*/
 	.set_pll				= tcc_i2s_set_pll,
@@ -1261,7 +1278,6 @@ static struct snd_soc_dai_ops tcc_i2s_ops = {
 	.set_channel_map		= tcc_i2s_set_channel_map,
 	.set_tristate			= tcc_i2s_set_tristate,
 	.digital_mute			= tcc_i2s_digital_mute,
-	.mute_stream			= tcc_i2s_mute_stream,
 	.prepare				= tcc_i2s_prepare,
 	.bespoke_trigger		= tcc_i2s_bespoke_trigger,
 	//.delay					= tcc_i2s_delay
