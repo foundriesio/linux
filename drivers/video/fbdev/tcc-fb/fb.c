@@ -1060,7 +1060,7 @@ static int fbX_activate_var(
 				par->pdata.chroma_info.key[2], par->pdata.chroma_info.mkey[0],
 				par->pdata.chroma_info.mkey[1], par->pdata.chroma_info.mkey[2]);
 
-			pr_info("[INF][FBX][%s]RGB565 Set Chromakey\n"\
+			pr_debug("[INF][FBX][%s]RGB565 Set Chromakey\n"\
 				"key R : 0x%x\nkey G : 0x%x\nkey B : 0x%x\n"\
 				"mkey R : 0x%x\nmkey G : 0x%x\nmkey B : 0x%x\n", __func__,
 				par->pdata.chroma_info.key[0],par->pdata.chroma_info.key[1],
@@ -1070,7 +1070,7 @@ static int fbX_activate_var(
 			VIOC_WMIX_SetChromaKey(
 				par->pdata.wmixer_info.virt_addr, channel, 0 /*OFF*/,
 				0, 0, 0, 0, 0, 0);
-			pr_info("[INF][FBX]ARGB888 Disable Chromakey\n");
+			pr_debug("[INF][FBX]ARGB888 Disable Chromakey\n");
 		}
 		VIOC_WMIX_SetUpdate(par->pdata.wmixer_info.virt_addr);
 	}
