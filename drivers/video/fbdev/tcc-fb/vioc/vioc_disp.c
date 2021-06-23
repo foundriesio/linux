@@ -363,10 +363,10 @@ void VIOC_DISP_SetDither(
 		 & ~(DDMAT0_DITH03_MASK | DDMAT0_DITH02_MASK
 		     | DDMAT0_DITH01_MASK | DDMAT0_DITH00_MASK));
 	value |=
-		((mat[0][3] << DDMAT0_DITH03_SHIFT)
-		 | (mat[0][2] << DDMAT0_DITH02_SHIFT)
-		 | (mat[0][1] << DDMAT0_DITH01_SHIFT)
-		 | (mat[0][0] << DDMAT0_DITH00_SHIFT));
+		(((unsigned long)mat[0][3] << DDMAT0_DITH03_SHIFT)
+		 | ((unsigned long)mat[0][2] << DDMAT0_DITH02_SHIFT)
+		 | ((unsigned long)mat[0][1] << DDMAT0_DITH01_SHIFT)
+		 | ((unsigned long)mat[0][0] << DDMAT0_DITH00_SHIFT));
 	__raw_writel(value, reg + DDMAT0);
 
 	value =
@@ -374,10 +374,10 @@ void VIOC_DISP_SetDither(
 		 & ~(DDMAT0_DITH13_MASK | DDMAT0_DITH12_MASK
 		     | DDMAT0_DITH11_MASK | DDMAT0_DITH10_MASK));
 	value |=
-		((mat[1][3] << DDMAT0_DITH13_SHIFT)
-		 | (mat[1][2] << DDMAT0_DITH12_SHIFT)
-		 | (mat[1][1] << DDMAT0_DITH11_SHIFT)
-		 | (mat[1][0] << DDMAT0_DITH10_SHIFT));
+		(((unsigned long)mat[1][3] << DDMAT0_DITH13_SHIFT)
+		 | ((unsigned long)mat[1][2] << DDMAT0_DITH12_SHIFT)
+		 | ((unsigned long)mat[1][1] << DDMAT0_DITH11_SHIFT)
+		 | ((unsigned long)mat[1][0] << DDMAT0_DITH10_SHIFT));
 	__raw_writel(value, reg + DDMAT0);
 
 	value =
@@ -385,10 +385,10 @@ void VIOC_DISP_SetDither(
 		 & ~(DDMAT1_DITH23_MASK | DDMAT1_DITH22_MASK
 		     | DDMAT1_DITH21_MASK | DDMAT1_DITH20_MASK));
 	value |=
-		((mat[2][3] << DDMAT1_DITH23_SHIFT)
-		 | (mat[2][2] << DDMAT1_DITH22_SHIFT)
-		 | (mat[2][1] << DDMAT1_DITH21_SHIFT)
-		 | (mat[2][0] << DDMAT1_DITH20_SHIFT));
+		(((unsigned long)mat[2][3] << DDMAT1_DITH23_SHIFT)
+		 | ((unsigned long)mat[2][2] << DDMAT1_DITH22_SHIFT)
+		 | ((unsigned long)mat[2][1] << DDMAT1_DITH21_SHIFT)
+		 | ((unsigned long)mat[2][0] << DDMAT1_DITH20_SHIFT));
 	__raw_writel(value, reg + DDMAT1);
 
 	value =
@@ -396,10 +396,10 @@ void VIOC_DISP_SetDither(
 		 & ~(DDMAT1_DITH33_MASK | DDMAT1_DITH32_MASK
 		     | DDMAT1_DITH31_MASK | DDMAT1_DITH30_MASK));
 	value |=
-		((mat[3][3] << DDMAT1_DITH33_SHIFT)
-		 | (mat[3][2] << DDMAT1_DITH32_SHIFT)
-		 | (mat[3][1] << DDMAT1_DITH31_SHIFT)
-		 | (mat[3][0] << DDMAT1_DITH30_SHIFT));
+		(((unsigned long)mat[3][3] << DDMAT1_DITH33_SHIFT)
+		 | ((unsigned long)mat[3][2] << DDMAT1_DITH32_SHIFT)
+		 | ((unsigned long)mat[3][1] << DDMAT1_DITH31_SHIFT)
+		 | ((unsigned long)mat[3][0] << DDMAT1_DITH30_SHIFT));
 	__raw_writel(value, reg + DDMAT1);
 
 	value =
@@ -578,7 +578,7 @@ void VIOC_DISP_SetPXDW(void __iomem *reg, unsigned char PXDW)
 #endif
 
 	value = (__raw_readl(reg + DCTRL) & ~(DCTRL_PXDW_MASK));
-	value |= (PXDW << DCTRL_PXDW_SHIFT);
+	value |= ((unsigned long)PXDW << DCTRL_PXDW_SHIFT);
 	__raw_writel(value, reg + DCTRL);
 }
 
@@ -587,7 +587,7 @@ void VIOC_DISP_SetR2YMD(void __iomem *reg, unsigned char R2YMD)
 	unsigned long value;
 
 	value = (__raw_readl(reg + DCTRL) & ~(DCTRL_R2YMD_MASK));
-	value |= (R2YMD << DCTRL_R2YMD_SHIFT);
+	value |= ((unsigned long)R2YMD << DCTRL_R2YMD_SHIFT);
 	__raw_writel(value, reg + DCTRL);
 }
 
@@ -604,7 +604,7 @@ void VIOC_DISP_SetR2Y(void __iomem *reg, unsigned char R2Y)
 #endif
 
 	value = (__raw_readl(reg + DCTRL) & ~(DCTRL_R2Y_MASK));
-	value |= (R2Y << DCTRL_R2Y_SHIFT);
+	value |= ((unsigned long)R2Y << DCTRL_R2Y_SHIFT);
 	__raw_writel(value, reg + DCTRL);
 }
 
@@ -613,7 +613,7 @@ void VIOC_DISP_SetY2RMD(void __iomem *reg, unsigned char Y2RMD)
 	unsigned long value;
 
 	value = (__raw_readl(reg + DCTRL) & ~(DCTRL_Y2RMD_MASK));
-	value |= (Y2RMD << DCTRL_Y2RMD_SHIFT);
+	value |= ((unsigned long)Y2RMD << DCTRL_Y2RMD_SHIFT);
 	__raw_writel(value, reg + DCTRL);
 }
 
@@ -633,7 +633,7 @@ void VIOC_DISP_SetY2R(void __iomem *reg, unsigned char Y2R)
 #endif
 
 	value = (__raw_readl(reg + DCTRL) & ~(DCTRL_Y2R_MASK));
-	value |= (Y2R << DCTRL_Y2R_SHIFT);
+	value |= ((unsigned long)Y2R << DCTRL_Y2R_SHIFT);
 	__raw_writel(value, reg + DCTRL);
 }
 
@@ -650,7 +650,7 @@ void VIOC_DISP_SetSWAP(void __iomem *reg, unsigned char SWAP)
 #endif
 
 	value = (__raw_readl(reg + DCTRL) & ~(DCTRL_SWAPBF_MASK));
-	value |= (SWAP << DCTRL_SWAPBF_SHIFT);
+	value |= ((unsigned long)SWAP << DCTRL_SWAPBF_SHIFT);
 	__raw_writel(value, reg + DCTRL);
 }
 
@@ -659,7 +659,7 @@ void VIOC_DISP_SetCKG(void __iomem *reg, unsigned char CKG)
 	unsigned long value;
 
 	value = (__raw_readl(reg + DCTRL) & ~(DCTRL_CKG_MASK));
-	value |= (CKG << DCTRL_CKG_SHIFT);
+	value |= ((unsigned long)CKG << DCTRL_CKG_SHIFT);
 	__raw_writel(value, reg + DCTRL);
 }
 

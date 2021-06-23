@@ -341,7 +341,7 @@ int tcc_get_lut_plugin(unsigned int lut_n)
 	if (reg == NULL) {
 		pr_err("[ERR][LUT] %s lut number %d is out of range\n",
 		       __func__, lut_n);
-		return ret;
+		return -1;
 	}
 
 	if (is_dev == 1) {

@@ -196,7 +196,6 @@ static int __init vioc_lut_3d_init(void)
 {
 	int i = 0;
 	struct device_node *ViocLUT3D_np;
-	void __iomem *reg;
 
 	ViocLUT3D_np = of_find_compatible_node(NULL, NULL,
 		"telechips,vioc_lut_3d");

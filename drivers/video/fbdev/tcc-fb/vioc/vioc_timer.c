@@ -121,7 +121,6 @@ EXPORT_SYMBOL_GPL(vioc_timer_get_curtime);
 int vioc_timer_set_timer(enum vioc_timer_id id, int enable, int timer_hz)
 {
 	int ret;
-	int xin_mhz;
 	unsigned int timer_offset;
 	unsigned int reg_val;
 
@@ -312,6 +311,8 @@ int vioc_timer_suspend(void)
 		ctx.suspend = 1;
 		vioc_timer_set_usec_enable(0, 0);
 	}
+
+	return 0;
 }
 EXPORT_SYMBOL_GPL(vioc_timer_suspend);
 
@@ -321,6 +322,8 @@ int vioc_timer_resume(void)
 		ctx.suspend = 0;
 		vioc_timer_set_usec_enable(1, 100);
 	}
+
+	return 0;
 }
 EXPORT_SYMBOL_GPL(vioc_timer_resume);
 
