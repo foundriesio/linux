@@ -173,8 +173,11 @@ static inline uint32_t check_i2s_hw_params(
 
 	if ((i2s->tdm_mode == true) && (i2s->tdm_multi_port == true)
 			 && (channels != 8) && (i2s->tdm_slots != 2)) {
-		if(((i2s->dai_fmt & (uint32_t)SND_SOC_DAIFMT_FORMAT_MASK) != SND_SOC_DAIFMT_DSP_A)
-			&& ((i2s->dai_fmt & (uint32_t)SND_SOC_DAIFMT_FORMAT_MASK) != SND_SOC_DAIFMT_DSP_B)){
+		uint32_t daifmt
+			= i2s->dai_fmt & (uint32_t)SND_SOC_DAIFMT_FORMAT_MASK;
+
+		if ((daifmt	!= SND_SOC_DAIFMT_DSP_A)
+			&& (daifmt	!= SND_SOC_DAIFMT_DSP_B)) {
 			i2s_dai_err("%s - TDM multi port mode support only 8 channels and 2 slots\n",
 					__func__);
 		} else {
@@ -482,17 +485,17 @@ static int tcc_i2s_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 #endif
 			{
 #if defined(TCC805x_CS_SND)
-				(void) tcc_dai_set_clk_mode(
-					i2s->dai_reg,
-					(enum TCC_DAI_MCLK_DIV)i2s->mclk_div,
-					(enum TCC_DAI_BCLK_RATIO)i2s->bclk_ratio,
-					(enum TCC_DAI_TDM_SLOT_SIZE)i2s->tdm_slot_width,
-					i2s->tdm_mode);
+			(void) tcc_dai_set_clk_mode(
+				i2s->dai_reg,
+				(enum TCC_DAI_MCLK_DIV)i2s->mclk_div,
+				(enum TCC_DAI_BCLK_RATIO)i2s->bclk_ratio,
+				(enum TCC_DAI_TDM_SLOT_SIZE)i2s->tdm_slot_width,
+				i2s->tdm_mode);
 #else
-				(void) tcc_dai_set_clk_mode(i2s->dai_reg,
-					(enum TCC_DAI_MCLK_DIV)i2s->mclk_div,
-					(enum TCC_DAI_BCLK_RATIO)i2s->bclk_ratio,
-					i2s->tdm_mode);
+			(void) tcc_dai_set_clk_mode(i2s->dai_reg,
+				(enum TCC_DAI_MCLK_DIV)i2s->mclk_div,
+				(enum TCC_DAI_BCLK_RATIO)i2s->bclk_ratio,
+				i2s->tdm_mode);
 #endif
 			}
 		} else {
@@ -665,9 +668,9 @@ static int tcc_i2s_set_tdm_slot(
 }
 
 static int tcc_i2s_set_sysclk(struct snd_soc_dai *dai,
-									int clk_id,
-									unsigned int freq,
-									int dir)
+							int clk_id,
+							unsigned int freq,
+							int dir)
 {
 	struct tcc_i2s_t *i2s =
 		 (struct tcc_i2s_t *)snd_soc_dai_get_drvdata(dai);
@@ -675,11 +678,11 @@ static int tcc_i2s_set_sysclk(struct snd_soc_dai *dai,
 	int32_t mclk;
 	uint32_t cur_rate;
 
-	switch(clk_id){
+	switch (clk_id) {
 	case TCC_DAI_MCLK:
 		tcc_dai_enable(i2s->dai_reg, FALSE);
 
-		if(freq == 0){
+		if (freq == 0) {
 			mclk = calc_mclk(i2s, i2s->sample_rate);
 			i2s->clk_rate = mclk;
 		} else {
@@ -753,7 +756,7 @@ static int tcc_i2s_hw_params(
 	spin_lock_irqsave(&i2s->lock, flags);
 
 	ret = check_i2s_hw_params(substream, params, dai);
-	if(ret == -ENOTSUPP)
+	if (ret == -ENOTSUPP)
 		goto hw_params_end;
 
 	if (i2s->dai_fmt == 0u) {
@@ -795,8 +798,9 @@ static int tcc_i2s_hw_params(
 						i2s->dai_reg,
 						fmt_bitwidth);
 #if !defined(TCC805x_CS_SND)
-/* After TCC805x CS, Audio IPs does not set the vaild data ends in MCCR1 register.
-*/
+/* After TCC805x CS,
+ *  audio IPs does not set the vaild data ends in MCCR1 register.
+ */
 				if (i2s->tdm_multi_port) {
 					tcc_dai_set_dsp_tdm_mode_valid_data(
 							i2s->dai_reg,
@@ -836,7 +840,7 @@ static int tcc_i2s_hw_params(
 	else
 		tcc_dai_set_rx_format(i2s->dai_reg, tcc_fmt);
 
-	if (i2s->tdm_mode == TRUE){
+	if (i2s->tdm_mode == TRUE) {
 		tcc_dai_set_multiport_mode(i2s->dai_reg, i2s->tdm_multi_port);
 	} else  {
 		if (channels > 2)
@@ -869,9 +873,10 @@ static int tcc_i2s_hw_params(
 			case SND_SOC_DAIFMT_CBS_CFS:
 				/* codec clk & FRM slave */
 				tcc_dai_set_rx_bclk_delay(
-						i2s->dai_reg, i2s->rx_bclk_delay);
+					i2s->dai_reg, i2s->rx_bclk_delay);
 
-				if ((i2s->tdm_mode == TRUE) && (i2s->rx_bclk_delay)) {
+				if ((i2s->tdm_mode == TRUE)
+					&& (i2s->rx_bclk_delay)) {
 					tcc_dai_set_dsp_tdm_mode_rx_early(
 							i2s->dai_reg,
 							!(i2s->tdm_late_mode));
@@ -985,9 +990,8 @@ static int tcc_i2s_hw_params(
 		i2s->is_updated = FALSE;
 	}
 
-	if (i2s->clk_continuous == FALSE) {
+	if (i2s->clk_continuous == FALSE)
 		tcc_dai_enable(i2s->dai_reg, TRUE);
-	}
 
 	if (i2s->audio_filter_bit & DAI_AUDIO_CLK_FILTER_TYPE)
 		tcc_dai_set_audio_filter_enable(i2s->dai_reg, TRUE);
@@ -1112,11 +1116,10 @@ static int tcc_i2s_trigger(
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 			tcc_dai_tx_enable(i2s->dai_reg, FALSE);
-		} else {
+		else
 			tcc_dai_rx_enable(i2s->dai_reg, FALSE);
-		}
 		break;
 	default:
 		ret = -EINVAL;
@@ -1129,8 +1132,8 @@ static int tcc_i2s_trigger(
 }
 
 static int tcc_i2s_mute_stream(struct snd_soc_dai *dai,
-									int mute,
-									int stream)
+								int mute,
+								int stream)
 {
 	struct tcc_i2s_t *i2s =
 		 (struct tcc_i2s_t *)snd_soc_dai_get_drvdata(dai);
@@ -1169,11 +1172,12 @@ static int tcc_i2s_mute_stream(struct snd_soc_dai *dai,
 }
 
 
-static int tcc_i2s_set_pll(struct snd_soc_dai *dai,
-									int pll_id,
-									int source,
-									unsigned int freq_in,
-									unsigned int freq_out)
+static int tcc_i2s_set_pll
+	(struct snd_soc_dai *dai,
+	int pll_id,
+	int source,
+	unsigned int freq_in,
+	unsigned int freq_out)
 {
 	int ret = 0;
 
@@ -1194,11 +1198,12 @@ static int tcc_i2s_xlate_tdm_slot_mask
 	return ret;
 }
 
-static int tcc_i2s_set_channel_map(struct snd_soc_dai *dai,
-										unsigned int tx_num,
-										unsigned int *tx_slot,
-										unsigned int rx_num,
-										unsigned int *rx_slot)
+static int tcc_i2s_set_channel_map
+	(struct snd_soc_dai *dai,
+	unsigned int tx_num,
+	unsigned int *tx_slot,
+	unsigned int rx_num,
+	unsigned int *rx_slot)
 {
 	int ret = 0;
 
@@ -1207,8 +1212,9 @@ static int tcc_i2s_set_channel_map(struct snd_soc_dai *dai,
 	return ret;
 }
 
-static int tcc_i2s_set_tristate(struct snd_soc_dai *dai,
-									int tristate)
+static int tcc_i2s_set_tristate
+	(struct snd_soc_dai *dai,
+	int tristate)
 {
 	int ret = 0;
 
@@ -1217,8 +1223,9 @@ static int tcc_i2s_set_tristate(struct snd_soc_dai *dai,
 	return ret;
 }
 
-static int tcc_i2s_digital_mute(struct snd_soc_dai *dai,
-									int mute)
+static int tcc_i2s_digital_mute
+	(struct snd_soc_dai *dai,
+	int mute)
 {
 	int ret = 0;
 
@@ -1228,8 +1235,9 @@ static int tcc_i2s_digital_mute(struct snd_soc_dai *dai,
 }
 
 
-static int tcc_i2s_prepare(struct snd_pcm_substream *substream,
-								struct snd_soc_dai *dai)
+static int tcc_i2s_prepare
+	(struct snd_pcm_substream *substream,
+	struct snd_soc_dai *dai)
 {
 	int ret = 0;
 
@@ -1238,9 +1246,10 @@ static int tcc_i2s_prepare(struct snd_pcm_substream *substream,
 	return ret;
 }
 
-static int tcc_i2s_bespoke_trigger(struct snd_pcm_substream *substream,
-								int bespoke,
-								struct snd_soc_dai *dai)
+static int tcc_i2s_bespoke_trigger
+	(struct snd_pcm_substream *substream,
+	int bespoke,
+	struct snd_soc_dai *dai)
 {
 	int ret = 0;
 
@@ -1249,8 +1258,9 @@ static int tcc_i2s_bespoke_trigger(struct snd_pcm_substream *substream,
 	return ret;
 }
 
-static snd_pcm_sframes_t tcc_i2s_delay(struct snd_pcm_substream *substream,
-								struct snd_soc_dai *dai)
+static snd_pcm_sframes_t tcc_i2s_delay
+	(struct snd_pcm_substream *substream,
+	struct snd_soc_dai *dai)
 {
 	snd_pcm_sframes_t ret = 0;
 

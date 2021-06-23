@@ -382,13 +382,13 @@ static inline void tcc_dai_set_i2s_tdm_mode(
 	frame_len -= 1;
 	half_frame_len -= 1;
 
-	if((tdm_slots == 32) && (slot_width == 32)){
+	if ((tdm_slots == 32) && (slot_width == 32))
 		mccr0 |= MCCR0_FRAME_SIZE_32TDM_32BITSLOT;
-	} else if ((tdm_slots == 32) && (slot_width == 24)){
+	else if ((tdm_slots == 32) && (slot_width == 24))
 		mccr0 |= MCCR0_FRAME_SIZE_32TDM_24BITSLOT;
-	} else {
-		mccr0 |= ((uint32_t) frame_len << (uint32_t) MCCR0_FRAME_SIZE_Pos);
-	}
+	else
+		mccr0 |= ((uint32_t) frame_len
+				<< (uint32_t) MCCR0_FRAME_SIZE_Pos);
 
 	mccr0 |=
 	    ((uint32_t) half_frame_len <<
@@ -472,13 +472,13 @@ static inline void tcc_dai_set_cirrus_tdm_mode(
 	frame_len -= 1;
 	half_frame_len -= 1;
 
-	if((slots == 32) && (slot_width == 32)){
+	if ((slots == 32) && (slot_width == 32))
 		mccr0 |= MCCR0_FRAME_SIZE_32TDM_32BITSLOT;
-	} else if ((slots == 32) && (slot_width == 24)){
+	else if ((slots == 32) && (slot_width == 24))
 		mccr0 |= MCCR0_FRAME_SIZE_32TDM_24BITSLOT;
-	} else {
-		mccr0 |= ((uint32_t) frame_len << (uint32_t) MCCR0_FRAME_SIZE_Pos);
-	}
+	else
+		mccr0 |= ((uint32_t) frame_len
+				<< (uint32_t) MCCR0_FRAME_SIZE_Pos);
 
 	mccr0 |=
 	    ((uint32_t) half_frame_len <<
@@ -537,14 +537,13 @@ static inline void tcc_dai_set_dsp_tdm_mode(
 
 	damr |= (DAMR_DAI_SYNC_IIS_DSP_TDM | DAMR_DSP_OR_TDM_MODE);
 
-	 if((tdm_slots == 32) && (slot_width == 32)){
-		 mccr0 |= MCCR0_FRAME_SIZE_32TDM_32BITSLOT;
-	 } else if ((tdm_slots == 32) && (slot_width == 24)){
-		 mccr0 |= MCCR0_FRAME_SIZE_32TDM_24BITSLOT;
-	 } else {
-		 mccr0 |= ((uint32_t) (frame_len - 1) <<
-		 	(uint32_t) MCCR0_FRAME_SIZE_Pos);
-	 }
+	if ((tdm_slots == 32) && (slot_width == 32))
+		mccr0 |= MCCR0_FRAME_SIZE_32TDM_32BITSLOT;
+	else if ((tdm_slots == 32) && (slot_width == 24))
+		mccr0 |= MCCR0_FRAME_SIZE_32TDM_24BITSLOT;
+	else
+		mccr0 |= ((uint32_t) (frame_len - 1) <<
+			(uint32_t) MCCR0_FRAME_SIZE_Pos);
 
 	mccr0 |= ((uint32_t) 0 << (uint32_t) MCCR0_FRAME_END_POSTION_Pos);
 	mccr0 |= MCCR0_FRAME_CLK_DIV_USE;
