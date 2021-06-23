@@ -140,7 +140,7 @@
 };
 
 &tcc_timer {
-	tcc-timer-reserved = <0>;
+	tcc-timer-reserved-for-lpo = <0>;
 	tcc-timer-reserved-for-wdt = <2 1>;
 };
 

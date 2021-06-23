@@ -913,6 +913,8 @@
 		clocks = <&clk_peri PERI_TCT>;
 		clock-frequency = <12000000>;
 
+		tcc-timer-reserved-for-lpo = <5>;
+
 		/* timer 0 and 1 are reserved for watchdog (default) */
 		tcc-timer-reserved-for-wdt = <0 1>;
 	};

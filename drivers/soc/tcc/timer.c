@@ -403,7 +403,8 @@ static void tcc_timer_parse_dt(struct device_node *np)
 	u32 res;
 
 	/* check the reserved timer */
-	of_property_for_each_u32(np, "tcc-timer-reserved", (prop), (i), (res)) {
+	of_property_for_each_u32
+		(np, "tcc-timer-reserved-for-lpo", (prop), (i), (res)) {
 		if (res < TCC_TIMER_MAX) {
 			(void)pr_info(
 				      "[INFO][%s]: reserved channel-%d for LPO clock\n",

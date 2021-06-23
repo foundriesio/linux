@@ -911,6 +911,8 @@
 			     <GIC_SPI 38 0>;
 		clocks = <&clk_peri PERI_TCT>;
 		clock-frequency = <12000000>;
+
+		tcc-timer-reserved-for-lpo = <0>;
 	};
 
 	watchdog@144000D0 {

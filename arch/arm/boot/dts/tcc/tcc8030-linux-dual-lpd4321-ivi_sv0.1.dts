@@ -123,11 +123,6 @@
 		cap-adma;
 	};
 
-	timer@14300000 {
-		/* Timer 0 is used for WIFI LPO */
-		tcc-timer-reserved = <0>;
-	};
-
 	tcm3800 {
 		compatible = "telechips, tcm3800";
 		wifi_pwr-gpio = <&gpsd2 6 0>;

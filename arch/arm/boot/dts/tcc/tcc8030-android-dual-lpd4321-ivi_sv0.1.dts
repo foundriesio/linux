@@ -117,11 +117,6 @@
 	};
 };
 
-&tcc_timer {
-	/* Timer 0 is used for WIFI LPO */
-	tcc-timer-reserved = <0>;
-};
-
 &auth_cp {
 	i2c-channel = <1>;
 };

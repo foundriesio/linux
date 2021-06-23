@@ -8,7 +8,7 @@ Required properties:
 - clock-frequency: The rate of the clock that drives the timer counter, in Hz.
 
 Optional properties:
-- tcc-timer-reserved: Reserve a timer for the LPO clocksource.
+- tcc-timer-reserved-for-lpo: Reserve a timer for the LPO clocksource.
 - tcc-timer-reserved-for-wdt: Reserve a timer to kick watchdog.
 
 Example:
@@ -24,6 +24,8 @@ tcc_timer: timer@14300000 { /* tc0~tc5 */
 		     <GIC_SPI 38 0>;
 	clocks = <&clk_peri PERI_TCT>;
 	clock-frequency = <12000000>;
+
+	tcc-timer-reserved-for-lpo = <5>;
 
 	/* timer 0 and 1 are reserved for watchdog (default) */
 	tcc-timer-reserved-for-wdt = <0 1>;

@@ -53,11 +53,6 @@
 		};
 	};
 
-	timer@14300000 {
-		/* Timer 0 is used for WIFI LPO */
-		tcc-timer-reserved = <0>;
-	};
-
 	tm123xdhp90 {
 		compatible = "telechips,lvds-tm123xdhp90";
 		status = "okay";
