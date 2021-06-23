@@ -628,6 +628,7 @@
 		gpios = <&gpext1 4 0x0>;
 		gpios-states = <0x0>;
 		states = <0000001 0x0 5000000 0x1>;
+		status = "disabled";
 	};
 
 	vbus_supply_dwc2: vbus_supply_dwc2 {
