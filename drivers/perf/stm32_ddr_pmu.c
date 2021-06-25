@@ -411,6 +411,7 @@ static const struct of_device_id stm32_ddr_pmu_of_match[] = {
 	{ .compatible = "st,stm32-ddr-pmu" },
 	{ },
 };
+MODULE_DEVICE_TABLE(of, stm32_ddr_pmu_of_match);
 
 static struct platform_driver stm32_ddr_pmu_driver = {
 	.driver = {
