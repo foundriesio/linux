@@ -1,0 +1,18 @@
+Telechips Power Management Interface (PMI) Driver
+
+Telechips Power Management Interface (PMI) driver offers the communication
+interface with internal MCU (Cortex-R5) on TCC805x SoC family, for power
+management.
+
+Required properties:
+- compatible: Should be "telechips,pmi"
+- mboxes: List of phandle and mailbox channel specifiers.  Only the first set
+  of phandle and mailbox channel is valid, and other sets are ignored.
+- mbox-id: Should be "POWER0"
+
+Example:
+	pmi {
+		compatible = "telechips,pmi";
+		mboxes = <&mbox_node 1>;
+		mbox-id = "POWER0";
+	};

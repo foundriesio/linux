@@ -231,6 +231,23 @@ config TI_SCI_PROTOCOL
 	  This protocol library is used by client drivers to use the features
 	  provided by the system controller.
 
+config TCC_PMI
+	tristate "Telechips Power Management Interface (PMI) driver"
+	depends on ARCH_TCC805X
+	depends on TCC_MULTI_MAILBOX
+	default y
+	help
+	  Telechips Power Management Interface (PMI) driver is a mailbox client
+	  implementation of Telechips multi-channel mailbox driver, offering
+	  communication interface with internal MCU (Cortex-R5) on TCC805x SoC
+	  family for power management.
+
+	  By enabling this, user-level application can send/receive messages
+	  for power management via '/dev/mbox_power' device with simple syscall
+	  interface.
+
+	  If unsure, say Y.
+
 config TCC_SC_FW_PROTOCOL
 	tristate "Telechips Storage Core Interface Protocol"
 	depends on ARCH_TCC805X

@@ -1076,6 +1076,13 @@
 		 mbox-id = TCC_MBOX_FWUG_ID;
 	};
 
+	/* power management interface driver */
+	pmi {
+		compatible = "telechips,pmi";
+		mboxes = <&micom_mbox TCC_MICOM_MBOX0_POWER>;
+		mbox-id = TCC_MBOX_POWER_ID;
+	};
+
         /* tcc_scrshare for Main */
         tcc_scrshare0: tcc_scrshare@0 {
                 compatible = "telechips,tcc_scrshare";
