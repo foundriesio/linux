@@ -273,6 +273,7 @@ struct stm32_port {
 	struct mctrl_gpios *gpios; /* modem control gpios */
 	struct dma_tx_state rx_dma_state;
 	bool tx_dma_busy;	/* dma tx transaction in progress */
+	bool rx_dma_busy;	/* dma rx transaction in progress */
 };
 
 static struct stm32_port stm32_ports[STM32_MAX_PORTS];

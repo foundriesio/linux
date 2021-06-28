@@ -191,13 +191,13 @@ static int stm32_usart_init_rs485(struct uart_port *port,
 
 static bool stm32_usart_rx_dma_started(struct stm32_port *stm32_port)
 {
-	struct uart_port *port = &stm32_port->port;
-	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
+	return stm32_port->rx_ch ? stm32_port->rx_dma_busy : false;
+}
 
-	if (!stm32_port->rx_ch)
-		return false;
-
-	return !!(readl_relaxed(port->membase + ofs->cr3) & USART_CR3_DMAR);
+static void stm32_usart_rx_dma_terminate(struct stm32_port *stm32_port)
+{
+	dmaengine_terminate_async(stm32_port->rx_ch);
+	stm32_port->rx_dma_busy = false;
 }
 
 static int stm32_usart_dma_pause_resume(struct stm32_port *stm32_port,
@@ -406,7 +406,7 @@ static void stm32_usart_receive_chars(struct uart_port *port,
 			}
 		} else {
 			/* Disable RX DMA */
-			dmaengine_terminate_async(stm32_port->rx_ch);
+			stm32_usart_rx_dma_terminate(stm32_port);
 			stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAR);
 			/* Fall back to interrupt mode */
 			dev_dbg(port->dev,
@@ -896,7 +896,21 @@ static int stm32_usart_start_rx_dma_cyclic(struct uart_port *port)
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct stm32_usart_offsets *ofs = &stm32_port->info->ofs;
 	struct dma_async_tx_descriptor *desc;
+	enum dma_status rx_dma_status;
 	int ret;
+
+	if (stm32_port->rx_dma_busy) {
+		rx_dma_status = dmaengine_tx_status(stm32_port->rx_ch,
+						    stm32_port->rx_ch->cookie,
+						    NULL);
+		if (rx_dma_status == DMA_IN_PROGRESS)
+			return 0;
+
+		dev_err(port->dev, "DMA failed : status error.\n");
+		stm32_usart_rx_dma_terminate(stm32_port);
+	}
+
+	stm32_port->rx_dma_busy = true;
 
 	stm32_port->last_res = RX_BUF_L;
 	/* Prepare a DMA cyclic transaction */
@@ -907,6 +921,7 @@ static int stm32_usart_start_rx_dma_cyclic(struct uart_port *port)
 					 DMA_PREP_INTERRUPT);
 	if (!desc) {
 		dev_err(port->dev, "rx dma prep cyclic failed\n");
+		stm32_port->rx_dma_busy = false;
 		return -ENODEV;
 	}
 
@@ -917,6 +932,7 @@ static int stm32_usart_start_rx_dma_cyclic(struct uart_port *port)
 	ret = dma_submit_error(dmaengine_submit(desc));
 	if (ret) {
 		dmaengine_terminate_sync(stm32_port->rx_ch);
+		stm32_port->rx_dma_busy = false;
 		return ret;
 	}
 
@@ -1001,7 +1017,7 @@ static void stm32_usart_shutdown(struct uart_port *port)
 
 	/* Disable RX DMA. */
 	if (stm32_port->rx_ch)
-		dmaengine_terminate_async(stm32_port->rx_ch);
+		stm32_usart_rx_dma_terminate(stm32_port);
 
 	/* flush RX & TX FIFO */
 	if (ofs->rqr != UNDEF_REG)
@@ -1943,7 +1959,7 @@ static int __maybe_unused stm32_usart_serial_en_wakeup(struct uart_port *port,
 			stm32_usart_clr_bits(port, ofs->cr3, USART_CR3_DMAR);
 			/* Poll data from DMA RX buffer if any */
 			stm32_usart_receive_chars(port, true);
-			dmaengine_terminate_async(stm32_port->rx_ch);
+			stm32_usart_rx_dma_terminate(stm32_port);
 			spin_unlock_irqrestore(&port->lock, flags);
 		}
 
