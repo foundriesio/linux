@@ -46,6 +46,12 @@ void tca_mvc_display_update(
 	char hdmi_lcdc,
 	struct tcc_lcdc_image_update *ImageInfo);
 
+void tcc_video_post_process(
+	struct tcc_lcdc_image_update *ImageInfo);
+
+unsigned int tca_get_scaler_num(
+	TCC_OUTPUT_TYPE Output, unsigned int Layer);
+
 void tca_edr_inc_check_count(
 	unsigned int nInt,
 	unsigned int nTry,
