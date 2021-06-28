@@ -45,6 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* Our own interface */
 #include "mmu_common.h"
+#include "pvr_ricommon.h"
 
 #include "rgxmmudefs_km.h"
 /*
@@ -716,9 +717,9 @@ void RGXMapBRN71422TargetPhysicalAddress(MMU_CONTEXT *psMMUContext)
 		PVRSRV_ERROR eError;
 		PVRSRV_DEVICE_NODE *psDevNode = (PVRSRV_DEVICE_NODE *)psMMUContext->psPhysMemCtx->psDevNode;
 		eError = psDevNode->sDevMMUPxSetup.pfnDevPxClean(psDevNode,
-				&psMemDesc->psMapping->sMemHandle,
-				psMemDesc->uiOffset,
-				psMemDesc->uiSize);
+														 &psMemDesc->psMapping->sMemHandle,
+														 psMemDesc->uiOffset,
+														 psMemDesc->uiSize);
 		PVR_LOG_IF_ERROR(eError, "pfnDevPxClean");
 	}
 
@@ -766,6 +767,7 @@ static PVRSRV_ERROR _MMU_PhysMem_RAImportAlloc(RA_PERARENA_HANDLE hArenaHandle,
 	PVRSRV_DEVICE_NODE *psDevNode = (PVRSRV_DEVICE_NODE *)psPhysMemCtx->psDevNode;
 	MMU_MEMORY_MAPPING *psMapping;
 	PVRSRV_ERROR eError;
+	IMG_UINT32 uiPid = 0;
 
 	PVR_UNREFERENCED_PARAMETER(pszAnnotation);
 	PVR_UNREFERENCED_PARAMETER(uiFlags);
@@ -775,6 +777,11 @@ static PVRSRV_ERROR _MMU_PhysMem_RAImportAlloc(RA_PERARENA_HANDLE hArenaHandle,
 
 	psMapping = OSAllocMem(sizeof(MMU_MEMORY_MAPPING));
 	PVR_GOTO_IF_NOMEM(psMapping, eError, e0);
+
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+	uiPid = psDevNode->eDevState == PVRSRV_DEVICE_STATE_INIT ?
+	        PVR_SYS_ALLOC_PID : OSGetCurrentClientProcessIDKM();
+#endif
 
 #if defined(SUPPORT_GPUVIRT_VALIDATION)
 	/*
@@ -786,12 +793,14 @@ static PVRSRV_ERROR _MMU_PhysMem_RAImportAlloc(RA_PERARENA_HANDLE hArenaHandle,
 	                                                    TRUNCATE_64BITS_TO_SIZE_T(uiSize),
 	                                                    &psMapping->sMemHandle,
 	                                                    &psMapping->sDevPAddr,
-	                                                    psPhysMemCtx->ui32OSid);
+	                                                    psPhysMemCtx->ui32OSid,
+	                                                    uiPid);
 #else
 	eError = psDevNode->sDevMMUPxSetup.pfnDevPxAlloc(psDevNode,
 	                                                 TRUNCATE_64BITS_TO_SIZE_T(uiSize),
 	                                                 &psMapping->sMemHandle,
-	                                                 &psMapping->sDevPAddr);
+	                                                 &psMapping->sDevPAddr,
+	                                                 uiPid);
 #endif
 	if (eError != PVRSRV_OK)
 	{

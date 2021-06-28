@@ -75,14 +75,28 @@ static PVRSRV_ERROR ReleaseExport(void *pvData)
  * Server-side bridge entry points
  */
 
+static PVRSRV_ERROR _SyncFbTimelineCreatePVRpsTimelineIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = SyncFbTimelineRelease((PVRSRV_TIMELINE_SERVER *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeSyncFbTimelineCreatePVR(IMG_UINT32 ui32DispatchTableEntry,
-				    PVRSRV_BRIDGE_IN_SYNCFBTIMELINECREATEPVR *
-				    psSyncFbTimelineCreatePVRIN,
-				    PVRSRV_BRIDGE_OUT_SYNCFBTIMELINECREATEPVR *
-				    psSyncFbTimelineCreatePVROUT,
+				    IMG_UINT8 * psSyncFbTimelineCreatePVRIN_UI8,
+				    IMG_UINT8 *
+				    psSyncFbTimelineCreatePVROUT_UI8,
 				    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBTIMELINECREATEPVR *psSyncFbTimelineCreatePVRIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBTIMELINECREATEPVR *)
+	    IMG_OFFSET_ADDR(psSyncFbTimelineCreatePVRIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBTIMELINECREATEPVR *psSyncFbTimelineCreatePVROUT
+	    =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBTIMELINECREATEPVR *)
+	    IMG_OFFSET_ADDR(psSyncFbTimelineCreatePVROUT_UI8, 0);
+
 	IMG_CHAR *uiTimelineNameInt = NULL;
 	PVRSRV_TIMELINE_SERVER *psTimelineInt = NULL;
 
@@ -192,7 +206,7 @@ PVRSRVBridgeSyncFbTimelineCreatePVR(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_PVRSRV_TIMELINE_SERVER,
 				      PVRSRV_HANDLE_ALLOC_FLAG_NONE,
 				      (PFN_HANDLE_RELEASE) &
-				      SyncFbTimelineRelease);
+				      _SyncFbTimelineCreatePVRpsTimelineIntRelease);
 	if (unlikely(psSyncFbTimelineCreatePVROUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psProcessHandleBase->psHandleBase);
@@ -227,12 +241,16 @@ SyncFbTimelineCreatePVR_exit:
 
 static IMG_INT
 PVRSRVBridgeSyncFbTimelineRelease(IMG_UINT32 ui32DispatchTableEntry,
-				  PVRSRV_BRIDGE_IN_SYNCFBTIMELINERELEASE *
-				  psSyncFbTimelineReleaseIN,
-				  PVRSRV_BRIDGE_OUT_SYNCFBTIMELINERELEASE *
-				  psSyncFbTimelineReleaseOUT,
+				  IMG_UINT8 * psSyncFbTimelineReleaseIN_UI8,
+				  IMG_UINT8 * psSyncFbTimelineReleaseOUT_UI8,
 				  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBTIMELINERELEASE *psSyncFbTimelineReleaseIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBTIMELINERELEASE *)
+	    IMG_OFFSET_ADDR(psSyncFbTimelineReleaseIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBTIMELINERELEASE *psSyncFbTimelineReleaseOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBTIMELINERELEASE *)
+	    IMG_OFFSET_ADDR(psSyncFbTimelineReleaseOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psProcessHandleBase->psHandleBase);
@@ -265,12 +283,26 @@ SyncFbTimelineRelease_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _SyncFbFenceDuppsOutFenceIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = SyncFbFenceRelease((PVRSRV_FENCE_SERVER *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeSyncFbFenceDup(IMG_UINT32 ui32DispatchTableEntry,
-			   PVRSRV_BRIDGE_IN_SYNCFBFENCEDUP * psSyncFbFenceDupIN,
-			   PVRSRV_BRIDGE_OUT_SYNCFBFENCEDUP *
-			   psSyncFbFenceDupOUT, CONNECTION_DATA * psConnection)
+			   IMG_UINT8 * psSyncFbFenceDupIN_UI8,
+			   IMG_UINT8 * psSyncFbFenceDupOUT_UI8,
+			   CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBFENCEDUP *psSyncFbFenceDupIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBFENCEDUP *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceDupIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBFENCEDUP *psSyncFbFenceDupOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBFENCEDUP *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceDupOUT_UI8, 0);
+
 	IMG_HANDLE hInFence = psSyncFbFenceDupIN->hInFence;
 	PVRSRV_FENCE_SERVER *psInFenceInt = NULL;
 	PVRSRV_FENCE_SERVER *psOutFenceInt = NULL;
@@ -312,7 +344,7 @@ PVRSRVBridgeSyncFbFenceDup(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_PVRSRV_FENCE_SERVER,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      SyncFbFenceRelease);
+				      _SyncFbFenceDuppsOutFenceIntRelease);
 	if (unlikely(psSyncFbFenceDupOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psProcessHandleBase->psHandleBase);
@@ -348,14 +380,26 @@ SyncFbFenceDup_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _SyncFbFenceMergepsOutFenceIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = SyncFbFenceRelease((PVRSRV_FENCE_SERVER *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeSyncFbFenceMerge(IMG_UINT32 ui32DispatchTableEntry,
-			     PVRSRV_BRIDGE_IN_SYNCFBFENCEMERGE *
-			     psSyncFbFenceMergeIN,
-			     PVRSRV_BRIDGE_OUT_SYNCFBFENCEMERGE *
-			     psSyncFbFenceMergeOUT,
+			     IMG_UINT8 * psSyncFbFenceMergeIN_UI8,
+			     IMG_UINT8 * psSyncFbFenceMergeOUT_UI8,
 			     CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBFENCEMERGE *psSyncFbFenceMergeIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBFENCEMERGE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceMergeIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBFENCEMERGE *psSyncFbFenceMergeOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBFENCEMERGE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceMergeOUT_UI8, 0);
+
 	IMG_HANDLE hInFence1 = psSyncFbFenceMergeIN->hInFence1;
 	PVRSRV_FENCE_SERVER *psInFence1Int = NULL;
 	IMG_HANDLE hInFence2 = psSyncFbFenceMergeIN->hInFence2;
@@ -496,7 +540,7 @@ PVRSRVBridgeSyncFbFenceMerge(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_PVRSRV_FENCE_SERVER,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      SyncFbFenceRelease);
+				      _SyncFbFenceMergepsOutFenceIntRelease);
 	if (unlikely(psSyncFbFenceMergeOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psProcessHandleBase->psHandleBase);
@@ -552,12 +596,16 @@ SyncFbFenceMerge_exit:
 
 static IMG_INT
 PVRSRVBridgeSyncFbFenceRelease(IMG_UINT32 ui32DispatchTableEntry,
-			       PVRSRV_BRIDGE_IN_SYNCFBFENCERELEASE *
-			       psSyncFbFenceReleaseIN,
-			       PVRSRV_BRIDGE_OUT_SYNCFBFENCERELEASE *
-			       psSyncFbFenceReleaseOUT,
+			       IMG_UINT8 * psSyncFbFenceReleaseIN_UI8,
+			       IMG_UINT8 * psSyncFbFenceReleaseOUT_UI8,
 			       CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBFENCERELEASE *psSyncFbFenceReleaseIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBFENCERELEASE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceReleaseIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBFENCERELEASE *psSyncFbFenceReleaseOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBFENCERELEASE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceReleaseOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psProcessHandleBase->psHandleBase);
@@ -591,12 +639,17 @@ SyncFbFenceRelease_exit:
 
 static IMG_INT
 PVRSRVBridgeSyncFbFenceWait(IMG_UINT32 ui32DispatchTableEntry,
-			    PVRSRV_BRIDGE_IN_SYNCFBFENCEWAIT *
-			    psSyncFbFenceWaitIN,
-			    PVRSRV_BRIDGE_OUT_SYNCFBFENCEWAIT *
-			    psSyncFbFenceWaitOUT,
+			    IMG_UINT8 * psSyncFbFenceWaitIN_UI8,
+			    IMG_UINT8 * psSyncFbFenceWaitOUT_UI8,
 			    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBFENCEWAIT *psSyncFbFenceWaitIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBFENCEWAIT *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceWaitIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBFENCEWAIT *psSyncFbFenceWaitOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBFENCEWAIT *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceWaitOUT_UI8, 0);
+
 	IMG_HANDLE hFence = psSyncFbFenceWaitIN->hFence;
 	PVRSRV_FENCE_SERVER *psFenceInt = NULL;
 
@@ -641,12 +694,17 @@ SyncFbFenceWait_exit:
 
 static IMG_INT
 PVRSRVBridgeSyncFbFenceDump(IMG_UINT32 ui32DispatchTableEntry,
-			    PVRSRV_BRIDGE_IN_SYNCFBFENCEDUMP *
-			    psSyncFbFenceDumpIN,
-			    PVRSRV_BRIDGE_OUT_SYNCFBFENCEDUMP *
-			    psSyncFbFenceDumpOUT,
+			    IMG_UINT8 * psSyncFbFenceDumpIN_UI8,
+			    IMG_UINT8 * psSyncFbFenceDumpOUT_UI8,
 			    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBFENCEDUMP *psSyncFbFenceDumpIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBFENCEDUMP *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceDumpIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBFENCEDUMP *psSyncFbFenceDumpOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBFENCEDUMP *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceDumpOUT_UI8, 0);
+
 	IMG_HANDLE hFence = psSyncFbFenceDumpIN->hFence;
 	PVRSRV_FENCE_SERVER *psFenceInt = NULL;
 	IMG_CHAR *uiFileStrInt = NULL;
@@ -863,14 +921,26 @@ SyncFbFenceDump_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _SyncFbTimelineCreateSWpsTimelineIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = SyncFbTimelineRelease((PVRSRV_TIMELINE_SERVER *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeSyncFbTimelineCreateSW(IMG_UINT32 ui32DispatchTableEntry,
-				   PVRSRV_BRIDGE_IN_SYNCFBTIMELINECREATESW *
-				   psSyncFbTimelineCreateSWIN,
-				   PVRSRV_BRIDGE_OUT_SYNCFBTIMELINECREATESW *
-				   psSyncFbTimelineCreateSWOUT,
+				   IMG_UINT8 * psSyncFbTimelineCreateSWIN_UI8,
+				   IMG_UINT8 * psSyncFbTimelineCreateSWOUT_UI8,
 				   CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBTIMELINECREATESW *psSyncFbTimelineCreateSWIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBTIMELINECREATESW *)
+	    IMG_OFFSET_ADDR(psSyncFbTimelineCreateSWIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBTIMELINECREATESW *psSyncFbTimelineCreateSWOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBTIMELINECREATESW *)
+	    IMG_OFFSET_ADDR(psSyncFbTimelineCreateSWOUT_UI8, 0);
+
 	IMG_CHAR *uiTimelineNameInt = NULL;
 	PVRSRV_TIMELINE_SERVER *psTimelineInt = NULL;
 
@@ -980,7 +1050,7 @@ PVRSRVBridgeSyncFbTimelineCreateSW(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_PVRSRV_TIMELINE_SERVER,
 				      PVRSRV_HANDLE_ALLOC_FLAG_NONE,
 				      (PFN_HANDLE_RELEASE) &
-				      SyncFbTimelineRelease);
+				      _SyncFbTimelineCreateSWpsTimelineIntRelease);
 	if (unlikely(psSyncFbTimelineCreateSWOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psProcessHandleBase->psHandleBase);
@@ -1013,14 +1083,26 @@ SyncFbTimelineCreateSW_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _SyncFbFenceCreateSWpsOutFenceIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = SyncFbFenceRelease((PVRSRV_FENCE_SERVER *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeSyncFbFenceCreateSW(IMG_UINT32 ui32DispatchTableEntry,
-				PVRSRV_BRIDGE_IN_SYNCFBFENCECREATESW *
-				psSyncFbFenceCreateSWIN,
-				PVRSRV_BRIDGE_OUT_SYNCFBFENCECREATESW *
-				psSyncFbFenceCreateSWOUT,
+				IMG_UINT8 * psSyncFbFenceCreateSWIN_UI8,
+				IMG_UINT8 * psSyncFbFenceCreateSWOUT_UI8,
 				CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBFENCECREATESW *psSyncFbFenceCreateSWIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBFENCECREATESW *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceCreateSWIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBFENCECREATESW *psSyncFbFenceCreateSWOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBFENCECREATESW *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceCreateSWOUT_UI8, 0);
+
 	IMG_HANDLE hTimeline = psSyncFbFenceCreateSWIN->hTimeline;
 	PVRSRV_TIMELINE_SERVER *psTimelineInt = NULL;
 	IMG_CHAR *uiFenceNameInt = NULL;
@@ -1148,7 +1230,7 @@ PVRSRVBridgeSyncFbFenceCreateSW(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_PVRSRV_FENCE_SERVER,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      SyncFbFenceRelease);
+				      _SyncFbFenceCreateSWpsOutFenceIntRelease);
 	if (unlikely(psSyncFbFenceCreateSWOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psProcessHandleBase->psHandleBase);
@@ -1196,12 +1278,19 @@ SyncFbFenceCreateSW_exit:
 
 static IMG_INT
 PVRSRVBridgeSyncFbTimelineAdvanceSW(IMG_UINT32 ui32DispatchTableEntry,
-				    PVRSRV_BRIDGE_IN_SYNCFBTIMELINEADVANCESW *
-				    psSyncFbTimelineAdvanceSWIN,
-				    PVRSRV_BRIDGE_OUT_SYNCFBTIMELINEADVANCESW *
-				    psSyncFbTimelineAdvanceSWOUT,
+				    IMG_UINT8 * psSyncFbTimelineAdvanceSWIN_UI8,
+				    IMG_UINT8 *
+				    psSyncFbTimelineAdvanceSWOUT_UI8,
 				    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBTIMELINEADVANCESW *psSyncFbTimelineAdvanceSWIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBTIMELINEADVANCESW *)
+	    IMG_OFFSET_ADDR(psSyncFbTimelineAdvanceSWIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBTIMELINEADVANCESW *psSyncFbTimelineAdvanceSWOUT
+	    =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBTIMELINEADVANCESW *)
+	    IMG_OFFSET_ADDR(psSyncFbTimelineAdvanceSWOUT_UI8, 0);
+
 	IMG_HANDLE hTimeline = psSyncFbTimelineAdvanceSWIN->hTimeline;
 	PVRSRV_TIMELINE_SERVER *psTimelineInt = NULL;
 
@@ -1247,14 +1336,31 @@ SyncFbTimelineAdvanceSW_exit:
 }
 
 #if defined(SUPPORT_INSECURE_EXPORT)
+static PVRSRV_ERROR _SyncFbFenceExportInsecurepsExportIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError =
+	    SyncFbFenceExportDestroyInsecure((PVRSRV_FENCE_EXPORT *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeSyncFbFenceExportInsecure(IMG_UINT32 ui32DispatchTableEntry,
-				      PVRSRV_BRIDGE_IN_SYNCFBFENCEEXPORTINSECURE
-				      * psSyncFbFenceExportInsecureIN,
-				      PVRSRV_BRIDGE_OUT_SYNCFBFENCEEXPORTINSECURE
-				      * psSyncFbFenceExportInsecureOUT,
+				      IMG_UINT8 *
+				      psSyncFbFenceExportInsecureIN_UI8,
+				      IMG_UINT8 *
+				      psSyncFbFenceExportInsecureOUT_UI8,
 				      CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBFENCEEXPORTINSECURE
+	    *psSyncFbFenceExportInsecureIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBFENCEEXPORTINSECURE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceExportInsecureIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBFENCEEXPORTINSECURE
+	    *psSyncFbFenceExportInsecureOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBFENCEEXPORTINSECURE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceExportInsecureOUT_UI8, 0);
+
 	IMG_HANDLE hFence = psSyncFbFenceExportInsecureIN->hFence;
 	PVRSRV_FENCE_SERVER *psFenceInt = NULL;
 	PVRSRV_FENCE_EXPORT *psExportInt = NULL;
@@ -1311,7 +1417,7 @@ PVRSRVBridgeSyncFbFenceExportInsecure(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_PVRSRV_FENCE_EXPORT,
 				      PVRSRV_HANDLE_ALLOC_FLAG_NONE,
 				      (PFN_HANDLE_RELEASE) &
-				      SyncFbFenceExportDestroyInsecure);
+				      _SyncFbFenceExportInsecurepsExportIntRelease);
 	if (unlikely(psSyncFbFenceExportInsecureOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psProcessHandleBase->psHandleBase);
@@ -1433,16 +1539,24 @@ SyncFbFenceExportInsecure_exit:
 #endif
 
 #if defined(SUPPORT_INSECURE_EXPORT)
+
 static IMG_INT
 PVRSRVBridgeSyncFbFenceExportDestroyInsecure(IMG_UINT32 ui32DispatchTableEntry,
-					     PVRSRV_BRIDGE_IN_SYNCFBFENCEEXPORTDESTROYINSECURE
-					     *
-					     psSyncFbFenceExportDestroyInsecureIN,
-					     PVRSRV_BRIDGE_OUT_SYNCFBFENCEEXPORTDESTROYINSECURE
-					     *
-					     psSyncFbFenceExportDestroyInsecureOUT,
+					     IMG_UINT8 *
+					     psSyncFbFenceExportDestroyInsecureIN_UI8,
+					     IMG_UINT8 *
+					     psSyncFbFenceExportDestroyInsecureOUT_UI8,
 					     CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBFENCEEXPORTDESTROYINSECURE
+	    *psSyncFbFenceExportDestroyInsecureIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBFENCEEXPORTDESTROYINSECURE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceExportDestroyInsecureIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBFENCEEXPORTDESTROYINSECURE
+	    *psSyncFbFenceExportDestroyInsecureOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBFENCEEXPORTDESTROYINSECURE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceExportDestroyInsecureOUT_UI8, 0);
+
 	PVRSRV_FENCE_EXPORT *psExportInt = NULL;
 	IMG_HANDLE hExportInt = NULL;
 
@@ -1552,14 +1666,31 @@ SyncFbFenceExportDestroyInsecure_exit:
 #endif
 
 #if defined(SUPPORT_INSECURE_EXPORT)
+static PVRSRV_ERROR _SyncFbFenceImportInsecurepsSyncHandleIntRelease(void
+								     *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = SyncFbFenceRelease((PVRSRV_FENCE_SERVER *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeSyncFbFenceImportInsecure(IMG_UINT32 ui32DispatchTableEntry,
-				      PVRSRV_BRIDGE_IN_SYNCFBFENCEIMPORTINSECURE
-				      * psSyncFbFenceImportInsecureIN,
-				      PVRSRV_BRIDGE_OUT_SYNCFBFENCEIMPORTINSECURE
-				      * psSyncFbFenceImportInsecureOUT,
+				      IMG_UINT8 *
+				      psSyncFbFenceImportInsecureIN_UI8,
+				      IMG_UINT8 *
+				      psSyncFbFenceImportInsecureOUT_UI8,
 				      CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBFENCEIMPORTINSECURE
+	    *psSyncFbFenceImportInsecureIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBFENCEIMPORTINSECURE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceImportInsecureIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBFENCEIMPORTINSECURE
+	    *psSyncFbFenceImportInsecureOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBFENCEIMPORTINSECURE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceImportInsecureOUT_UI8, 0);
+
 	IMG_HANDLE hImport = psSyncFbFenceImportInsecureIN->hImport;
 	PVRSRV_FENCE_EXPORT *psImportInt = NULL;
 	PVRSRV_FENCE_SERVER *psSyncHandleInt = NULL;
@@ -1602,7 +1733,7 @@ PVRSRVBridgeSyncFbFenceImportInsecure(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_PVRSRV_FENCE_SERVER,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      SyncFbFenceRelease);
+				      _SyncFbFenceImportInsecurepsSyncHandleIntRelease);
 	if (unlikely(psSyncFbFenceImportInsecureOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psProcessHandleBase->psHandleBase);
@@ -1644,12 +1775,19 @@ SyncFbFenceImportInsecure_exit:
 
 static IMG_INT
 PVRSRVBridgeSyncFbFenceExportSecure(IMG_UINT32 ui32DispatchTableEntry,
-				    PVRSRV_BRIDGE_IN_SYNCFBFENCEEXPORTSECURE *
-				    psSyncFbFenceExportSecureIN,
-				    PVRSRV_BRIDGE_OUT_SYNCFBFENCEEXPORTSECURE *
-				    psSyncFbFenceExportSecureOUT,
+				    IMG_UINT8 * psSyncFbFenceExportSecureIN_UI8,
+				    IMG_UINT8 *
+				    psSyncFbFenceExportSecureOUT_UI8,
 				    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBFENCEEXPORTSECURE *psSyncFbFenceExportSecureIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBFENCEEXPORTSECURE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceExportSecureIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBFENCEEXPORTSECURE *psSyncFbFenceExportSecureOUT
+	    =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBFENCEEXPORTSECURE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceExportSecureOUT_UI8, 0);
+
 	IMG_HANDLE hFence = psSyncFbFenceExportSecureIN->hFence;
 	PVRSRV_FENCE_SERVER *psFenceInt = NULL;
 	PVRSRV_FENCE_EXPORT *psExportInt = NULL;
@@ -1712,13 +1850,20 @@ SyncFbFenceExportSecure_exit:
 
 static IMG_INT
 PVRSRVBridgeSyncFbFenceExportDestroySecure(IMG_UINT32 ui32DispatchTableEntry,
-					   PVRSRV_BRIDGE_IN_SYNCFBFENCEEXPORTDESTROYSECURE
-					   * psSyncFbFenceExportDestroySecureIN,
-					   PVRSRV_BRIDGE_OUT_SYNCFBFENCEEXPORTDESTROYSECURE
-					   *
-					   psSyncFbFenceExportDestroySecureOUT,
+					   IMG_UINT8 *
+					   psSyncFbFenceExportDestroySecureIN_UI8,
+					   IMG_UINT8 *
+					   psSyncFbFenceExportDestroySecureOUT_UI8,
 					   CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBFENCEEXPORTDESTROYSECURE
+	    *psSyncFbFenceExportDestroySecureIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBFENCEEXPORTDESTROYSECURE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceExportDestroySecureIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBFENCEEXPORTDESTROYSECURE
+	    *psSyncFbFenceExportDestroySecureOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBFENCEEXPORTDESTROYSECURE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceExportDestroySecureOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psHandleBase);
@@ -1751,14 +1896,28 @@ SyncFbFenceExportDestroySecure_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _SyncFbFenceImportSecurepsSyncHandleIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = SyncFbFenceRelease((PVRSRV_FENCE_SERVER *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeSyncFbFenceImportSecure(IMG_UINT32 ui32DispatchTableEntry,
-				    PVRSRV_BRIDGE_IN_SYNCFBFENCEIMPORTSECURE *
-				    psSyncFbFenceImportSecureIN,
-				    PVRSRV_BRIDGE_OUT_SYNCFBFENCEIMPORTSECURE *
-				    psSyncFbFenceImportSecureOUT,
+				    IMG_UINT8 * psSyncFbFenceImportSecureIN_UI8,
+				    IMG_UINT8 *
+				    psSyncFbFenceImportSecureOUT_UI8,
 				    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCFBFENCEIMPORTSECURE *psSyncFbFenceImportSecureIN =
+	    (PVRSRV_BRIDGE_IN_SYNCFBFENCEIMPORTSECURE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceImportSecureIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCFBFENCEIMPORTSECURE *psSyncFbFenceImportSecureOUT
+	    =
+	    (PVRSRV_BRIDGE_OUT_SYNCFBFENCEIMPORTSECURE *)
+	    IMG_OFFSET_ADDR(psSyncFbFenceImportSecureOUT_UI8, 0);
+
 	PVRSRV_FENCE_SERVER *psSyncHandleInt = NULL;
 
 	psSyncFbFenceImportSecureOUT->eError =
@@ -1782,7 +1941,7 @@ PVRSRVBridgeSyncFbFenceImportSecure(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_PVRSRV_FENCE_SERVER,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      SyncFbFenceRelease);
+				      _SyncFbFenceImportSecurepsSyncHandleIntRelease);
 	if (unlikely(psSyncFbFenceImportSecureOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psProcessHandleBase->psHandleBase);

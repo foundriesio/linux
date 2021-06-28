@@ -1,6 +1,7 @@
 /*************************************************************************/ /*!
 @File
 @Title          Device specific initialisation routines
+@Copyright      Copyright (c) Telechips Inc.
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @Description    Device specific functions
 @License        Dual MIT/GPLv2
@@ -329,7 +330,11 @@ static IMG_BOOL RGX_LISRHandler (void *pvData)
 
 	if (PVRSRV_VZ_MODE_IS(GUEST))
 	{
+#if defined(SUPPORT_AUTOVZ)
+		if (RGXFwIrqEventRx(psDevInfo) && psDevInfo->bRGXPowered)
+#else
 		if (psDevInfo->bRGXPowered && RGXFwIrqEventRx(psDevInfo))
+#endif
 		{
 #if defined(SUPPORT_AUTOVZ)
 			RGXUpdateAutoVzWdgToken(psDevInfo);
@@ -1537,6 +1542,7 @@ PVRSRV_ERROR RGXInitCreateFWKernelMemoryContext(PVRSRV_DEVICE_NODE *psDeviceNode
 										 psDevConfig->ui32RegsSize,
 										 &psDeviceNode->eDevFabricType,
 										 &psDevConfig->eCacheSnoopingMode);
+
 #if !defined(SUPPORT_AUTOVZ)
 	/* Power-down the device */
 	if (psDeviceNode->psDevConfig->pfnPrePowerState)
@@ -1894,7 +1900,7 @@ static PVRSRV_ERROR RGXDevInitCompatCheck_KMBuildOptions_FWAgainstDriver(RGXFWIF
 		/*Mask the debug flag option out as we do support combinations of debug vs release in um & km*/
 		ui32BuildOptionsMismatch &= ~OPTIONS_DEBUG_MASK;
 #endif
-		if ((ui32BuildOptions & ui32BuildOptionsMismatch) != 0)
+		if ( (ui32BuildOptions & ui32BuildOptionsMismatch) != 0)
 		{
 			PVR_LOG(("(FAIL) RGXDevInitCompatCheck: Mismatch in Firmware and KM driver build options; "
 				"extra options present in the KM driver: (0x%x). Please check rgx_options.h",

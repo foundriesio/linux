@@ -72,6 +72,7 @@ typedef enum {
 	PVRSRV_MEM_ALLOC_TYPE_ALLOC_UMA_PAGES,		/* pages allocated from UMA */
 	PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES,	/* mapped UMA/LMA pages */
 	PVRSRV_MEM_ALLOC_TYPE_UMA_POOL_PAGES,		/* pages in the page pool */
+	PVRSRV_MEM_ALLOC_TYPE_DMA_BUF_IMPORT,       /* dma-buf imports */
 
 	/* Must be the last enum...*/
 	PVRSRV_MEM_ALLOC_TYPE_COUNT

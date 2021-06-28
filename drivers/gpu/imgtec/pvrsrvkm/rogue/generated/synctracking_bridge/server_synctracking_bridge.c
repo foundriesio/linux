@@ -68,12 +68,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static IMG_INT
 PVRSRVBridgeSyncRecordRemoveByHandle(IMG_UINT32 ui32DispatchTableEntry,
-				     PVRSRV_BRIDGE_IN_SYNCRECORDREMOVEBYHANDLE *
-				     psSyncRecordRemoveByHandleIN,
-				     PVRSRV_BRIDGE_OUT_SYNCRECORDREMOVEBYHANDLE
-				     * psSyncRecordRemoveByHandleOUT,
+				     IMG_UINT8 *
+				     psSyncRecordRemoveByHandleIN_UI8,
+				     IMG_UINT8 *
+				     psSyncRecordRemoveByHandleOUT_UI8,
 				     CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCRECORDREMOVEBYHANDLE *psSyncRecordRemoveByHandleIN
+	    =
+	    (PVRSRV_BRIDGE_IN_SYNCRECORDREMOVEBYHANDLE *)
+	    IMG_OFFSET_ADDR(psSyncRecordRemoveByHandleIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCRECORDREMOVEBYHANDLE
+	    *psSyncRecordRemoveByHandleOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCRECORDREMOVEBYHANDLE *)
+	    IMG_OFFSET_ADDR(psSyncRecordRemoveByHandleOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psHandleBase);
@@ -105,12 +113,26 @@ SyncRecordRemoveByHandle_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _SyncRecordAddpshRecordIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = PVRSRVSyncRecordRemoveByHandleKM((SYNC_RECORD_HANDLE) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeSyncRecordAdd(IMG_UINT32 ui32DispatchTableEntry,
-			  PVRSRV_BRIDGE_IN_SYNCRECORDADD * psSyncRecordAddIN,
-			  PVRSRV_BRIDGE_OUT_SYNCRECORDADD * psSyncRecordAddOUT,
+			  IMG_UINT8 * psSyncRecordAddIN_UI8,
+			  IMG_UINT8 * psSyncRecordAddOUT_UI8,
 			  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_SYNCRECORDADD *psSyncRecordAddIN =
+	    (PVRSRV_BRIDGE_IN_SYNCRECORDADD *)
+	    IMG_OFFSET_ADDR(psSyncRecordAddIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_SYNCRECORDADD *psSyncRecordAddOUT =
+	    (PVRSRV_BRIDGE_OUT_SYNCRECORDADD *)
+	    IMG_OFFSET_ADDR(psSyncRecordAddOUT_UI8, 0);
+
 	SYNC_RECORD_HANDLE pshRecordInt = NULL;
 	IMG_HANDLE hhServerSyncPrimBlock =
 	    psSyncRecordAddIN->hhServerSyncPrimBlock;
@@ -239,7 +261,7 @@ PVRSRVBridgeSyncRecordAdd(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_SYNC_RECORD_HANDLE,
 				      PVRSRV_HANDLE_ALLOC_FLAG_NONE,
 				      (PFN_HANDLE_RELEASE) &
-				      PVRSRVSyncRecordRemoveByHandleKM);
+				      _SyncRecordAddpshRecordIntRelease);
 	if (unlikely(psSyncRecordAddOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);

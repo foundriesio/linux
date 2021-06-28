@@ -647,10 +647,13 @@ IMG_INT OSMemCmp(void *pvBufA, void *pvBufB, size_t uiLen);
 @Output         psMemHandle   a returned handle to be used to refer to this
                               allocation
 @Output         psDevPAddr    the physical address of the allocation
+@Input          uiPid         the process ID that this allocation should
+                              be associated with
 @Return         PVRSRV_OK on success, a failure code otherwise.
 *****************************************************************************/
 PVRSRV_ERROR OSPhyContigPagesAlloc(PVRSRV_DEVICE_NODE *psDevNode, size_t uiSize,
-							PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr);
+							PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr,
+							IMG_PID uiPid);
 
 /*************************************************************************/ /*!
 @Function       OSPhyContigPagesFree

@@ -1594,7 +1594,7 @@ PVRSRV_ERROR PVRSRVRGXCtrlHWPerfCountersKM(
 	PVRSRV_ERROR		eError = PVRSRV_OK;
 	RGXFWIF_KCCB_CMD	sKccbCmd;
 	IMG_UINT32			ui32kCCBCommandSlot;
-	PVRSRV_RGXDEV_INFO	*psDevice = psDeviceNode->pvDevice;
+	PVRSRV_RGXDEV_INFO	*psDevice;
 
 	PVR_UNREFERENCED_PARAMETER(psConnection);
 
@@ -1603,9 +1603,10 @@ PVRSRV_ERROR PVRSRVRGXCtrlHWPerfCountersKM(
 	PVR_DPF_ENTERED;
 
 	PVR_LOG_RETURN_IF_INVALID_PARAM(psBlockIDs != NULL, "psBlockIDs");
+	PVR_LOG_RETURN_IF_INVALID_PARAM((ui32ArrayLen>0) && (ui32ArrayLen <= RGXFWIF_HWPERF_CTRL_BLKS_MAX), "ui32ArrayLen");
+
 	PVR_ASSERT(psDeviceNode);
-	PVR_ASSERT(ui32ArrayLen>0);
-	PVR_ASSERT(ui32ArrayLen<=RGXFWIF_HWPERF_CTRL_BLKS_MAX);
+	psDevice = psDeviceNode->pvDevice;
 
 	/* Fill in the command structure with the parameters needed
 	 */

@@ -134,10 +134,22 @@ static PVRSRV_ERROR ConnectionDataDestroy(CONNECTION_DATA *psConnection)
 	if (psConnection->psHandleBase != NULL)
 	{
 		eError = PVRSRVFreeHandleBase(psConnection->psHandleBase, ui64MaxBridgeTime);
-		if (unlikely(eError != PVRSRV_OK))
+		/*
+		 * If we get PVRSRV_ERROR_RETRY we need to pass this back to the caller
+		 * who will schedule a retry.
+		 * Do not log this as it is an expected exception.
+		 * This can occur if the Firmware is still processing a workload from
+		 * the client when a tear-down request is received.
+		 * Retrying will allow the in-flight work to be completed and the
+		 * tear-down request can be completed when the FW is no longer busy.
+		 */
+		if (PVRSRV_ERROR_RETRY == eError)
 		{
-			PVR_DPF((PVR_DBG_VERBOSE, "PVRSRVFreeHandleBase:2 failed (%s) in %s()", PVRSRVGETERRORSTRING(eError), __func__));
 			return eError;
+		}
+		else
+		{
+			PVR_LOG_RETURN_IF_ERROR(eError, "PVRSRVFreeHandleBase:2");
 		}
 
 		psConnection->psHandleBase = NULL;

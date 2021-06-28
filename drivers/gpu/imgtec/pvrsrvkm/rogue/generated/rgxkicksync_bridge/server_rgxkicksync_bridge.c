@@ -65,14 +65,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * Server-side bridge entry points
  */
 
+static PVRSRV_ERROR _RGXCreateKickSyncContextpsKickSyncContextIntRelease(void
+									 *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError =
+	    PVRSRVRGXDestroyKickSyncContextKM((RGX_SERVER_KICKSYNC_CONTEXT *)
+					      pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeRGXCreateKickSyncContext(IMG_UINT32 ui32DispatchTableEntry,
-				     PVRSRV_BRIDGE_IN_RGXCREATEKICKSYNCCONTEXT *
-				     psRGXCreateKickSyncContextIN,
-				     PVRSRV_BRIDGE_OUT_RGXCREATEKICKSYNCCONTEXT
-				     * psRGXCreateKickSyncContextOUT,
+				     IMG_UINT8 *
+				     psRGXCreateKickSyncContextIN_UI8,
+				     IMG_UINT8 *
+				     psRGXCreateKickSyncContextOUT_UI8,
 				     CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXCREATEKICKSYNCCONTEXT *psRGXCreateKickSyncContextIN
+	    =
+	    (PVRSRV_BRIDGE_IN_RGXCREATEKICKSYNCCONTEXT *)
+	    IMG_OFFSET_ADDR(psRGXCreateKickSyncContextIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXCREATEKICKSYNCCONTEXT
+	    *psRGXCreateKickSyncContextOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXCREATEKICKSYNCCONTEXT *)
+	    IMG_OFFSET_ADDR(psRGXCreateKickSyncContextOUT_UI8, 0);
+
 	IMG_HANDLE hPrivData = psRGXCreateKickSyncContextIN->hPrivData;
 	IMG_HANDLE hPrivDataInt = NULL;
 	RGX_SERVER_KICKSYNC_CONTEXT *psKickSyncContextInt = NULL;
@@ -121,7 +140,7 @@ PVRSRVBridgeRGXCreateKickSyncContext(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_RGX_SERVER_KICKSYNC_CONTEXT,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      PVRSRVRGXDestroyKickSyncContextKM);
+				      _RGXCreateKickSyncContextpsKickSyncContextIntRelease);
 	if (unlikely(psRGXCreateKickSyncContextOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -159,12 +178,20 @@ RGXCreateKickSyncContext_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXDestroyKickSyncContext(IMG_UINT32 ui32DispatchTableEntry,
-				      PVRSRV_BRIDGE_IN_RGXDESTROYKICKSYNCCONTEXT
-				      * psRGXDestroyKickSyncContextIN,
-				      PVRSRV_BRIDGE_OUT_RGXDESTROYKICKSYNCCONTEXT
-				      * psRGXDestroyKickSyncContextOUT,
+				      IMG_UINT8 *
+				      psRGXDestroyKickSyncContextIN_UI8,
+				      IMG_UINT8 *
+				      psRGXDestroyKickSyncContextOUT_UI8,
 				      CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXDESTROYKICKSYNCCONTEXT
+	    *psRGXDestroyKickSyncContextIN =
+	    (PVRSRV_BRIDGE_IN_RGXDESTROYKICKSYNCCONTEXT *)
+	    IMG_OFFSET_ADDR(psRGXDestroyKickSyncContextIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXDESTROYKICKSYNCCONTEXT
+	    *psRGXDestroyKickSyncContextOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXDESTROYKICKSYNCCONTEXT *)
+	    IMG_OFFSET_ADDR(psRGXDestroyKickSyncContextOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psHandleBase);
@@ -198,10 +225,17 @@ RGXDestroyKickSyncContext_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXKickSync2(IMG_UINT32 ui32DispatchTableEntry,
-			 PVRSRV_BRIDGE_IN_RGXKICKSYNC2 * psRGXKickSync2IN,
-			 PVRSRV_BRIDGE_OUT_RGXKICKSYNC2 * psRGXKickSync2OUT,
+			 IMG_UINT8 * psRGXKickSync2IN_UI8,
+			 IMG_UINT8 * psRGXKickSync2OUT_UI8,
 			 CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXKICKSYNC2 *psRGXKickSync2IN =
+	    (PVRSRV_BRIDGE_IN_RGXKICKSYNC2 *)
+	    IMG_OFFSET_ADDR(psRGXKickSync2IN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXKICKSYNC2 *psRGXKickSync2OUT =
+	    (PVRSRV_BRIDGE_OUT_RGXKICKSYNC2 *)
+	    IMG_OFFSET_ADDR(psRGXKickSync2OUT_UI8, 0);
+
 	IMG_HANDLE hKickSyncContext = psRGXKickSync2IN->hKickSyncContext;
 	RGX_SERVER_KICKSYNC_CONTEXT *psKickSyncContextInt = NULL;
 	SYNC_PRIMITIVE_BLOCK **psUpdateUFODevVarBlockInt = NULL;
@@ -474,12 +508,21 @@ RGXKickSync2_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXSetKickSyncContextProperty(IMG_UINT32 ui32DispatchTableEntry,
-					  PVRSRV_BRIDGE_IN_RGXSETKICKSYNCCONTEXTPROPERTY
-					  * psRGXSetKickSyncContextPropertyIN,
-					  PVRSRV_BRIDGE_OUT_RGXSETKICKSYNCCONTEXTPROPERTY
-					  * psRGXSetKickSyncContextPropertyOUT,
+					  IMG_UINT8 *
+					  psRGXSetKickSyncContextPropertyIN_UI8,
+					  IMG_UINT8 *
+					  psRGXSetKickSyncContextPropertyOUT_UI8,
 					  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXSETKICKSYNCCONTEXTPROPERTY
+	    *psRGXSetKickSyncContextPropertyIN =
+	    (PVRSRV_BRIDGE_IN_RGXSETKICKSYNCCONTEXTPROPERTY *)
+	    IMG_OFFSET_ADDR(psRGXSetKickSyncContextPropertyIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXSETKICKSYNCCONTEXTPROPERTY
+	    *psRGXSetKickSyncContextPropertyOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXSETKICKSYNCCONTEXTPROPERTY *)
+	    IMG_OFFSET_ADDR(psRGXSetKickSyncContextPropertyOUT_UI8, 0);
+
 	IMG_HANDLE hKickSyncContext =
 	    psRGXSetKickSyncContextPropertyIN->hKickSyncContext;
 	RGX_SERVER_KICKSYNC_CONTEXT *psKickSyncContextInt = NULL;

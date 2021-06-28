@@ -40,7 +40,6 @@ ccflags-y += $(tmp)
 ccflags-$(CONFIG_POWERVR_TC:m=y) += -I$(srctree)/drivers/gpu/imgtec/tc
 ccflags-$(CONFIG_POWERVR_RK3368) += -I$(srctree)/drivers/gpu/imgtec/rk3368
 ccflags-$(CONFIG_POWERVR_MT8173) += -I$(srctree)/drivers/gpu/imgtec/mt8173
-ccflags-$(CONFIG_POWERVR_SUNXI) += -I$(srctree)/drivers/gpu/imgtec/sunxi
 ccflags-$(CONFIG_POWERVR_TCC9XTP) += -I$(srctree)/drivers/gpu/imgtec/tcc_9xtp
 
 ifeq ($(DISPLAY_CONTROLLER), dc_fbdev)

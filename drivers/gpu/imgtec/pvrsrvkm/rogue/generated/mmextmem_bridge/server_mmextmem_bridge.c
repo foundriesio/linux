@@ -69,14 +69,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * Server-side bridge entry points
  */
 
+static PVRSRV_ERROR _PhysmemWrapExtMempsPMRPtrIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = PMRUnrefPMR((PMR *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgePhysmemWrapExtMem(IMG_UINT32 ui32DispatchTableEntry,
-			      PVRSRV_BRIDGE_IN_PHYSMEMWRAPEXTMEM *
-			      psPhysmemWrapExtMemIN,
-			      PVRSRV_BRIDGE_OUT_PHYSMEMWRAPEXTMEM *
-			      psPhysmemWrapExtMemOUT,
+			      IMG_UINT8 * psPhysmemWrapExtMemIN_UI8,
+			      IMG_UINT8 * psPhysmemWrapExtMemOUT_UI8,
 			      CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_PHYSMEMWRAPEXTMEM *psPhysmemWrapExtMemIN =
+	    (PVRSRV_BRIDGE_IN_PHYSMEMWRAPEXTMEM *)
+	    IMG_OFFSET_ADDR(psPhysmemWrapExtMemIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_PHYSMEMWRAPEXTMEM *psPhysmemWrapExtMemOUT =
+	    (PVRSRV_BRIDGE_OUT_PHYSMEMWRAPEXTMEM *)
+	    IMG_OFFSET_ADDR(psPhysmemWrapExtMemOUT_UI8, 0);
+
 	PMR *psPMRPtrInt = NULL;
 
 	psPhysmemWrapExtMemOUT->eError =
@@ -99,7 +111,8 @@ PVRSRVBridgePhysmemWrapExtMem(IMG_UINT32 ui32DispatchTableEntry,
 				      (void *)psPMRPtrInt,
 				      PVRSRV_HANDLE_TYPE_PHYSMEM_PMR,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
-				      (PFN_HANDLE_RELEASE) & PMRUnrefPMR);
+				      (PFN_HANDLE_RELEASE) &
+				      _PhysmemWrapExtMempsPMRPtrIntRelease);
 	if (unlikely(psPhysmemWrapExtMemOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);

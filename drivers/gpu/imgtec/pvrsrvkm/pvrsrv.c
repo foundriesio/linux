@@ -1,6 +1,7 @@
 /*************************************************************************/ /*!
 @File
 @Title          core services functions
+@Copyright      Copyright (c) Telechips Inc.
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @Description    Main APIs for core services functions
 @License        Dual MIT/GPLv2
@@ -2691,11 +2692,11 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVCommonDeviceDestroy(PVRSRV_DEVICE_NODE *psDevice
 	return PVRSRV_OK;
 }
 
-static PVRSRV_ERROR _LMA_DoPhyContigPagesAlloc(RA_ARENA *, size_t, PG_HANDLE *, IMG_DEV_PHYADDR *);
 static PVRSRV_ERROR _LMA_DoPhyContigPagesAlloc(RA_ARENA *pArena,
                                                size_t uiSize,
                                                PG_HANDLE *psMemHandle,
-                                               IMG_DEV_PHYADDR *psDevPAddr)
+                                               IMG_DEV_PHYADDR *psDevPAddr,
+                                               IMG_PID uiPid)
 {
 	RA_BASE_T uiCardAddr = 0;
 	RA_LENGTH_T uiActualSize;
@@ -2729,10 +2730,10 @@ static PVRSRV_ERROR _LMA_DoPhyContigPagesAlloc(RA_ARENA *pArena,
 	{
 #if defined(PVRSRV_ENABLE_PROCESS_STATS)
 #if !defined(PVRSRV_ENABLE_MEMORY_STATS)
-	    PVRSRVStatsIncrMemAllocStatAndTrack(PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA,
-	                                        uiSize,
-	                                        uiCardAddr,
-		                                    OSGetCurrentClientProcessIDKM());
+		PVRSRVStatsIncrMemAllocStatAndTrack(PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA,
+		                                    uiSize,
+		                                    uiCardAddr,
+		                                    uiPid);
 #else
 		IMG_CPU_PHYADDR sCpuPAddr;
 		sCpuPAddr.uiAddr = psDevPAddr->uiAddr;
@@ -2742,7 +2743,7 @@ static PVRSRV_ERROR _LMA_DoPhyContigPagesAlloc(RA_ARENA *pArena,
 		                             sCpuPAddr,
 		                             uiSize,
 		                             NULL,
-		                             OSGetCurrentClientProcessIDKM()
+		                             uiPid
 		                             DEBUG_MEMSTATS_VALUES);
 #endif
 #endif
@@ -2771,7 +2772,7 @@ static PVRSRV_ERROR _LMA_DoPhyContigPagesAlloc(RA_ARENA *pArena,
 #if defined(SUPPORT_GPUVIRT_VALIDATION)
 PVRSRV_ERROR LMA_PhyContigPagesAllocGPV(PVRSRV_DEVICE_NODE *psDevNode, size_t uiSize,
 							PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr,
-                            IMG_UINT32 ui32OSid )
+							IMG_UINT32 ui32OSid, IMG_PID uiPid)
 {
 	RA_ARENA *pArena;
 	IMG_UINT32 ui32Log2NumPages = 0;
@@ -2798,7 +2799,8 @@ PVRSRV_ERROR LMA_PhyContigPagesAllocGPV(PVRSRV_DEVICE_NODE *psDevNode, size_t ui
 
 	psMemHandle->uiOSid = ui32OSid;		/* For Free() use */
 
-	eError =  _LMA_DoPhyContigPagesAlloc(pArena, uiSize, psMemHandle, psDevPAddr);
+	eError =  _LMA_DoPhyContigPagesAlloc(pArena, uiSize, psMemHandle,
+	                                     psDevPAddr, uiPid);
 	PVR_LOG_IF_ERROR(eError, "_LMA_DoPhyContigPagesAlloc");
 
 	return eError;
@@ -2806,7 +2808,8 @@ PVRSRV_ERROR LMA_PhyContigPagesAllocGPV(PVRSRV_DEVICE_NODE *psDevNode, size_t ui
 #endif
 
 PVRSRV_ERROR LMA_PhyContigPagesAlloc(PVRSRV_DEVICE_NODE *psDevNode, size_t uiSize,
-							PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr)
+							PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr,
+							IMG_PID uiPid)
 {
 	PVRSRV_ERROR eError;
 
@@ -2817,7 +2820,8 @@ PVRSRV_ERROR LMA_PhyContigPagesAlloc(PVRSRV_DEVICE_NODE *psDevNode, size_t uiSiz
 	ui32Log2NumPages = OSGetOrder(uiSize);
 	uiSize = (1 << ui32Log2NumPages) * OSGetPageSize();
 
-	eError = _LMA_DoPhyContigPagesAlloc(pArena, uiSize, psMemHandle, psDevPAddr);
+	eError = _LMA_DoPhyContigPagesAlloc(pArena, uiSize, psMemHandle,
+	                                    psDevPAddr, uiPid);
 	PVR_LOG_IF_ERROR(eError, "_LMA_DoPhyContigPagesAlloc");
 
 	return eError;
@@ -3113,21 +3117,19 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVDeviceFinalise(PVRSRV_DEVICE_NODE *psDeviceNode,
 		{
 			RGXFWIF_KCCB_CMD	sCmpKCCBCmd;
 #if defined(SUPPORT_AUTOVZ)
-			int retry=0;
+			int retry = 0;
 			/* AutoVz Guest drivers expect the firmware to have set its end of the
 			 * connection to Ready state by now. Poll indefinitely otherwise. */
 			if (!KM_FW_CONNECTION_IS(READY, psDevInfo))
 			{
 				PVR_DPF((PVR_DBG_WARNING, "%s: Firmware Connection is not in Ready state. Waiting for Firmware ...", __func__));
 			}
-			
 			while (!KM_FW_CONNECTION_IS(READY, psDevInfo))
 			{
 				OSWaitus(1000000);
-				if(retry==30)
-				{
-					pr_info("%s No GPU-FW Init. system reset required\n",__func__);
-#if defined (SUPPORT_COLD_RESET)
+				if (retry == 30) {
+					pr_info("No GPU-FW Init. system reset required\n");
+#if defined(SUPPORT_COLD_RESET)
 					setColdReset();
 #endif
 				}

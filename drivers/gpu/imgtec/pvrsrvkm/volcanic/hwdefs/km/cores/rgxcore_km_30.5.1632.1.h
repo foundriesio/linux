@@ -1,7 +1,6 @@
 /*************************************************************************/ /*!
-@Title          System Description Header
+@Title          RGX Core BVNC 30.5.1632.1
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
-@Description    This header provides system-specific declarations and macros
 @License        Dual MIT/GPLv2
 
 The contents of this file are subject to the MIT license as set out below.
@@ -40,18 +39,32 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#if !defined(__SYSINFO_H__)
-#define __SYSINFO_H__
+#ifndef RGXCORE_KM_30_5_1632_1_H
+#define RGXCORE_KM_30_5_1632_1_H
 
-/*!< System specific poll/timeout details */
-#define MAX_HW_TIME_US								(500000)
-#define FATAL_ERROR_DETECTION_POLL_MS				(10000)
-#define WAIT_TRY_COUNT								(10000)
-#define DEVICES_WATCHDOG_POWER_ON_SLEEP_TIMEOUT		(1500)//(10000)
-#define DEVICES_WATCHDOG_POWER_OFF_SLEEP_TIMEOUT	(3600000)
+/* Automatically generated file (11/02/2020 09:01:23): Do not edit manually */
+/* CS: @5621518 */
 
-#if defined(__linux__)
-#define SYS_RGX_DEV_NAME "rgxsunxi"
-#endif
+/******************************************************************************
+ * BVNC = 30.5.1632.1
+ *****************************************************************************/
+#define RGX_BVNC_KM_B 30
+#define RGX_BVNC_KM_V 5
+#define RGX_BVNC_KM_N 1632
+#define RGX_BVNC_KM_C 1
 
-#endif	/* !defined(__SYSINFO_H__) */
+/******************************************************************************
+ * Errata
+ *****************************************************************************/
+
+#define FIX_HW_BRN_68777
+
+
+
+/******************************************************************************
+ * Enhancements
+ *****************************************************************************/
+
+
+
+#endif /* RGXCORE_KM_30_5_1632_1_H */

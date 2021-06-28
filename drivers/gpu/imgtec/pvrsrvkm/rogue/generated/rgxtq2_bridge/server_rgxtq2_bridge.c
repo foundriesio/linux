@@ -67,14 +67,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * Server-side bridge entry points
  */
 
+static PVRSRV_ERROR _RGXTDMCreateTransferContextpsTransferContextIntRelease(void
+									    *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError =
+	    PVRSRVRGXTDMDestroyTransferContextKM((RGX_SERVER_TQ_TDM_CONTEXT *)
+						 pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeRGXTDMCreateTransferContext(IMG_UINT32 ui32DispatchTableEntry,
-					PVRSRV_BRIDGE_IN_RGXTDMCREATETRANSFERCONTEXT
-					* psRGXTDMCreateTransferContextIN,
-					PVRSRV_BRIDGE_OUT_RGXTDMCREATETRANSFERCONTEXT
-					* psRGXTDMCreateTransferContextOUT,
+					IMG_UINT8 *
+					psRGXTDMCreateTransferContextIN_UI8,
+					IMG_UINT8 *
+					psRGXTDMCreateTransferContextOUT_UI8,
 					CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXTDMCREATETRANSFERCONTEXT
+	    *psRGXTDMCreateTransferContextIN =
+	    (PVRSRV_BRIDGE_IN_RGXTDMCREATETRANSFERCONTEXT *)
+	    IMG_OFFSET_ADDR(psRGXTDMCreateTransferContextIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXTDMCREATETRANSFERCONTEXT
+	    *psRGXTDMCreateTransferContextOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXTDMCREATETRANSFERCONTEXT *)
+	    IMG_OFFSET_ADDR(psRGXTDMCreateTransferContextOUT_UI8, 0);
+
 	IMG_BYTE *psFrameworkCmdInt = NULL;
 	IMG_HANDLE hPrivData = psRGXTDMCreateTransferContextIN->hPrivData;
 	IMG_HANDLE hPrivDataInt = NULL;
@@ -225,7 +244,7 @@ PVRSRVBridgeRGXTDMCreateTransferContext(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_RGX_SERVER_TQ_TDM_CONTEXT,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      PVRSRVRGXTDMDestroyTransferContextKM);
+				      _RGXTDMCreateTransferContextpsTransferContextIntRelease);
 	if (unlikely(psRGXTDMCreateTransferContextOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -274,12 +293,20 @@ RGXTDMCreateTransferContext_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXTDMDestroyTransferContext(IMG_UINT32 ui32DispatchTableEntry,
-					 PVRSRV_BRIDGE_IN_RGXTDMDESTROYTRANSFERCONTEXT
-					 * psRGXTDMDestroyTransferContextIN,
-					 PVRSRV_BRIDGE_OUT_RGXTDMDESTROYTRANSFERCONTEXT
-					 * psRGXTDMDestroyTransferContextOUT,
+					 IMG_UINT8 *
+					 psRGXTDMDestroyTransferContextIN_UI8,
+					 IMG_UINT8 *
+					 psRGXTDMDestroyTransferContextOUT_UI8,
 					 CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXTDMDESTROYTRANSFERCONTEXT
+	    *psRGXTDMDestroyTransferContextIN =
+	    (PVRSRV_BRIDGE_IN_RGXTDMDESTROYTRANSFERCONTEXT *)
+	    IMG_OFFSET_ADDR(psRGXTDMDestroyTransferContextIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXTDMDESTROYTRANSFERCONTEXT
+	    *psRGXTDMDestroyTransferContextOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXTDMDESTROYTRANSFERCONTEXT *)
+	    IMG_OFFSET_ADDR(psRGXTDMDestroyTransferContextOUT_UI8, 0);
 
 	{
 		PVRSRV_DEVICE_NODE *psDeviceNode = OSGetDevNode(psConnection);
@@ -329,14 +356,21 @@ RGXTDMDestroyTransferContext_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXTDMSetTransferContextPriority(IMG_UINT32 ui32DispatchTableEntry,
-					     PVRSRV_BRIDGE_IN_RGXTDMSETTRANSFERCONTEXTPRIORITY
-					     *
-					     psRGXTDMSetTransferContextPriorityIN,
-					     PVRSRV_BRIDGE_OUT_RGXTDMSETTRANSFERCONTEXTPRIORITY
-					     *
-					     psRGXTDMSetTransferContextPriorityOUT,
+					     IMG_UINT8 *
+					     psRGXTDMSetTransferContextPriorityIN_UI8,
+					     IMG_UINT8 *
+					     psRGXTDMSetTransferContextPriorityOUT_UI8,
 					     CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXTDMSETTRANSFERCONTEXTPRIORITY
+	    *psRGXTDMSetTransferContextPriorityIN =
+	    (PVRSRV_BRIDGE_IN_RGXTDMSETTRANSFERCONTEXTPRIORITY *)
+	    IMG_OFFSET_ADDR(psRGXTDMSetTransferContextPriorityIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXTDMSETTRANSFERCONTEXTPRIORITY
+	    *psRGXTDMSetTransferContextPriorityOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXTDMSETTRANSFERCONTEXTPRIORITY *)
+	    IMG_OFFSET_ADDR(psRGXTDMSetTransferContextPriorityOUT_UI8, 0);
+
 	IMG_HANDLE hTransferContext =
 	    psRGXTDMSetTransferContextPriorityIN->hTransferContext;
 	RGX_SERVER_TQ_TDM_CONTEXT *psTransferContextInt = NULL;
@@ -402,12 +436,21 @@ RGXTDMSetTransferContextPriority_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXTDMNotifyWriteOffsetUpdate(IMG_UINT32 ui32DispatchTableEntry,
-					  PVRSRV_BRIDGE_IN_RGXTDMNOTIFYWRITEOFFSETUPDATE
-					  * psRGXTDMNotifyWriteOffsetUpdateIN,
-					  PVRSRV_BRIDGE_OUT_RGXTDMNOTIFYWRITEOFFSETUPDATE
-					  * psRGXTDMNotifyWriteOffsetUpdateOUT,
+					  IMG_UINT8 *
+					  psRGXTDMNotifyWriteOffsetUpdateIN_UI8,
+					  IMG_UINT8 *
+					  psRGXTDMNotifyWriteOffsetUpdateOUT_UI8,
 					  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXTDMNOTIFYWRITEOFFSETUPDATE
+	    *psRGXTDMNotifyWriteOffsetUpdateIN =
+	    (PVRSRV_BRIDGE_IN_RGXTDMNOTIFYWRITEOFFSETUPDATE *)
+	    IMG_OFFSET_ADDR(psRGXTDMNotifyWriteOffsetUpdateIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXTDMNOTIFYWRITEOFFSETUPDATE
+	    *psRGXTDMNotifyWriteOffsetUpdateOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXTDMNOTIFYWRITEOFFSETUPDATE *)
+	    IMG_OFFSET_ADDR(psRGXTDMNotifyWriteOffsetUpdateOUT_UI8, 0);
+
 	IMG_HANDLE hTransferContext =
 	    psRGXTDMNotifyWriteOffsetUpdateIN->hTransferContext;
 	RGX_SERVER_TQ_TDM_CONTEXT *psTransferContextInt = NULL;
@@ -470,12 +513,17 @@ RGXTDMNotifyWriteOffsetUpdate_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXTDMSubmitTransfer2(IMG_UINT32 ui32DispatchTableEntry,
-				  PVRSRV_BRIDGE_IN_RGXTDMSUBMITTRANSFER2 *
-				  psRGXTDMSubmitTransfer2IN,
-				  PVRSRV_BRIDGE_OUT_RGXTDMSUBMITTRANSFER2 *
-				  psRGXTDMSubmitTransfer2OUT,
+				  IMG_UINT8 * psRGXTDMSubmitTransfer2IN_UI8,
+				  IMG_UINT8 * psRGXTDMSubmitTransfer2OUT_UI8,
 				  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXTDMSUBMITTRANSFER2 *psRGXTDMSubmitTransfer2IN =
+	    (PVRSRV_BRIDGE_IN_RGXTDMSUBMITTRANSFER2 *)
+	    IMG_OFFSET_ADDR(psRGXTDMSubmitTransfer2IN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXTDMSUBMITTRANSFER2 *psRGXTDMSubmitTransfer2OUT =
+	    (PVRSRV_BRIDGE_OUT_RGXTDMSUBMITTRANSFER2 *)
+	    IMG_OFFSET_ADDR(psRGXTDMSubmitTransfer2OUT_UI8, 0);
+
 	IMG_HANDLE hTransferContext =
 	    psRGXTDMSubmitTransfer2IN->hTransferContext;
 	RGX_SERVER_TQ_TDM_CONTEXT *psTransferContextInt = NULL;
@@ -949,14 +997,33 @@ RGXTDMSubmitTransfer2_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _RGXTDMGetSharedMemorypsCLIPMRMemIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = PVRSRVRGXTDMReleaseSharedMemoryKM((PMR *) pvData);
+	return eError;
+}
+
+static PVRSRV_ERROR _RGXTDMGetSharedMemorypsUSCPMRMemIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = PVRSRVRGXTDMReleaseSharedMemoryKM((PMR *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeRGXTDMGetSharedMemory(IMG_UINT32 ui32DispatchTableEntry,
-				  PVRSRV_BRIDGE_IN_RGXTDMGETSHAREDMEMORY *
-				  psRGXTDMGetSharedMemoryIN,
-				  PVRSRV_BRIDGE_OUT_RGXTDMGETSHAREDMEMORY *
-				  psRGXTDMGetSharedMemoryOUT,
+				  IMG_UINT8 * psRGXTDMGetSharedMemoryIN_UI8,
+				  IMG_UINT8 * psRGXTDMGetSharedMemoryOUT_UI8,
 				  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXTDMGETSHAREDMEMORY *psRGXTDMGetSharedMemoryIN =
+	    (PVRSRV_BRIDGE_IN_RGXTDMGETSHAREDMEMORY *)
+	    IMG_OFFSET_ADDR(psRGXTDMGetSharedMemoryIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXTDMGETSHAREDMEMORY *psRGXTDMGetSharedMemoryOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXTDMGETSHAREDMEMORY *)
+	    IMG_OFFSET_ADDR(psRGXTDMGetSharedMemoryOUT_UI8, 0);
+
 	PMR *psCLIPMRMemInt = NULL;
 	PMR *psUSCPMRMemInt = NULL;
 
@@ -997,7 +1064,7 @@ PVRSRVBridgeRGXTDMGetSharedMemory(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_PMR_LOCAL_EXPORT_HANDLE,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      PVRSRVRGXTDMReleaseSharedMemoryKM);
+				      _RGXTDMGetSharedMemorypsCLIPMRMemIntRelease);
 	if (unlikely(psRGXTDMGetSharedMemoryOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -1011,7 +1078,7 @@ PVRSRVBridgeRGXTDMGetSharedMemory(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_PMR_LOCAL_EXPORT_HANDLE,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      PVRSRVRGXTDMReleaseSharedMemoryKM);
+				      _RGXTDMGetSharedMemorypsUSCPMRMemIntRelease);
 	if (unlikely(psRGXTDMGetSharedMemoryOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -1040,12 +1107,20 @@ RGXTDMGetSharedMemory_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXTDMReleaseSharedMemory(IMG_UINT32 ui32DispatchTableEntry,
-				      PVRSRV_BRIDGE_IN_RGXTDMRELEASESHAREDMEMORY
-				      * psRGXTDMReleaseSharedMemoryIN,
-				      PVRSRV_BRIDGE_OUT_RGXTDMRELEASESHAREDMEMORY
-				      * psRGXTDMReleaseSharedMemoryOUT,
+				      IMG_UINT8 *
+				      psRGXTDMReleaseSharedMemoryIN_UI8,
+				      IMG_UINT8 *
+				      psRGXTDMReleaseSharedMemoryOUT_UI8,
 				      CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXTDMRELEASESHAREDMEMORY
+	    *psRGXTDMReleaseSharedMemoryIN =
+	    (PVRSRV_BRIDGE_IN_RGXTDMRELEASESHAREDMEMORY *)
+	    IMG_OFFSET_ADDR(psRGXTDMReleaseSharedMemoryIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXTDMRELEASESHAREDMEMORY
+	    *psRGXTDMReleaseSharedMemoryOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXTDMRELEASESHAREDMEMORY *)
+	    IMG_OFFSET_ADDR(psRGXTDMReleaseSharedMemoryOUT_UI8, 0);
 
 	{
 		PVRSRV_DEVICE_NODE *psDeviceNode = OSGetDevNode(psConnection);
@@ -1094,14 +1169,21 @@ RGXTDMReleaseSharedMemory_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXTDMSetTransferContextProperty(IMG_UINT32 ui32DispatchTableEntry,
-					     PVRSRV_BRIDGE_IN_RGXTDMSETTRANSFERCONTEXTPROPERTY
-					     *
-					     psRGXTDMSetTransferContextPropertyIN,
-					     PVRSRV_BRIDGE_OUT_RGXTDMSETTRANSFERCONTEXTPROPERTY
-					     *
-					     psRGXTDMSetTransferContextPropertyOUT,
+					     IMG_UINT8 *
+					     psRGXTDMSetTransferContextPropertyIN_UI8,
+					     IMG_UINT8 *
+					     psRGXTDMSetTransferContextPropertyOUT_UI8,
 					     CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXTDMSETTRANSFERCONTEXTPROPERTY
+	    *psRGXTDMSetTransferContextPropertyIN =
+	    (PVRSRV_BRIDGE_IN_RGXTDMSETTRANSFERCONTEXTPROPERTY *)
+	    IMG_OFFSET_ADDR(psRGXTDMSetTransferContextPropertyIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXTDMSETTRANSFERCONTEXTPROPERTY
+	    *psRGXTDMSetTransferContextPropertyOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXTDMSETTRANSFERCONTEXTPROPERTY *)
+	    IMG_OFFSET_ADDR(psRGXTDMSetTransferContextPropertyOUT_UI8, 0);
+
 	IMG_HANDLE hTransferContext =
 	    psRGXTDMSetTransferContextPropertyIN->hTransferContext;
 	RGX_SERVER_TQ_TDM_CONTEXT *psTransferContextInt = NULL;

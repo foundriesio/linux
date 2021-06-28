@@ -68,14 +68,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * Server-side bridge entry points
  */
 
+static PVRSRV_ERROR _RGXCreateTransferContextpsTransferContextIntRelease(void
+									 *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError =
+	    PVRSRVRGXDestroyTransferContextKM((RGX_SERVER_TQ_CONTEXT *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeRGXCreateTransferContext(IMG_UINT32 ui32DispatchTableEntry,
-				     PVRSRV_BRIDGE_IN_RGXCREATETRANSFERCONTEXT *
-				     psRGXCreateTransferContextIN,
-				     PVRSRV_BRIDGE_OUT_RGXCREATETRANSFERCONTEXT
-				     * psRGXCreateTransferContextOUT,
+				     IMG_UINT8 *
+				     psRGXCreateTransferContextIN_UI8,
+				     IMG_UINT8 *
+				     psRGXCreateTransferContextOUT_UI8,
 				     CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXCREATETRANSFERCONTEXT *psRGXCreateTransferContextIN
+	    =
+	    (PVRSRV_BRIDGE_IN_RGXCREATETRANSFERCONTEXT *)
+	    IMG_OFFSET_ADDR(psRGXCreateTransferContextIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXCREATETRANSFERCONTEXT
+	    *psRGXCreateTransferContextOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXCREATETRANSFERCONTEXT *)
+	    IMG_OFFSET_ADDR(psRGXCreateTransferContextOUT_UI8, 0);
+
 	IMG_BYTE *psFrameworkCmdInt = NULL;
 	IMG_HANDLE hPrivData = psRGXCreateTransferContextIN->hPrivData;
 	IMG_HANDLE hPrivDataInt = NULL;
@@ -215,7 +233,7 @@ PVRSRVBridgeRGXCreateTransferContext(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_RGX_SERVER_TQ_CONTEXT,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      PVRSRVRGXDestroyTransferContextKM);
+				      _RGXCreateTransferContextpsTransferContextIntRelease);
 	if (unlikely(psRGXCreateTransferContextOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -326,12 +344,20 @@ RGXCreateTransferContext_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXDestroyTransferContext(IMG_UINT32 ui32DispatchTableEntry,
-				      PVRSRV_BRIDGE_IN_RGXDESTROYTRANSFERCONTEXT
-				      * psRGXDestroyTransferContextIN,
-				      PVRSRV_BRIDGE_OUT_RGXDESTROYTRANSFERCONTEXT
-				      * psRGXDestroyTransferContextOUT,
+				      IMG_UINT8 *
+				      psRGXDestroyTransferContextIN_UI8,
+				      IMG_UINT8 *
+				      psRGXDestroyTransferContextOUT_UI8,
 				      CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXDESTROYTRANSFERCONTEXT
+	    *psRGXDestroyTransferContextIN =
+	    (PVRSRV_BRIDGE_IN_RGXDESTROYTRANSFERCONTEXT *)
+	    IMG_OFFSET_ADDR(psRGXDestroyTransferContextIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXDESTROYTRANSFERCONTEXT
+	    *psRGXDestroyTransferContextOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXDESTROYTRANSFERCONTEXT *)
+	    IMG_OFFSET_ADDR(psRGXDestroyTransferContextOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psHandleBase);
@@ -365,12 +391,21 @@ RGXDestroyTransferContext_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXSetTransferContextPriority(IMG_UINT32 ui32DispatchTableEntry,
-					  PVRSRV_BRIDGE_IN_RGXSETTRANSFERCONTEXTPRIORITY
-					  * psRGXSetTransferContextPriorityIN,
-					  PVRSRV_BRIDGE_OUT_RGXSETTRANSFERCONTEXTPRIORITY
-					  * psRGXSetTransferContextPriorityOUT,
+					  IMG_UINT8 *
+					  psRGXSetTransferContextPriorityIN_UI8,
+					  IMG_UINT8 *
+					  psRGXSetTransferContextPriorityOUT_UI8,
 					  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXSETTRANSFERCONTEXTPRIORITY
+	    *psRGXSetTransferContextPriorityIN =
+	    (PVRSRV_BRIDGE_IN_RGXSETTRANSFERCONTEXTPRIORITY *)
+	    IMG_OFFSET_ADDR(psRGXSetTransferContextPriorityIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXSETTRANSFERCONTEXTPRIORITY
+	    *psRGXSetTransferContextPriorityOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXSETTRANSFERCONTEXTPRIORITY *)
+	    IMG_OFFSET_ADDR(psRGXSetTransferContextPriorityOUT_UI8, 0);
+
 	IMG_HANDLE hTransferContext =
 	    psRGXSetTransferContextPriorityIN->hTransferContext;
 	RGX_SERVER_TQ_CONTEXT *psTransferContextInt = NULL;
@@ -420,12 +455,17 @@ RGXSetTransferContextPriority_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXSubmitTransfer2(IMG_UINT32 ui32DispatchTableEntry,
-			       PVRSRV_BRIDGE_IN_RGXSUBMITTRANSFER2 *
-			       psRGXSubmitTransfer2IN,
-			       PVRSRV_BRIDGE_OUT_RGXSUBMITTRANSFER2 *
-			       psRGXSubmitTransfer2OUT,
+			       IMG_UINT8 * psRGXSubmitTransfer2IN_UI8,
+			       IMG_UINT8 * psRGXSubmitTransfer2OUT_UI8,
 			       CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXSUBMITTRANSFER2 *psRGXSubmitTransfer2IN =
+	    (PVRSRV_BRIDGE_IN_RGXSUBMITTRANSFER2 *)
+	    IMG_OFFSET_ADDR(psRGXSubmitTransfer2IN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXSUBMITTRANSFER2 *psRGXSubmitTransfer2OUT =
+	    (PVRSRV_BRIDGE_OUT_RGXSUBMITTRANSFER2 *)
+	    IMG_OFFSET_ADDR(psRGXSubmitTransfer2OUT_UI8, 0);
+
 	IMG_HANDLE hTransferContext = psRGXSubmitTransfer2IN->hTransferContext;
 	RGX_SERVER_TQ_CONTEXT *psTransferContextInt = NULL;
 	IMG_UINT32 *ui32ClientUpdateCountInt = NULL;
@@ -1160,12 +1200,21 @@ RGXSubmitTransfer2_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXSetTransferContextProperty(IMG_UINT32 ui32DispatchTableEntry,
-					  PVRSRV_BRIDGE_IN_RGXSETTRANSFERCONTEXTPROPERTY
-					  * psRGXSetTransferContextPropertyIN,
-					  PVRSRV_BRIDGE_OUT_RGXSETTRANSFERCONTEXTPROPERTY
-					  * psRGXSetTransferContextPropertyOUT,
+					  IMG_UINT8 *
+					  psRGXSetTransferContextPropertyIN_UI8,
+					  IMG_UINT8 *
+					  psRGXSetTransferContextPropertyOUT_UI8,
 					  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXSETTRANSFERCONTEXTPROPERTY
+	    *psRGXSetTransferContextPropertyIN =
+	    (PVRSRV_BRIDGE_IN_RGXSETTRANSFERCONTEXTPROPERTY *)
+	    IMG_OFFSET_ADDR(psRGXSetTransferContextPropertyIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXSETTRANSFERCONTEXTPROPERTY
+	    *psRGXSetTransferContextPropertyOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXSETTRANSFERCONTEXTPROPERTY *)
+	    IMG_OFFSET_ADDR(psRGXSetTransferContextPropertyOUT_UI8, 0);
+
 	IMG_HANDLE hTransferContext =
 	    psRGXSetTransferContextPropertyIN->hTransferContext;
 	RGX_SERVER_TQ_CONTEXT *psTransferContextInt = NULL;

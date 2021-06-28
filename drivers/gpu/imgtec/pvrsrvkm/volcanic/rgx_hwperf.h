@@ -1425,11 +1425,6 @@ static_assert(
 
 #define RGX_HWPERF_EVENT_MASK_VALUE(e)      (IMG_UINT64_C(1) << (e))
 
-/*! The maximum number of counter blocks which can be configured in a single
- * bridge call. Multiple calls can be made to configure more counter blocks.
- */
-#define RGX_HWPERF_MAX_CFG_BLKS	(16)
-
 /* When adding new counters here, make sure changes are made to rgxfw_hwperf_fwblk_valid() as well */
 #define RGX_CUSTOM_FW_CNTRS	\
                 X(TA_LOCAL_FL_SIZE,    0x0, RGX_HWPERF_EVENT_MASK_VALUE(RGX_HWPERF_HW_TAKICK) |         \

@@ -452,31 +452,31 @@ static INLINE IMG_UINT64 RGXReadHWTimerReg(PVRSRV_RGXDEV_INFO *psDevInfo)
  * Therefore the GPU cache doesn't need coherency,
  * and write-combine is suffice on the CPU side (WC buffer will be flushed at the first kick)
  */
-#define RGX_FWCOMCTX_ALLOCFLAGS				(PVRSRV_MEMALLOCFLAG_DEVICE_FLAG(PMMETA_PROTECT) | \
-											 PVRSRV_MEMALLOCFLAG_DEVICE_FLAG(FIRMWARE_CACHED)| \
-											 PVRSRV_MEMALLOCFLAG_GPU_READABLE | \
-											 PVRSRV_MEMALLOCFLAG_GPU_WRITEABLE | \
-											 PVRSRV_MEMALLOCFLAG_GPU_CACHE_INCOHERENT | \
-											 PVRSRV_MEMALLOCFLAG_CPU_READABLE | \
-											 PVRSRV_MEMALLOCFLAG_CPU_WRITEABLE | \
-											 PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE | \
-											 PVRSRV_MEMALLOCFLAG_KERNEL_CPU_MAPPABLE | \
-											 PVRSRV_MEMALLOCFLAG_ZERO_ON_ALLOC)
+#define RGX_FWCOMCTX_ALLOCFLAGS        (PVRSRV_MEMALLOCFLAG_DEVICE_FLAG(PMMETA_PROTECT) | \
+                                        PVRSRV_MEMALLOCFLAG_DEVICE_FLAG(FIRMWARE_CACHED)| \
+                                        PVRSRV_MEMALLOCFLAG_GPU_READABLE | \
+                                        PVRSRV_MEMALLOCFLAG_GPU_WRITEABLE | \
+                                        PVRSRV_MEMALLOCFLAG_GPU_CACHE_INCOHERENT | \
+                                        PVRSRV_MEMALLOCFLAG_CPU_READABLE | \
+                                        PVRSRV_MEMALLOCFLAG_CPU_WRITEABLE | \
+                                        PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE | \
+                                        PVRSRV_MEMALLOCFLAG_KERNEL_CPU_MAPPABLE | \
+                                        PVRSRV_MEMALLOCFLAG_ZERO_ON_ALLOC)
 
-#define RGX_FWSHAREDMEM_ALLOCFLAGS			(PVRSRV_MEMALLOCFLAG_DEVICE_FLAG(PMMETA_PROTECT) | \
-											 PVRSRV_MEMALLOCFLAG_GPU_READABLE | \
-											 PVRSRV_MEMALLOCFLAG_GPU_WRITEABLE | \
-											 PVRSRV_MEMALLOCFLAG_CPU_READABLE | \
-											 PVRSRV_MEMALLOCFLAG_CPU_WRITEABLE | \
-											 PVRSRV_MEMALLOCFLAG_KERNEL_CPU_MAPPABLE | \
-											 PVRSRV_MEMALLOCFLAG_UNCACHED | \
-											 PVRSRV_MEMALLOCFLAG_ZERO_ON_ALLOC)
+#define RGX_FWSHAREDMEM_ALLOCFLAGS     (PVRSRV_MEMALLOCFLAG_DEVICE_FLAG(PMMETA_PROTECT) | \
+                                        PVRSRV_MEMALLOCFLAG_GPU_READABLE | \
+                                        PVRSRV_MEMALLOCFLAG_GPU_WRITEABLE | \
+                                        PVRSRV_MEMALLOCFLAG_CPU_READABLE | \
+                                        PVRSRV_MEMALLOCFLAG_CPU_WRITEABLE | \
+                                        PVRSRV_MEMALLOCFLAG_KERNEL_CPU_MAPPABLE | \
+                                        PVRSRV_MEMALLOCFLAG_UNCACHED | \
+                                        PVRSRV_MEMALLOCFLAG_ZERO_ON_ALLOC)
 
 /*
- *  * This FW Init Data is initialised on the CPU and then passed to the FW. We need
- *   * to make the CPU mapping write-combined to avoid CPU-specific alignment issues
- *    * for device memory.
- *     */
+ * This FW Init Data is initialised on the CPU and then passed to the FW. We need
+ * to make the CPU mapping write-combined to avoid CPU-specific alignment issues
+ * for device memory.
+ */
 #define RGX_FWINITDATA_WC_ALLOCFLAGS   ((RGX_FWSHAREDMEM_ALLOCFLAGS & (~PVRSRV_MEMALLOCFLAG_CPU_CACHE_MODE_MASK)) | PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE)
 
 #define RGX_FWSHAREDMEM_GPU_RO_ALLOCFLAGS	(RGX_FWSHAREDMEM_ALLOCFLAGS & (~PVRSRV_MEMALLOCFLAG_GPU_WRITEABLE))

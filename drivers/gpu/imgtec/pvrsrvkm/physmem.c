@@ -51,6 +51,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pdump_physmem.h"
 #include "pdump_km.h"
 #include "rgx_heaps.h"
+#include "pvr_ricommon.h"
 
 #if defined(DEBUG)
 static IMG_UINT32 gPMRAllocFail;
@@ -94,14 +95,21 @@ PVRSRV_ERROR DevPhysMemAlloc(PVRSRV_DEVICE_NODE	*psDevNode,
 	PG_HANDLE *psMemHandle;
 	IMG_UINT64 uiMask;
 	IMG_DEV_PHYADDR sDevPhysAddr_int;
+	IMG_PID uiPid = 0;
 
 	psMemHandle = hMemHandle;
+
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+	uiPid = psDevNode->eDevState == PVRSRV_DEVICE_STATE_INIT ?
+	        PVR_SYS_ALLOC_PID : OSGetCurrentClientProcessIDKM();
+#endif
 
 	/* Allocate the pages */
 	eError = psDevNode->sDevMMUPxSetup.pfnDevPxAlloc(psDevNode,
 	                                                 TRUNCATE_64BITS_TO_SIZE_T(ui32MemSize),
 	                                                 psMemHandle,
-	                                                 &sDevPhysAddr_int);
+	                                                 &sDevPhysAddr_int,
+	                                                 uiPid);
 	PVR_LOG_RETURN_IF_ERROR(eError, "pfnDevPxAlloc:1");
 
 	/* Check to see if the page allocator returned pages with our desired
@@ -117,7 +125,8 @@ PVRSRV_ERROR DevPhysMemAlloc(PVRSRV_DEVICE_NODE	*psDevNode,
 		eError = psDevNode->sDevMMUPxSetup.pfnDevPxAlloc(psDevNode,
 		                                                 TRUNCATE_64BITS_TO_SIZE_T(ui32MemSize),
 		                                                 psMemHandle,
-		                                                 &sDevPhysAddr_int);
+		                                                 &sDevPhysAddr_int,
+		                                                 uiPid);
 		PVR_LOG_RETURN_IF_ERROR(eError, "pfnDevPxAlloc:2");
 
 		sDevPhysAddr_int.uiAddr += uiMask;
@@ -269,6 +278,16 @@ static inline PVRSRV_ERROR _ValidateParams(IMG_UINT32 ui32NumPhysChunks,
 	IMG_BOOL bIsSparse = (ui32NumVirtChunks != ui32NumPhysChunks ||
 			ui32NumVirtChunks > 1) ? IMG_TRUE : IMG_FALSE;
 
+	if (ui32NumPhysChunks == 0 && ui32NumVirtChunks == 0)
+	{
+		PVR_DPF((PVR_DBG_ERROR,
+				"%s: Number of physical chunks and number of virtual chunks "
+				"cannot be both 0",
+				__func__));
+
+		return PVRSRV_ERROR_INVALID_PARAMS;
+	}
+
 	/* Protect against ridiculous page sizes */
 	if (uiLog2AllocPageSize > RGX_HEAP_2MB_PAGE_SHIFT)
 	{
@@ -411,6 +430,9 @@ PhysmemNewRamBackedPMR(CONNECTION_DATA *psConnection,
 	PFN_SYS_DEV_CHECK_MEM_ALLOC_SIZE pfnCheckMemAllocSize =
 		psDevNode->psDevConfig->pfnCheckMemAllocSize;
 
+	PVR_LOG_RETURN_IF_INVALID_PARAM(uiAnnotationLength != 0, "uiAnnotationLength");
+	PVR_LOG_RETURN_IF_INVALID_PARAM(pszAnnotation != NULL, "pszAnnotation");
+
 	PVR_UNREFERENCED_PARAMETER(uiAnnotationLength);
 
 	eError = _ValidateParams(ui32NumPhysChunks,
@@ -479,6 +501,16 @@ PhysmemNewRamBackedPMR(CONNECTION_DATA *psConnection,
 		}
 	}
 #endif /* defined(DEBUG) */
+
+	/* If the driver is in an 'init' state all of the allocated memory
+	 * should be attributed to the driver (PID 1) rather than to the
+	 * process those allocations are made under. Same applies to the memory
+	 * allocated for the Firmware. */
+	if (psDevNode->eDevState == PVRSRV_DEVICE_STATE_INIT ||
+	    PVRSRV_CHECK_FW_LOCAL(uiFlags))
+	{
+		uiPid = PVR_SYS_ALLOC_PID;
+	}
 
 	eError = psDevNode->pfnCreateRamBackedPMR[ePhysHeapIdx](psConnection,
 	                                                      psDevNode,

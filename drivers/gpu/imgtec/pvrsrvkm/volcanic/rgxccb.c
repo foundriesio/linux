@@ -538,16 +538,21 @@ PVRSRV_ERROR RGXCreateCCB(PVRSRV_RGXDEV_INFO	*psDevInfo,
 {
 	PVRSRV_ERROR	eError = PVRSRV_OK;
 	DEVMEM_FLAGS_T	uiClientCCBMemAllocFlags, uiClientCCBCtlMemAllocFlags;
-	IMG_UINT32		ui32AllocSize = (1U << ui32CCBSizeLog2);
-	IMG_UINT32		ui32MinAllocSize = (1U << MIN_SAFE_CCB_SIZE_LOG2);
-	RGX_CLIENT_CCB	*psClientCCB;
-#if defined(PVRSRV_ENABLE_CCCB_GROW)
 	IMG_UINT32		ui32FWLog2PageSize = DevmemGetHeapLog2PageSize(psDevInfo->psFirmwareMainHeap);
 	IMG_UINT32		ui32FWPageSize = (1U << ui32FWLog2PageSize);
+	IMG_UINT32		ui32AllocSize = MAX((1U << ui32CCBSizeLog2), ui32FWPageSize);
+	IMG_UINT32		ui32MinAllocSize = MAX((1U << MIN_SAFE_CCB_SIZE_LOG2), ui32FWPageSize);
+	RGX_CLIENT_CCB	*psClientCCB;
+#if defined(PVRSRV_ENABLE_CCCB_GROW)
 	IMG_UINT32		ui32NumPages = ui32AllocSize / ui32FWPageSize;
 	IMG_UINT32		ui32VirtualAllocSize = (1U << ui32CCBMaxSizeLog2);
 	IMG_UINT32		ui32NumVirtPages = ui32VirtualAllocSize / ui32FWPageSize;
 	IMG_UINT32		i;
+
+	/* For the allocation request to be valid, at least one page is required.
+	 * This is relevant on systems where the page size is greater than the client CCB size. */
+	ui32NumVirtPages = MAX(1, ui32NumVirtPages);
+	PVR_ASSERT((ui32FWLog2PageSize >= PAGE_SHIFT));
 #else
 	PVR_UNREFERENCED_PARAMETER(ui32CCBMaxSizeLog2);
 #endif /* defined(PVRSRV_ENABLE_CCCB_GROW) */

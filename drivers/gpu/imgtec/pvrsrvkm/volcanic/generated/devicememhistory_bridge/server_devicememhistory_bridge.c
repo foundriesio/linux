@@ -69,12 +69,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static IMG_INT
 PVRSRVBridgeDevicememHistoryMap(IMG_UINT32 ui32DispatchTableEntry,
-				PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYMAP *
-				psDevicememHistoryMapIN,
-				PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYMAP *
-				psDevicememHistoryMapOUT,
+				IMG_UINT8 * psDevicememHistoryMapIN_UI8,
+				IMG_UINT8 * psDevicememHistoryMapOUT_UI8,
 				CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYMAP *psDevicememHistoryMapIN =
+	    (PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYMAP *)
+	    IMG_OFFSET_ADDR(psDevicememHistoryMapIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYMAP *psDevicememHistoryMapOUT =
+	    (PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYMAP *)
+	    IMG_OFFSET_ADDR(psDevicememHistoryMapOUT_UI8, 0);
+
 	IMG_HANDLE hPMR = psDevicememHistoryMapIN->hPMR;
 	PMR *psPMRInt = NULL;
 	IMG_CHAR *uiTextInt = NULL;
@@ -206,12 +211,17 @@ DevicememHistoryMap_exit:
 
 static IMG_INT
 PVRSRVBridgeDevicememHistoryUnmap(IMG_UINT32 ui32DispatchTableEntry,
-				  PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYUNMAP *
-				  psDevicememHistoryUnmapIN,
-				  PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYUNMAP *
-				  psDevicememHistoryUnmapOUT,
+				  IMG_UINT8 * psDevicememHistoryUnmapIN_UI8,
+				  IMG_UINT8 * psDevicememHistoryUnmapOUT_UI8,
 				  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYUNMAP *psDevicememHistoryUnmapIN =
+	    (PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYUNMAP *)
+	    IMG_OFFSET_ADDR(psDevicememHistoryUnmapIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYUNMAP *psDevicememHistoryUnmapOUT =
+	    (PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYUNMAP *)
+	    IMG_OFFSET_ADDR(psDevicememHistoryUnmapOUT_UI8, 0);
+
 	IMG_HANDLE hPMR = psDevicememHistoryUnmapIN->hPMR;
 	PMR *psPMRInt = NULL;
 	IMG_CHAR *uiTextInt = NULL;
@@ -344,12 +354,21 @@ DevicememHistoryUnmap_exit:
 
 static IMG_INT
 PVRSRVBridgeDevicememHistoryMapVRange(IMG_UINT32 ui32DispatchTableEntry,
-				      PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYMAPVRANGE
-				      * psDevicememHistoryMapVRangeIN,
-				      PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYMAPVRANGE
-				      * psDevicememHistoryMapVRangeOUT,
+				      IMG_UINT8 *
+				      psDevicememHistoryMapVRangeIN_UI8,
+				      IMG_UINT8 *
+				      psDevicememHistoryMapVRangeOUT_UI8,
 				      CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYMAPVRANGE
+	    *psDevicememHistoryMapVRangeIN =
+	    (PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYMAPVRANGE *)
+	    IMG_OFFSET_ADDR(psDevicememHistoryMapVRangeIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYMAPVRANGE
+	    *psDevicememHistoryMapVRangeOUT =
+	    (PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYMAPVRANGE *)
+	    IMG_OFFSET_ADDR(psDevicememHistoryMapVRangeOUT_UI8, 0);
+
 	IMG_CHAR *uiTextInt = NULL;
 
 	IMG_UINT32 ui32NextOffset = 0;
@@ -456,12 +475,21 @@ DevicememHistoryMapVRange_exit:
 
 static IMG_INT
 PVRSRVBridgeDevicememHistoryUnmapVRange(IMG_UINT32 ui32DispatchTableEntry,
-					PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYUNMAPVRANGE
-					* psDevicememHistoryUnmapVRangeIN,
-					PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYUNMAPVRANGE
-					* psDevicememHistoryUnmapVRangeOUT,
+					IMG_UINT8 *
+					psDevicememHistoryUnmapVRangeIN_UI8,
+					IMG_UINT8 *
+					psDevicememHistoryUnmapVRangeOUT_UI8,
 					CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYUNMAPVRANGE
+	    *psDevicememHistoryUnmapVRangeIN =
+	    (PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYUNMAPVRANGE *)
+	    IMG_OFFSET_ADDR(psDevicememHistoryUnmapVRangeIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYUNMAPVRANGE
+	    *psDevicememHistoryUnmapVRangeOUT =
+	    (PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYUNMAPVRANGE *)
+	    IMG_OFFSET_ADDR(psDevicememHistoryUnmapVRangeOUT_UI8, 0);
+
 	IMG_CHAR *uiTextInt = NULL;
 
 	IMG_UINT32 ui32NextOffset = 0;
@@ -569,12 +597,21 @@ DevicememHistoryUnmapVRange_exit:
 
 static IMG_INT
 PVRSRVBridgeDevicememHistorySparseChange(IMG_UINT32 ui32DispatchTableEntry,
-					 PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYSPARSECHANGE
-					 * psDevicememHistorySparseChangeIN,
-					 PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYSPARSECHANGE
-					 * psDevicememHistorySparseChangeOUT,
+					 IMG_UINT8 *
+					 psDevicememHistorySparseChangeIN_UI8,
+					 IMG_UINT8 *
+					 psDevicememHistorySparseChangeOUT_UI8,
 					 CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYSPARSECHANGE
+	    *psDevicememHistorySparseChangeIN =
+	    (PVRSRV_BRIDGE_IN_DEVICEMEMHISTORYSPARSECHANGE *)
+	    IMG_OFFSET_ADDR(psDevicememHistorySparseChangeIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYSPARSECHANGE
+	    *psDevicememHistorySparseChangeOUT =
+	    (PVRSRV_BRIDGE_OUT_DEVICEMEMHISTORYSPARSECHANGE *)
+	    IMG_OFFSET_ADDR(psDevicememHistorySparseChangeOUT_UI8, 0);
+
 	IMG_HANDLE hPMR = psDevicememHistorySparseChangeIN->hPMR;
 	PMR *psPMRInt = NULL;
 	IMG_CHAR *uiTextInt = NULL;

@@ -210,10 +210,12 @@ typedef struct _MMU_PX_SETUP_
 {
 #if defined(SUPPORT_GPUVIRT_VALIDATION)
 	PVRSRV_ERROR (*pfnDevPxAllocGPV)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, size_t uiSize,
-									PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr, IMG_UINT32 ui32OSid);
+									PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr,
+									IMG_UINT32 ui32OSid, IMG_PID uiPid);
 #endif
 	PVRSRV_ERROR (*pfnDevPxAlloc)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, size_t uiSize,
-									PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr);
+									PG_HANDLE *psMemHandle, IMG_DEV_PHYADDR *psDevPAddr,
+									IMG_PID uiPid);
 
 	void (*pfnDevPxFree)(struct _PVRSRV_DEVICE_NODE_ *psDevNode, PG_HANDLE *psMemHandle);
 

@@ -24,7 +24,7 @@ else
         else
             include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_drm.mk
             ccflags-y += -include $(srctree)/drivers/gpu/imgtec/config_kernel_linux32_drm.h
-	endif    
+	endif
     endif
 endif
 
@@ -33,8 +33,7 @@ ccflags-y += \
 	-I$(srctree)/drivers/staging/android
 
 obj-y += pvrsrvkm/
-obj-$(CONFIG_POWERVR_TC:m=y) += tc/
-obj-$(CONFIG_POWERVR_RK3368) += rk3368/
-obj-$(CONFIG_POWERVR_MT8173) += mt8173/
-obj-$(CONFIG_POWERVR_SUNXI) += sunxi/
+#obj-$(CONFIG_POWERVR_TC:m=y) += tc/
+#obj-$(CONFIG_POWERVR_RK3368) += rk3368/
+#obj-$(CONFIG_POWERVR_MT8173) += mt8173/
 obj-$(CONFIG_POWERVR_TCC9XTP) += tcc_9xtp/

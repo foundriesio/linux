@@ -785,8 +785,8 @@ PVRSRVHWOpTimeoutKM(CONNECTION_DATA *psConnection,
 
 IMG_INT
 DummyBW(IMG_UINT32 ui32DispatchTableEntry,
-		void *psBridgeIn,
-		void *psBridgeOut,
+		IMG_UINT8 *psBridgeIn,
+		IMG_UINT8 *psBridgeOut,
 		CONNECTION_DATA *psConnection)
 {
 	PVR_UNREFERENCED_PARAMETER(psBridgeIn);

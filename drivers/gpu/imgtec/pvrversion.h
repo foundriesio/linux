@@ -1,7 +1,7 @@
 /*************************************************************************/ /*!
 @File           pvrversion.h
 @Title          PowerVR version numbers and strings.
-@Copyright      Copyright (c) Telechips Inc.
+@Copyright		Copyright (C) Telechips Inc.
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
 @Description    Version numbers and strings for PowerVR components.
 @License        Dual MIT/GPLv2
@@ -50,26 +50,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define PVRVERSION_FAMILY           "rogueddk"
 #define PVRVERSION_BRANCHNAME       "1.13"
-#define PVRVERSION_BUILD             5776728
+#define PVRVERSION_BUILD             5878540
 #if defined(CONFIG_ANDROID)
 #define PVRVERSION_BSCONTROL        "Rogue_DDK_Android"
-#define PVRVERSION_STRING           "Rogue_DDK_Android rogueddk 1.13@5776728"
+
+#define PVRVERSION_STRING           "Rogue_DDK_Android rogueddk 1.13@5878540"
 #else
 #if defined(CONFIG_FB_NEW)
 #define PVRVERSION_BSCONTROL        "Rogue_DDK_Linux"
-#define PVRVERSION_STRING           "Rogue_DDK_Linux rogueddk 1.13@5776728"
+#define PVRVERSION_STRING           "Rogue_DDK_Linux rogueddk 1.13@5878540"
 #else
 #define PVRVERSION_BSCONTROL        "Rogue_DDK_Linux_WS"
-#define PVRVERSION_STRING           "Rogue_DDK_Linux_WS rogueddk 1.13@5776728"
+#define PVRVERSION_STRING           "Rogue_DDK_Linux_WS rogueddk 1.13@5878540"
 #endif
 #endif
-#define PVRVERSION_STRING_SHORT     "1.13@5776728"
+#define PVRVERSION_STRING_SHORT     "1.13@5878540"
 
 #define COPYRIGHT_TXT               "Copyright (c) Imagination Technologies Ltd. All Rights Reserved."
 
-#define PVRVERSION_BUILD_HI          577
-#define PVRVERSION_BUILD_LO          6728
-#define PVRVERSION_STRING_NUMERIC   "1.13.577.6728"
+#define PVRVERSION_BUILD_HI          587
+#define PVRVERSION_BUILD_LO          8540
+#define PVRVERSION_STRING_NUMERIC   "1.13.587.8540"
 
 #define PVRVERSION_PACK(MAJOR,MINOR) (((IMG_UINT32)((IMG_UINT32)(MAJOR) & 0xFFFFU) << 16U) | (((MINOR) & 0xFFFFU) << 0U))
 #define PVRVERSION_UNPACK_MAJ(VERSION) (((VERSION) >> 16U) & 0xFFFFU)

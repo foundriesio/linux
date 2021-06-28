@@ -2898,6 +2898,18 @@ PVRSRV_ERROR RGXInitAllocFWImgMem(PVRSRV_DEVICE_NODE   *psDeviceNode,
 	IMG_DEVMEM_SIZE_T	uiDummyLen;
 	DEVMEM_MEMDESC		*psDummyMemDesc = NULL;
 
+	if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
+	{
+		eError = RGXAllocTrampoline(psDeviceNode);
+		if (eError != PVRSRV_OK)
+		{
+			PVR_DPF((PVR_DBG_ERROR,
+					"Failed to allocate trampoline region (%u)",
+					eError));
+			goto failTrampolineMemDescAlloc;
+		}
+	}
+
 	/*
 	 * Set up Allocation for FW code section
 	 */
@@ -3008,18 +3020,6 @@ PVRSRV_ERROR RGXInitAllocFWImgMem(PVRSRV_DEVICE_NODE   *psDeviceNode,
 		         "Failed to acquire devVAddr for fw data mem (%u)",
 		         eError));
 		goto failFWDataMemDescAqDevVirt;
-	}
-
-	if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
-	{
-		eError = RGXAllocTrampoline(psDeviceNode);
-		if (eError != PVRSRV_OK)
-		{
-			PVR_DPF((PVR_DBG_ERROR,
-					"Failed to allocate trampoline region (%u)",
-					eError));
-			goto failTrampolineMemDescAlloc;
-		}
 	}
 
 	if (uiFWCorememCodeLen != 0)
@@ -3149,11 +3149,6 @@ failFWCorememCodeMemDescAqDevVirt:
 		psDevInfo->psRGXFWCorememCodeMemDesc = NULL;
 	}
 failFWCorememCodeMemDescAlloc:
-	if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
-	{
-		RGXFreeTrampoline(psDeviceNode);
-	}
-failTrampolineMemDescAlloc:
 failFWDataMemDescAqDevVirt:
 	DevmemFwUnmapAndFree(psDevInfo, psDevInfo->psRGXFWDataMemDesc);
 	psDevInfo->psRGXFWDataMemDesc = NULL;
@@ -3167,6 +3162,11 @@ failFWCodeMemDescAqDevVirt:
 	DevmemFwUnmapAndFree(psDevInfo, psDevInfo->psRGXFWCodeMemDesc);
 	psDevInfo->psRGXFWCodeMemDesc = NULL;
 failFWCodeMemDescAlloc:
+	if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
+	{
+		RGXFreeTrampoline(psDeviceNode);
+	}
+failTrampolineMemDescAlloc:
 	return eError;
 }
 
@@ -3930,12 +3930,12 @@ static INLINE DEVMEM_HEAP_BLUEPRINT _blueprint_init(IMG_CHAR *name,
 						     psDeviceMemoryHeapCursor++; \
     } while (0)
 
-#define INIT_FW_MAIN_HEAP(MODE, FWCORE) \
+#define INIT_FW_MAIN_HEAP(MODE, HEAP_SIZE) \
     do { \
 	*psDeviceMemoryHeapCursor = _blueprint_init( \
 						     RGX_FIRMWARE_MAIN_HEAP_IDENT, \
 						     RGX_FIRMWARE_ ## MODE ## _MAIN_HEAP_BASE, \
-						     RGX_FIRMWARE_ ## FWCORE ## _MAIN_HEAP_SIZE, \
+						     HEAP_SIZE, \
 						     0, /* No reserved space in any FW heaps */ \
 							 0); \
 						     psDeviceMemoryHeapCursor++; \
@@ -3971,6 +3971,7 @@ static PVRSRV_ERROR RGXInitHeaps(PVRSRV_RGXDEV_INFO *psDevInfo,
 	void *pvAppHintState = NULL;
 	IMG_UINT32 ui32AppHintDefault = PVRSRV_APPHINT_GENERALNON4KHEAPPAGESIZE;
 	IMG_UINT32 ui32GeneralNon4KHeapPageSize;
+	IMG_DEVMEM_SIZE_T uFWMainHeapSize;
 
 	psNewMemoryInfo->psDeviceMemoryHeap = OSAllocMem(sizeof(DEVMEM_HEAP_BLUEPRINT) * RGX_MAX_HEAP_ID);
 	if (psNewMemoryInfo->psDeviceMemoryHeap == NULL)
@@ -4053,30 +4054,30 @@ static PVRSRV_ERROR RGXInitHeaps(PVRSRV_RGXDEV_INFO *psDevInfo,
 		INIT_HEAP(SIGNALS);
 	}
 
-	if (PVRSRV_VZ_MODE_IS(GUEST))
+	if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
 	{
-		INIT_FW_CONFIG_HEAP(GUEST);
-
-		if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
+		if (RGX_IS_BRN_SUPPORTED(psDevInfo, 65101))
 		{
-			INIT_FW_MAIN_HEAP(GUEST, MIPS);
+			uFWMainHeapSize = RGX_FIRMWARE_MIPS_MAIN_HEAP_SIZE_BRN65101;
 		}
 		else
 		{
-			INIT_FW_MAIN_HEAP(GUEST, META);
+			uFWMainHeapSize = RGX_FIRMWARE_MIPS_MAIN_HEAP_SIZE_NORMAL;
 		}
 	}
 	else
 	{
-		if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
-		{
-			INIT_FW_MAIN_HEAP(HOST, MIPS);
-		}
-		else
-		{
-			INIT_FW_MAIN_HEAP(HOST, META);
-		}
+		uFWMainHeapSize = RGX_FIRMWARE_META_MAIN_HEAP_SIZE;
+	}
 
+	if (PVRSRV_VZ_MODE_IS(GUEST))
+	{
+		INIT_FW_CONFIG_HEAP(GUEST);
+		INIT_FW_MAIN_HEAP(GUEST, uFWMainHeapSize);
+	}
+	else
+	{
+		INIT_FW_MAIN_HEAP(HOST, uFWMainHeapSize);
 		INIT_FW_CONFIG_HEAP(HOST);
 	}
 
@@ -4199,8 +4200,23 @@ static PVRSRV_ERROR RGXPhysMemDeviceHeapsInit(PVRSRV_DEVICE_NODE *psDeviceNode)
 		RA_BASE_T uFwCfgSubHeapBase, uFwMainSubHeapBase;
 		const IMG_UINT64 ui64ExpectedHeapSize = RGX_FIRMWARE_RAW_HEAP_SIZE;
 		const RA_LENGTH_T uFwCfgSubHeapSize  = RGX_FIRMWARE_CONFIG_HEAP_SIZE;
-		const RA_LENGTH_T uFwMainSubHeapSize = RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS) ?
-												RGX_FIRMWARE_MIPS_MAIN_HEAP_SIZE : RGX_FIRMWARE_META_MAIN_HEAP_SIZE;
+		RA_LENGTH_T uFwMainSubHeapSize;
+
+		if (RGX_IS_FEATURE_SUPPORTED(psDevInfo, MIPS))
+		{
+			if (RGX_IS_BRN_SUPPORTED(psDevInfo, 65101))
+			{
+				uFwMainSubHeapSize = RGX_FIRMWARE_MIPS_MAIN_HEAP_SIZE_BRN65101;
+			}
+			else
+			{
+				uFwMainSubHeapSize = RGX_FIRMWARE_MIPS_MAIN_HEAP_SIZE_NORMAL;
+			}
+		}
+		else
+		{
+			uFwMainSubHeapSize = RGX_FIRMWARE_META_MAIN_HEAP_SIZE;
+		}
 
 		PVR_DPF((PVR_DBG_MESSAGE, "%s: Firmware physical heap uses local memory managed by the driver (LMA)", __func__));
 		ui32RegionCount = PhysHeapNumberOfRegions(psPhysHeap);

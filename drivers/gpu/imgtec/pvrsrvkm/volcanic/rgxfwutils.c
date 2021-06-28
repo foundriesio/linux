@@ -360,16 +360,18 @@ PVRSRV_ERROR RGXSetupFwAllocation(PVRSRV_RGXDEV_INFO*  psDevInfo,
 		{
 			OSDeviceMemSet(pvTempCpuPtr, 0, ui32Size);
 		}
-#endif
 		if (ppvCpuPtr)
+#endif
 		{
 			*ppvCpuPtr = pvTempCpuPtr;
 		}
+#if defined(SUPPORT_AUTOVZ)
 		else
 		{
 			DevmemReleaseCpuVirtAddr(*ppsMemDesc);
 			pvTempCpuPtr = NULL;
 		}
+#endif
 	}
 
 	PVR_DPF((PVR_DBG_MESSAGE, "%s: %s set up at Fw VA 0x%x and CPU VA 0x%p",
@@ -3753,7 +3755,7 @@ static PVRSRV_ERROR RGXSendCommandRaw(PVRSRV_RGXDEV_INFO  *psDevInfo,
 						   sizeof(IMG_UINT32),
 						   uiPdumpFlags);
 #endif
-		PVR_DPF((PVR_DBG_MESSAGE, "%s: Device (%p) KCCB slot %u reset with value %u for command type %u",
+		PVR_DPF((PVR_DBG_MESSAGE, "%s: Device (%p) KCCB slot %u reset with value %u for command type %x",
 		         __func__, psDevInfo, ui32OldWriteOffset, RGXFWIF_KCCB_RTN_SLOT_NO_RESPONSE, psKCCBCmd->eCmdType));
 	}
 
@@ -4804,8 +4806,8 @@ PVRSRV_ERROR RGXScheduleCleanupCommand(PVRSRV_RGXDEV_INFO	*psDevInfo,
 		else
 		{
 			PVR_DPF((PVR_DBG_ERROR,
-			        "failed to schedule cleanup command %d for %d",
-			        eCleanupType, eDM));
+			        "In %s() failed to schedule cleanup command %d for %d",
+			        __func__, eCleanupType, eDM));
 		}
 
 		goto fail_command;

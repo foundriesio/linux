@@ -68,12 +68,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static IMG_INT
 PVRSRVBridgePMRSecureExportPMR(IMG_UINT32 ui32DispatchTableEntry,
-			       PVRSRV_BRIDGE_IN_PMRSECUREEXPORTPMR *
-			       psPMRSecureExportPMRIN,
-			       PVRSRV_BRIDGE_OUT_PMRSECUREEXPORTPMR *
-			       psPMRSecureExportPMROUT,
+			       IMG_UINT8 * psPMRSecureExportPMRIN_UI8,
+			       IMG_UINT8 * psPMRSecureExportPMROUT_UI8,
 			       CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_PMRSECUREEXPORTPMR *psPMRSecureExportPMRIN =
+	    (PVRSRV_BRIDGE_IN_PMRSECUREEXPORTPMR *)
+	    IMG_OFFSET_ADDR(psPMRSecureExportPMRIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_PMRSECUREEXPORTPMR *psPMRSecureExportPMROUT =
+	    (PVRSRV_BRIDGE_OUT_PMRSECUREEXPORTPMR *)
+	    IMG_OFFSET_ADDR(psPMRSecureExportPMROUT_UI8, 0);
+
 	IMG_HANDLE hPMR = psPMRSecureExportPMRIN->hPMR;
 	PMR *psPMRInt = NULL;
 	PMR *psPMROutInt = NULL;
@@ -138,12 +143,16 @@ PMRSecureExportPMR_exit:
 
 static IMG_INT
 PVRSRVBridgePMRSecureUnexportPMR(IMG_UINT32 ui32DispatchTableEntry,
-				 PVRSRV_BRIDGE_IN_PMRSECUREUNEXPORTPMR *
-				 psPMRSecureUnexportPMRIN,
-				 PVRSRV_BRIDGE_OUT_PMRSECUREUNEXPORTPMR *
-				 psPMRSecureUnexportPMROUT,
+				 IMG_UINT8 * psPMRSecureUnexportPMRIN_UI8,
+				 IMG_UINT8 * psPMRSecureUnexportPMROUT_UI8,
 				 CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_PMRSECUREUNEXPORTPMR *psPMRSecureUnexportPMRIN =
+	    (PVRSRV_BRIDGE_IN_PMRSECUREUNEXPORTPMR *)
+	    IMG_OFFSET_ADDR(psPMRSecureUnexportPMRIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_PMRSECUREUNEXPORTPMR *psPMRSecureUnexportPMROUT =
+	    (PVRSRV_BRIDGE_OUT_PMRSECUREUNEXPORTPMR *)
+	    IMG_OFFSET_ADDR(psPMRSecureUnexportPMROUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psHandleBase);
@@ -174,14 +183,26 @@ PMRSecureUnexportPMR_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _PMRSecureImportPMRpsPMRIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = PMRUnrefPMR((PMR *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgePMRSecureImportPMR(IMG_UINT32 ui32DispatchTableEntry,
-			       PVRSRV_BRIDGE_IN_PMRSECUREIMPORTPMR *
-			       psPMRSecureImportPMRIN,
-			       PVRSRV_BRIDGE_OUT_PMRSECUREIMPORTPMR *
-			       psPMRSecureImportPMROUT,
+			       IMG_UINT8 * psPMRSecureImportPMRIN_UI8,
+			       IMG_UINT8 * psPMRSecureImportPMROUT_UI8,
 			       CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_PMRSECUREIMPORTPMR *psPMRSecureImportPMRIN =
+	    (PVRSRV_BRIDGE_IN_PMRSECUREIMPORTPMR *)
+	    IMG_OFFSET_ADDR(psPMRSecureImportPMRIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_PMRSECUREIMPORTPMR *psPMRSecureImportPMROUT =
+	    (PVRSRV_BRIDGE_OUT_PMRSECUREIMPORTPMR *)
+	    IMG_OFFSET_ADDR(psPMRSecureImportPMROUT_UI8, 0);
+
 	PMR *psPMRInt = NULL;
 
 	psPMRSecureImportPMROUT->eError =
@@ -205,7 +226,8 @@ PVRSRVBridgePMRSecureImportPMR(IMG_UINT32 ui32DispatchTableEntry,
 				      (void *)psPMRInt,
 				      PVRSRV_HANDLE_TYPE_PHYSMEM_PMR,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
-				      (PFN_HANDLE_RELEASE) & PMRUnrefPMR);
+				      (PFN_HANDLE_RELEASE) &
+				      _PMRSecureImportPMRpsPMRIntRelease);
 	if (unlikely(psPMRSecureImportPMROUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);

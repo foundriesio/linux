@@ -65,12 +65,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * Server-side bridge entry points
  */
 
+static PVRSRV_ERROR _TLOpenStreampsSDIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = TLServerCloseStreamKM((TL_STREAM_DESC *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeTLOpenStream(IMG_UINT32 ui32DispatchTableEntry,
-			 PVRSRV_BRIDGE_IN_TLOPENSTREAM * psTLOpenStreamIN,
-			 PVRSRV_BRIDGE_OUT_TLOPENSTREAM * psTLOpenStreamOUT,
+			 IMG_UINT8 * psTLOpenStreamIN_UI8,
+			 IMG_UINT8 * psTLOpenStreamOUT_UI8,
 			 CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_TLOPENSTREAM *psTLOpenStreamIN =
+	    (PVRSRV_BRIDGE_IN_TLOPENSTREAM *)
+	    IMG_OFFSET_ADDR(psTLOpenStreamIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_TLOPENSTREAM *psTLOpenStreamOUT =
+	    (PVRSRV_BRIDGE_OUT_TLOPENSTREAM *)
+	    IMG_OFFSET_ADDR(psTLOpenStreamOUT_UI8, 0);
+
 	IMG_CHAR *uiNameInt = NULL;
 	TL_STREAM_DESC *psSDInt = NULL;
 	PMR *psTLPMRInt = NULL;
@@ -164,7 +178,7 @@ PVRSRVBridgeTLOpenStream(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_PVR_TL_SD,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      TLServerCloseStreamKM);
+				      _TLOpenStreampsSDIntRelease);
 	if (unlikely(psTLOpenStreamOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -246,10 +260,16 @@ TLOpenStream_exit:
 
 static IMG_INT
 PVRSRVBridgeTLCloseStream(IMG_UINT32 ui32DispatchTableEntry,
-			  PVRSRV_BRIDGE_IN_TLCLOSESTREAM * psTLCloseStreamIN,
-			  PVRSRV_BRIDGE_OUT_TLCLOSESTREAM * psTLCloseStreamOUT,
+			  IMG_UINT8 * psTLCloseStreamIN_UI8,
+			  IMG_UINT8 * psTLCloseStreamOUT_UI8,
 			  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_TLCLOSESTREAM *psTLCloseStreamIN =
+	    (PVRSRV_BRIDGE_IN_TLCLOSESTREAM *)
+	    IMG_OFFSET_ADDR(psTLCloseStreamIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_TLCLOSESTREAM *psTLCloseStreamOUT =
+	    (PVRSRV_BRIDGE_OUT_TLCLOSESTREAM *)
+	    IMG_OFFSET_ADDR(psTLCloseStreamOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psHandleBase);
@@ -279,10 +299,17 @@ TLCloseStream_exit:
 
 static IMG_INT
 PVRSRVBridgeTLAcquireData(IMG_UINT32 ui32DispatchTableEntry,
-			  PVRSRV_BRIDGE_IN_TLACQUIREDATA * psTLAcquireDataIN,
-			  PVRSRV_BRIDGE_OUT_TLACQUIREDATA * psTLAcquireDataOUT,
+			  IMG_UINT8 * psTLAcquireDataIN_UI8,
+			  IMG_UINT8 * psTLAcquireDataOUT_UI8,
 			  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_TLACQUIREDATA *psTLAcquireDataIN =
+	    (PVRSRV_BRIDGE_IN_TLACQUIREDATA *)
+	    IMG_OFFSET_ADDR(psTLAcquireDataIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_TLACQUIREDATA *psTLAcquireDataOUT =
+	    (PVRSRV_BRIDGE_OUT_TLACQUIREDATA *)
+	    IMG_OFFSET_ADDR(psTLAcquireDataOUT_UI8, 0);
+
 	IMG_HANDLE hSD = psTLAcquireDataIN->hSD;
 	TL_STREAM_DESC *psSDInt = NULL;
 
@@ -327,10 +354,17 @@ TLAcquireData_exit:
 
 static IMG_INT
 PVRSRVBridgeTLReleaseData(IMG_UINT32 ui32DispatchTableEntry,
-			  PVRSRV_BRIDGE_IN_TLRELEASEDATA * psTLReleaseDataIN,
-			  PVRSRV_BRIDGE_OUT_TLRELEASEDATA * psTLReleaseDataOUT,
+			  IMG_UINT8 * psTLReleaseDataIN_UI8,
+			  IMG_UINT8 * psTLReleaseDataOUT_UI8,
 			  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_TLRELEASEDATA *psTLReleaseDataIN =
+	    (PVRSRV_BRIDGE_IN_TLRELEASEDATA *)
+	    IMG_OFFSET_ADDR(psTLReleaseDataIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_TLRELEASEDATA *psTLReleaseDataOUT =
+	    (PVRSRV_BRIDGE_OUT_TLRELEASEDATA *)
+	    IMG_OFFSET_ADDR(psTLReleaseDataOUT_UI8, 0);
+
 	IMG_HANDLE hSD = psTLReleaseDataIN->hSD;
 	TL_STREAM_DESC *psSDInt = NULL;
 
@@ -375,12 +409,17 @@ TLReleaseData_exit:
 
 static IMG_INT
 PVRSRVBridgeTLDiscoverStreams(IMG_UINT32 ui32DispatchTableEntry,
-			      PVRSRV_BRIDGE_IN_TLDISCOVERSTREAMS *
-			      psTLDiscoverStreamsIN,
-			      PVRSRV_BRIDGE_OUT_TLDISCOVERSTREAMS *
-			      psTLDiscoverStreamsOUT,
+			      IMG_UINT8 * psTLDiscoverStreamsIN_UI8,
+			      IMG_UINT8 * psTLDiscoverStreamsOUT_UI8,
 			      CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_TLDISCOVERSTREAMS *psTLDiscoverStreamsIN =
+	    (PVRSRV_BRIDGE_IN_TLDISCOVERSTREAMS *)
+	    IMG_OFFSET_ADDR(psTLDiscoverStreamsIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_TLDISCOVERSTREAMS *psTLDiscoverStreamsOUT =
+	    (PVRSRV_BRIDGE_OUT_TLDISCOVERSTREAMS *)
+	    IMG_OFFSET_ADDR(psTLDiscoverStreamsOUT_UI8, 0);
+
 	IMG_CHAR *uiNamePatternInt = NULL;
 	IMG_CHAR *puiStreamsInt = NULL;
 
@@ -516,12 +555,17 @@ TLDiscoverStreams_exit:
 
 static IMG_INT
 PVRSRVBridgeTLReserveStream(IMG_UINT32 ui32DispatchTableEntry,
-			    PVRSRV_BRIDGE_IN_TLRESERVESTREAM *
-			    psTLReserveStreamIN,
-			    PVRSRV_BRIDGE_OUT_TLRESERVESTREAM *
-			    psTLReserveStreamOUT,
+			    IMG_UINT8 * psTLReserveStreamIN_UI8,
+			    IMG_UINT8 * psTLReserveStreamOUT_UI8,
 			    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_TLRESERVESTREAM *psTLReserveStreamIN =
+	    (PVRSRV_BRIDGE_IN_TLRESERVESTREAM *)
+	    IMG_OFFSET_ADDR(psTLReserveStreamIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_TLRESERVESTREAM *psTLReserveStreamOUT =
+	    (PVRSRV_BRIDGE_OUT_TLRESERVESTREAM *)
+	    IMG_OFFSET_ADDR(psTLReserveStreamOUT_UI8, 0);
+
 	IMG_HANDLE hSD = psTLReserveStreamIN->hSD;
 	TL_STREAM_DESC *psSDInt = NULL;
 
@@ -568,10 +612,17 @@ TLReserveStream_exit:
 
 static IMG_INT
 PVRSRVBridgeTLCommitStream(IMG_UINT32 ui32DispatchTableEntry,
-			   PVRSRV_BRIDGE_IN_TLCOMMITSTREAM * psTLCommitStreamIN,
-			   PVRSRV_BRIDGE_OUT_TLCOMMITSTREAM *
-			   psTLCommitStreamOUT, CONNECTION_DATA * psConnection)
+			   IMG_UINT8 * psTLCommitStreamIN_UI8,
+			   IMG_UINT8 * psTLCommitStreamOUT_UI8,
+			   CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_TLCOMMITSTREAM *psTLCommitStreamIN =
+	    (PVRSRV_BRIDGE_IN_TLCOMMITSTREAM *)
+	    IMG_OFFSET_ADDR(psTLCommitStreamIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_TLCOMMITSTREAM *psTLCommitStreamOUT =
+	    (PVRSRV_BRIDGE_OUT_TLCOMMITSTREAM *)
+	    IMG_OFFSET_ADDR(psTLCommitStreamOUT_UI8, 0);
+
 	IMG_HANDLE hSD = psTLCommitStreamIN->hSD;
 	TL_STREAM_DESC *psSDInt = NULL;
 
@@ -614,10 +665,17 @@ TLCommitStream_exit:
 
 static IMG_INT
 PVRSRVBridgeTLWriteData(IMG_UINT32 ui32DispatchTableEntry,
-			PVRSRV_BRIDGE_IN_TLWRITEDATA * psTLWriteDataIN,
-			PVRSRV_BRIDGE_OUT_TLWRITEDATA * psTLWriteDataOUT,
+			IMG_UINT8 * psTLWriteDataIN_UI8,
+			IMG_UINT8 * psTLWriteDataOUT_UI8,
 			CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_TLWRITEDATA *psTLWriteDataIN =
+	    (PVRSRV_BRIDGE_IN_TLWRITEDATA *)
+	    IMG_OFFSET_ADDR(psTLWriteDataIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_TLWRITEDATA *psTLWriteDataOUT =
+	    (PVRSRV_BRIDGE_OUT_TLWRITEDATA *)
+	    IMG_OFFSET_ADDR(psTLWriteDataOUT_UI8, 0);
+
 	IMG_HANDLE hSD = psTLWriteDataIN->hSD;
 	TL_STREAM_DESC *psSDInt = NULL;
 	IMG_BYTE *psDataInt = NULL;

@@ -67,12 +67,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static IMG_INT
 PVRSRVBridgeDCDevicesQueryCount(IMG_UINT32 ui32DispatchTableEntry,
-				PVRSRV_BRIDGE_IN_DCDEVICESQUERYCOUNT *
-				psDCDevicesQueryCountIN,
-				PVRSRV_BRIDGE_OUT_DCDEVICESQUERYCOUNT *
-				psDCDevicesQueryCountOUT,
+				IMG_UINT8 * psDCDevicesQueryCountIN_UI8,
+				IMG_UINT8 * psDCDevicesQueryCountOUT_UI8,
 				CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCDEVICESQUERYCOUNT *psDCDevicesQueryCountIN =
+	    (PVRSRV_BRIDGE_IN_DCDEVICESQUERYCOUNT *)
+	    IMG_OFFSET_ADDR(psDCDevicesQueryCountIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCDEVICESQUERYCOUNT *psDCDevicesQueryCountOUT =
+	    (PVRSRV_BRIDGE_OUT_DCDEVICESQUERYCOUNT *)
+	    IMG_OFFSET_ADDR(psDCDevicesQueryCountOUT_UI8, 0);
 
 	PVR_UNREFERENCED_PARAMETER(psConnection);
 	PVR_UNREFERENCED_PARAMETER(psDCDevicesQueryCountIN);
@@ -85,12 +89,17 @@ PVRSRVBridgeDCDevicesQueryCount(IMG_UINT32 ui32DispatchTableEntry,
 
 static IMG_INT
 PVRSRVBridgeDCDevicesEnumerate(IMG_UINT32 ui32DispatchTableEntry,
-			       PVRSRV_BRIDGE_IN_DCDEVICESENUMERATE *
-			       psDCDevicesEnumerateIN,
-			       PVRSRV_BRIDGE_OUT_DCDEVICESENUMERATE *
-			       psDCDevicesEnumerateOUT,
+			       IMG_UINT8 * psDCDevicesEnumerateIN_UI8,
+			       IMG_UINT8 * psDCDevicesEnumerateOUT_UI8,
 			       CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCDEVICESENUMERATE *psDCDevicesEnumerateIN =
+	    (PVRSRV_BRIDGE_IN_DCDEVICESENUMERATE *)
+	    IMG_OFFSET_ADDR(psDCDevicesEnumerateIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCDEVICESENUMERATE *psDCDevicesEnumerateOUT =
+	    (PVRSRV_BRIDGE_OUT_DCDEVICESENUMERATE *)
+	    IMG_OFFSET_ADDR(psDCDevicesEnumerateOUT_UI8, 0);
+
 	IMG_UINT32 *pui32DeviceIndexInt = NULL;
 
 	IMG_UINT32 ui32NextOffset = 0;
@@ -198,14 +207,26 @@ DCDevicesEnumerate_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _DCDeviceAcquirepsDeviceIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = DCDeviceRelease((DC_DEVICE *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeDCDeviceAcquire(IMG_UINT32 ui32DispatchTableEntry,
-			    PVRSRV_BRIDGE_IN_DCDEVICEACQUIRE *
-			    psDCDeviceAcquireIN,
-			    PVRSRV_BRIDGE_OUT_DCDEVICEACQUIRE *
-			    psDCDeviceAcquireOUT,
+			    IMG_UINT8 * psDCDeviceAcquireIN_UI8,
+			    IMG_UINT8 * psDCDeviceAcquireOUT_UI8,
 			    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCDEVICEACQUIRE *psDCDeviceAcquireIN =
+	    (PVRSRV_BRIDGE_IN_DCDEVICEACQUIRE *)
+	    IMG_OFFSET_ADDR(psDCDeviceAcquireIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCDEVICEACQUIRE *psDCDeviceAcquireOUT =
+	    (PVRSRV_BRIDGE_OUT_DCDEVICEACQUIRE *)
+	    IMG_OFFSET_ADDR(psDCDeviceAcquireOUT_UI8, 0);
+
 	DC_DEVICE *psDeviceInt = NULL;
 
 	psDCDeviceAcquireOUT->eError =
@@ -226,7 +247,8 @@ PVRSRVBridgeDCDeviceAcquire(IMG_UINT32 ui32DispatchTableEntry,
 				      (void *)psDeviceInt,
 				      PVRSRV_HANDLE_TYPE_DC_DEVICE,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
-				      (PFN_HANDLE_RELEASE) & DCDeviceRelease);
+				      (PFN_HANDLE_RELEASE) &
+				      _DCDeviceAcquirepsDeviceIntRelease);
 	if (unlikely(psDCDeviceAcquireOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -251,12 +273,16 @@ DCDeviceAcquire_exit:
 
 static IMG_INT
 PVRSRVBridgeDCDeviceRelease(IMG_UINT32 ui32DispatchTableEntry,
-			    PVRSRV_BRIDGE_IN_DCDEVICERELEASE *
-			    psDCDeviceReleaseIN,
-			    PVRSRV_BRIDGE_OUT_DCDEVICERELEASE *
-			    psDCDeviceReleaseOUT,
+			    IMG_UINT8 * psDCDeviceReleaseIN_UI8,
+			    IMG_UINT8 * psDCDeviceReleaseOUT_UI8,
 			    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCDEVICERELEASE *psDCDeviceReleaseIN =
+	    (PVRSRV_BRIDGE_IN_DCDEVICERELEASE *)
+	    IMG_OFFSET_ADDR(psDCDeviceReleaseIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCDEVICERELEASE *psDCDeviceReleaseOUT =
+	    (PVRSRV_BRIDGE_OUT_DCDEVICERELEASE *)
+	    IMG_OFFSET_ADDR(psDCDeviceReleaseOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psHandleBase);
@@ -288,10 +314,17 @@ DCDeviceRelease_exit:
 
 static IMG_INT
 PVRSRVBridgeDCGetInfo(IMG_UINT32 ui32DispatchTableEntry,
-		      PVRSRV_BRIDGE_IN_DCGETINFO * psDCGetInfoIN,
-		      PVRSRV_BRIDGE_OUT_DCGETINFO * psDCGetInfoOUT,
+		      IMG_UINT8 * psDCGetInfoIN_UI8,
+		      IMG_UINT8 * psDCGetInfoOUT_UI8,
 		      CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCGETINFO *psDCGetInfoIN =
+	    (PVRSRV_BRIDGE_IN_DCGETINFO *) IMG_OFFSET_ADDR(psDCGetInfoIN_UI8,
+							   0);
+	PVRSRV_BRIDGE_OUT_DCGETINFO *psDCGetInfoOUT =
+	    (PVRSRV_BRIDGE_OUT_DCGETINFO *) IMG_OFFSET_ADDR(psDCGetInfoOUT_UI8,
+							    0);
+
 	IMG_HANDLE hDevice = psDCGetInfoIN->hDevice;
 	DC_DEVICE *psDeviceInt = NULL;
 
@@ -335,12 +368,17 @@ DCGetInfo_exit:
 
 static IMG_INT
 PVRSRVBridgeDCPanelQueryCount(IMG_UINT32 ui32DispatchTableEntry,
-			      PVRSRV_BRIDGE_IN_DCPANELQUERYCOUNT *
-			      psDCPanelQueryCountIN,
-			      PVRSRV_BRIDGE_OUT_DCPANELQUERYCOUNT *
-			      psDCPanelQueryCountOUT,
+			      IMG_UINT8 * psDCPanelQueryCountIN_UI8,
+			      IMG_UINT8 * psDCPanelQueryCountOUT_UI8,
 			      CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCPANELQUERYCOUNT *psDCPanelQueryCountIN =
+	    (PVRSRV_BRIDGE_IN_DCPANELQUERYCOUNT *)
+	    IMG_OFFSET_ADDR(psDCPanelQueryCountIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCPANELQUERYCOUNT *psDCPanelQueryCountOUT =
+	    (PVRSRV_BRIDGE_OUT_DCPANELQUERYCOUNT *)
+	    IMG_OFFSET_ADDR(psDCPanelQueryCountOUT_UI8, 0);
+
 	IMG_HANDLE hDevice = psDCPanelQueryCountIN->hDevice;
 	DC_DEVICE *psDeviceInt = NULL;
 
@@ -385,10 +423,17 @@ DCPanelQueryCount_exit:
 
 static IMG_INT
 PVRSRVBridgeDCPanelQuery(IMG_UINT32 ui32DispatchTableEntry,
-			 PVRSRV_BRIDGE_IN_DCPANELQUERY * psDCPanelQueryIN,
-			 PVRSRV_BRIDGE_OUT_DCPANELQUERY * psDCPanelQueryOUT,
+			 IMG_UINT8 * psDCPanelQueryIN_UI8,
+			 IMG_UINT8 * psDCPanelQueryOUT_UI8,
 			 CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCPANELQUERY *psDCPanelQueryIN =
+	    (PVRSRV_BRIDGE_IN_DCPANELQUERY *)
+	    IMG_OFFSET_ADDR(psDCPanelQueryIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCPANELQUERY *psDCPanelQueryOUT =
+	    (PVRSRV_BRIDGE_OUT_DCPANELQUERY *)
+	    IMG_OFFSET_ADDR(psDCPanelQueryOUT_UI8, 0);
+
 	IMG_HANDLE hDevice = psDCPanelQueryIN->hDevice;
 	DC_DEVICE *psDeviceInt = NULL;
 	PVRSRV_PANEL_INFO *psPanelInfoInt = NULL;
@@ -525,10 +570,17 @@ DCPanelQuery_exit:
 
 static IMG_INT
 PVRSRVBridgeDCFormatQuery(IMG_UINT32 ui32DispatchTableEntry,
-			  PVRSRV_BRIDGE_IN_DCFORMATQUERY * psDCFormatQueryIN,
-			  PVRSRV_BRIDGE_OUT_DCFORMATQUERY * psDCFormatQueryOUT,
+			  IMG_UINT8 * psDCFormatQueryIN_UI8,
+			  IMG_UINT8 * psDCFormatQueryOUT_UI8,
 			  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCFORMATQUERY *psDCFormatQueryIN =
+	    (PVRSRV_BRIDGE_IN_DCFORMATQUERY *)
+	    IMG_OFFSET_ADDR(psDCFormatQueryIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCFORMATQUERY *psDCFormatQueryOUT =
+	    (PVRSRV_BRIDGE_OUT_DCFORMATQUERY *)
+	    IMG_OFFSET_ADDR(psDCFormatQueryOUT_UI8, 0);
+
 	IMG_HANDLE hDevice = psDCFormatQueryIN->hDevice;
 	DC_DEVICE *psDeviceInt = NULL;
 	PVRSRV_SURFACE_FORMAT *psFormatInt = NULL;
@@ -693,10 +745,17 @@ DCFormatQuery_exit:
 
 static IMG_INT
 PVRSRVBridgeDCDimQuery(IMG_UINT32 ui32DispatchTableEntry,
-		       PVRSRV_BRIDGE_IN_DCDIMQUERY * psDCDimQueryIN,
-		       PVRSRV_BRIDGE_OUT_DCDIMQUERY * psDCDimQueryOUT,
+		       IMG_UINT8 * psDCDimQueryIN_UI8,
+		       IMG_UINT8 * psDCDimQueryOUT_UI8,
 		       CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCDIMQUERY *psDCDimQueryIN =
+	    (PVRSRV_BRIDGE_IN_DCDIMQUERY *) IMG_OFFSET_ADDR(psDCDimQueryIN_UI8,
+							    0);
+	PVRSRV_BRIDGE_OUT_DCDIMQUERY *psDCDimQueryOUT =
+	    (PVRSRV_BRIDGE_OUT_DCDIMQUERY *)
+	    IMG_OFFSET_ADDR(psDCDimQueryOUT_UI8, 0);
+
 	IMG_HANDLE hDevice = psDCDimQueryIN->hDevice;
 	DC_DEVICE *psDeviceInt = NULL;
 	PVRSRV_SURFACE_DIMS *psDimInt = NULL;
@@ -854,10 +913,17 @@ DCDimQuery_exit:
 
 static IMG_INT
 PVRSRVBridgeDCSetBlank(IMG_UINT32 ui32DispatchTableEntry,
-		       PVRSRV_BRIDGE_IN_DCSETBLANK * psDCSetBlankIN,
-		       PVRSRV_BRIDGE_OUT_DCSETBLANK * psDCSetBlankOUT,
+		       IMG_UINT8 * psDCSetBlankIN_UI8,
+		       IMG_UINT8 * psDCSetBlankOUT_UI8,
 		       CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCSETBLANK *psDCSetBlankIN =
+	    (PVRSRV_BRIDGE_IN_DCSETBLANK *) IMG_OFFSET_ADDR(psDCSetBlankIN_UI8,
+							    0);
+	PVRSRV_BRIDGE_OUT_DCSETBLANK *psDCSetBlankOUT =
+	    (PVRSRV_BRIDGE_OUT_DCSETBLANK *)
+	    IMG_OFFSET_ADDR(psDCSetBlankOUT_UI8, 0);
+
 	IMG_HANDLE hDevice = psDCSetBlankIN->hDevice;
 	DC_DEVICE *psDeviceInt = NULL;
 
@@ -901,12 +967,17 @@ DCSetBlank_exit:
 
 static IMG_INT
 PVRSRVBridgeDCSetVSyncReporting(IMG_UINT32 ui32DispatchTableEntry,
-				PVRSRV_BRIDGE_IN_DCSETVSYNCREPORTING *
-				psDCSetVSyncReportingIN,
-				PVRSRV_BRIDGE_OUT_DCSETVSYNCREPORTING *
-				psDCSetVSyncReportingOUT,
+				IMG_UINT8 * psDCSetVSyncReportingIN_UI8,
+				IMG_UINT8 * psDCSetVSyncReportingOUT_UI8,
 				CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCSETVSYNCREPORTING *psDCSetVSyncReportingIN =
+	    (PVRSRV_BRIDGE_IN_DCSETVSYNCREPORTING *)
+	    IMG_OFFSET_ADDR(psDCSetVSyncReportingIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCSETVSYNCREPORTING *psDCSetVSyncReportingOUT =
+	    (PVRSRV_BRIDGE_OUT_DCSETVSYNCREPORTING *)
+	    IMG_OFFSET_ADDR(psDCSetVSyncReportingOUT_UI8, 0);
+
 	IMG_HANDLE hDevice = psDCSetVSyncReportingIN->hDevice;
 	DC_DEVICE *psDeviceInt = NULL;
 
@@ -950,12 +1021,17 @@ DCSetVSyncReporting_exit:
 
 static IMG_INT
 PVRSRVBridgeDCLastVSyncQuery(IMG_UINT32 ui32DispatchTableEntry,
-			     PVRSRV_BRIDGE_IN_DCLASTVSYNCQUERY *
-			     psDCLastVSyncQueryIN,
-			     PVRSRV_BRIDGE_OUT_DCLASTVSYNCQUERY *
-			     psDCLastVSyncQueryOUT,
+			     IMG_UINT8 * psDCLastVSyncQueryIN_UI8,
+			     IMG_UINT8 * psDCLastVSyncQueryOUT_UI8,
 			     CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCLASTVSYNCQUERY *psDCLastVSyncQueryIN =
+	    (PVRSRV_BRIDGE_IN_DCLASTVSYNCQUERY *)
+	    IMG_OFFSET_ADDR(psDCLastVSyncQueryIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCLASTVSYNCQUERY *psDCLastVSyncQueryOUT =
+	    (PVRSRV_BRIDGE_OUT_DCLASTVSYNCQUERY *)
+	    IMG_OFFSET_ADDR(psDCLastVSyncQueryOUT_UI8, 0);
+
 	IMG_HANDLE hDevice = psDCLastVSyncQueryIN->hDevice;
 	DC_DEVICE *psDeviceInt = NULL;
 
@@ -997,14 +1073,26 @@ DCLastVSyncQuery_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _DCSystemBufferAcquirepsBufferIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = DCSystemBufferRelease((DC_BUFFER *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeDCSystemBufferAcquire(IMG_UINT32 ui32DispatchTableEntry,
-				  PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERACQUIRE *
-				  psDCSystemBufferAcquireIN,
-				  PVRSRV_BRIDGE_OUT_DCSYSTEMBUFFERACQUIRE *
-				  psDCSystemBufferAcquireOUT,
+				  IMG_UINT8 * psDCSystemBufferAcquireIN_UI8,
+				  IMG_UINT8 * psDCSystemBufferAcquireOUT_UI8,
 				  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERACQUIRE *psDCSystemBufferAcquireIN =
+	    (PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERACQUIRE *)
+	    IMG_OFFSET_ADDR(psDCSystemBufferAcquireIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCSYSTEMBUFFERACQUIRE *psDCSystemBufferAcquireOUT =
+	    (PVRSRV_BRIDGE_OUT_DCSYSTEMBUFFERACQUIRE *)
+	    IMG_OFFSET_ADDR(psDCSystemBufferAcquireOUT_UI8, 0);
+
 	IMG_HANDLE hDevice = psDCSystemBufferAcquireIN->hDevice;
 	DC_DEVICE *psDeviceInt = NULL;
 	DC_BUFFER *psBufferInt = NULL;
@@ -1046,7 +1134,7 @@ PVRSRVBridgeDCSystemBufferAcquire(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_DC_BUFFER,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      DCSystemBufferRelease);
+				      _DCSystemBufferAcquirepsBufferIntRelease);
 	if (unlikely(psDCSystemBufferAcquireOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -1086,12 +1174,16 @@ DCSystemBufferAcquire_exit:
 
 static IMG_INT
 PVRSRVBridgeDCSystemBufferRelease(IMG_UINT32 ui32DispatchTableEntry,
-				  PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERRELEASE *
-				  psDCSystemBufferReleaseIN,
-				  PVRSRV_BRIDGE_OUT_DCSYSTEMBUFFERRELEASE *
-				  psDCSystemBufferReleaseOUT,
+				  IMG_UINT8 * psDCSystemBufferReleaseIN_UI8,
+				  IMG_UINT8 * psDCSystemBufferReleaseOUT_UI8,
 				  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERRELEASE *psDCSystemBufferReleaseIN =
+	    (PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERRELEASE *)
+	    IMG_OFFSET_ADDR(psDCSystemBufferReleaseIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCSYSTEMBUFFERRELEASE *psDCSystemBufferReleaseOUT =
+	    (PVRSRV_BRIDGE_OUT_DCSYSTEMBUFFERRELEASE *)
+	    IMG_OFFSET_ADDR(psDCSystemBufferReleaseOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psHandleBase);
@@ -1122,14 +1214,27 @@ DCSystemBufferRelease_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _DCDisplayContextCreatepsDisplayContextIntRelease(void
+								      *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = DCDisplayContextDestroy((DC_DISPLAY_CONTEXT *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeDCDisplayContextCreate(IMG_UINT32 ui32DispatchTableEntry,
-				   PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCREATE *
-				   psDCDisplayContextCreateIN,
-				   PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCREATE *
-				   psDCDisplayContextCreateOUT,
+				   IMG_UINT8 * psDCDisplayContextCreateIN_UI8,
+				   IMG_UINT8 * psDCDisplayContextCreateOUT_UI8,
 				   CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCREATE *psDCDisplayContextCreateIN =
+	    (PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCREATE *)
+	    IMG_OFFSET_ADDR(psDCDisplayContextCreateIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCREATE *psDCDisplayContextCreateOUT =
+	    (PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCREATE *)
+	    IMG_OFFSET_ADDR(psDCDisplayContextCreateOUT_UI8, 0);
+
 	IMG_HANDLE hDevice = psDCDisplayContextCreateIN->hDevice;
 	DC_DEVICE *psDeviceInt = NULL;
 	DC_DISPLAY_CONTEXT *psDisplayContextInt = NULL;
@@ -1170,7 +1275,7 @@ PVRSRVBridgeDCDisplayContextCreate(IMG_UINT32 ui32DispatchTableEntry,
 				      PVRSRV_HANDLE_TYPE_DC_DISPLAY_CONTEXT,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
 				      (PFN_HANDLE_RELEASE) &
-				      DCDisplayContextDestroy);
+				      _DCDisplayContextCreatepsDisplayContextIntRelease);
 	if (unlikely(psDCDisplayContextCreateOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -1208,13 +1313,21 @@ DCDisplayContextCreate_exit:
 
 static IMG_INT
 PVRSRVBridgeDCDisplayContextConfigureCheck(IMG_UINT32 ui32DispatchTableEntry,
-					   PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURECHECK
-					   * psDCDisplayContextConfigureCheckIN,
-					   PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCONFIGURECHECK
-					   *
-					   psDCDisplayContextConfigureCheckOUT,
+					   IMG_UINT8 *
+					   psDCDisplayContextConfigureCheckIN_UI8,
+					   IMG_UINT8 *
+					   psDCDisplayContextConfigureCheckOUT_UI8,
 					   CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURECHECK
+	    *psDCDisplayContextConfigureCheckIN =
+	    (PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURECHECK *)
+	    IMG_OFFSET_ADDR(psDCDisplayContextConfigureCheckIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCONFIGURECHECK
+	    *psDCDisplayContextConfigureCheckOUT =
+	    (PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCONFIGURECHECK *)
+	    IMG_OFFSET_ADDR(psDCDisplayContextConfigureCheckOUT_UI8, 0);
+
 	IMG_HANDLE hDisplayContext =
 	    psDCDisplayContextConfigureCheckIN->hDisplayContext;
 	DC_DISPLAY_CONTEXT *psDisplayContextInt = NULL;
@@ -1439,12 +1552,18 @@ DCDisplayContextConfigureCheck_exit:
 
 static IMG_INT
 PVRSRVBridgeDCDisplayContextDestroy(IMG_UINT32 ui32DispatchTableEntry,
-				    PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTDESTROY *
-				    psDCDisplayContextDestroyIN,
-				    PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTDESTROY *
-				    psDCDisplayContextDestroyOUT,
+				    IMG_UINT8 * psDCDisplayContextDestroyIN_UI8,
+				    IMG_UINT8 *
+				    psDCDisplayContextDestroyOUT_UI8,
 				    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTDESTROY *psDCDisplayContextDestroyIN =
+	    (PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTDESTROY *)
+	    IMG_OFFSET_ADDR(psDCDisplayContextDestroyIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTDESTROY *psDCDisplayContextDestroyOUT
+	    =
+	    (PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTDESTROY *)
+	    IMG_OFFSET_ADDR(psDCDisplayContextDestroyOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psHandleBase);
@@ -1476,12 +1595,26 @@ DCDisplayContextDestroy_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _DCBufferAllocpsBufferIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = DCBufferFree((DC_BUFFER *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeDCBufferAlloc(IMG_UINT32 ui32DispatchTableEntry,
-			  PVRSRV_BRIDGE_IN_DCBUFFERALLOC * psDCBufferAllocIN,
-			  PVRSRV_BRIDGE_OUT_DCBUFFERALLOC * psDCBufferAllocOUT,
+			  IMG_UINT8 * psDCBufferAllocIN_UI8,
+			  IMG_UINT8 * psDCBufferAllocOUT_UI8,
 			  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCBUFFERALLOC *psDCBufferAllocIN =
+	    (PVRSRV_BRIDGE_IN_DCBUFFERALLOC *)
+	    IMG_OFFSET_ADDR(psDCBufferAllocIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCBUFFERALLOC *psDCBufferAllocOUT =
+	    (PVRSRV_BRIDGE_OUT_DCBUFFERALLOC *)
+	    IMG_OFFSET_ADDR(psDCBufferAllocOUT_UI8, 0);
+
 	IMG_HANDLE hDisplayContext = psDCBufferAllocIN->hDisplayContext;
 	DC_DISPLAY_CONTEXT *psDisplayContextInt = NULL;
 	DC_BUFFER *psBufferInt = NULL;
@@ -1523,7 +1656,8 @@ PVRSRVBridgeDCBufferAlloc(IMG_UINT32 ui32DispatchTableEntry,
 				      (void *)psBufferInt,
 				      PVRSRV_HANDLE_TYPE_DC_BUFFER,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
-				      (PFN_HANDLE_RELEASE) & DCBufferFree);
+				      (PFN_HANDLE_RELEASE) &
+				      _DCBufferAllocpsBufferIntRelease);
 	if (unlikely(psDCBufferAllocOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -1561,12 +1695,26 @@ DCBufferAlloc_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _DCBufferImportpsBufferIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = DCBufferFree((DC_BUFFER *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeDCBufferImport(IMG_UINT32 ui32DispatchTableEntry,
-			   PVRSRV_BRIDGE_IN_DCBUFFERIMPORT * psDCBufferImportIN,
-			   PVRSRV_BRIDGE_OUT_DCBUFFERIMPORT *
-			   psDCBufferImportOUT, CONNECTION_DATA * psConnection)
+			   IMG_UINT8 * psDCBufferImportIN_UI8,
+			   IMG_UINT8 * psDCBufferImportOUT_UI8,
+			   CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCBUFFERIMPORT *psDCBufferImportIN =
+	    (PVRSRV_BRIDGE_IN_DCBUFFERIMPORT *)
+	    IMG_OFFSET_ADDR(psDCBufferImportIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCBUFFERIMPORT *psDCBufferImportOUT =
+	    (PVRSRV_BRIDGE_OUT_DCBUFFERIMPORT *)
+	    IMG_OFFSET_ADDR(psDCBufferImportOUT_UI8, 0);
+
 	IMG_HANDLE hDisplayContext = psDCBufferImportIN->hDisplayContext;
 	DC_DISPLAY_CONTEXT *psDisplayContextInt = NULL;
 	PMR **psImportInt = NULL;
@@ -1712,7 +1860,8 @@ PVRSRVBridgeDCBufferImport(IMG_UINT32 ui32DispatchTableEntry,
 				      (void *)psBufferInt,
 				      PVRSRV_HANDLE_TYPE_DC_BUFFER,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
-				      (PFN_HANDLE_RELEASE) & DCBufferFree);
+				      (PFN_HANDLE_RELEASE) &
+				      _DCBufferImportpsBufferIntRelease);
 	if (unlikely(psDCBufferImportOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -1780,10 +1929,16 @@ DCBufferImport_exit:
 
 static IMG_INT
 PVRSRVBridgeDCBufferFree(IMG_UINT32 ui32DispatchTableEntry,
-			 PVRSRV_BRIDGE_IN_DCBUFFERFREE * psDCBufferFreeIN,
-			 PVRSRV_BRIDGE_OUT_DCBUFFERFREE * psDCBufferFreeOUT,
+			 IMG_UINT8 * psDCBufferFreeIN_UI8,
+			 IMG_UINT8 * psDCBufferFreeOUT_UI8,
 			 CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCBUFFERFREE *psDCBufferFreeIN =
+	    (PVRSRV_BRIDGE_IN_DCBUFFERFREE *)
+	    IMG_OFFSET_ADDR(psDCBufferFreeIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCBUFFERFREE *psDCBufferFreeOUT =
+	    (PVRSRV_BRIDGE_OUT_DCBUFFERFREE *)
+	    IMG_OFFSET_ADDR(psDCBufferFreeOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psHandleBase);
@@ -1815,12 +1970,16 @@ DCBufferFree_exit:
 
 static IMG_INT
 PVRSRVBridgeDCBufferUnimport(IMG_UINT32 ui32DispatchTableEntry,
-			     PVRSRV_BRIDGE_IN_DCBUFFERUNIMPORT *
-			     psDCBufferUnimportIN,
-			     PVRSRV_BRIDGE_OUT_DCBUFFERUNIMPORT *
-			     psDCBufferUnimportOUT,
+			     IMG_UINT8 * psDCBufferUnimportIN_UI8,
+			     IMG_UINT8 * psDCBufferUnimportOUT_UI8,
 			     CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCBUFFERUNIMPORT *psDCBufferUnimportIN =
+	    (PVRSRV_BRIDGE_IN_DCBUFFERUNIMPORT *)
+	    IMG_OFFSET_ADDR(psDCBufferUnimportIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCBUFFERUNIMPORT *psDCBufferUnimportOUT =
+	    (PVRSRV_BRIDGE_OUT_DCBUFFERUNIMPORT *)
+	    IMG_OFFSET_ADDR(psDCBufferUnimportOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psHandleBase);
@@ -1850,12 +2009,26 @@ DCBufferUnimport_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _DCBufferPinhPinHandleIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = DCBufferUnpin((DC_PIN_HANDLE) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeDCBufferPin(IMG_UINT32 ui32DispatchTableEntry,
-			PVRSRV_BRIDGE_IN_DCBUFFERPIN * psDCBufferPinIN,
-			PVRSRV_BRIDGE_OUT_DCBUFFERPIN * psDCBufferPinOUT,
+			IMG_UINT8 * psDCBufferPinIN_UI8,
+			IMG_UINT8 * psDCBufferPinOUT_UI8,
 			CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCBUFFERPIN *psDCBufferPinIN =
+	    (PVRSRV_BRIDGE_IN_DCBUFFERPIN *)
+	    IMG_OFFSET_ADDR(psDCBufferPinIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCBUFFERPIN *psDCBufferPinOUT =
+	    (PVRSRV_BRIDGE_OUT_DCBUFFERPIN *)
+	    IMG_OFFSET_ADDR(psDCBufferPinOUT_UI8, 0);
+
 	IMG_HANDLE hBuffer = psDCBufferPinIN->hBuffer;
 	DC_BUFFER *psBufferInt = NULL;
 	DC_PIN_HANDLE hPinHandleInt = NULL;
@@ -1893,7 +2066,8 @@ PVRSRVBridgeDCBufferPin(IMG_UINT32 ui32DispatchTableEntry,
 				      (void *)hPinHandleInt,
 				      PVRSRV_HANDLE_TYPE_DC_PIN_HANDLE,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
-				      (PFN_HANDLE_RELEASE) & DCBufferUnpin);
+				      (PFN_HANDLE_RELEASE) &
+				      _DCBufferPinhPinHandleIntRelease);
 	if (unlikely(psDCBufferPinOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -1931,10 +2105,16 @@ DCBufferPin_exit:
 
 static IMG_INT
 PVRSRVBridgeDCBufferUnpin(IMG_UINT32 ui32DispatchTableEntry,
-			  PVRSRV_BRIDGE_IN_DCBUFFERUNPIN * psDCBufferUnpinIN,
-			  PVRSRV_BRIDGE_OUT_DCBUFFERUNPIN * psDCBufferUnpinOUT,
+			  IMG_UINT8 * psDCBufferUnpinIN_UI8,
+			  IMG_UINT8 * psDCBufferUnpinOUT_UI8,
 			  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCBUFFERUNPIN *psDCBufferUnpinIN =
+	    (PVRSRV_BRIDGE_IN_DCBUFFERUNPIN *)
+	    IMG_OFFSET_ADDR(psDCBufferUnpinIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCBUFFERUNPIN *psDCBufferUnpinOUT =
+	    (PVRSRV_BRIDGE_OUT_DCBUFFERUNPIN *)
+	    IMG_OFFSET_ADDR(psDCBufferUnpinOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psHandleBase);
@@ -1964,14 +2144,26 @@ DCBufferUnpin_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _DCBufferAcquirepsExtMemIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = DCBufferRelease((PMR *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgeDCBufferAcquire(IMG_UINT32 ui32DispatchTableEntry,
-			    PVRSRV_BRIDGE_IN_DCBUFFERACQUIRE *
-			    psDCBufferAcquireIN,
-			    PVRSRV_BRIDGE_OUT_DCBUFFERACQUIRE *
-			    psDCBufferAcquireOUT,
+			    IMG_UINT8 * psDCBufferAcquireIN_UI8,
+			    IMG_UINT8 * psDCBufferAcquireOUT_UI8,
 			    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCBUFFERACQUIRE *psDCBufferAcquireIN =
+	    (PVRSRV_BRIDGE_IN_DCBUFFERACQUIRE *)
+	    IMG_OFFSET_ADDR(psDCBufferAcquireIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCBUFFERACQUIRE *psDCBufferAcquireOUT =
+	    (PVRSRV_BRIDGE_OUT_DCBUFFERACQUIRE *)
+	    IMG_OFFSET_ADDR(psDCBufferAcquireOUT_UI8, 0);
+
 	IMG_HANDLE hBuffer = psDCBufferAcquireIN->hBuffer;
 	DC_BUFFER *psBufferInt = NULL;
 	PMR *psExtMemInt = NULL;
@@ -2011,7 +2203,8 @@ PVRSRVBridgeDCBufferAcquire(IMG_UINT32 ui32DispatchTableEntry,
 				      (void *)psExtMemInt,
 				      PVRSRV_HANDLE_TYPE_DEVMEM_MEM_IMPORT,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
-				      (PFN_HANDLE_RELEASE) & DCBufferRelease);
+				      (PFN_HANDLE_RELEASE) &
+				      _DCBufferAcquirepsExtMemIntRelease);
 	if (unlikely(psDCBufferAcquireOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psProcessHandleBase->psHandleBase);
@@ -2051,12 +2244,16 @@ DCBufferAcquire_exit:
 
 static IMG_INT
 PVRSRVBridgeDCBufferRelease(IMG_UINT32 ui32DispatchTableEntry,
-			    PVRSRV_BRIDGE_IN_DCBUFFERRELEASE *
-			    psDCBufferReleaseIN,
-			    PVRSRV_BRIDGE_OUT_DCBUFFERRELEASE *
-			    psDCBufferReleaseOUT,
+			    IMG_UINT8 * psDCBufferReleaseIN_UI8,
+			    IMG_UINT8 * psDCBufferReleaseOUT_UI8,
 			    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCBUFFERRELEASE *psDCBufferReleaseIN =
+	    (PVRSRV_BRIDGE_IN_DCBUFFERRELEASE *)
+	    IMG_OFFSET_ADDR(psDCBufferReleaseIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCBUFFERRELEASE *psDCBufferReleaseOUT =
+	    (PVRSRV_BRIDGE_OUT_DCBUFFERRELEASE *)
+	    IMG_OFFSET_ADDR(psDCBufferReleaseOUT_UI8, 0);
 
 	/* Lock over handle destruction. */
 	LockHandle(psConnection->psProcessHandleBase->psHandleBase);
@@ -2089,12 +2286,21 @@ DCBufferRelease_exit:
 
 static IMG_INT
 PVRSRVBridgeDCDisplayContextConfigure2(IMG_UINT32 ui32DispatchTableEntry,
-				       PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURE2
-				       * psDCDisplayContextConfigure2IN,
-				       PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCONFIGURE2
-				       * psDCDisplayContextConfigure2OUT,
+				       IMG_UINT8 *
+				       psDCDisplayContextConfigure2IN_UI8,
+				       IMG_UINT8 *
+				       psDCDisplayContextConfigure2OUT_UI8,
 				       CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURE2
+	    *psDCDisplayContextConfigure2IN =
+	    (PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURE2 *)
+	    IMG_OFFSET_ADDR(psDCDisplayContextConfigure2IN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCONFIGURE2
+	    *psDCDisplayContextConfigure2OUT =
+	    (PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCONFIGURE2 *)
+	    IMG_OFFSET_ADDR(psDCDisplayContextConfigure2OUT_UI8, 0);
+
 	IMG_HANDLE hDisplayContext =
 	    psDCDisplayContextConfigure2IN->hDisplayContext;
 	DC_DISPLAY_CONTEXT *psDisplayContextInt = NULL;

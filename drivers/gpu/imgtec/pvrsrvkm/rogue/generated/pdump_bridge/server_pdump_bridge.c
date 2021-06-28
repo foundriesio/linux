@@ -68,12 +68,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static IMG_INT
 PVRSRVBridgeDevmemPDumpBitmap(IMG_UINT32 ui32DispatchTableEntry,
-			      PVRSRV_BRIDGE_IN_DEVMEMPDUMPBITMAP *
-			      psDevmemPDumpBitmapIN,
-			      PVRSRV_BRIDGE_OUT_DEVMEMPDUMPBITMAP *
-			      psDevmemPDumpBitmapOUT,
+			      IMG_UINT8 * psDevmemPDumpBitmapIN_UI8,
+			      IMG_UINT8 * psDevmemPDumpBitmapOUT_UI8,
 			      CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_DEVMEMPDUMPBITMAP *psDevmemPDumpBitmapIN =
+	    (PVRSRV_BRIDGE_IN_DEVMEMPDUMPBITMAP *)
+	    IMG_OFFSET_ADDR(psDevmemPDumpBitmapIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_DEVMEMPDUMPBITMAP *psDevmemPDumpBitmapOUT =
+	    (PVRSRV_BRIDGE_OUT_DEVMEMPDUMPBITMAP *)
+	    IMG_OFFSET_ADDR(psDevmemPDumpBitmapOUT_UI8, 0);
+
 	IMG_CHAR *uiFileNameInt = NULL;
 	IMG_HANDLE hDevmemCtx = psDevmemPDumpBitmapIN->hDevmemCtx;
 	DEVMEMINT_CTX *psDevmemCtxInt = NULL;
@@ -210,12 +215,17 @@ DevmemPDumpBitmap_exit:
 
 static IMG_INT
 PVRSRVBridgePDumpImageDescriptor(IMG_UINT32 ui32DispatchTableEntry,
-				 PVRSRV_BRIDGE_IN_PDUMPIMAGEDESCRIPTOR *
-				 psPDumpImageDescriptorIN,
-				 PVRSRV_BRIDGE_OUT_PDUMPIMAGEDESCRIPTOR *
-				 psPDumpImageDescriptorOUT,
+				 IMG_UINT8 * psPDumpImageDescriptorIN_UI8,
+				 IMG_UINT8 * psPDumpImageDescriptorOUT_UI8,
 				 CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_PDUMPIMAGEDESCRIPTOR *psPDumpImageDescriptorIN =
+	    (PVRSRV_BRIDGE_IN_PDUMPIMAGEDESCRIPTOR *)
+	    IMG_OFFSET_ADDR(psPDumpImageDescriptorIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_PDUMPIMAGEDESCRIPTOR *psPDumpImageDescriptorOUT =
+	    (PVRSRV_BRIDGE_OUT_PDUMPIMAGEDESCRIPTOR *)
+	    IMG_OFFSET_ADDR(psPDumpImageDescriptorOUT_UI8, 0);
+
 	IMG_HANDLE hDevmemCtx = psPDumpImageDescriptorIN->hDevmemCtx;
 	DEVMEMINT_CTX *psDevmemCtxInt = NULL;
 	IMG_CHAR *uiFileNameInt = NULL;
@@ -404,12 +414,17 @@ PDumpImageDescriptor_exit:
 
 static IMG_INT
 PVRSRVBridgePVRSRVPDumpComment(IMG_UINT32 ui32DispatchTableEntry,
-			       PVRSRV_BRIDGE_IN_PVRSRVPDUMPCOMMENT *
-			       psPVRSRVPDumpCommentIN,
-			       PVRSRV_BRIDGE_OUT_PVRSRVPDUMPCOMMENT *
-			       psPVRSRVPDumpCommentOUT,
+			       IMG_UINT8 * psPVRSRVPDumpCommentIN_UI8,
+			       IMG_UINT8 * psPVRSRVPDumpCommentOUT_UI8,
 			       CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_PVRSRVPDUMPCOMMENT *psPVRSRVPDumpCommentIN =
+	    (PVRSRV_BRIDGE_IN_PVRSRVPDUMPCOMMENT *)
+	    IMG_OFFSET_ADDR(psPVRSRVPDumpCommentIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_PVRSRVPDUMPCOMMENT *psPVRSRVPDumpCommentOUT =
+	    (PVRSRV_BRIDGE_OUT_PVRSRVPDUMPCOMMENT *)
+	    IMG_OFFSET_ADDR(psPVRSRVPDumpCommentOUT_UI8, 0);
+
 	IMG_CHAR *uiCommentInt = NULL;
 
 	IMG_UINT32 ui32NextOffset = 0;
@@ -504,12 +519,16 @@ PVRSRVPDumpComment_exit:
 
 static IMG_INT
 PVRSRVBridgePVRSRVPDumpSetFrame(IMG_UINT32 ui32DispatchTableEntry,
-				PVRSRV_BRIDGE_IN_PVRSRVPDUMPSETFRAME *
-				psPVRSRVPDumpSetFrameIN,
-				PVRSRV_BRIDGE_OUT_PVRSRVPDUMPSETFRAME *
-				psPVRSRVPDumpSetFrameOUT,
+				IMG_UINT8 * psPVRSRVPDumpSetFrameIN_UI8,
+				IMG_UINT8 * psPVRSRVPDumpSetFrameOUT_UI8,
 				CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_PVRSRVPDUMPSETFRAME *psPVRSRVPDumpSetFrameIN =
+	    (PVRSRV_BRIDGE_IN_PVRSRVPDUMPSETFRAME *)
+	    IMG_OFFSET_ADDR(psPVRSRVPDumpSetFrameIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_PVRSRVPDUMPSETFRAME *psPVRSRVPDumpSetFrameOUT =
+	    (PVRSRV_BRIDGE_OUT_PVRSRVPDUMPSETFRAME *)
+	    IMG_OFFSET_ADDR(psPVRSRVPDumpSetFrameOUT_UI8, 0);
 
 	psPVRSRVPDumpSetFrameOUT->eError =
 	    PDumpSetFrameKM(psConnection, OSGetDevNode(psConnection),
@@ -520,12 +539,17 @@ PVRSRVBridgePVRSRVPDumpSetFrame(IMG_UINT32 ui32DispatchTableEntry,
 
 static IMG_INT
 PVRSRVBridgePDumpDataDescriptor(IMG_UINT32 ui32DispatchTableEntry,
-				PVRSRV_BRIDGE_IN_PDUMPDATADESCRIPTOR *
-				psPDumpDataDescriptorIN,
-				PVRSRV_BRIDGE_OUT_PDUMPDATADESCRIPTOR *
-				psPDumpDataDescriptorOUT,
+				IMG_UINT8 * psPDumpDataDescriptorIN_UI8,
+				IMG_UINT8 * psPDumpDataDescriptorOUT_UI8,
 				CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_PDUMPDATADESCRIPTOR *psPDumpDataDescriptorIN =
+	    (PVRSRV_BRIDGE_IN_PDUMPDATADESCRIPTOR *)
+	    IMG_OFFSET_ADDR(psPDumpDataDescriptorIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_PDUMPDATADESCRIPTOR *psPDumpDataDescriptorOUT =
+	    (PVRSRV_BRIDGE_OUT_PDUMPDATADESCRIPTOR *)
+	    IMG_OFFSET_ADDR(psPDumpDataDescriptorOUT_UI8, 0);
+
 	IMG_HANDLE hDevmemCtx = psPDumpDataDescriptorIN->hDevmemCtx;
 	DEVMEMINT_CTX *psDevmemCtxInt = NULL;
 	IMG_CHAR *uiFileNameInt = NULL;

@@ -46,6 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_defs.h"
 
 #include "rgxhwperf.h"
+#include "rgx_fwif_km.h"
 
 #include "common_rgxhwperf_bridge.h"
 
@@ -67,10 +68,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static IMG_INT
 PVRSRVBridgeRGXCtrlHWPerf(IMG_UINT32 ui32DispatchTableEntry,
-			  PVRSRV_BRIDGE_IN_RGXCTRLHWPERF * psRGXCtrlHWPerfIN,
-			  PVRSRV_BRIDGE_OUT_RGXCTRLHWPERF * psRGXCtrlHWPerfOUT,
+			  IMG_UINT8 * psRGXCtrlHWPerfIN_UI8,
+			  IMG_UINT8 * psRGXCtrlHWPerfOUT_UI8,
 			  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXCTRLHWPERF *psRGXCtrlHWPerfIN =
+	    (PVRSRV_BRIDGE_IN_RGXCTRLHWPERF *)
+	    IMG_OFFSET_ADDR(psRGXCtrlHWPerfIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXCTRLHWPERF *psRGXCtrlHWPerfOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXCTRLHWPERF *)
+	    IMG_OFFSET_ADDR(psRGXCtrlHWPerfOUT_UI8, 0);
 
 	psRGXCtrlHWPerfOUT->eError =
 	    PVRSRVRGXCtrlHWPerfKM(psConnection, OSGetDevNode(psConnection),
@@ -83,12 +90,21 @@ PVRSRVBridgeRGXCtrlHWPerf(IMG_UINT32 ui32DispatchTableEntry,
 
 static IMG_INT
 PVRSRVBridgeRGXConfigEnableHWPerfCounters(IMG_UINT32 ui32DispatchTableEntry,
-					  PVRSRV_BRIDGE_IN_RGXCONFIGENABLEHWPERFCOUNTERS
-					  * psRGXConfigEnableHWPerfCountersIN,
-					  PVRSRV_BRIDGE_OUT_RGXCONFIGENABLEHWPERFCOUNTERS
-					  * psRGXConfigEnableHWPerfCountersOUT,
+					  IMG_UINT8 *
+					  psRGXConfigEnableHWPerfCountersIN_UI8,
+					  IMG_UINT8 *
+					  psRGXConfigEnableHWPerfCountersOUT_UI8,
 					  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXCONFIGENABLEHWPERFCOUNTERS
+	    *psRGXConfigEnableHWPerfCountersIN =
+	    (PVRSRV_BRIDGE_IN_RGXCONFIGENABLEHWPERFCOUNTERS *)
+	    IMG_OFFSET_ADDR(psRGXConfigEnableHWPerfCountersIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXCONFIGENABLEHWPERFCOUNTERS
+	    *psRGXConfigEnableHWPerfCountersOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXCONFIGENABLEHWPERFCOUNTERS *)
+	    IMG_OFFSET_ADDR(psRGXConfigEnableHWPerfCountersOUT_UI8, 0);
+
 	RGX_HWPERF_CONFIG_CNTBLK *psBlockConfigsInt = NULL;
 
 	IMG_UINT32 ui32NextOffset = 0;
@@ -103,7 +119,7 @@ PVRSRVBridgeRGXConfigEnableHWPerfCounters(IMG_UINT32 ui32DispatchTableEntry,
 
 	if (unlikely
 	    (psRGXConfigEnableHWPerfCountersIN->ui32ArrayLen >
-	     RGX_HWPERF_MAX_DEFINED_BLKS))
+	     RGXFWIF_HWPERF_CTRL_BLKS_MAX))
 	{
 		psRGXConfigEnableHWPerfCountersOUT->eError =
 		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
@@ -197,12 +213,17 @@ RGXConfigEnableHWPerfCounters_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXCtrlHWPerfCounters(IMG_UINT32 ui32DispatchTableEntry,
-				  PVRSRV_BRIDGE_IN_RGXCTRLHWPERFCOUNTERS *
-				  psRGXCtrlHWPerfCountersIN,
-				  PVRSRV_BRIDGE_OUT_RGXCTRLHWPERFCOUNTERS *
-				  psRGXCtrlHWPerfCountersOUT,
+				  IMG_UINT8 * psRGXCtrlHWPerfCountersIN_UI8,
+				  IMG_UINT8 * psRGXCtrlHWPerfCountersOUT_UI8,
 				  CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXCTRLHWPERFCOUNTERS *psRGXCtrlHWPerfCountersIN =
+	    (PVRSRV_BRIDGE_IN_RGXCTRLHWPERFCOUNTERS *)
+	    IMG_OFFSET_ADDR(psRGXCtrlHWPerfCountersIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXCTRLHWPERFCOUNTERS *psRGXCtrlHWPerfCountersOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXCTRLHWPERFCOUNTERS *)
+	    IMG_OFFSET_ADDR(psRGXCtrlHWPerfCountersOUT_UI8, 0);
+
 	IMG_UINT16 *ui16BlockIDsInt = NULL;
 
 	IMG_UINT32 ui32NextOffset = 0;
@@ -216,7 +237,7 @@ PVRSRVBridgeRGXCtrlHWPerfCounters(IMG_UINT32 ui32DispatchTableEntry,
 
 	if (unlikely
 	    (psRGXCtrlHWPerfCountersIN->ui32ArrayLen >
-	     RGX_HWPERF_MAX_DEFINED_BLKS))
+	     RGXFWIF_HWPERF_CTRL_BLKS_MAX))
 	{
 		psRGXCtrlHWPerfCountersOUT->eError =
 		    PVRSRV_ERROR_BRIDGE_ARRAY_SIZE_TOO_BIG;
@@ -308,12 +329,19 @@ RGXCtrlHWPerfCounters_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXConfigCustomCounters(IMG_UINT32 ui32DispatchTableEntry,
-				    PVRSRV_BRIDGE_IN_RGXCONFIGCUSTOMCOUNTERS *
-				    psRGXConfigCustomCountersIN,
-				    PVRSRV_BRIDGE_OUT_RGXCONFIGCUSTOMCOUNTERS *
-				    psRGXConfigCustomCountersOUT,
+				    IMG_UINT8 * psRGXConfigCustomCountersIN_UI8,
+				    IMG_UINT8 *
+				    psRGXConfigCustomCountersOUT_UI8,
 				    CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXCONFIGCUSTOMCOUNTERS *psRGXConfigCustomCountersIN =
+	    (PVRSRV_BRIDGE_IN_RGXCONFIGCUSTOMCOUNTERS *)
+	    IMG_OFFSET_ADDR(psRGXConfigCustomCountersIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXCONFIGCUSTOMCOUNTERS *psRGXConfigCustomCountersOUT
+	    =
+	    (PVRSRV_BRIDGE_OUT_RGXCONFIGCUSTOMCOUNTERS *)
+	    IMG_OFFSET_ADDR(psRGXConfigCustomCountersOUT_UI8, 0);
+
 	IMG_UINT32 *ui32CustomCounterIDsInt = NULL;
 
 	IMG_UINT32 ui32NextOffset = 0;
@@ -423,12 +451,20 @@ RGXConfigCustomCounters_exit:
 
 static IMG_INT
 PVRSRVBridgeRGXGetHWPerfBvncFeatureFlags(IMG_UINT32 ui32DispatchTableEntry,
-					 PVRSRV_BRIDGE_IN_RGXGETHWPERFBVNCFEATUREFLAGS
-					 * psRGXGetHWPerfBvncFeatureFlagsIN,
-					 PVRSRV_BRIDGE_OUT_RGXGETHWPERFBVNCFEATUREFLAGS
-					 * psRGXGetHWPerfBvncFeatureFlagsOUT,
+					 IMG_UINT8 *
+					 psRGXGetHWPerfBvncFeatureFlagsIN_UI8,
+					 IMG_UINT8 *
+					 psRGXGetHWPerfBvncFeatureFlagsOUT_UI8,
 					 CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_RGXGETHWPERFBVNCFEATUREFLAGS
+	    *psRGXGetHWPerfBvncFeatureFlagsIN =
+	    (PVRSRV_BRIDGE_IN_RGXGETHWPERFBVNCFEATUREFLAGS *)
+	    IMG_OFFSET_ADDR(psRGXGetHWPerfBvncFeatureFlagsIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_RGXGETHWPERFBVNCFEATUREFLAGS
+	    *psRGXGetHWPerfBvncFeatureFlagsOUT =
+	    (PVRSRV_BRIDGE_OUT_RGXGETHWPERFBVNCFEATUREFLAGS *)
+	    IMG_OFFSET_ADDR(psRGXGetHWPerfBvncFeatureFlagsOUT_UI8, 0);
 
 	PVR_UNREFERENCED_PARAMETER(psRGXGetHWPerfBvncFeatureFlagsIN);
 

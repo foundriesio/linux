@@ -362,7 +362,7 @@ static IMG_UINT32 StringHashFunc(uintptr_t input)
 		hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
 	}
 
-	hash &= ~(1 << 31);
+	hash &= ~(1ul << 31);
 
 	return (IMG_UINT32)hash;
 }

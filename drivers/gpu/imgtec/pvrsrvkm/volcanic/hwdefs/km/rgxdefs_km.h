@@ -345,7 +345,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * recalibration. Only with that address defined will the workaround be used.
  */
 #define RGX_BRN71422_TARGET_HARDWARE_PHYSICAL_ADDR  (IMG_UINT64_C(0x0000000000))
-//#define RGX_BRN71422_WORKAROUND_READ_SIZE           (2048U)
+#define RGX_BRN71422_WORKAROUND_READ_SIZE           (32U)
 #endif
 
 #endif /* RGXDEFS_KM_H */

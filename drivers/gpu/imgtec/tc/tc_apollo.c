@@ -1138,7 +1138,9 @@ int apollo_register_ext_device(struct tc_device *tc)
 {
 	int err = 0;
 	struct resource fpga_resources[] = {
-		/* FIXME: Don't overload SYS_RGX_REG_xxx for FPGA */
+		/* For the 'fpga' build, we don't use the Rogue, but reuse the
+		 * define that mentions RGX.
+		 */
 		DEFINE_RES_MEM_NAMED(pci_resource_start(tc->pdev,
 				SYS_RGX_REG_PCI_BASENUM),
 			 SYS_RGX_REG_REGION_SIZE, "fpga-regs"),

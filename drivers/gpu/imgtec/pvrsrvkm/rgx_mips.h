@@ -67,8 +67,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* log2 page table sizes dependent on FW heap size and page size (for each OS) */
 #define RGXMIPSFW_LOG2_PAGETABLE_SIZE_4K         (RGX_FIRMWARE_HEAP_SHIFT - RGXMIPSFW_LOG2_PAGE_SIZE_4K + RGXMIPSFW_LOG2_PTE_ENTRY_SIZE)
 #define RGXMIPSFW_LOG2_PAGETABLE_SIZE_64K        (RGX_FIRMWARE_HEAP_SHIFT - RGXMIPSFW_LOG2_PAGE_SIZE_64K + RGXMIPSFW_LOG2_PTE_ENTRY_SIZE)
-/* Maximum log2 page table size (across OSes) */
-#define RGXMIPSFW_MAX_LOG2_PAGETABLE_SIZE        (18) /* 256KB page table */
 /* Maximum number of page table pages (both Host and MIPS pages) */
 #define RGXMIPSFW_MAX_NUM_PAGETABLE_PAGES        (4)
 /* Total number of TLB entries */

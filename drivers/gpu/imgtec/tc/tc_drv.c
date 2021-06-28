@@ -138,6 +138,49 @@ static struct debugfs_blob_wrapper tc_debugfs_rogue_name_blobs[] = {
 	},
 };
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+/* forward declaration */
+static void tc_devres_release(struct device *dev, void *res);
+
+static ssize_t rogue_name_show(struct device_driver *drv, char *buf)
+{
+	struct pci_dev *pci_dev;
+	struct tc_device *tc;
+	struct device *dev;
+
+	dev = driver_find_next_device(drv, NULL);
+	if (!dev)
+		return -ENODEV;
+
+	pci_dev = to_pci_dev(dev);
+	if (!pci_dev)
+		return -ENODEV;
+
+	tc = devres_find(&pci_dev->dev, tc_devres_release, NULL, NULL);
+	if (!tc)
+		return -ENODEV;
+
+	return sprintf(buf, "%s\n", (const char *)
+			tc_debugfs_rogue_name_blobs[tc->version].data);
+}
+
+static DRIVER_ATTR_RO(rogue_name);
+
+static struct attribute *tc_attrs[] = {
+	&driver_attr_rogue_name.attr,
+	NULL,
+};
+
+static struct attribute_group tc_attr_group = {
+	.attrs = tc_attrs,
+};
+
+static const struct attribute_group *tc_attr_groups[] = {
+	&tc_attr_group,
+	NULL,
+};
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)) */
+
 #if defined(CONFIG_MTRR) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0))
 /*
  * A return value of:
@@ -580,10 +623,13 @@ static struct pci_device_id tc_pci_tbl[] = {
 };
 
 static struct pci_driver tc_pci_driver = {
-	.name		= DRV_NAME,
-	.id_table	= tc_pci_tbl,
-	.probe		= tc_init,
-	.remove		= tc_exit,
+	.name           = DRV_NAME,
+	.id_table       = tc_pci_tbl,
+	.probe          = tc_init,
+	.remove         = tc_exit,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+	.groups         = tc_attr_groups,
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)) */
 };
 
 module_pci_driver(tc_pci_driver);

@@ -66,14 +66,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * Server-side bridge entry points
  */
 
+static PVRSRV_ERROR _PhysmemImportDmaBufpsPMRPtrIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = PMRUnrefPMR((PMR *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgePhysmemImportDmaBuf(IMG_UINT32 ui32DispatchTableEntry,
-				PVRSRV_BRIDGE_IN_PHYSMEMIMPORTDMABUF *
-				psPhysmemImportDmaBufIN,
-				PVRSRV_BRIDGE_OUT_PHYSMEMIMPORTDMABUF *
-				psPhysmemImportDmaBufOUT,
+				IMG_UINT8 * psPhysmemImportDmaBufIN_UI8,
+				IMG_UINT8 * psPhysmemImportDmaBufOUT_UI8,
 				CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_PHYSMEMIMPORTDMABUF *psPhysmemImportDmaBufIN =
+	    (PVRSRV_BRIDGE_IN_PHYSMEMIMPORTDMABUF *)
+	    IMG_OFFSET_ADDR(psPhysmemImportDmaBufIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_PHYSMEMIMPORTDMABUF *psPhysmemImportDmaBufOUT =
+	    (PVRSRV_BRIDGE_OUT_PHYSMEMIMPORTDMABUF *)
+	    IMG_OFFSET_ADDR(psPhysmemImportDmaBufOUT_UI8, 0);
+
 	IMG_CHAR *uiNameInt = NULL;
 	PMR *psPMRPtrInt = NULL;
 
@@ -180,7 +192,8 @@ PVRSRVBridgePhysmemImportDmaBuf(IMG_UINT32 ui32DispatchTableEntry,
 				      (void *)psPMRPtrInt,
 				      PVRSRV_HANDLE_TYPE_PHYSMEM_PMR,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
-				      (PFN_HANDLE_RELEASE) & PMRUnrefPMR);
+				      (PFN_HANDLE_RELEASE) &
+				      _PhysmemImportDmaBufpsPMRPtrIntRelease);
 	if (unlikely(psPhysmemImportDmaBufOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);
@@ -217,12 +230,17 @@ PhysmemImportDmaBuf_exit:
 
 static IMG_INT
 PVRSRVBridgePhysmemExportDmaBuf(IMG_UINT32 ui32DispatchTableEntry,
-				PVRSRV_BRIDGE_IN_PHYSMEMEXPORTDMABUF *
-				psPhysmemExportDmaBufIN,
-				PVRSRV_BRIDGE_OUT_PHYSMEMEXPORTDMABUF *
-				psPhysmemExportDmaBufOUT,
+				IMG_UINT8 * psPhysmemExportDmaBufIN_UI8,
+				IMG_UINT8 * psPhysmemExportDmaBufOUT_UI8,
 				CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_PHYSMEMEXPORTDMABUF *psPhysmemExportDmaBufIN =
+	    (PVRSRV_BRIDGE_IN_PHYSMEMEXPORTDMABUF *)
+	    IMG_OFFSET_ADDR(psPhysmemExportDmaBufIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_PHYSMEMEXPORTDMABUF *psPhysmemExportDmaBufOUT =
+	    (PVRSRV_BRIDGE_OUT_PHYSMEMEXPORTDMABUF *)
+	    IMG_OFFSET_ADDR(psPhysmemExportDmaBufOUT_UI8, 0);
+
 	IMG_HANDLE hPMR = psPhysmemExportDmaBufIN->hPMR;
 	PMR *psPMRInt = NULL;
 
@@ -266,14 +284,30 @@ PhysmemExportDmaBuf_exit:
 	return 0;
 }
 
+static PVRSRV_ERROR _PhysmemImportSparseDmaBufpsPMRPtrIntRelease(void *pvData)
+{
+	PVRSRV_ERROR eError;
+	eError = PMRUnrefPMR((PMR *) pvData);
+	return eError;
+}
+
 static IMG_INT
 PVRSRVBridgePhysmemImportSparseDmaBuf(IMG_UINT32 ui32DispatchTableEntry,
-				      PVRSRV_BRIDGE_IN_PHYSMEMIMPORTSPARSEDMABUF
-				      * psPhysmemImportSparseDmaBufIN,
-				      PVRSRV_BRIDGE_OUT_PHYSMEMIMPORTSPARSEDMABUF
-				      * psPhysmemImportSparseDmaBufOUT,
+				      IMG_UINT8 *
+				      psPhysmemImportSparseDmaBufIN_UI8,
+				      IMG_UINT8 *
+				      psPhysmemImportSparseDmaBufOUT_UI8,
 				      CONNECTION_DATA * psConnection)
 {
+	PVRSRV_BRIDGE_IN_PHYSMEMIMPORTSPARSEDMABUF
+	    *psPhysmemImportSparseDmaBufIN =
+	    (PVRSRV_BRIDGE_IN_PHYSMEMIMPORTSPARSEDMABUF *)
+	    IMG_OFFSET_ADDR(psPhysmemImportSparseDmaBufIN_UI8, 0);
+	PVRSRV_BRIDGE_OUT_PHYSMEMIMPORTSPARSEDMABUF
+	    *psPhysmemImportSparseDmaBufOUT =
+	    (PVRSRV_BRIDGE_OUT_PHYSMEMIMPORTSPARSEDMABUF *)
+	    IMG_OFFSET_ADDR(psPhysmemImportSparseDmaBufOUT_UI8, 0);
+
 	IMG_UINT32 *ui32MappingTableInt = NULL;
 	IMG_CHAR *uiNameInt = NULL;
 	PMR *psPMRPtrInt = NULL;
@@ -428,7 +462,8 @@ PVRSRVBridgePhysmemImportSparseDmaBuf(IMG_UINT32 ui32DispatchTableEntry,
 				      (void *)psPMRPtrInt,
 				      PVRSRV_HANDLE_TYPE_PHYSMEM_PMR,
 				      PVRSRV_HANDLE_ALLOC_FLAG_MULTI,
-				      (PFN_HANDLE_RELEASE) & PMRUnrefPMR);
+				      (PFN_HANDLE_RELEASE) &
+				      _PhysmemImportSparseDmaBufpsPMRPtrIntRelease);
 	if (unlikely(psPhysmemImportSparseDmaBufOUT->eError != PVRSRV_OK))
 	{
 		UnlockHandle(psConnection->psHandleBase);

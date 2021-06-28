@@ -349,6 +349,7 @@ void PVRSRVDeviceDeinit(PVRSRV_DEVICE_NODE *psDeviceNode)
 void PVRSRVDeviceShutdown(PVRSRV_DEVICE_NODE *psDeviceNode)
 {
 	PVRSRV_ERROR eError;
+
 	/*
 	 * Disable the bridge to stop processes trying to use the driver
 	 * after it has been shut down.
@@ -420,7 +421,6 @@ int PVRSRVDeviceSuspend(PVRSRV_DEVICE_NODE *psDeviceNode)
 			OSWaitus(MAX_HW_TIME_US/WAIT_TRY_COUNT);
 		} END_LOOP_UNTIL_TIMEOUT();
 
-
 		if (eError == PVRSRV_OK)
 		{
 			LOOP_UNTIL_TIMEOUT(SECONDS_TO_MICROSECONDS/2)
@@ -433,7 +433,7 @@ int PVRSRVDeviceSuspend(PVRSRV_DEVICE_NODE *psDeviceNode)
 			} END_LOOP_UNTIL_TIMEOUT();
 		}
 
-		if(!bFwOffline)
+		if (!bFwOffline)
 		{
 			KM_SET_OS_CONNECTION(OFFLINE, psDevInfo);
 		}
@@ -464,6 +464,7 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 	PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
 
 	PVR_DPF((PVR_DBG_MESSAGE, "%s Mode: %s", __func__, (PVRSRV_VZ_MODE_IS(GUEST)?"GUEST":"HOST")));
+
 	psDeviceNode->bAutoVzFwIsUp = IMG_FALSE;
 #endif
 
@@ -475,8 +476,9 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
 
 #if defined(SUPPORT_AUTOVZ)
 	PVR_DPF((PVR_DBG_MESSAGE, "%s after: RGX_CR_OS0_SCRATCH2=0x%x, RGX_CR_OS0_SCRATCH3=0x%x"
-		, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
-	
+				, __func__, OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH2), OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_OS0_SCRATCH3)));
+
+
 	if(PVRSRV_VZ_MODE_IS(GUEST))
 	{
 		IMG_UINT32 ui32FwTimeout = (3000 * 1000 * 3);
@@ -656,6 +658,7 @@ void PVRSRVDeviceRelease(PVRSRV_DEVICE_NODE *psDeviceNode,
 	void *pvConnectionData = psDRMFile->driver_priv;
 
 	PVR_UNREFERENCED_PARAMETER(psDeviceNode);
+
 	psDRMFile->driver_priv = NULL;
 	if (pvConnectionData)
 	{

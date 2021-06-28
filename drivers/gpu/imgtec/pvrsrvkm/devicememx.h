@@ -214,4 +214,10 @@ void
 DevmemXPhysDescRelease(DEVMEMX_PHYSDESC *psPhysDesc,
                        IMG_UINT32 uiReleaseCount);
 
+#if !defined(__KERNEL__)
+IMG_INTERNAL PVRSRV_ERROR
+DevmemXGetImportUID(DEVMEMX_PHYSDESC *psMemDescPhys,
+                    IMG_UINT64       *pui64UID);
+#endif
+
 #endif /* DEVICEMEMX_H */

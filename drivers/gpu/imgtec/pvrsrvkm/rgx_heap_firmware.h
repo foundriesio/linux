@@ -51,26 +51,62 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /*
- * The config heap takes up the last 64 KBytes from the total firmware heap
- * space. It is intended to act as a storage space for the kernel and
- * firmware CCB offset storage. The Main Firmware heap size is reduced
- * accordingly but most of the map / unmap functions must take into
- * consideration the entire range (i.e. main and config heap).
+ * The Config heap holds initialisation data shared between the
+ * the driver and firmware (e.g. pointers to the KCCB and FWCCB).
+ * The Main Firmware heap size is adjusted accordingly but most
+ * of the map / unmap functions must take into consideration
+ * the entire range (i.e. main and config heap).
  */
+
+#if !defined(RGX_FW_HEAP_SHIFT)
+#define RGX_FW_HEAP_SHIFT                            (25)
+#endif
+
 #define RGX_FIRMWARE_NUMBER_OF_FW_HEAPS              (2)
 #define RGX_FIRMWARE_HEAP_SHIFT                      RGX_FW_HEAP_SHIFT
 #define RGX_FIRMWARE_RAW_HEAP_BASE                   (0xE1C0000000ULL)
 #define RGX_FIRMWARE_RAW_HEAP_SIZE                   (IMG_UINT32_C(1) << RGX_FIRMWARE_HEAP_SHIFT)
+
+#if defined(SUPPORT_MIPS_64K_PAGE_SIZE)
+#if defined(PDUMP)
+/* PDUMP drivers allocate each structure from the Config heap in a different PMR.
+ * Ensure the heap can hold 3 PMRs of 64KB */
+#define RGX_FIRMWARE_CONFIG_HEAP_SIZE                (IMG_UINT32_C(0x30000)) /* 192KB */
+#else
+#define RGX_FIRMWARE_CONFIG_HEAP_SIZE                (IMG_UINT32_C(0x20000)) /* 128KB */
+#endif
+#else
+/* regular 4KB page size system assumed */
 #define RGX_FIRMWARE_CONFIG_HEAP_SIZE                (IMG_UINT32_C(0x10000)) /* 64KB */
+#endif
+
 #define RGX_FIRMWARE_META_MAIN_HEAP_SIZE             (RGX_FIRMWARE_RAW_HEAP_SIZE - RGX_FIRMWARE_CONFIG_HEAP_SIZE)
 /*
  * MIPS FW needs space in the Main heap to map GPU memory.
  * This space is taken from the MAIN heap, to avoid creating a new heap.
  */
-#define RGX_FIRMWARE_MIPS_GPU_MAP_RESERVED_SIZE      (IMG_UINT32_C(0x100000)) /* 1MB */
-#define RGX_FIRMWARE_MIPS_MAIN_HEAP_SIZE             (RGX_FIRMWARE_RAW_HEAP_SIZE - \
-                                                      RGX_FIRMWARE_CONFIG_HEAP_SIZE - \
-                                                      RGX_FIRMWARE_MIPS_GPU_MAP_RESERVED_SIZE)
+#define RGX_FIRMWARE_MIPS_GPU_MAP_RESERVED_SIZE_NORMAL       (IMG_UINT32_C(0x100000)) /* 1MB */
+#define RGX_FIRMWARE_MIPS_GPU_MAP_RESERVED_SIZE_BRN65101     (IMG_UINT32_C(0x400000)) /* 4MB */
+
+#define RGX_FIRMWARE_MIPS_MAIN_HEAP_SIZE_NORMAL      (RGX_FIRMWARE_RAW_HEAP_SIZE -  RGX_FIRMWARE_CONFIG_HEAP_SIZE - \
+                                                      RGX_FIRMWARE_MIPS_GPU_MAP_RESERVED_SIZE_NORMAL)
+
+#define RGX_FIRMWARE_MIPS_MAIN_HEAP_SIZE_BRN65101    (RGX_FIRMWARE_RAW_HEAP_SIZE -  RGX_FIRMWARE_CONFIG_HEAP_SIZE - \
+                                                      RGX_FIRMWARE_MIPS_GPU_MAP_RESERVED_SIZE_BRN65101)
+
+#if !defined(__KERNEL__)
+#if defined(FIX_HW_BRN_65101)
+#define RGX_FIRMWARE_MIPS_GPU_MAP_RESERVED_SIZE      RGX_FIRMWARE_MIPS_GPU_MAP_RESERVED_SIZE_BRN65101
+#define RGX_FIRMWARE_MIPS_MAIN_HEAP_SIZE             RGX_FIRMWARE_MIPS_MAIN_HEAP_SIZE_BRN65101
+
+#include "img_defs.h"
+static_assert((RGX_FIRMWARE_RAW_HEAP_SIZE) >= IMG_UINT32_C(0x800000), "MIPS GPU map size cannot be increased due to BRN65101 with a small FW heap");
+
+#else
+#define RGX_FIRMWARE_MIPS_GPU_MAP_RESERVED_SIZE      RGX_FIRMWARE_MIPS_GPU_MAP_RESERVED_SIZE_NORMAL
+#define RGX_FIRMWARE_MIPS_MAIN_HEAP_SIZE             RGX_FIRMWARE_MIPS_MAIN_HEAP_SIZE_NORMAL
+#endif
+#endif /* !defined(__KERNEL__) */
 
 /* Host sub-heap order: MAIN + CONFIG */
 #define RGX_FIRMWARE_HOST_MAIN_HEAP_BASE             RGX_FIRMWARE_RAW_HEAP_BASE
