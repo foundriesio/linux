@@ -295,8 +295,15 @@ static long tcc_hsm_ioctl_run_cmac(unsigned long arg)
 		return ret;
 	}
 
+	if (copy_from_user(
+		    dma_buf->srcVir, (const uint8_t *)param.srcAddr,
+		    param.srcSize)) {
+		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
 	ret = tcc_hsm_sp_cmd_run_cmac(
-		MBOX_DEV_M4, param.keyIndex, param.flag, param.srcAddr,
+		MBOX_DEV_M4, param.keyIndex, param.flag, dma_buf->srcVir,
 		param.srcSize, dma_buf->dstVir, &param.mac_size);
 
 	if (copy_to_user(
