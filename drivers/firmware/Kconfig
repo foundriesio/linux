@@ -235,6 +235,7 @@ config TCC_PMI
 	tristate "Telechips Power Management Interface (PMI) driver"
 	depends on ARCH_TCC805X
 	depends on TCC_MULTI_MAILBOX
+	depends on !TCC_PM_FIRMWARE
 	default y
 	help
 	  Telechips Power Management Interface (PMI) driver is a mailbox client

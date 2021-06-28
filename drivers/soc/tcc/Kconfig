@@ -87,6 +87,7 @@ config TCC_BOOTSTAGE
 config PM_TCC805X
 	bool "Power management driver for TCC805x"
 	depends on ARCH_TCC805X
+	depends on !TCC_PM_FIRMWARE
 	default y
 	help
 	  Select this option to enable TCC805x power management driver.
