@@ -100,12 +100,13 @@ static int tccvin_queue_setup(struct vb2_queue *vq,
 		*nplanes = stream->cur_format->num_planes;
 	}
 
-	tccvin_get_imagesize(stream->cur_frame->width,
+	tccvin_get_imagesize(stream, stream->cur_frame->width,
 		stream->cur_frame->height,
 		stream->cur_format->fcc, &imagesize);
 	for (idxpln = 0; idxpln < *nplanes; idxpln++) {
 		sizes[idxpln] = imagesize[idxpln];
-		logd("plane[%d].size: %d\n", idxpln, sizes[idxpln]);
+		logd(&stream->vdev.dev,
+		     "plane[%d].size: %d\n", idxpln, sizes[idxpln]);
 	}
 
 	return 0;
@@ -115,11 +116,13 @@ static int tccvin_buffer_prepare(struct vb2_buffer *vb)
 {
 	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
 	struct tccvin_video_queue *queue = vb2_get_drv_priv(vb->vb2_queue);
+	struct tccvin_streaming* stream = tccvin_queue_to_stream(queue);
 	struct tccvin_buffer *buf = tccvin_vbuf_to_buffer(vbuf);
 
 	if (vb->type == V4L2_BUF_TYPE_VIDEO_OUTPUT &&
 	    vb2_get_plane_payload(vb, 0) > vb2_plane_size(vb, 0)) {
-		loge("Bytes used out of bounds.\n");
+		loge(&stream->vdev.dev,
+		     "Bytes used out of bounds.\n");
 		return -EINVAL;
 	}
 
@@ -243,8 +246,9 @@ int tccvin_queue_init(struct tccvin_video_queue *queue, enum v4l2_buf_type type,
 	spin_lock_init(&queue->irqlock);
 	INIT_LIST_HEAD(&queue->irqqueue);
 	queue->flags = drop_corrupted ? TCCVIN_QUEUE_DROP_CORRUPTED : 0;
-	logd("drop_corrupted: %d, queue->flags: 0x%08x",
-		drop_corrupted, queue->flags);
+	logd(&stream->vdev.dev,
+	     "drop_corrupted: %d, queue->flags: 0x%08x",
+	     drop_corrupted, queue->flags);
 
 	return 0;
 }
@@ -276,6 +280,9 @@ int tccvin_query_buffer(struct tccvin_video_queue *queue,
 	struct v4l2_buffer *buf)
 {
 	int ret;
+	struct tccvin_streaming* stream;
+
+	stream = tccvin_queue_to_stream(queue);
 
 	mutex_lock(&queue->mutex);
 	ret = vb2_querybuf(&queue->queue, buf);
@@ -286,20 +293,23 @@ int tccvin_query_buffer(struct tccvin_video_queue *queue,
 		switch (buf->memory) {
 		case V4L2_MEMORY_MMAP:
 			vb = queue->queue.bufs[buf->index];
-			logd("bufidx: %d, planes: %d, num_planes: %d\n",
-				buf->index, buf->length, vb->num_planes);
+			logd(&stream->vdev.dev,
+			     "bufidx: %d, planes: %d, num_planes: %d\n",
+			     buf->index, buf->length, vb->num_planes);
 			for (idxpln = 0; idxpln < buf->length; idxpln++) {
 				buf->m.planes[idxpln].reserved[0] =
 					vb2_dma_contig_plane_dma_addr(vb,
 						idxpln);
-				logd("bufidx: %d, plan: %d, addr: 0x%08x\n",
-					buf->index, idxpln,
-					buf->m.planes[idxpln].reserved[0]);
+				logd(&stream->vdev.dev,
+				     "bufidx: %d, plan: %d, addr: 0x%08x\n",
+				     buf->index, idxpln,
+				     buf->m.planes[idxpln].reserved[0]);
 			}
 			break;
 
 		default:
-			loge("memory (%d) is wrong\n", buf->memory);
+			loge(&stream->vdev.dev,
+			     "memory (%d) is wrong\n", buf->memory);
 			ret = -1;
 			break;
 		}

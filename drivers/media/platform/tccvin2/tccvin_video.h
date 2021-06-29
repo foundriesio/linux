@@ -334,14 +334,29 @@ extern unsigned int tccvin_timeout_param;
 
 #define LOG_TAG			"VIN"
 
-#define loge(fmt, ...)		{ pr_err("[ERROR][%s] %s - " fmt, LOG_TAG, \
-					__func__, ##__VA_ARGS__); }
-#define logw(fmt, ...)		{ pr_warn("[WARN][%s] %s - " fmt, LOG_TAG, \
-					__func__, ##__VA_ARGS__); }
-#define logd(fmt, ...)		{ pr_debug("[DEBUG][%s] %s - " fmt, LOG_TAG, \
-					__func__, ##__VA_ARGS__); }
-#define logi(fmt, ...)		{ pr_info("[INFO][%s] %s - " fmt, LOG_TAG, \
-					__func__, ##__VA_ARGS__); }
+#define loge(dev_ptr, fmt, ...)							\
+	{									\
+		dev_err(dev_ptr, "[ERROR][%s] %s - " fmt, LOG_TAG, __func__,	\
+			##__VA_ARGS__);						\
+	}
+#define logw(dev_ptr, fmt, ...)							\
+	{									\
+		dev_warn(							\
+			dev_ptr, "[WARN][%s] %s - " fmt, LOG_TAG, __func__,	\
+			##__VA_ARGS__);						\
+	}
+#define logd(dev_ptr, fmt, ...)							\
+	{									\
+		dev_dbg(							\
+			dev_ptr, "[DEBUG][%s] %s - " fmt, LOG_TAG, __func__,	\
+			##__VA_ARGS__);						\
+	}
+#define logi(dev_ptr, fmt, ...)							\
+	{									\
+		dev_info(							\
+			dev_ptr, "[INFO][%s] %s - " fmt, LOG_TAG, __func__,	\
+			##__VA_ARGS__);						\
+	}
 
 /* --------------------------------------------------------------------------
  * Internal functions.
@@ -353,8 +368,9 @@ extern struct tccvin_frame cur_frame;
 extern int tccvin_queue_init(struct tccvin_video_queue *queue,
 	enum v4l2_buf_type type, int drop_corrupted);
 extern void tccvin_queue_release(struct tccvin_video_queue *queue);
-extern int tccvin_get_imagesize(unsigned int width, unsigned int height,
-	unsigned int fcc, unsigned int (*planes)[]);
+extern int tccvin_get_imagesize(struct tccvin_streaming* stream,
+				unsigned int width, unsigned int height,
+				unsigned int fcc, unsigned int (*planes)[]);
 extern int tccvin_request_buffers(struct tccvin_video_queue *queue,
 	struct v4l2_requestbuffers *rb);
 extern int tccvin_query_buffer(struct tccvin_video_queue *queue,

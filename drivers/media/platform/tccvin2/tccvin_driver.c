@@ -46,19 +46,21 @@ static struct v4l2_subdev *founded_subdev[255] = { 0, };
 static int founded_subdev_num;
 static DEFINE_MUTEX(founded_subdev_list_lock);
 
-static inline struct v4l2_subdev *tccvin_search_subdev(struct device_node *e)
+static inline struct v4l2_subdev *tccvin_search_subdev(
+	struct tccvin_device *vdev,
+	struct device_node *e)
 {
 	int i = 0;
 
 	if (e == NULL) {
-		loge("input is null\n");
+		loge(&vdev->pdev->dev, "input is null\n");
 		return NULL;
 	}
 
 	mutex_lock(&founded_subdev_list_lock);
 
 	for (i = 0; i < founded_subdev_num; i++) {
-		logi("check founded subdev %d\n", i);
+		logi(&vdev->pdev->dev, "check founded subdev %d\n", i);
 		if (founded_subdev[i]->dev->of_node == e) {
 			mutex_unlock(&founded_subdev_list_lock);
 			return founded_subdev[i];
@@ -70,10 +72,11 @@ static inline struct v4l2_subdev *tccvin_search_subdev(struct device_node *e)
 	return NULL;
 }
 
-static inline void tccvin_add_subdev_list(struct v4l2_subdev *e)
+static inline void tccvin_add_subdev_list(
+	struct tccvin_device *vdev, struct v4l2_subdev *e)
 {
 	mutex_lock(&founded_subdev_list_lock);
-	logi("%s added\n", dev_name(e->dev));
+	logi(&vdev->pdev->dev, "%s added\n", dev_name(e->dev));
 	founded_subdev[founded_subdev_num++] = e;
 	mutex_unlock(&founded_subdev_list_lock);
 }
@@ -97,20 +100,20 @@ static int tccvin_parse_streaming(struct tccvin_device *dev)
 	/* Count the format and frame descriptors. */
 	nformats = tccvin_count_supported_formats();
 	if (nformats == 0) {
-		loge("no format is supported\n");
+		loge(dev->vdev.dev, "no format is supported\n");
 		goto error;
 	}
 
 	format = tccvin_format_by_index(0);
 
 	fcc = (__u8 *)&format->fcc;
-	logd("idx: %d, fcc: %c%c%c%c, num_planes: %u, bpp: %d\n",
+	logd(dev->vdev.dev, "idx: %d, fcc: %c%c%c%c, num_planes: %u, bpp: %d\n",
 		format->index, fcc[0], fcc[1], fcc[2], fcc[3],
 		format->num_planes, format->bpp);
 
 	frame = &stream->frame;
 
-	logd("size: %u * %u\n", frame->width, frame->height);
+	logd(dev->vdev.dev, "size: %u * %u\n", frame->width, frame->height);
 
 	/* set the default format */
 	stream->def_format = format;
@@ -201,7 +204,8 @@ static void tccvin_unregister_video(struct tccvin_device *dev)
 	ret = tccvin_video_deinit(stream);
 	if (ret < 0) {
 		/* failure of video deinit */
-		loge("Failed to initialize the device (%d).\n", ret);
+		loge(dev->vdev.dev,
+		     "Failed to initialize the device (%d).\n", ret);
 	}
 }
 
@@ -215,7 +219,7 @@ static int tccvin_register_video(struct tccvin_device *dev,
 	ret = tccvin_queue_init(&stream->queue, stream->type,
 		!tccvin_no_drop_param);
 	if (ret) {
-		loge("tccvin_queue_init, ret: %d\n", ret);
+		loge(dev->vdev.dev, "tccvin_queue_init, ret: %d\n", ret);
 		return ret;
 	}
 
@@ -239,7 +243,8 @@ static int tccvin_register_video(struct tccvin_device *dev,
 
 	ret = video_register_device(vdev, VFL_TYPE_GRABBER, vdev->minor);
 	if (ret < 0) {
-		loge("Failed to register video device (%d).\n", ret);
+		loge(dev->vdev.dev,
+		     "Failed to register video device (%d).\n", ret);
 		return ret;
 	}
 
@@ -248,7 +253,8 @@ static int tccvin_register_video(struct tccvin_device *dev,
 	 */
 	ret = tccvin_video_init(stream);
 	if (ret < 0) {
-		loge("Failed to initialize the device (%d).\n", ret);
+		loge(dev->vdev.dev,
+		     "Failed to initialize the device (%d).\n", ret);
 		return ret;
 	}
 
@@ -264,7 +270,7 @@ int tccvin_async_bound(struct v4l2_async_notifier *notifier,
 	struct tccvin_subdev	*tc_subdev	= NULL;
 	int			ret		= 0;
 
-	logi("a v4l2 sub device %s is bounded\n", subdev->name);
+	logi(dev->vdev.dev, "a v4l2 sub device %s is bounded\n", subdev->name);
 
 	dev = container_of(notifier, struct tccvin_device, notifier);
 	tc_subdev = container_of(asd, struct tccvin_subdev, asd);
@@ -272,9 +278,9 @@ int tccvin_async_bound(struct v4l2_async_notifier *notifier,
 	/* register subdevice here */
 	tc_subdev->sd = subdev;
 	/* dev->subdevs[dev->bounded_subdevs] = subdev; */
-	tccvin_add_subdev_list(subdev);
+	tccvin_add_subdev_list(dev, subdev);
 	dev->bounded_subdevs++;
-	logi("dev->bounded_subdevs: %d\n", dev->bounded_subdevs);
+	logi(dev->vdev.dev, "dev->bounded_subdevs: %d\n", dev->bounded_subdevs);
 
 #if defined(CONFIG_VIDEO_TCCVIN2_DIAG)
 	ret = tccvin_diag_cif_port(subdev);
@@ -298,7 +304,7 @@ int tccvin_async_complete(struct v4l2_async_notifier *notifier)
 
 	ret = v4l2_device_register_subdev_nodes(&dev->vdev);
 	if (ret != 0) {
-		loge("FAIL - register subdev nodes\n");
+		loge(dev->vdev.dev, "FAIL - register subdev nodes\n");
 		goto error;
 	}
 
@@ -315,43 +321,45 @@ void tccvin_print_fw_node_info(struct tccvin_device *vdev,
 
 	of_property_read_string(ep, "io-direction", &io);
 
-	logi("end point is %s %s\n", parent_node->name, io);
+	logi(vdev->vdev.dev,
+	     "end point is %s %s\n", parent_node->name, io);
 
-	logi("bus-type: %d\n", vdev->fw_ep[vdev->num_ep].bus_type);
+	logi(vdev->vdev.dev,
+	     "bus-type: %d\n", vdev->fw_ep[vdev->num_ep].bus_type);
 	switch (vdev->fw_ep[vdev->num_ep].bus_type) {
 	case V4L2_MBUS_PARALLEL:
 	case V4L2_MBUS_BT656:
 		flags = vdev->fw_ep[vdev->num_ep].bus.parallel.flags;
 
-		logd("flags: 0x%08x\n", flags);
+		logd(vdev->vdev.dev, "flags: 0x%08x\n", flags);
 		/* hsync-active */
-		logd("hsync-active: %s\n",
+		logd(vdev->vdev.dev, "hsync-active: %s\n",
 			(flags & V4L2_MBUS_HSYNC_ACTIVE_HIGH) ?
 				"V4L2_MBUS_HSYNC_ACTIVE_HIGH" :
 				"V4L2_MBUS_HSYNC_ACTIVE_LOW");
 		/* vsync-active */
-		logd("vsync-active: %s\n",
+		logd(vdev->vdev.dev, "vsync-active: %s\n",
 			(flags & V4L2_MBUS_VSYNC_ACTIVE_HIGH) ?
 				"V4L2_MBUS_VSYNC_ACTIVE_HIGH" :
 				"V4L2_MBUS_VSYNC_ACTIVE_LOW");
 		/* pclk-sample */
-		logd("pclk-sample: %s\n",
+		logd(vdev->vdev.dev, "pclk-sample: %s\n",
 			(flags & V4L2_MBUS_PCLK_SAMPLE_RISING) ?
 				"V4L2_MBUS_PCLK_SAMPLE_RISING" :
 				"V4L2_MBUS_PCLK_SAMPLE_FALLING");
 		/* data-active */
-		logd("data-active: %s\n",
+		logd(vdev->vdev.dev, "data-active: %s\n",
 			(flags & V4L2_MBUS_DATA_ACTIVE_HIGH) ?
 				"V4L2_MBUS_DATA_ACTIVE_HIGH" :
 				"V4L2_MBUS_DATA_ACTIVE_LOW");
 		/* conv_en */
-		logd("conv_en: %s\n",
+		logd(vdev->vdev.dev, "conv_en: %s\n",
 			(vdev->fw_ep[vdev->num_ep].bus_type ==
 				V4L2_MBUS_BT656) ?
 				"V4L2_MBUS_BT656" :
 				"V4L2_MBUS_PARALLEL");
 		/* bus width */
-		logd("bus-width: %d\n",
+		logd(vdev->vdev.dev, "bus-width: %d\n",
 			vdev->fw_ep[vdev->num_ep].bus.parallel.bus_width);
 		break;
 	case V4L2_MBUS_CSI2:
@@ -371,7 +379,7 @@ static void tccvin_fwnode_endpoint_parse(struct tccvin_device *vdev,
 
 	tccvin_print_fw_node_info(vdev, ep);
 	if (!fwnode_property_read_u32(fwnode, "channel", &channel))
-		logi("channel: %d\n", channel);
+		logi(vdev->vdev.dev, "channel: %d\n", channel);
 	fwnode_property_read_u32(fwnode, "stream-enable",
 		&vdev->stream->vs_info.stream_enable);
 	fwnode_property_read_u32(fwnode, "gen-field-en",
@@ -402,7 +410,7 @@ static inline void tccvin_add_async_subdev(struct tccvin_device *vdev,
 	vdev->async_subdevs[vdev->num_asd] = asd;
 	vdev->num_asd++;
 
-	logi("alloc async subdev for %s\n", node->name);
+	logi(vdev->vdev.dev, "alloc async subdev for %s\n", node->name);
 }
 
 static int tccvin_traversal_subdevices(struct tccvin_device *vdev,
@@ -418,19 +426,21 @@ static int tccvin_traversal_subdevices(struct tccvin_device *vdev,
 	const char *io = NULL;
 	int linked_sd_idx = 0;
 
-	logi("========== current node is %s ==========\n", node->name);
+	logi(vdev->vdev.dev,
+	     "========== current node is %s ==========\n", node->name);
 
 	if (node == vdev->pdev->dev.of_node)
 		goto skip_alloc_async_subdev;
 
-	founded_sd = tccvin_search_subdev(node);
+	founded_sd = tccvin_search_subdev(vdev, node);
 	if (founded_sd == NULL) {
 		tccvin_add_async_subdev(vdev, node);
 	} else {
 		linked_sd_idx = vdev->num_asd + vdev->bounded_subdevs;
 		vdev->linked_subdevs[linked_sd_idx].sd = founded_sd;
 		vdev->bounded_subdevs++;
-		logi("already subdev(%s) is founded\n", node->name);
+		logi(vdev->vdev.dev,
+		     "already subdev(%s) is founded\n", node->name);
 	}
 
 skip_alloc_async_subdev:
@@ -441,12 +451,14 @@ skip_alloc_async_subdev:
 			remote_ep = of_graph_get_remote_endpoint(local_ep);
 
 			if (remote_dev == NULL) {
-				loge("can not find remote device\n");
+				loge(vdev->vdev.dev,
+				     "can not find remote device\n");
 				goto e_remote_dev;
 			}
 
 			if (remote_ep == NULL) {
-				loge("can not find remote ep\n");
+				loge(vdev->vdev.dev,
+				     "can not find remote ep\n");
 				goto e_remote_ep;
 			}
 
@@ -461,7 +473,8 @@ skip_alloc_async_subdev:
 			}
 
 			if (target_ch != -1 && target_ch == local_input_ch) {
-				logi("found matched target ch(%d)\n",
+				logi(vdev->vdev.dev,
+				     "found matched target ch(%d)\n",
 					target_ch);
 				target_ch = -1;
 				skip_traversal = true;
@@ -469,9 +482,11 @@ skip_alloc_async_subdev:
 
 			if (target_ch != -1 && local_input_ch != -1 &&
 				target_ch != local_input_ch) {
-				logi("skip this ep... ch is not matched\n");
-				logi("target_ch(%d), input_ch(%d)\n",
-					target_ch, local_input_ch);
+				logi(vdev->vdev.dev,
+				     "skip this ep... ch is not matched\n");
+				logi(vdev->vdev.dev,
+				     "target_ch(%d), input_ch(%d)\n",
+				     target_ch, local_input_ch);
 				of_node_put(remote_dev);
 				of_node_put(remote_ep);
 				continue;
@@ -502,13 +517,15 @@ int tccvin_init_subdevices(struct tccvin_device *vdev)
 
 	tccvin_traversal_subdevices(vdev, vdev->pdev->dev.of_node, -1);
 
-	logi("the nubmer of async subdevices : %d\n", vdev->num_asd);
+	logi(vdev->vdev.dev,
+	     "the nubmer of async subdevices : %d\n", vdev->num_asd);
 	if (vdev->num_asd <= 0) {
-		logi("Nothing to register\n");
+		logi(vdev->vdev.dev, "Nothing to register\n");
 		goto end;
 	}
 
-	logd("the num of subdevs to be registered: %d\n", vdev->num_asd);
+	logd(vdev->vdev.dev,
+	     "the num of subdevs to be registered: %d\n", vdev->num_asd);
 	notifier->num_subdevs	= vdev->num_asd;
 	notifier->subdevs	= vdev->async_subdevs;
 	notifier->bound		= tccvin_async_bound;
@@ -517,12 +534,14 @@ int tccvin_init_subdevices(struct tccvin_device *vdev)
 	ret = v4l2_async_notifier_register(vdev->stream->vdev.v4l2_dev,
 		notifier);
 	if (ret < 0) {
-		loge("Error registering async notifier for tccvin\n");
+		loge(vdev->vdev.dev,
+		     "Error registering async notifier for tccvin\n");
 		ret = -EINVAL;
 		goto end;
 	}
 
-	logi("Succeed to register async notifier for tccvin\n");
+	logi(vdev->vdev.dev,
+	     "Succeed to register async notifier for tccvin\n");
 
 end:
 	return ret;
@@ -539,7 +558,8 @@ static int tccvin_core_probe(struct platform_device *pdev)
 
 	/* Get the index from its alias */
 	pdev->id = of_alias_get_id(pdev->dev.of_node, "videoinput");
-	logd("Platform Device index: %d, name: %s\n", pdev->id, pdev->name);
+	logd(&pdev->dev,
+	     "Platform Device index: %d, name: %s\n", pdev->id, pdev->name);
 
 	/* Allocate memory for the device and initialize it. */
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
@@ -585,7 +605,7 @@ static int tccvin_core_probe(struct platform_device *pdev)
 
 	/* Parse the Video Class control descriptor. */
 	if (tccvin_parse_control(dev) < 0) {
-		loge("Unable to parse tccvin descriptors.\n");
+		loge(&pdev->dev, "Unable to parse tccvin descriptors.\n");
 		goto e_tccvin_unregister_video;
 	}
 
