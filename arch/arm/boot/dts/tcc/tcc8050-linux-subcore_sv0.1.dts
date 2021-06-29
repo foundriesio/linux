@@ -2243,14 +2243,13 @@
 		mbox-id = TCC_MBOX_POWER_ID;
 	};
 
-        tcc-gpio-sample {
-                compatible = "gpio-sample";
-                leble = "TCC GPIO";
-                /*EDGE_RISING : 0, EDGE_FALLING : 1, EDGE_BOTH : 2,
-                LEVEL_HIGH : 3, LEVEL_LOW : 4*/
-                irq-type = <2>;
-                gpios = <&gpa 3 0>;
-        };
+	tcc-gpio-sample {
+		compatible = "gpio-sample";
+		leble = "TCC GPIO";
+		interrupt-parent = <&gpa>;
+		interrupts = <1 IRQ_TYPE_EDGE_BOTH>;
+		gpios = <&gpa 1 0>;
+	};
 
 	pinctrl: pinctrl {
 		compatible = "telechips,tcc-pinctrl";

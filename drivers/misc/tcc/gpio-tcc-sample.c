@@ -1,21 +1,7 @@
-/****************************************************************************
- * Copyright (C) 2018 Telechips Inc.
- *
- * Author: Jaeyoung Park <dwayne.park@telechips.com>
- *
- * This program is free software; you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA 02111-1307 USA
- ****************************************************************************/
-
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/fs.h>
@@ -58,7 +44,6 @@
 #endif
 
 
-extern int tcc_irq_get_reverse(int irq);
 extern int tcc_gpio_config(unsigned, unsigned);
 
 struct gpio_data {
@@ -222,7 +207,6 @@ gpio_sample_get_devtree_pdata(struct device *dev)
 	if (!node)
 		return ERR_PTR(-ENODEV);
 
-
 	pdata = devm_kzalloc(dev,
 			sizeof(*pdata) + sizeof(*gdata),
 			GFP_KERNEL);
@@ -231,7 +215,6 @@ gpio_sample_get_devtree_pdata(struct device *dev)
 		return ERR_PTR(-ENOMEM);
 
 	pdata->gdata = gdata;
-
 
 	gdata->gpio = of_get_gpio_flags(node, 0, &flags); //get gpio from device tree
 	if (gdata->gpio < 0) {
@@ -250,9 +233,7 @@ gpio_sample_get_devtree_pdata(struct device *dev)
 		return ERR_PTR(-EINVAL);
 	}
 
-
 	gdata->desc = of_get_property(node, "label", NULL); //get label from device tree
-	gdata->irq_type =  be32_to_cpup(of_get_property(node, "irq-type", NULL));
 
 	return pdata;
 }
@@ -280,7 +261,7 @@ gpio_sample_get_devtree_pdata(struct device *dev)
 
 static irqreturn_t gpio_sample_isr(int irq, void *dev)
 {
-        struct gpio_button_data *pdata = dev_get_platdata(dev);
+        //struct gpio_button_data *pdata = dev_get_platdata(dev);
 
 	debug_gpio("gpio sample interrupt");
 
@@ -296,10 +277,9 @@ static int gpio_sample_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct gpio_sample_platform_data *pdata = dev_get_platdata(dev);
 	//struct gpio_struct *gpio_desc;
-	unsigned long irqflags;
 	irq_handler_t isr;
-	int irq=0, rev_irq=0;
-	int irq_type=0;
+	unsigned long irq_type = 0;
+	int irq = 0;
 	int error;
 
 	if(!pdata) {
@@ -316,9 +296,6 @@ static int gpio_sample_probe(struct platform_device *pdev)
 	}
 
 	pdata->gdata->irq_enable=0;
-	irq_type = pdata->gdata->irq_type;
-
-	debug_gpio("irq type : %d\n", irq_type);
 
 	error = gpio_request(pdata->gdata->gpio, "sample_gpio"); 
 
@@ -329,81 +306,51 @@ static int gpio_sample_probe(struct platform_device *pdev)
 //set irq
 
 	isr = gpio_sample_isr;
-	irq = gpio_to_irq(pdata->gdata->gpio); // get irq number
+	irq = platform_get_irq(pdev, 0);
+	irq_type = irq_get_trigger_type(irq);
+
+	if(irq == 0) {
+	    debug_gpio("%s: irq null\n", __func__);
+	    return -EINVAL;
+	}
+
 	debug_gpio("############################################irq : %d##################################################", irq);
 	if(irq < 0)
 		goto err_remove_group;
 
-	if(irq_type == GPIO_INT_EDGE_RISING)
-	{
-		irq_set_status_flags(irq, IRQ_NOAUTOEN);
+	irq_set_status_flags(irq, IRQ_NOAUTOEN);
 
-		pdata->gdata->irq=irq;
-
-		irqflags = IRQ_TYPE_EDGE_RISING; // rising edge
-
-		error = request_any_context_irq(irq, isr, irqflags, "sample_gpio_interrupt", dev); // 1st : irq number, 2nd : interrupt service routine, 3rd : irq type(falling, rising and both), 4th : name, 5th : parameter to isr
-
-		enable_irq(irq);
+	if ((irq_type == IRQF_TRIGGER_RISING)||
+		(irq_type == IRQF_TRIGGER_FALLING)||
+		(irq_type == (IRQF_TRIGGER_RISING|IRQF_TRIGGER_FALLING))) {
+		debug_gpio("%s:flag edge %lu\n", __func__, irq_type);
+	// 1st : irq number, 2nd : interrupt service routine,
+	// 3rd : irq type(if '0', default type at device tree node is used),
+	// 4th : name, 5th : parameter to isr.
+		error = request_any_context_irq(irq, isr, 0,
+			    "sample_gpio_interrupt", dev);
+	} else if (irq_type == IRQF_TRIGGER_HIGH) {
+		debug_gpio("%s:flag high %lu\n", __func__, irq_type);
+	// 1st : irq number, 2nd : primary handler(should be NULL),
+	// 3rd : thread handler,
+	// 4th : irq type,
+	// 5th : name, 6th : parameter to isr.
+		error = request_threaded_irq(irq, NULL, isr,
+			IRQF_TRIGGER_HIGH|IRQF_ONESHOT,
+			    "sample_gpio_interrupt", dev);
+	} else if (irq_type == IRQF_TRIGGER_LOW) {
+		debug_gpio("%s:flag low %lu\n", __func__, irq_type);
+	// 1st : irq number, 2nd : primary handler(should be NULL),
+	// 3rd : thread handler,
+	// 4th : irq type,
+	// 5th : name, 6th : parameter to isr.
+		error = request_threaded_irq(irq, NULL, isr,
+			IRQF_TRIGGER_LOW|IRQF_ONESHOT,
+			    "sample_gpio_interrupt", dev);
 	}
-	else if(irq_type == GPIO_INT_EDGE_FALLING)
-	{
-		irq_set_status_flags(irq, IRQ_NOAUTOEN);
-
-		pdata->gdata->irq=irq;
-
-		irqflags = IRQ_TYPE_EDGE_FALLING; // falling edge
-
-		error = request_any_context_irq(irq, isr, irqflags, "sample_gpio_interrupt", dev); // 1st : irq number, 2nd : interrupt service routine, 3rd : irq type(falling, rising and both), 4th : name, 5th : parameter to isr
-
-		enable_irq(irq);
-	}
-	else if(irq_type == GPIO_INT_EDGE_BOTH)
-	{
-		rev_irq = tcc_irq_get_reverse(irq);
-
-		irq_set_status_flags(irq, IRQ_NOAUTOEN);
-		irq_set_status_flags(rev_irq, IRQ_NOAUTOEN);
-
-		pdata->gdata->irq=irq;
-
-		irqflags = IRQ_TYPE_EDGE_BOTH; // both edge
-
-		error = request_any_context_irq(irq, isr, irqflags, "sample_gpio_interrupt", dev); // 1st : irq number, 2nd : interrupt service routine, 3rd : irq type(falling, rising and both), 4th : name, 5th : parameter to isr
 
 
-		enable_irq(irq);
-		enable_irq(rev_irq);
-	}
-	else if(irq_type == GPIO_INT_LEVEL_HIGH)
-	{
-		irq_set_status_flags(irq, IRQ_NOAUTOEN);
-
-		pdata->gdata->irq=irq;
-
-		irqflags = IRQ_TYPE_LEVEL_HIGH; // level high
-
-		error = devm_request_irq(dev, irq, isr, irqflags, "sample_gpio_interrupt", dev);
-
-		enable_irq(irq);
-	}
-	else if(irq_type == GPIO_INT_LEVEL_LOW)
-	{
-		irq_set_status_flags(irq, IRQ_NOAUTOEN);
-
-		pdata->gdata->irq=irq;
-
-		irqflags = IRQ_TYPE_LEVEL_LOW; // level low
-
-		error = devm_request_irq(dev, irq, isr, irqflags, "sample_gpio_interrupt", dev);
-
-		enable_irq(irq);
-	}
-	else
-	{
-		dev_err(dev, "interrupt type is not defined\n");
-		return -EINVAL;
-	}
+	enable_irq(irq);
 
         if (error) {
                 dev_err(dev, "Unable requests irq, error: %d\n",
