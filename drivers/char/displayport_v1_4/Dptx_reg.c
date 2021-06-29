@@ -1,52 +1,80 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) Telechips Inc.
- */
+ * Copyright (c) 2016 Synopsys, Inc.
+ *
+ * Synopsys DP TX Linux Software Driver and documentation (hereinafter,
+ * "Software") is an Unsupported proprietary work of Synopsys, Inc. unless
+ * otherwise expressly agreed to in writing between Synopsys and you.
+ *
+ * The Software IS NOT an item of Licensed Software or Licensed Product under
+ * any End User Software License Agreement or Agreement for Licensed Product
+ * with Synopsys or any supplement thereto. You are permitted to use and
+ * redistribute this Software in source and binary forms, with or without
+ * modification, provided that redistributions of source code must retain this
+ * notice. You may not view, use, disclose, copy or distribute this file or
+ * any information contained herein except pursuant to this license grant from
+ * Synopsys. If you do not agree with this notice, including the disclaimer
+ * below, then you are not authorized to use the Software.
+ *
+ * THIS SOFTWARE IS BEING DISTRIBUTED BY SYNOPSYS SOLELY ON AN "AS IS" BASIS
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE HEREBY DISCLAIMED. IN NO EVENT SHALL SYNOPSYS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+ * DAMAGE.
+*/
 
-#include <asm/io.h>
+/*
+* Modified by Telechips Inc.
+*/
+
+#include <linux/io.h>
 
 #include "Dptx_v14.h"
 #include "Dptx_reg.h"
 #include "Dptx_dbg.h"
 
 
-//#define ENABLE_REG_RW_DBG
-
-static u32 __dptx_readl( struct Dptx_Params *pstDptx, u32 uiOffset )
+static u32 __dptx_readl(struct Dptx_Params *pstDptx, u32 uiOffset)
 {
-	u32 uiReadData = __raw_readl( pstDptx->pioDPLink_BaseAddr + uiOffset );
+	u32 uiReadData = __raw_readl(pstDptx->pioDPLink_BaseAddr + uiOffset);
 
 	return uiReadData;
 }
 
-static void __dptx_writel( struct Dptx_Params *pstDptx, u32 uiOffset, u32 uiData )
+static void __dptx_writel(struct Dptx_Params *pstDptx, u32 uiOffset, u32 uiData)
 {
-	__raw_writel( uiData, ( pstDptx->pioDPLink_BaseAddr + uiOffset ));
+	__raw_writel(uiData, (pstDptx->pioDPLink_BaseAddr + uiOffset));
 }
 
-u32 Dptx_Reg_Readl( struct Dptx_Params *pstDptx, u32 uiOffset )
+u32 Dptx_Reg_Readl(struct Dptx_Params *pstDptx, u32 uiOffset)
 {
 	u32			uiReadData;
-	
-	uiReadData = __dptx_readl( pstDptx, uiOffset );
 
-	return (uiReadData);
-}
+	uiReadData = __dptx_readl(pstDptx, uiOffset);
 
-void Dptx_Reg_Writel( struct Dptx_Params *pstDptx, u32 uiOffset, u32 uiData )
-{
-	__dptx_writel( pstDptx, uiOffset, uiData );
-}
-
-u32 Dptx_Reg_Direct_Read( volatile void __iomem *Reg )
-{
-	u32 uiReadData = __raw_readl( Reg );
-	
 	return uiReadData;
 }
 
-void Dptx_Reg_Direct_Write( volatile void __iomem *Reg, u32 uiData )
+void Dptx_Reg_Writel(struct Dptx_Params *pstDptx, u32 uiOffset, u32 uiData)
 {
-	__raw_writel( uiData, Reg );
+	__dptx_writel(pstDptx, uiOffset, uiData);
+}
+
+u32 Dptx_Reg_Direct_Read(void __iomem *Reg)
+
+{
+	u32 uiReadData = __raw_readl(Reg);
+
+	return uiReadData;
+}
+
+void Dptx_Reg_Direct_Write(void __iomem *Reg, u32 uiData)
+{
+	__raw_writel(uiData, Reg);
 }
 

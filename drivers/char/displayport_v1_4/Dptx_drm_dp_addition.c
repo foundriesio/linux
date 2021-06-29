@@ -20,19 +20,9 @@
  * OF THIS SOFTWARE.
  */
 
-/*******************************************************************************
-
-
-*   Modified by Telechips Inc.
-
-
-*   Modified date :
-
-
-*   Description :
-
-
-*******************************************************************************/
+/*
+* Modified by Telechips Inc.
+*/
 
 #include <linux/types.h>
 
@@ -42,12 +32,12 @@
 #include "Dptx_dbg.h"
 
 
-static u8 drm_addition_get_link_status( const u8 link_status[DP_LINK_STATUS_SIZE], int iDPCD_Address )
+static u8 drm_addition_get_link_status(const u8 link_status[DP_LINK_STATUS_SIZE], int iDPCD_Address)
 {
 	return link_status[iDPCD_Address - DP_LANE0_1_STATUS];
 }
 
-static u8 drm_addition_get_msg_data_crc4( const uint8_t *data, u8 number_of_bytes )
+static u8 drm_addition_get_msg_data_crc4(const uint8_t *data, u8 number_of_bytes)
 {
 	u8 bitmask = 0x80;
 	u8 bitshift = 7;
@@ -81,103 +71,83 @@ static u8 drm_addition_get_msg_data_crc4( const uint8_t *data, u8 number_of_byte
 	return remainder & 0xff;
 }
 
-/*
- *	DP_LANE0_1_STATUS -> Lane 0 and Lan 1 Status, DP_LANE2_3_STATUS -> Lane 2 and Lan 3 Status
- */
-u8 Drm_Addition_Get_Lane_Status( const u8 link_status[DP_LINK_STATUS_SIZE],	int iLane_Index )
+u8 Drm_Addition_Get_Lane_Status(const u8 link_status[DP_LINK_STATUS_SIZE], int iLane_Index)
 {
-	int			iDPCD_Address, iDPCP_LaneX_Status_Offset;
-	u8			ucDPCD_LaneX_X_Status;
+	int iDPCD_Address, iDPCP_LaneX_Status_Offset;
+	u8 ucDPCD_LaneX_X_Status;
 
-	iDPCD_Address				= ( DP_LANE0_1_STATUS + ( iLane_Index >> 1 ) );	/* Lane 0 & 1 -> 00202 + 0 <-> Lane 2 & 3 -> 00202 + 1 */
-	ucDPCD_LaneX_X_Status		= drm_addition_get_link_status( link_status, iDPCD_Address );
-	iDPCP_LaneX_Status_Offset	= ( iLane_Index & 1 ) * 4;		/* Lane 0 & 1 -> [00202]Bit0 & Bit4, Lane 2 & 3 -> [00203]Bit0 & Bit4 */
+	iDPCD_Address = (DP_LANE0_1_STATUS + (iLane_Index >> 1));
+	ucDPCD_LaneX_X_Status = drm_addition_get_link_status(link_status, iDPCD_Address);
+	iDPCP_LaneX_Status_Offset = (iLane_Index & 1) * 4;
 
-	return ( ucDPCD_LaneX_X_Status >> iDPCP_LaneX_Status_Offset ) & 0xf;
+	return (ucDPCD_LaneX_X_Status >> iDPCP_LaneX_Status_Offset) & 0xf;
 }
 
-
-bool Drm_Addition_Get_Clock_Recovery_Status( const u8 link_status[DP_LINK_STATUS_SIZE],			      int iNumOfLanes )
+bool Drm_Addition_Get_Clock_Recovery_Status(const u_int8_t link_status[DP_LINK_STATUS_SIZE], int iNumOfLanes)
 {
-	u8			ucLaneX_Status;
-	int			iLane_Index;
+	u8 ucLaneX_Status;
+	int iLane_Index;
 
-	for( iLane_Index = 0; iLane_Index < iNumOfLanes; iLane_Index++ ) 
-	{
-		ucLaneX_Status = Drm_Addition_Get_Lane_Status( link_status, iLane_Index );
-		if(( ucLaneX_Status & DP_LANE_CR_DONE ) == 0 )
-		{
+	for (iLane_Index = 0; iLane_Index < iNumOfLanes; iLane_Index++) {
+		ucLaneX_Status = Drm_Addition_Get_Lane_Status(link_status, iLane_Index);
+		if ((ucLaneX_Status & DP_LANE_CR_DONE) == 0)
 			return false;
-		}
 	}
 	return true;
 }
 
-bool Drm_Addition_Get_Channel_EQ_Status( const u8 link_status[DP_LINK_STATUS_SIZE],			  int iNumOfLanes )
+bool Drm_Addition_Get_Channel_EQ_Status(const u_int8_t link_status[DP_LINK_STATUS_SIZE], int iNumOfLanes)
 {
-	u8			ucDPCD_Lane_Align_Status, ucLaneX_Status;
-	int			iLane_Index;
+	u8 ucDPCD_Lane_Align_Status, ucLaneX_Status;
+	int iLane_Index;
 
-	ucDPCD_Lane_Align_Status = drm_addition_get_link_status( link_status, DP_LANE_ALIGN_STATUS_UPDATED );
-	if( ( ucDPCD_Lane_Align_Status & DP_INTERLANE_ALIGN_DONE ) == 0 )
-	{
+	ucDPCD_Lane_Align_Status = drm_addition_get_link_status(link_status, DP_LANE_ALIGN_STATUS_UPDATED);
+	if ((ucDPCD_Lane_Align_Status & DP_INTERLANE_ALIGN_DONE) == 0)
 		return false;
-	}
 
-	for( iLane_Index = 0; iLane_Index < iNumOfLanes; iLane_Index++ ) 
-	{
-		ucLaneX_Status = Drm_Addition_Get_Lane_Status( link_status, iLane_Index );
-		if( ( ucLaneX_Status & DP_CHANNEL_EQ_BITS ) != DP_CHANNEL_EQ_BITS )	/* Check if CR, EQ or SYMBOL is not locked */
-		{
+	for (iLane_Index = 0; iLane_Index < iNumOfLanes; iLane_Index++) {
+		ucLaneX_Status = Drm_Addition_Get_Lane_Status(link_status, iLane_Index);
+		if ((ucLaneX_Status & DP_CHANNEL_EQ_BITS) != DP_CHANNEL_EQ_BITS)
 			return false;
-		}
 	}
 	return true;
 }
 
-/**
- * drm_dp_calc_pbn_mode() - Calculate the PBN for a mode.
- * @clock: dot clock for the mode
- * @bpp: bpp for the mode.
- *
- * This uses the formula in the spec to calculate the PBN value for a mode.
- */
-int Drm_Addition_Calculate_PBN_mode( int clock, int bpp )
+int Drm_Addition_Calculate_PBN_mode(int clock, int bpp)
 {
-	fixed20_12		pix_bw;
-	fixed20_12		fbpp;
-	fixed20_12		result;
-	fixed20_12		margin, tmp;
-	u32				res;
+	fixed20_12 pix_bw;
+	fixed20_12 fbpp;
+	fixed20_12 result;
+	fixed20_12 margin, tmp;
+	u32 res;
 
-	pix_bw.full	= dfixed_const( clock );
-	fbpp.full	= dfixed_const( bpp );
-	tmp.full	= dfixed_const( 8 );
-	fbpp.full	= dfixed_div( fbpp, tmp );
+	pix_bw.full	= dfixed_const(clock);
+	fbpp.full	= dfixed_const(bpp);
+	tmp.full	= dfixed_const(8);
+	fbpp.full	= dfixed_div(fbpp, tmp);
 
-	result.full = dfixed_mul( pix_bw, fbpp );
-	margin.full = dfixed_const( 54 );
-	tmp.full	= dfixed_const( 64 );
-	margin.full = dfixed_div( margin, tmp );
-	result.full = dfixed_div( result, margin );
+	result.full = dfixed_mul(pix_bw, fbpp);
+	margin.full = dfixed_const(54);
+	tmp.full	= dfixed_const(64);
+	margin.full = dfixed_div(margin, tmp);
+	result.full = dfixed_div(result, margin);
 
-	margin.full = dfixed_const( 1006 );
-	tmp.full	= dfixed_const( 1000 );
-	margin.full = dfixed_div( margin, tmp );
-	result.full = dfixed_mul( result, margin );
+	margin.full = dfixed_const(1006);
+	tmp.full	= dfixed_const(1000);
+	margin.full = dfixed_div(margin, tmp);
+	result.full = dfixed_mul(result, margin);
 
-	result.full = dfixed_div( result, tmp );
-	result.full = dfixed_ceil( result );
-	
-	res			= dfixed_trunc( result );
+	result.full = dfixed_div(result, tmp);
+	result.full = dfixed_ceil(result);
+
+	res			= dfixed_trunc(result);
 
 	return res;
 }
+EXPORT_SYMBOL(Drm_Addition_Calculate_PBN_mode);
 
-EXPORT_SYMBOL( Drm_Addition_Calculate_PBN_mode );
 
-
-int32_t Drm_Addition_Parse_Sideband_Link_Address( struct drm_dp_sideband_msg_rx *raw, 					           struct drm_dp_sideband_msg_reply_body *repmsg )
+int32_t Drm_Addition_Parse_Sideband_Link_Address(struct drm_dp_sideband_msg_rx *raw, struct drm_dp_sideband_msg_reply_body *repmsg)
 {
 	int idx = 1;
 	int i;
@@ -229,12 +199,7 @@ fail_len:
 	return DPTX_RETURN_ENOENT;
 }
 
-
-
-
-
-
-static u8 drm_addition_get_msg_header_crc4( const uint8_t *data, size_t num_nibbles )
+static u8 drm_addition_get_msg_header_crc4(const uint8_t *data, size_t num_nibbles)
 {
 	u8 bitmask = 0x80;
 	u8 bitshift = 7;
@@ -268,15 +233,15 @@ static u8 drm_addition_get_msg_header_crc4( const uint8_t *data, size_t num_nibb
 	return remainder;
 }
 
-void Drm_Addition_Encode_SideBand_Msg_CRC( u8 *msg, u8 len )
+void Drm_Addition_Encode_SideBand_Msg_CRC(u8 *msg, u8 len)
 {
 	u8		crc4;
 
-	crc4 = drm_addition_get_msg_data_crc4( msg, len );
+	crc4 = drm_addition_get_msg_data_crc4(msg, len);
 	msg[len] = crc4;
 }
 
-void Drm_Addition_Encode_Sideband_Msg_Hdr( struct drm_dp_sideband_msg_hdr *hdr,    				   u8 *buf, int *len )
+void Drm_Addition_Encode_Sideband_Msg_Hdr(struct drm_dp_sideband_msg_hdr *hdr, u_int8_t *buf, int *len)
 {
 	int idx = 0;
 	int i;
@@ -293,7 +258,7 @@ void Drm_Addition_Encode_Sideband_Msg_Hdr( struct drm_dp_sideband_msg_hdr *hdr, 
 	*len = idx;
 }
 
-int32_t Drm_Addition_Decode_Sideband_Msg_Hdr( struct drm_dp_sideband_msg_hdr *hdr, 					   u8 *buf, int buflen, u8 *hdrlen )
+int32_t Drm_Addition_Decode_Sideband_Msg_Hdr(struct drm_dp_sideband_msg_hdr *hdr, u_int8_t *buf, int buflen, u_int8_t *hdrlen)
 {
 	u8 crc4;
 	u8 len;
@@ -330,7 +295,7 @@ int32_t Drm_Addition_Decode_Sideband_Msg_Hdr( struct drm_dp_sideband_msg_hdr *hd
 	return DPTX_RETURN_NO_ERROR;
 }
 
-void Drm_Addition_Parse_Sideband_Connection_Status_Notify( struct drm_dp_sideband_msg_rx *raw,							         struct drm_dp_sideband_msg_req_body *msg )
+void Drm_Addition_Parse_Sideband_Connection_Status_Notify(struct drm_dp_sideband_msg_rx *raw, struct drm_dp_sideband_msg_req_body *msg)
 {
 	int idx = 1;
 
@@ -348,29 +313,23 @@ void Drm_Addition_Parse_Sideband_Connection_Status_Notify( struct drm_dp_sideban
 	idx++;
 }
 
-
-bool Drm_dp_tps3_supported( const u_int8_t dpcd[DP_RECEIVER_CAP_SIZE] )
+bool Drm_dp_tps3_supported(const u_int8_t dpcd[DP_RECEIVER_CAP_SIZE])
 {
-	return ( dpcd[DP_DPCD_REV] >= 0x12 ) && ( dpcd[DP_MAX_LANE_COUNT] & DP_TPS3_SUPPORTED );
+	return (dpcd[DP_DPCD_REV] >= 0x12) && (dpcd[DP_MAX_LANE_COUNT] & DP_TPS3_SUPPORTED);
 }
 
-bool Drm_dp_tps4_supported( const u_int8_t dpcd[DP_RECEIVER_CAP_SIZE] )
+bool Drm_dp_tps4_supported(const u_int8_t dpcd[DP_RECEIVER_CAP_SIZE])
 {
-	return ( dpcd[DP_DPCD_REV] >= 0x14) && ( dpcd[DP_MAX_DOWNSPREAD] & DP_TPS4_SUPPORTED );
+	return (dpcd[DP_DPCD_REV] >= 0x14) && (dpcd[DP_MAX_DOWNSPREAD] & DP_TPS4_SUPPORTED);
 }
 
-u8 Drm_dp_max_lane_count( const u_int8_t dpcd[DP_RECEIVER_CAP_SIZE] )
+u8	 Drm_dp_max_lane_count(const u_int8_t dpcd[DP_RECEIVER_CAP_SIZE])
 {
-	return ( dpcd[DP_MAX_LANE_COUNT] & DP_MAX_LANE_COUNT_MASK );
+	return (dpcd[DP_MAX_LANE_COUNT] & DP_MAX_LANE_COUNT_MASK);
 }
 
-bool Drm_dp_enhanced_frame_cap( const u_int8_t dpcd[DP_RECEIVER_CAP_SIZE] )
+bool Drm_dp_enhanced_frame_cap(const u_int8_t dpcd[DP_RECEIVER_CAP_SIZE])
 {
-	return ( dpcd[DP_DPCD_REV] >= 0x11 ) &&	( dpcd[DP_MAX_LANE_COUNT] & DP_ENHANCED_FRAME_CAP );
+	return (dpcd[DP_DPCD_REV] >= 0x11) && (dpcd[DP_MAX_LANE_COUNT] & DP_ENHANCED_FRAME_CAP);
 }
-
-
-
-
-
 

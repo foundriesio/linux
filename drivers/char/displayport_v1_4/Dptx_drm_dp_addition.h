@@ -28,19 +28,9 @@
  * DAMAGE.
  */
 
-/*******************************************************************************
-
-
-*   Modified by Telechips Inc.
-
-
-*   Modified date :
-
-
-*   Description :
-
-
-*******************************************************************************/
+/*
+* Modified by Telechips Inc.
+*/
 
 
 #ifndef __DRM_DP_ADDITIONS_H__
@@ -315,8 +305,7 @@
  * @buffer: pointer to a transmission or reception buffer
  * @size: size of @buffer
  */
-struct drm_dp_aux_msg 
-{
+struct drm_dp_aux_msg {
 	unsigned int		address;
 	u_int8_t			request;
 	u_int8_t			reply;
@@ -368,55 +357,6 @@ static inline u_int32_t dfixed_div(fixed20_12 A, fixed20_12 B)
 	tmp /= 2;
 	return lower_32_bits(tmp);
 }
-
-#if 0
-/**
- * div_u64_rem - unsigned 64bit divide with 32bit divisor with remainder
- *
- * This is commonly provided by 32bit archs to provide an optimized 64bit
- * divide.
- */
-static inline u_int64_t div_u64_rem( u_int64_t dividend, u_int32_t divisor, u_int32_t *remainder)
-{
-	*remainder = dividend % divisor;
-	return dividend / divisor;
-}
-
-/**
- * div_s64_rem - signed 64bit divide with 32bit divisor with remainder
- */
-static inline int64_t div_s64_rem(int64_t dividend, int32_t divisor, int32_t *remainder)
-{
-	*remainder = dividend % divisor;
-	return dividend / divisor;
-}
-
-/**
- * div64_u64_rem - unsigned 64bit divide with 64bit divisor and remainder
- */
-static inline u_int64_t div64_u64_rem(u_int64_t dividend, u_int64_t divisor, u_int64_t *remainder)
-{
-	*remainder = dividend % divisor;
-	return dividend / divisor;
-}
-
-/**
- * div64_u64 - unsigned 64bit divide with 64bit divisor
- */
-static inline u_int64_t div64_u64(u_int64_t dividend, u_int64_t divisor)
-{
-	return dividend / divisor;
-}
-
-/**
- * div64_s64 - signed 64bit divide with 64bit divisor
- */
-static inline int64_t div64_s64(int64_t dividend, int64_t divisor)
-{
-	return dividend / divisor;
-}
-
-#endif
 
 static inline int64_t drm_int2fixp(int a)
 {
@@ -533,13 +473,9 @@ static inline int64_t drm_fixp_exp(int64_t x)
 	return sum;
 }
 
-
-
-
 /*
  *		Mst additions - drm_dp_mst_helper.h
  */
- 
 /* this covers ENUM_RESOURCES, POWER_DOWN_PHY, POWER_UP_PHY */
 struct drm_dp_connection_status_notify {
 	u_int8_t	 guid[16];
@@ -610,11 +546,9 @@ struct drm_dp_remote_i2c_write {
 	u_int8_t *bytes;
 };
 
-struct drm_dp_sideband_msg_req_body 
-{
+struct drm_dp_sideband_msg_req_body {
 	u_int8_t req_type;
-	union ack_req 
-	{
+	union ack_req {
 		struct drm_dp_connection_status_notify		conn_stat;
 		struct drm_dp_port_number_req				port_num;
 		struct drm_dp_resource_status_notify		resource_stat;

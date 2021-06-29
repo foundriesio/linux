@@ -1,18 +1,8 @@
-/****************************************************************************
-Copyright (C) 2018 Telechips Inc.
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+* Copyright (C) Telechips Inc.
+*/
 
-This program is free software; you can redistribute it and/or modify it under the terms
-of the GNU General Public License as published by the Free Software Foundation;
-either version 2 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-Suite 330, Boston, MA 02111-1307 USA
-****************************************************************************/
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/delay.h>
@@ -39,86 +29,83 @@ Suite 330, Boston, MA 02111-1307 USA
 #include "Dptx_dbg.h"
 #include "Dptx_drm_dp_addition.h"
 
-extern void Hpd_Intr_CallBabck( u8 ucDP_Index, bool bHPD_State );
+extern void Hpd_Intr_CallBabck(u8 ucDP_Index, bool bHPD_State);
 
-static int32_t of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *pstOfNode, uint32_t *puiPeri0_PClk, uint32_t *puiPeri1_PClk, uint32_t *puiPeri2_PClk, uint32_t *puiPeri3_PClk )
+static int32_t of_parse_dp_dt(
+			struct Dptx_Params	*pstDptx,
+			struct device_node *pstOfNode,
+			uint32_t *puiPeri0_PClk,
+			uint32_t *puiPeri1_PClk,
+			uint32_t *puiPeri2_PClk,
+			uint32_t *puiPeri3_PClk)
 {
-	int32_t			iRetVal;
-	uint32_t		uiSerDes_Reset_STR, uiVCP_Id;
-	uint64_t		ulDispX_Peri_Clk;
-	struct clk		*DISP0_Peri_Clk, *DISP1_Peri_Clk, *DISP2_Peri_Clk, *DISP3_Peri_Clk;
-	
-	DISP0_Peri_Clk = of_clk_get_by_name( pstOfNode, "disp0-clk" );
-	if( DISP0_Peri_Clk == NULL ) 
-	{
-		dptx_err("Can't find DISP0 Peri clock \n");
-	}
+	int32_t		iRetVal;
+	uint32_t	uiSerDes_Reset_STR, uiVCP_Id;
+	uint64_t	ulDispX_Peri_Clk;
+	struct clk *DISP0_Peri_Clk, *DISP1_Peri_Clk;
+	struct clk *DISP2_Peri_Clk, *DISP3_Peri_Clk;
 
-	DISP1_Peri_Clk = of_clk_get_by_name( pstOfNode, "disp1-clk" );
-	if( DISP1_Peri_Clk == NULL ) 
-	{
-		dptx_err("Can't find DISP1 Peri clock \n");
-	}
+	DISP0_Peri_Clk = of_clk_get_by_name(pstOfNode, "disp0-clk");
+	if (DISP0_Peri_Clk == NULL)
+		dptx_err("Can't find DISP0 Peri clock\n");
 
-	DISP2_Peri_Clk = of_clk_get_by_name( pstOfNode, "disp2-clk" );
-	if( DISP0_Peri_Clk == NULL ) 
-	{
-		dptx_err("Can't find DISP2 Peri clock \n");
-	}
+	DISP1_Peri_Clk = of_clk_get_by_name(pstOfNode, "disp1-clk");
+	if (DISP1_Peri_Clk == NULL)
+		dptx_err("Can't find DISP1 Peri clock\n");
 
-	DISP3_Peri_Clk = of_clk_get_by_name( pstOfNode, "disp3-clk" );
-	if( DISP3_Peri_Clk == NULL ) 
-	{
-		dptx_err("Can't find DISP3 Peri clock \n");
-	}
+	DISP2_Peri_Clk = of_clk_get_by_name(pstOfNode, "disp2-clk");
+	if (DISP0_Peri_Clk == NULL)
+		dptx_err("Can't find DISP2 Peri clock\n");
 
-	ulDispX_Peri_Clk = clk_get_rate( DISP0_Peri_Clk );
-	*puiPeri0_PClk = (uint32_t)( ulDispX_Peri_Clk / (uint32_t)1000 );
+	DISP3_Peri_Clk = of_clk_get_by_name(pstOfNode, "disp3-clk");
+	if (DISP3_Peri_Clk == NULL)
+		dptx_err("Can't find DISP3 Peri clock\n");
 
-	ulDispX_Peri_Clk = clk_get_rate( DISP1_Peri_Clk );
-	*puiPeri1_PClk = (uint32_t)( ulDispX_Peri_Clk / (uint32_t)1000 );
+	ulDispX_Peri_Clk = clk_get_rate(DISP0_Peri_Clk);
+	*puiPeri0_PClk = (uint32_t)(ulDispX_Peri_Clk / (uint32_t)1000);
 
-	ulDispX_Peri_Clk = clk_get_rate( DISP2_Peri_Clk );
-	*puiPeri2_PClk = (uint32_t)( ulDispX_Peri_Clk / (uint32_t)1000 );
+	ulDispX_Peri_Clk = clk_get_rate(DISP1_Peri_Clk);
+	*puiPeri1_PClk = (uint32_t)(ulDispX_Peri_Clk / (uint32_t)1000);
 
-	ulDispX_Peri_Clk = clk_get_rate( DISP3_Peri_Clk );
-	*puiPeri3_PClk = (uint32_t)( ulDispX_Peri_Clk / (uint32_t)1000 );
+	ulDispX_Peri_Clk = clk_get_rate(DISP2_Peri_Clk);
+	*puiPeri2_PClk = (uint32_t)(ulDispX_Peri_Clk / (uint32_t)1000);
 
-	iRetVal = of_property_read_u32( pstOfNode, "serdes_reset_str", &uiSerDes_Reset_STR );
-	if( iRetVal < 0)
-	{
+	ulDispX_Peri_Clk = clk_get_rate(DISP3_Peri_Clk);
+	*puiPeri3_PClk = (uint32_t)(ulDispX_Peri_Clk / (uint32_t)1000);
+
+	iRetVal = of_property_read_u32(
+					pstOfNode,
+					"serdes_reset_str",
+					&uiSerDes_Reset_STR);
+	if (iRetVal < 0) {
 		dptx_err("Can't get SerDes reset option on STR.. set to 'On' by default");
 		uiSerDes_Reset_STR = (u32)1;
 	}
 	pstDptx->bSerDes_Reset_STR = (bool)uiSerDes_Reset_STR;
 
-	iRetVal = of_property_read_u32( pstOfNode, "vcp_id_1st_sink", &uiVCP_Id );
-	if( iRetVal < 0)
-	{
+	iRetVal = of_property_read_u32(pstOfNode, "vcp_id_1st_sink", &uiVCP_Id);
+	if (iRetVal < 0) {
 		dptx_err("Can't get 1st Sink VCP Id.. set to '1' by default");
 		uiVCP_Id = (u32)1;
 	}
 	pstDptx->aucVCP_Id[PHY_INPUT_STREAM_0] = (uint8_t)uiVCP_Id;
 
-	iRetVal = of_property_read_u32( pstOfNode, "vcp_id_2nd_sink", &uiVCP_Id );
-	if( iRetVal < 0)
-	{
+	iRetVal = of_property_read_u32(pstOfNode, "vcp_id_2nd_sink", &uiVCP_Id);
+	if (iRetVal < 0) {
 		dptx_err("Can't get 2nd Sink VCP Id.. set to '2' by default");
 		uiVCP_Id = (u32)2;
 	}
 	pstDptx->aucVCP_Id[PHY_INPUT_STREAM_1] = (uint8_t)uiVCP_Id;
 
-	iRetVal = of_property_read_u32( pstOfNode, "vcp_id_3rd_sink", &uiVCP_Id );
-	if( iRetVal < 0)
-	{
+	iRetVal = of_property_read_u32(pstOfNode, "vcp_id_3rd_sink", &uiVCP_Id);
+	if (iRetVal < 0) {
 		dptx_err("Can't get 3rd Sink VCP Id.. set to '3' by default");
 		uiVCP_Id = (u32)3;
 	}
 	pstDptx->aucVCP_Id[PHY_INPUT_STREAM_2] = (uint8_t)uiVCP_Id;
 
-	iRetVal = of_property_read_u32( pstOfNode, "vcp_id_4th_sink", &uiVCP_Id );
-	if( iRetVal < 0)
-	{
+	iRetVal = of_property_read_u32(pstOfNode, "vcp_id_4th_sink", &uiVCP_Id);
+	if (iRetVal < 0) {
 		dptx_err("Can't get 4th Sink VCP Id.. set to '4' by default");
 		uiVCP_Id = (u32)4;
 	}
@@ -127,7 +114,7 @@ static int32_t of_parse_dp_dt( struct Dptx_Params	*pstDptx, struct device_node *
 	return 0;
 }
 
-static int32_t Dpv14_Tx_Probe( struct platform_device *pdev)
+static int32_t Dpv14_Tx_Probe(struct platform_device *pdev)
 {
 	bool	 bRetVal;
 	uint8_t  ucHotPlugged;
@@ -142,16 +129,14 @@ static int32_t Dpv14_Tx_Probe( struct platform_device *pdev)
 	dptx_dbg("DP V1.4 driver ");
 	dptx_dbg("****************************************");
 
-	if( pdev->dev.of_node == NULL ) 
-	{
+	if (pdev->dev.of_node == NULL) {
 		dptx_err("Node wasn't found");
 		return -ENODEV;
 	}
 
-	pstDptx = devm_kzalloc( &pdev->dev, sizeof(*pstDptx), GFP_KERNEL );
-	if( pstDptx == NULL )
-	{
-		dptx_err("Could not allocated DP V1.4 TX Device");
+	pstDptx = devm_kzalloc(&pdev->dev, sizeof(*pstDptx), GFP_KERNEL);
+	if (pstDptx == NULL) {
+		dptx_err("pstDptx is NULL");
 		return -ENOMEM;
 	}
 
@@ -160,145 +145,189 @@ static int32_t Dpv14_Tx_Probe( struct platform_device *pdev)
 	pstDptx->pstParentDev = &pdev->dev;
 	pstDptx->pcDevice_Name = "DPTx_V14";
 
-	pstResource = platform_get_resource( pdev, IORESOURCE_MEM, 0 );
-	if( !pstResource ) 
-	{
+	pstResource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!pstResource) {
 		dptx_err("[%s:%d]No memory resource\n", __func__, __LINE__);
-		return -ENODEV; 
+		return -ENODEV;
 	}
 
-	pstDptx->pioDPLink_BaseAddr = devm_ioremap( &pdev->dev, pstResource->start, pstResource->end - pstResource->start );
-	if( pstDptx->pioDPLink_BaseAddr == NULL ) 
-	{
+	pstDptx->pioDPLink_BaseAddr =
+		devm_ioremap(&pdev->dev,
+					pstResource->start,
+					pstResource->end - pstResource->start);
+	if (pstDptx->pioDPLink_BaseAddr == NULL) {
 		dptx_err("Failed to map memory resource\n");
 		return -ENODEV;
 	}
 
-	pstResource = platform_get_resource( pdev, IORESOURCE_MEM, 1 );
-	if( !pstResource ) 
-	{
+	pstResource = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (!pstResource) {
 		dptx_err("[%s:%d]No memory resource\n", __func__, __LINE__);
-		return -ENODEV; 
+		return -ENODEV;
 	}
 
-	pstDptx->pioMIC_SubSystem_BaseAddr = devm_ioremap( &pdev->dev, pstResource->start, pstResource->end - pstResource->start );
-	if( pstDptx->pioMIC_SubSystem_BaseAddr == NULL ) 
-	{
+	pstDptx->pioMIC_SubSystem_BaseAddr =
+		devm_ioremap(&pdev->dev,
+					pstResource->start,
+					pstResource->end - pstResource->start);
+	if (pstDptx->pioMIC_SubSystem_BaseAddr == NULL) {
 		dptx_err("Failed to map memory resource\n");
 		return -ENODEV;
 	}
 
-	pstResource = platform_get_resource( pdev, IORESOURCE_MEM, 2 );
-	if( !pstResource ) 
-	{
+	pstResource = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	if (!pstResource) {
 		dptx_err("[%s:%d]No memory resource\n", __func__, __LINE__);
-		return ( -ENODEV );
+		return  -ENODEV;
 	}
 
-	pstDptx->pioPMU_BaseAddr = devm_ioremap( &pdev->dev, pstResource->start, pstResource->end - pstResource->start );
-	if( pstDptx->pioPMU_BaseAddr == NULL ) 
-	{
+	pstDptx->pioPMU_BaseAddr =
+		devm_ioremap(&pdev->dev,
+					pstResource->start,
+					pstResource->end - pstResource->start);
+	if (pstDptx->pioPMU_BaseAddr == NULL) {
 		dptx_err("Failed to map memory resource\n");
 		return -ENODEV;
 	}
 
-	pstDptx->uiHPD_IRQ = platform_get_irq( pdev, 0 );
-	if( pstDptx->uiHPD_IRQ < 0) 
-	{
+	pstDptx->uiHPD_IRQ = platform_get_irq(pdev, 0);
+	if (pstDptx->uiHPD_IRQ < 0) {
 		dptx_err("No IRQ\n");
 		return -ENODEV;
 	}
 
 #ifdef CONFIG_OF
-	of_parse_dp_dt( pstDptx, pdev->dev.of_node, &auiPeri_Pixel_Clock[PHY_INPUT_STREAM_0], &auiPeri_Pixel_Clock[PHY_INPUT_STREAM_1], &auiPeri_Pixel_Clock[PHY_INPUT_STREAM_2], &auiPeri_Pixel_Clock[PHY_INPUT_STREAM_3] );
+	of_parse_dp_dt(pstDptx,
+			pdev->dev.of_node,
+			&auiPeri_Pixel_Clock[PHY_INPUT_STREAM_0],
+			&auiPeri_Pixel_Clock[PHY_INPUT_STREAM_1],
+			&auiPeri_Pixel_Clock[PHY_INPUT_STREAM_2],
+			&auiPeri_Pixel_Clock[PHY_INPUT_STREAM_3]);
 #endif
 
-	platform_set_drvdata( pdev, pstDptx );
+	platform_set_drvdata(pdev, pstDptx);
 
-	Dptx_Platform_Set_Device_Handle( pstDptx );
+	Dptx_Platform_Set_Device_Handle(pstDptx);
 
-	iRetVal = Dptx_Platform_Init_Params( pstDptx, &pdev->dev );
-	if( iRetVal !=  DPTX_RETURN_NO_ERROR )
-	{
+	iRetVal = Dptx_Platform_Init_Params(pstDptx, &pdev->dev);
+	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		dptx_err("from Dptx_Platform_Init_Params()");
 		return -ENODEV;
 	}
 
-	iRetVal = Dptx_Core_Init_Params( pstDptx );
+	iRetVal = Dptx_Core_Init_Params(pstDptx);
 	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		dptx_err("from Dptx_Core_Init_Params()");
 		return -ENODEV;
 	}
-	
-	iRetVal = Dptx_Avgen_Init_Video_Params( pstDptx, auiPeri_Pixel_Clock );
-	if( iRetVal !=  DPTX_RETURN_NO_ERROR )
-	{
+
+	iRetVal = Dptx_Avgen_Init_Video_Params(pstDptx, auiPeri_Pixel_Clock);
+	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		dptx_err("from Dptx_Avgen_Init_Video_Params()");
 		return -ENODEV;
 	}
-	
-	mutex_init( &pstDptx->Mutex );
 
-	init_waitqueue_head( &pstDptx->WaitQ );
+	iRetVal = Dptx_Api_Init_Params();
+	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
+		dptx_err("from Dptx_Api_Init_Params()");
+		return -ENODEV;
+	}
 
-	atomic_set( &pstDptx->Sink_request, 0 );
-	atomic_set( &pstDptx->HPD_IRQ_State, 0 );
+	mutex_init(&pstDptx->Mutex);
 
-	Dptx_Core_Disable_Global_Intr( pstDptx );
+	init_waitqueue_head(&pstDptx->WaitQ);
 
-	iRetVal = devm_request_threaded_irq(	&pdev->dev,
-													pstDptx->uiHPD_IRQ,
-													Dptx_Intr_IRQ,
-													Dptx_Intr_Threaded_IRQ,
-													IRQF_SHARED | IRQ_LEVEL,
-													"Dpv14_Tx",
-													pstDptx );
-	if( iRetVal !=  DPTX_RETURN_NO_ERROR )
-	{
+	atomic_set(&pstDptx->Sink_request, 0);
+	atomic_set(&pstDptx->HPD_IRQ_State, 0);
+
+	Dptx_Core_Disable_Global_Intr(pstDptx);
+
+	iRetVal = devm_request_threaded_irq(
+				&pdev->dev,
+				pstDptx->uiHPD_IRQ,
+				Dptx_Intr_IRQ,
+				Dptx_Intr_Threaded_IRQ,
+				IRQF_SHARED | IRQ_LEVEL,
+				"Dpv14_Tx",
+				pstDptx);
+	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		dptx_err("from devm_request_threaded_irq()");
 		return -ENODEV;
 	}
 
-	iRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &ucHotPlugged );
-	if(iRetVal !=  DPTX_RETURN_NO_ERROR )
-	{
+	iRetVal = Dptx_Intr_Get_HotPlug_Status(pstDptx, &ucHotPlugged);
+	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
 		dptx_err("from Dptx_Intr_Get_HotPlug_Status()");
 		ucHotPlugged = (uint8_t)HPD_STATUS_UNPLUGGED;
 	}
 
-	pstDptx->eLast_HPDStatus = ( ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED ) ? HPD_STATUS_PLUGGED : HPD_STATUS_UNPLUGGED;
-	if( ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED )
-	{
-		Dptx_Intr_Get_Port_Composition( pstDptx, 0 );
-	}
+	pstDptx->eLast_HPDStatus =
+		(ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED) ?
+			HPD_STATUS_PLUGGED : HPD_STATUS_UNPLUGGED;
+
+	if (ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED)
+		Dptx_Intr_Get_Port_Composition(pstDptx, 0);
 
 	pstVideoParams = &pstDptx->stVideoParams;
 
 	bRetVal = Touch_Max968XX_update_reg(pstDptx);
-	if (bRetVal) {
+	if (bRetVal)
 		dptx_err("failed to update Ser/Des Register for Touch");
-	}
 
-	dptx_notice("TCC-DPTX-V %d.%d.%d", TCC_DPTX_DRV_MAJOR_VER, TCC_DPTX_DRV_MINOR_VER, TCC_DPTX_DRV_SUBTITLE_VER );
-	dptx_notice("	TCC805X %s ", ( pstDptx->uiTCC805X_Revision == TCC805X_REVISION_CS ) ? "CS":"ES");
-	dptx_notice("	Hot %s ", ( pstDptx->eLast_HPDStatus == HPD_STATUS_PLUGGED ) ? "Plugged":"Unplugged" );
-	dptx_notice("	%s mode, %d lanes, %s rate", pstDptx->bMultStreamTransport ? "MST":"SST", pstDptx->stDptxLink.ucNumOfLanes, 
-					pstDptx->ucMax_Rate == DPTX_PHYIF_CTRL_RATE_RBR ? "RBR":( pstDptx->ucMax_Rate == DPTX_PHYIF_CTRL_RATE_HBR ) ?  "HBR":( pstDptx->ucMax_Rate == DPTX_PHYIF_CTRL_RATE_HBR2 ) ? "HB2":"HBR3");
-	dptx_notice("	SerDes reset from STR is %s ", ( pstDptx->bSerDes_Reset_STR ) ? "On":"Off" );
-	dptx_notice("	PHY Lane is %s ", ( pstDptx->bPHY_Lane_Reswap ) ? "re-swapped":"not re-swapped");
-	dptx_notice("	SDM Bypass is %s ", ( pstDptx->bSDM_Bypass ) ? "On":"Off");
-	dptx_notice("	SRVC Bypass is %s ", ( pstDptx->bSRVC_Bypass ) ? "On":"Off");
-	dptx_notice("	VCP Id :  %d %d %d %d", pstDptx->aucVCP_Id[0], pstDptx->aucVCP_Id[1], pstDptx->aucVCP_Id[2], pstDptx->aucVCP_Id[3]);
+	dptx_notice("TCC-DPTX-V %d.%d.%d",
+		TCC_DPTX_DRV_MAJOR_VER,
+		TCC_DPTX_DRV_MINOR_VER,
+		TCC_DPTX_DRV_SUBTITLE_VER);
+	dptx_notice("	TCC805X %s ",
+		(pstDptx->uiTCC805X_Revision ==
+			TCC805X_REVISION_CS) ? "CS" : "ES");
+	dptx_notice("	Hot %s ",
+		(pstDptx->eLast_HPDStatus ==
+			HPD_STATUS_PLUGGED) ? "Plugged" : "Unplugged");
+	dptx_notice("	%s mode, %d lanes, %s rate",
+		pstDptx->bMultStreamTransport ? "MST" : "SST",
+		pstDptx->stDptxLink.ucNumOfLanes,
+		pstDptx->ucMax_Rate == DPTX_PHYIF_CTRL_RATE_RBR ? "RBR" :
+		(pstDptx->ucMax_Rate == DPTX_PHYIF_CTRL_RATE_HBR) ? "HBR" :
+		(pstDptx->ucMax_Rate == DPTX_PHYIF_CTRL_RATE_HBR2) ?
+			"HB2" : "HBR3");
+	dptx_notice("	SerDes reset from STR is %s ",
+		(pstDptx->bSerDes_Reset_STR) ? "On" : "Off");
+	dptx_notice("	PHY Lane is %s ",
+		(pstDptx->bPHY_Lane_Reswap) ? "re-swapped" : "not re-swapped");
+	dptx_notice("	SDM Bypass is %s ",
+		(pstDptx->bSDM_Bypass) ? "On" : "Off");
+	dptx_notice("	SRVC Bypass is %s ",
+		(pstDptx->bSRVC_Bypass) ? "On" : "Off");
+	dptx_notice("	VCP Id :  %d %d %d %d",
+		pstDptx->aucVCP_Id[0],
+		pstDptx->aucVCP_Id[1],
+		pstDptx->aucVCP_Id[2],
+		pstDptx->aucVCP_Id[3]);
 	dptx_notice("	%d streams enable -> Pixel encoding = %s, VIC = %d %d %d %d, PClk = %d %d %d %d",
-					pstDptx->ucNumOfStreams,
-					( pstVideoParams->ucPixel_Encoding == PIXEL_ENCODING_TYPE_RGB ) ? "RGB":( pstVideoParams->ucPixel_Encoding == PIXEL_ENCODING_TYPE_YCBCR422 ) ? "YCbCr422":"YCbCr444",
-					pstVideoParams->auiVideo_Code[0], pstVideoParams->auiVideo_Code[1], pstVideoParams->auiVideo_Code[2], pstVideoParams->auiVideo_Code[3],
-					pstVideoParams->uiPeri_Pixel_Clock[0], pstVideoParams->uiPeri_Pixel_Clock[1], pstVideoParams->uiPeri_Pixel_Clock[2], pstVideoParams->uiPeri_Pixel_Clock[3] );
+		pstDptx->ucNumOfStreams,
+		(pstVideoParams->ucPixel_Encoding ==
+			PIXEL_ENCODING_TYPE_RGB) ? "RGB" :
+		(pstVideoParams->ucPixel_Encoding ==
+			PIXEL_ENCODING_TYPE_YCBCR422) ? "YCbCr422" : "YCbCr444",
+		pstVideoParams->auiVideo_Code[0],
+		pstVideoParams->auiVideo_Code[1],
+		pstVideoParams->auiVideo_Code[2],
+		pstVideoParams->auiVideo_Code[3],
+		pstVideoParams->uiPeri_Pixel_Clock[0],
+		pstVideoParams->uiPeri_Pixel_Clock[1],
+		pstVideoParams->uiPeri_Pixel_Clock[2],
+		pstVideoParams->uiPeri_Pixel_Clock[3]);
 
-	Dptx_Intr_Register_HPD_Callback( pstDptx,	Hpd_Intr_CallBabck );
-	Dptx_Core_Enable_Global_Intr( pstDptx,	( DPTX_IEN_HPD | DPTX_IEN_HDCP | DPTX_IEN_SDP | DPTX_IEN_TYPE_C ) );
+	Dptx_Intr_Register_HPD_Callback(pstDptx, Hpd_Intr_CallBabck);
+	Dptx_Core_Enable_Global_Intr(
+			pstDptx,
+			(DPTX_IEN_HPD |
+			DPTX_IEN_HDCP |
+			DPTX_IEN_SDP |
+			DPTX_IEN_TYPE_C));
 
-	Dptx_Ext_Proc_Interface_Init( pstDptx );
+	Dptx_Ext_Proc_Interface_Init(pstDptx);
 
 	return DPTX_RETURN_NO_ERROR;
 }
@@ -308,52 +337,46 @@ static int Dpv14_Tx_Remove(struct platform_device *pstDev)
 {
 	int32_t	iRetVal;
 	struct Dptx_Params *pstDptx;
-	
+
 	dptx_dbg("");
 	dptx_dbg("****************************************");
-        dptx_dbg("Remove: DP V1.4 driver ");
-        dptx_dbg("****************************************");
+	dptx_dbg("Remove: DP V1.4 driver ");
+	dptx_dbg("****************************************");
 	dptx_dbg("");
 
-	pstDptx = platform_get_drvdata( pstDev );
-	
-	iRetVal = Dptx_Core_Deinit( pstDptx );
-	if(iRetVal != DPTX_RETURN_NO_ERROR) {
+	pstDptx = platform_get_drvdata(pstDev);
+
+	iRetVal = Dptx_Core_Deinit(pstDptx);
+	if (iRetVal != DPTX_RETURN_NO_ERROR)
 		dptx_err("from Dptx_Core_Deinit()");
-	}
 
-	iRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
-	if(iRetVal != DPTX_RETURN_NO_ERROR) {
+	iRetVal = Dptx_Intr_Handle_HotUnplug(pstDptx);
+	if (iRetVal != DPTX_RETURN_NO_ERROR)
 		dptx_err("from Dptx_Intr_Handle_HotUnplug()");
-	}
 
-	mutex_destroy( &pstDptx->Mutex );
+	mutex_destroy(&pstDptx->Mutex);
 
 	return DPTX_RETURN_NO_ERROR;
 }
 
-
-int Dpv14_Tx_Suspend_T( struct Dptx_Params	*pstDptx )
+int Dpv14_Tx_Suspend_T(struct Dptx_Params	*pstDptx)
 {
 	int32_t	iRetVal;
 
 	dptx_info("*** PM Suspend Test ***");
 
-	iRetVal = (int32_t)Dptx_Core_Deinit( pstDptx );
-	if(iRetVal != DPTX_RETURN_NO_ERROR) {
+	iRetVal = Dptx_Core_Deinit(pstDptx);
+	if (iRetVal != DPTX_RETURN_NO_ERROR)
 		dptx_err("from Dptx_Core_Deinit()");
-	}
 
-	iRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
-	if( iRetVal != DPTX_RETURN_NO_ERROR ) 
-	{
+	iRetVal = Dptx_Intr_Handle_HotUnplug(pstDptx);
+	if (iRetVal != DPTX_RETURN_NO_ERROR)
 		dptx_err("from Dptx_Intr_Handle_HotUnplug()");
-	}
 
 	return DPTX_RETURN_NO_ERROR;
 }
 
-int Dpv14_Tx_Resume_T( struct Dptx_Params	*pstDptx )
+int Dpv14_Tx_Resume_T(struct Dptx_Params *pstDptx)
 {
 	uint8_t ucHotPlugged, ucMSTAct_Flag = 0;
 	int32_t iRetVal;
@@ -363,124 +386,121 @@ int Dpv14_Tx_Resume_T( struct Dptx_Params	*pstDptx )
 
 	pstVideoParams = &pstDptx->stVideoParams;
 
-	dptx_info("Resume: Hot %s, HPD IRQ %d, SSC = %s, PClk %d %d %d %d \n",
-				( pstDptx->eLast_HPDStatus == HPD_STATUS_PLUGGED ) ? "Plugged":"Unplugged",
-				pstDptx->uiHPD_IRQ,
-				pstDptx->bSpreadSpectrum_Clock ? "On":"Off",
-				pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_0], pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_1],
-				pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_2], pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_3] );
+	dptx_info("Resume: Hot %s, HPD IRQ %d, SSC = %s, PClk %d %d %d %d\n",
+		(pstDptx->eLast_HPDStatus == HPD_STATUS_PLUGGED) ?
+		"Plugged":"Unplugged",
+		pstDptx->uiHPD_IRQ,
+		pstDptx->bSpreadSpectrum_Clock ? "On":"Off",
+		pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_0],
+		pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_1],
+		pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_2],
+		pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_3]);
 
-	if( pstDptx->bSerDes_Reset_STR )
-	{
-		Dptx_Max968XX_Reset( pstDptx );
-	}
+	if (pstDptx->bSerDes_Reset_STR)
+		Dptx_Max968XX_Reset(pstDptx);
 
-	Dptx_Platform_Set_PMU_ColdReset_Release( pstDptx );
-	Dptx_Platform_Set_APAccess_Mode( pstDptx );
+	Dptx_Platform_Set_PMU_ColdReset_Release(pstDptx);
+	Dptx_Platform_Set_APAccess_Mode(pstDptx);
 
 Re_Init_DP:
-	Dptx_Platform_Set_ClkPath_To_XIN( pstDptx );
+	Dptx_Platform_Set_ClkPath_To_XIN(pstDptx);
 
-	if( pstDptx->uiTCC805X_Revision == TCC805X_REVISION_CS )
-	{
-		Dptx_Platform_Set_PHY_StandardLane_PinConfig( pstDptx );
-		Dptx_Platform_Set_SDMBypass_Ctrl( pstDptx );
-		Dptx_Platform_Set_SRVCBypass_Ctrl( pstDptx );
-		Dptx_Platform_Set_MuxSelect( pstDptx );
+	if (pstDptx->uiTCC805X_Revision == TCC805X_REVISION_CS) {
+		Dptx_Platform_Set_PHY_StandardLane_PinConfig(pstDptx);
+		Dptx_Platform_Set_SDMBypass_Ctrl(pstDptx);
+		Dptx_Platform_Set_SRVCBypass_Ctrl(pstDptx);
+		Dptx_Platform_Set_MuxSelect(pstDptx);
 	}
 
-	iRetVal = Dptx_Platform_Init( pstDptx );
-	if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+	iRetVal = Dptx_Platform_Init(pstDptx);
+	if (iRetVal !=	DPTX_RETURN_NO_ERROR)
 		return -ENODEV;
-	}
 
-	iRetVal = Dptx_Core_Init( pstDptx );
-	if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+	iRetVal = Dptx_Core_Init(pstDptx);
+	if (iRetVal !=	DPTX_RETURN_NO_ERROR)
 		return -ENODEV;
-	}
 
-	iRetVal = Dptx_Intr_Get_HotPlug_Status( pstDptx, &ucHotPlugged );
-	if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+	iRetVal = Dptx_Intr_Get_HotPlug_Status(pstDptx, &ucHotPlugged);
+	if (iRetVal !=	DPTX_RETURN_NO_ERROR)
 		return -ENODEV;
-	}
 
 	pstDptx->eLast_HPDStatus = (enum HPD_Detection_Status)ucHotPlugged;
 
-	if( ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED )
-	{
-		iRetVal = Dptx_Link_Perform_BringUp( pstDptx, pstDptx->bMultStreamTransport );
-		if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+	if (ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED) {
+		iRetVal = Dptx_Link_Perform_BringUp(
+					pstDptx,
+					pstDptx->bMultStreamTransport);
+		if (iRetVal !=	DPTX_RETURN_NO_ERROR)
 			return -ENODEV;
-		}
-		
-		iRetVal = Dptx_Link_Perform_Training(pstDptx, pstDptx->ucMax_Rate, pstDptx->ucMax_Lanes );
-		if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
-			return -ENODEV;
-		}
 
-		if(pstDptx->bMultStreamTransport) {
-			iRetVal = Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, pstDptx->bSideBand_MSG_Supported );
-			if(iRetVal == DPTX_RETURN_MST_ACT_TIMEOUT) {
-				if(ucMSTAct_Flag == 0) {
+		iRetVal = Dptx_Link_Perform_Training(
+					pstDptx,
+					pstDptx->ucMax_Rate,
+					pstDptx->ucMax_Lanes);
+		if (iRetVal != DPTX_RETURN_NO_ERROR)
+			return -ENODEV;
+
+		if (pstDptx->bMultStreamTransport) {
+			iRetVal = Dptx_Ext_Set_Topology_Configuration(
+					pstDptx,
+					pstDptx->ucNumOfPorts,
+					pstDptx->bSideBand_MSG_Supported);
+			if (iRetVal == DPTX_RETURN_MST_ACT_TIMEOUT) {
+				if (ucMSTAct_Flag == 0) {
 					ucMSTAct_Flag = 1;
-					
-					dptx_info("\n==== Re-initialize DP Link === \n");
-					
-					iRetVal = (int32_t)Dptx_Core_Deinit( pstDptx );
-					if(iRetVal != DPTX_RETURN_NO_ERROR) {
-						return iRetVal;
-					}
 
-					iRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
-					if(iRetVal != DPTX_RETURN_NO_ERROR) {
+					dptx_info("\n==== Re-initialize DP Link ===\n");
+
+					iRetVal = Dptx_Core_Deinit(pstDptx);
+					if (iRetVal != DPTX_RETURN_NO_ERROR)
 						return iRetVal;
-					}
+
+					iRetVal = Dptx_Intr_Handle_HotUnplug(
+								pstDptx);
+					if (iRetVal != DPTX_RETURN_NO_ERROR)
+						return iRetVal;
 
 					goto Re_Init_DP;
-				}
-				else {
+				} else {
 					dptx_err("CCTL.ACT timeout...");
 				}
-			}
-			else if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+			} else if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
 				return -ENODEV;
 			}
 		}
 	}
 
 	return DPTX_RETURN_NO_ERROR;
+
 }
 
-
 #if defined(CONFIG_PM)
-static int Dpv14_Tx_Suspend( struct platform_device *pdev, pm_message_t state )
+static int Dpv14_Tx_Suspend(struct platform_device *pdev, pm_message_t state)
 {
 	int32_t	iRetVal;
 	struct Dptx_Params *pstDptx;
-	
+
 	dptx_dbg("");
 	dptx_dbg("****************************************");
 	dptx_dbg("PM Suspend: DP V1.4 driver ");
 	dptx_dbg("****************************************");
 	dptx_dbg("");
 
-	pstDptx = platform_get_drvdata( pdev );
-	
-	iRetVal = Dptx_Core_Deinit( pstDptx );
-	if(iRetVal != DPTX_RETURN_NO_ERROR) {
-		dptx_err("from Dptx_Core_Deinit()");
-	}
+	pstDptx = platform_get_drvdata(pdev);
 
-	iRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
-	if( iRetVal != DPTX_RETURN_NO_ERROR )
-	{
+	iRetVal = Dptx_Core_Deinit(pstDptx);
+	if (iRetVal != DPTX_RETURN_NO_ERROR)
+		dptx_err("from Dptx_Core_Deinit()");
+
+	iRetVal = Dptx_Intr_Handle_HotUnplug(
+				pstDptx);
+	if (iRetVal != DPTX_RETURN_NO_ERROR)
 		dptx_err("from Dptx_Intr_Handle_HotUnplug()");
-	}
 
 	return DPTX_RETURN_NO_ERROR;
 }
 
-static int Dpv14_Tx_Resume( struct platform_device *pdev )
+static int Dpv14_Tx_Resume(struct platform_device *pdev)
 {
 	uint8_t ucHotPlugged, ucMSTAct_Flag = 0;
 	int32_t	iRetVal;
@@ -493,95 +513,93 @@ static int Dpv14_Tx_Resume( struct platform_device *pdev )
 	dptx_dbg("****************************************");
 	dptx_dbg("");
 
-	pstDptx = platform_get_drvdata( pdev );
+	pstDptx = platform_get_drvdata(pdev);
 
 	pstVideoParams = &pstDptx->stVideoParams;
 
 	iRetVal = pinctrl_pm_select_default_state(&pdev->dev);
-	if(iRetVal) {
+	if (iRetVal)
 		dptx_err("from pinctrl_pm_select_default_state()");
-	}
 
-	dptx_info("Resume: Hot %s, HPD IRQ %d, SSC = %s, PClk %d %d %d %d \n", 
-				( pstDptx->eLast_HPDStatus == HPD_STATUS_PLUGGED ) ? "Plugged":"Unplugged", 
-				pstDptx->uiHPD_IRQ,
-				pstDptx->bSpreadSpectrum_Clock ? "On":"Off", 
-				pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_0], pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_1], 
-				pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_2], pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_3] );
+	dptx_info("Resume: Hot %s, HPD IRQ %d, SSC = %s, PClk %d %d %d %d\n",
+		(pstDptx->eLast_HPDStatus == HPD_STATUS_PLUGGED) ?
+		"Plugged":"Unplugged",
+		pstDptx->uiHPD_IRQ,
+		pstDptx->bSpreadSpectrum_Clock ? "On":"Off",
+		pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_0],
+		pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_1],
+		pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_2],
+		pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_3]);
 
-	if( pstDptx->bSerDes_Reset_STR ) 
-	{
-		Dptx_Max968XX_Reset( pstDptx );
-	}
+	if (pstDptx->bSerDes_Reset_STR)
+		Dptx_Max968XX_Reset(pstDptx);
 
-	Dptx_Platform_Set_PMU_ColdReset_Release( pstDptx );
-	Dptx_Platform_Set_APAccess_Mode( pstDptx );
+	Dptx_Platform_Set_PMU_ColdReset_Release(pstDptx);
+	Dptx_Platform_Set_APAccess_Mode(pstDptx);
 
 Re_Init_DP:
-	Dptx_Platform_Set_ClkPath_To_XIN( pstDptx );
+	Dptx_Platform_Set_ClkPath_To_XIN(pstDptx);
 
-	if(pstDptx->uiTCC805X_Revision == TCC805X_REVISION_CS) {
-		Dptx_Platform_Set_PHY_StandardLane_PinConfig( pstDptx );
-		Dptx_Platform_Set_SDMBypass_Ctrl( pstDptx );
-		Dptx_Platform_Set_SRVCBypass_Ctrl( pstDptx );
-		Dptx_Platform_Set_MuxSelect( pstDptx );
+	if (pstDptx->uiTCC805X_Revision == TCC805X_REVISION_CS) {
+		Dptx_Platform_Set_PHY_StandardLane_PinConfig(pstDptx);
+		Dptx_Platform_Set_SDMBypass_Ctrl(pstDptx);
+		Dptx_Platform_Set_SRVCBypass_Ctrl(pstDptx);
+		Dptx_Platform_Set_MuxSelect(pstDptx);
 	}
 
-	iRetVal = Dptx_Platform_Init( pstDptx );
-	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
+	iRetVal = Dptx_Platform_Init(pstDptx);
+	if (iRetVal !=  DPTX_RETURN_NO_ERROR)
 		return -ENODEV;
-	}
 
-	iRetVal = Dptx_Core_Init( pstDptx );
-	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
+	iRetVal = Dptx_Core_Init(pstDptx);
+	if (iRetVal !=  DPTX_RETURN_NO_ERROR)
 		return -ENODEV;
-	}
 
 	iRetVal = Dptx_Intr_Get_HotPlug_Status(pstDptx, &ucHotPlugged);
-	if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
+	if (iRetVal !=  DPTX_RETURN_NO_ERROR)
 		return -ENODEV;
-	}
 
 	pstDptx->eLast_HPDStatus = (enum HPD_Detection_Status)ucHotPlugged;
 
-	if( ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED )
-	{
-		iRetVal = Dptx_Link_Perform_BringUp( pstDptx, pstDptx->bMultStreamTransport );
-		if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
+	if (ucHotPlugged == (uint8_t)HPD_STATUS_PLUGGED) {
+		iRetVal = Dptx_Link_Perform_BringUp(
+					pstDptx,
+					pstDptx->bMultStreamTransport);
+		if (iRetVal !=  DPTX_RETURN_NO_ERROR)
 			return -ENODEV;
-		}
-		
-		iRetVal = Dptx_Link_Perform_Training( pstDptx, pstDptx->ucMax_Rate, pstDptx->ucMax_Lanes );
-		if(iRetVal !=  DPTX_RETURN_NO_ERROR) {
-			return -ENODEV;
-		}
 
-		if( pstDptx->bMultStreamTransport )
-		{
-			iRetVal = Dptx_Ext_Set_Topology_Configuration( pstDptx, pstDptx->ucNumOfPorts, pstDptx->bSideBand_MSG_Supported );
-			if(iRetVal == DPTX_RETURN_MST_ACT_TIMEOUT) {
-				if(ucMSTAct_Flag == 0) {
+		iRetVal = Dptx_Link_Perform_Training(
+					pstDptx,
+					pstDptx->ucMax_Rate,
+					pstDptx->ucMax_Lanes);
+		if (iRetVal !=  DPTX_RETURN_NO_ERROR)
+			return -ENODEV;
+
+		if (pstDptx->bMultStreamTransport) {
+			iRetVal = Dptx_Ext_Set_Topology_Configuration(
+					pstDptx,
+					pstDptx->ucNumOfPorts,
+					pstDptx->bSideBand_MSG_Supported);
+			if (iRetVal == DPTX_RETURN_MST_ACT_TIMEOUT) {
+				if (ucMSTAct_Flag == 0) {
 					ucMSTAct_Flag = 1;
-					
-					dptx_info("\n==== Re-initialize DP Link === \n");
 
-					iRetVal = Dptx_Core_Deinit( pstDptx );
-					if(iRetVal != DPTX_RETURN_NO_ERROR) {
-						return iRetVal;
-					}
+					dptx_info("\n==== Re-initialize DP Link ===\n");
 
-					iRetVal = Dptx_Intr_Handle_HotUnplug( pstDptx );
-					if(iRetVal != DPTX_RETURN_NO_ERROR) {
+					iRetVal = Dptx_Core_Deinit(pstDptx);
+					if (iRetVal != DPTX_RETURN_NO_ERROR)
 						return iRetVal;
-					}
+
+					iRetVal = Dptx_Intr_Handle_HotUnplug(
+								pstDptx);
+					if (iRetVal != DPTX_RETURN_NO_ERROR)
+						return iRetVal;
 
 					goto Re_Init_DP;
-				}
-				else {
+				} else {
 					dptx_err("CCTL.ACT timeout...");
 				}
-			}
-			else if(iRetVal !=  DPTX_RETURN_NO_ERROR){
+			} else if (iRetVal !=  DPTX_RETURN_NO_ERROR) {
 				return -ENODEV;
 			}
 		}
@@ -618,16 +636,16 @@ static struct platform_driver __refdata stDpv14_Tx_pdrv = {
 
 static __init int Dpv14_Tx_init(void)
 {
-	return platform_driver_register( &stDpv14_Tx_pdrv );
+	return platform_driver_register(&stDpv14_Tx_pdrv);
 }
 
 static __exit void Dpv14_Tx_exit(void)
 {
-	return platform_driver_unregister( &stDpv14_Tx_pdrv );
+	return platform_driver_unregister(&stDpv14_Tx_pdrv);
 }
 
-module_init( Dpv14_Tx_init );
-module_exit( Dpv14_Tx_exit );
+module_init(Dpv14_Tx_init);
+module_exit(Dpv14_Tx_exit);
 
 
 /** @short License information */
