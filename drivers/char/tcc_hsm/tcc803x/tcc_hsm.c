@@ -143,8 +143,8 @@ static long tcc_hsm_ioctl_set_key(unsigned long arg)
 		return ret;
 	}
 
-	if (param.key == NULL) {
-		ELOG("param.key is null\n");
+	if ((param.key == NULL) || (param.keySize > sizeof(key))) {
+		ELOG("Invalid key data(size=0x%x)\n", param.keySize);
 		return ret;
 	}
 
@@ -175,8 +175,8 @@ static long tcc_hsm_ioctl_set_iv(unsigned long arg)
 		return ret;
 	}
 
-	if (param.iv == NULL) {
-		ELOG("param.iv is null\n");
+	if ((param.iv == NULL) || (param.ivSize > sizeof(iv))) {
+		ELOG("Invalid iv data(size=0x%x)\n", param.ivSize);
 		return ret;
 	}
 
@@ -232,6 +232,12 @@ static long tcc_hsm_ioctl_run_cipher(unsigned long arg)
 	    (&param, (const struct tcc_hsm_iotcl_run_cipher_param *)arg,
 	     sizeof(param))) {
 		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
+	if (param.srcSize > TCC_HSM_DMA_BUF_SIZE) {
+		ELOG("The srcSize(0x%x) should not exceed 0x%x bytes\n",
+		     param.srcSize, TCC_HSM_DMA_BUF_SIZE);
 		return ret;
 	}
 
@@ -295,6 +301,12 @@ static long tcc_hsm_ioctl_run_cmac(unsigned long arg)
 		return ret;
 	}
 
+	if (param.srcSize > TCC_HSM_DMA_BUF_SIZE) {
+		ELOG("The srcSize(0x%x) should not exceed 0x%x bytes\n",
+		     param.srcSize, TCC_HSM_DMA_BUF_SIZE);
+		return ret;
+	}
+
 	if (copy_from_user(
 		    dma_buf->srcVir, (const uint8_t *)param.srcAddr,
 		    param.srcSize)) {
@@ -305,6 +317,12 @@ static long tcc_hsm_ioctl_run_cmac(unsigned long arg)
 	ret = tcc_hsm_sp_cmd_run_cmac(
 		MBOX_DEV_M4, param.keyIndex, param.flag, dma_buf->srcVir,
 		param.srcSize, dma_buf->dstVir, &param.mac_size);
+
+	if (param.mac_size > TCC_HSM_DMA_BUF_SIZE) {
+		ELOG("The macSize(0x%x) should not exceed 0x%x bytes\n",
+		     param.mac_size, TCC_HSM_DMA_BUF_SIZE);
+		return ret;
+	}
 
 	if (copy_to_user(
 		    param.macAddr, (const uint8_t *)dma_buf->dstVir,
@@ -324,6 +342,12 @@ static long tcc_hsm_ioctl_write_otp(unsigned long arg)
 	if (copy_from_user(&param, (const struct tcc_hsm_ioctl_otp_param *)arg,
 			   sizeof(param))) {
 		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
+	if (param.size > TCC_HSM_DMA_BUF_SIZE) {
+		ELOG("The size(0x%x) should not exceed 0x%x bytes\n",
+		     param.size, TCC_HSM_DMA_BUF_SIZE);
 		return ret;
 	}
 

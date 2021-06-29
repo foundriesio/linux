@@ -200,6 +200,13 @@ static int32_t tcc_hsm_ioctl_run_aes(uint32_t cmd, ulong arg)
 			return -ENOMEM;
 		}
 	} else {
+		if ((param.src_size > TCC_HSM_DMA_BUF_SIZE)
+		    || (param.dst_size > TCC_HSM_DMA_BUF_SIZE)) {
+			ELOG("The size(src=0x%x, dst=0x%x) should not exceed 0x%x bytes\n",
+			     param.src_size, param.dst_size,
+			     TCC_HSM_DMA_BUF_SIZE);
+			return ret;
+		}
 		if (tcc_copy_from_user(
 			    (void *)dma_buf->srcVir, (ulong)param.src,
 			    param.src_size)
@@ -270,6 +277,13 @@ static int32_t tcc_hsm_ioctl_run_aes_by_kt(uint32_t cmd, ulong arg)
 			return -ENOMEM;
 		}
 	} else {
+		if ((param.src_size > TCC_HSM_DMA_BUF_SIZE)
+		    || (param.dst_size > TCC_HSM_DMA_BUF_SIZE)) {
+			ELOG("The size(src=0x%x, dst=0x%x) should not exceed 0x%x bytes\n",
+			     param.src_size, param.dst_size,
+			     TCC_HSM_DMA_BUF_SIZE);
+			return ret;
+		}
 		if (tcc_copy_from_user(
 			    (void *)dma_buf->srcVir, param.src, param.src_size)
 		    != HSM_OK) {
@@ -333,6 +347,12 @@ static int32_t tcc_hsm_ioctl_gen_mac(uint32_t cmd, ulong arg)
 	if (param.dma == HSM_DMA) {
 		ret = tcc_hsm_cmd_gen_mac(MBOX_DEV_HSM, req, &param);
 	} else {
+		if (param.src_size > TCC_HSM_DMA_BUF_SIZE) {
+			ELOG("The srcSize(0x%x) should not exceed 0x%x bytes\n",
+			     param.src_size, TCC_HSM_DMA_BUF_SIZE);
+			return ret;
+		}
+
 		if (tcc_copy_from_user(
 			    (void *)dma_buf->srcVir, param.src, param.src_size)
 		    != HSM_OK) {
@@ -386,6 +406,12 @@ static int32_t tcc_hsm_ioctl_gen_mac_by_kt(uint32_t cmd, ulong arg)
 	if (param.dma == HSM_DMA) {
 		ret = tcc_hsm_cmd_gen_mac_by_kt(MBOX_DEV_HSM, req, &param);
 	} else {
+		if (param.src_size > TCC_HSM_DMA_BUF_SIZE) {
+			ELOG("The srcSize(0x%x) should not exceed 0x%x bytes\n",
+			     param.src_size, TCC_HSM_DMA_BUF_SIZE);
+			return ret;
+		}
+
 		if (tcc_copy_from_user(
 			    (void *)dma_buf->srcVir, param.src, param.src_size)
 		    != HSM_OK) {
@@ -436,6 +462,12 @@ static int32_t tcc_hsm_ioctl_gen_hash(uint32_t cmd, ulong arg)
 	if (param.dma == HSM_DMA) {
 		ret = tcc_hsm_cmd_gen_hash(MBOX_DEV_HSM, req, &param);
 	} else {
+		if (param.src_size > TCC_HSM_DMA_BUF_SIZE) {
+			ELOG("The srcSize(0x%x) should not exceed 0x%x bytes\n",
+			     param.src_size, TCC_HSM_DMA_BUF_SIZE);
+			return ret;
+		}
+
 		if (tcc_copy_from_user(
 			    (void *)dma_buf->srcVir, param.src, param.src_size)
 		    != HSM_OK) {
@@ -531,6 +563,12 @@ static int32_t tcc_hsm_ioctl_run_rsa(uint32_t cmd, ulong arg)
 		return -ENOMEM;
 	}
 
+	if (param.key_size > TCC_HSM_DMA_BUF_SIZE) {
+		ELOG("The keySize(0x%x) should not exceed 0x%x bytes\n",
+		     param.key_size, TCC_HSM_DMA_BUF_SIZE);
+		return ret;
+	}
+
 	/* To handle key size exceeding 512 byte */
 	if (tcc_copy_from_user(
 		    (void *)dma_buf->srcVir, param.key, param.key_size)
@@ -571,6 +609,12 @@ static int32_t tcc_hsm_ioctl_write(uint32_t cmd, ulong arg)
 	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
 		ELOG("copy_from_user failed\n");
 		return -ENOMEM;
+	}
+
+	if (param.data_size > TCC_HSM_DMA_BUF_SIZE) {
+		ELOG("The data_size(0x%x) should not exceed 0x%x bytes\n",
+		     param.data_size, TCC_HSM_DMA_BUF_SIZE);
+		return ret;
 	}
 
 	if (tcc_copy_from_user(
@@ -644,6 +688,12 @@ static int32_t tcc_hsm_ioctl_get_rng(uint32_t cmd, ulong arg)
 	if (tcc_copy_from_user((void *)&param, arg, sizeof(param)) != HSM_OK) {
 		ELOG("copy_from_user failed\n");
 		return -ENOMEM;
+	}
+
+	if (param.rng_size > TCC_HSM_DMA_BUF_SIZE) {
+		ELOG("The rngSize(0x%x) should not exceed 0x%x bytes\n",
+		     param.rng_size, TCC_HSM_DMA_BUF_SIZE);
+		return ret;
 	}
 
 	ret = tcc_hsm_cmd_get_rand(

@@ -169,8 +169,9 @@ static long tcc_thsm_ioctl_set_key(unsigned long arg)
 		return ret;
 	}
 
-	if (param.key1 == NULL || param.key1_size < 0) {
-		ELOG("param.key is null\n");
+	if ((param.key1 == NULL) || (param.key1_size > sizeof(key1))) {
+		ELOG("Invalid key1 data(%p 0x%x)\n", param.key1,
+		     param.key1_size);
 		return ret;
 	}
 	if (copy_from_user(
@@ -179,18 +180,25 @@ static long tcc_thsm_ioctl_set_key(unsigned long arg)
 		return ret;
 	}
 
-	if (param.key2_size > 0) {
-		if (copy_from_user(key2, param.key2, param.key2_size)) {
-			ELOG("copy_from_user failed(%d)\n", param.key2_size);
-			return ret;
-		}
+	if (param.key2_size > sizeof(key2)) {
+		ELOG("Invalid key2 data(%p 0x%x)\n", param.key2,
+		     param.key2_size);
+		return ret;
 	}
 
-	if (param.key3_size > 0) {
-		if (copy_from_user(key3, param.key3, param.key3_size)) {
-			ELOG("copy_from_user failed(%d)\n", param.key3_size);
-			return ret;
-		}
+	if (copy_from_user(key2, param.key2, param.key2_size)) {
+		ELOG("copy_from_user failed(%d)\n", param.key2_size);
+		return ret;
+	}
+
+	if (param.key3_size > sizeof(key3)) {
+		ELOG("Invalid key3 data(%p 0x%x)\n", param.key3,
+		     param.key3_size);
+		return ret;
+	}
+	if (copy_from_user(key3, param.key3, param.key3_size)) {
+		ELOG("copy_from_user failed(%d)\n", param.key3_size);
+		return ret;
 	}
 
 	ret = tcc_thsm_cmd_set_key(
@@ -276,6 +284,11 @@ static long tcc_thsm_ioctl_set_iv_symmetric(unsigned long arg)
 		return ret;
 	}
 
+	if (param.iv_size > sizeof(iv)) {
+		ELOG("Invalid iv data(0x%x)\n", param.iv_size);
+		return ret;
+	}
+
 	if (copy_from_user(iv, (const uint8_t *)param.iv, param.iv_size)) {
 		ELOG("copy_from_user failed(%d)\n", param.iv_size);
 		return ret;
@@ -297,6 +310,12 @@ static long tcc_thsm_ioctl_run_cipher(unsigned long arg)
 		    &param, (const struct tcc_thsm_ioctl_cipher_param *)arg,
 		    sizeof(param))) {
 		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
+	if (param.src_size > TCC_THSM_DMA_BUF_SIZE) {
+		ELOG("The srcSize(0x%x) should not exceed 0x%x bytes\n",
+		     param.src_size, TCC_THSM_DMA_BUF_SIZE);
 		return ret;
 	}
 
@@ -370,6 +389,12 @@ static long tcc_thsm_ioctl_run_digest(unsigned long arg)
 		return ret;
 	}
 
+	if (param.chunk_len > TCC_THSM_DMA_BUF_SIZE) {
+		ELOG("The src_len(0x%x) should not exceed 0x%x bytes\n",
+		     param.chunk_len, TCC_THSM_DMA_BUF_SIZE);
+		return ret;
+	}
+
 	if (copy_from_user(
 		    dma_buf->srcVir, (const uint8_t *)param.chunk,
 		    param.chunk_len)) {
@@ -389,6 +414,12 @@ static long tcc_thsm_ioctl_run_digest(unsigned long arg)
 	dma_sync_single_for_cpu(
 		dma_buf->dev, dma_buf->dstPhy, param.chunk_len,
 		DMA_FROM_DEVICE);
+
+	if (hash_len > sizeof(hash)) {
+		ELOG("The hash_len(0x%x) should not exceed 0x%lx bytes\n",
+		     hash_len, sizeof(hash));
+		return ret;
+	}
 
 	if (copy_to_user(param.hash, hash, hash_len)) {
 		ELOG("copy_to_user failed\n");
@@ -427,6 +458,12 @@ static long tcc_thsm_ioctl_run_digest_by_dma(unsigned long arg)
 		device_id, param.key_index, (uint32_t)param.chunk_addr,
 		param.chunk_len, hash, &hash_len, param.flag);
 
+	if (hash_len > sizeof(hash)) {
+		ELOG("The hash_len(0x%x) should not exceed 0x%x bytes\n",
+		     hash_len, TCC_THSM_DMA_BUF_SIZE);
+		return ret;
+	}
+
 	if (copy_to_user(param.hash, hash, hash_len)) {
 		ELOG("copy_to_user failed\n");
 		return ret;
@@ -453,12 +490,15 @@ static long tcc_thsm_ioctl_set_iv_mac(unsigned long arg)
 		return ret;
 	}
 
-	if (param.iv_size > 0) {
-		if (copy_from_user(
-			    iv, (const uint8_t *)param.iv, param.iv_size)) {
-			ELOG("copy_from_user failed(%d)\n", param.iv_size);
-			return ret;
-		}
+	if (param.iv_size > sizeof(iv)) {
+		ELOG("The iv_size(0x%x) should not exceed 0x%lx bytes\n",
+		     param.iv_size, sizeof(iv));
+		return ret;
+	}
+
+	if (copy_from_user(iv, (const uint8_t *)param.iv, param.iv_size)) {
+		ELOG("copy_from_user failed(%d)\n", param.iv_size);
+		return ret;
 	}
 
 	ret = tcc_thsm_cmd_set_iv_mac(
@@ -482,6 +522,12 @@ static long tcc_thsm_ioctl_compute_mac(unsigned long arg)
 		return ret;
 	}
 
+	if (param.message_len > TCC_THSM_DMA_BUF_SIZE) {
+		ELOG("The msg_size(0x%x) should not exceed 0x%x bytes\n",
+		     param.message_len, TCC_THSM_DMA_BUF_SIZE);
+		return ret;
+	}
+
 	if (copy_from_user(
 		    dma_buf->srcVir, (const uint8_t *)param.message,
 		    param.message_len)) {
@@ -501,6 +547,12 @@ static long tcc_thsm_ioctl_compute_mac(unsigned long arg)
 	dma_sync_single_for_cpu(
 		dma_buf->dev, dma_buf->dstPhy, param.message_len,
 		DMA_FROM_DEVICE);
+
+	if (mac_len > sizeof(mac)) {
+		ELOG("The mac_size(0x%x) should not exceed 0x%lx bytes\n",
+		     mac_len, sizeof(mac));
+		return ret;
+	}
 
 	if (copy_to_user(param.mac, mac, mac_len)) {
 		ELOG("copy_to_user failed\n");
@@ -538,6 +590,12 @@ static long tcc_thsm_ioctl_compute_mac_by_dma(unsigned long arg)
 		device_id, param.key_index, (uint32_t)param.message_addr,
 		param.message_len, mac, &mac_len, param.flag);
 
+	if (mac_len > sizeof(mac)) {
+		ELOG("The mac_size(0x%x) should not exceed 0x%lx bytes\n",
+		     mac_len, sizeof(mac));
+		return ret;
+	}
+
 	if (copy_to_user(param.mac, mac, mac_len)) {
 		ELOG("copy_to_user failed\n");
 		return ret;
@@ -561,6 +619,18 @@ static long tcc_thsm_ioctl_compare_mac(unsigned long arg)
 		    (const struct tcc_thsm_ioctl_compare_mac_param *)arg,
 		    sizeof(param))) {
 		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
+	if (param.message_len > TCC_THSM_DMA_BUF_SIZE) {
+		ELOG("The msg_size(0x%x) should not exceed 0x%x bytes\n",
+		     param.message_len, TCC_THSM_DMA_BUF_SIZE);
+		return ret;
+	}
+
+	if (param.mac_len > sizeof(mac)) {
+		ELOG("The mac_size(0x%x) should not exceed 0x%lx bytes\n",
+		     param.mac_len, sizeof(mac));
 		return ret;
 	}
 
@@ -598,6 +668,12 @@ static long tcc_thsm_ioctl_compare_mac_by_dma(unsigned long arg)
 		    (const struct tcc_thsm_ioctl_compare_mac_dma_param *)arg,
 		    sizeof(param))) {
 		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
+	if (param.mac_len > sizeof(mac)) {
+		ELOG("The mac_size(0x%x) should not exceed 0x%lx bytes\n",
+		     param.mac_len, sizeof(mac));
 		return ret;
 	}
 
@@ -720,8 +796,10 @@ static long tcc_thsm_ioctl_write_key_ss(unsigned long arg)
 		ELOG("param. is null\n");
 		return ret;
 	}
-	if (param.obj_len > TCCTHSM_OBJ_ID_MAX) {
-		ELOG("Invalid obj param\n");
+	if ((param.obj_len > TCCTHSM_OBJ_ID_MAX)
+	    || (param.size > sizeof(buffer))) {
+		ELOG("Invalid param(obj_len=0x%x, buf_size=0x%x)\n",
+		     param.obj_len, param.size);
 		return ret;
 	}
 
@@ -753,6 +831,12 @@ static long tcc_thsm_ioctl_write_otp(unsigned long arg)
 		    &param, (const struct tcc_thsm_ioctl_otp_param *)arg,
 		    sizeof(param))) {
 		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
+	if (param.size > sizeof(buffer)) {
+		ELOG("The param_size(0x%x) should not exceed 0x%lx bytes\n",
+		     param.size, sizeof(buffer));
 		return ret;
 	}
 
@@ -799,6 +883,12 @@ static long tcc_thsm_ioctl_asym_enc_dec(unsigned long arg)
 		return ret;
 	}
 
+	if (param.src_size > TCC_THSM_DMA_BUF_SIZE) {
+		ELOG("The srcSize(0x%x) should not exceed 0x%x bytes\n",
+		     param.src_size, TCC_THSM_DMA_BUF_SIZE);
+		return ret;
+	}
+
 	if (copy_from_user(
 		    dma_buf->srcVir, (const uint8_t *)param.src_addr,
 		    param.src_size)) {
@@ -817,6 +907,12 @@ static long tcc_thsm_ioctl_asym_enc_dec(unsigned long arg)
 
 	dma_sync_single_for_cpu(
 		dma_buf->dev, dma_buf->dstPhy, param.src_size, DMA_FROM_DEVICE);
+
+	if (dst_size > TCC_THSM_DMA_BUF_SIZE) {
+		ELOG("The srcSize(0x%x) should not exceed 0x%x bytes\n",
+		     dst_size, TCC_THSM_DMA_BUF_SIZE);
+		return ret;
+	}
 
 	if (copy_to_user(
 		    param.dst_addr, (const uint8_t *)dma_buf->dstVir,
@@ -878,6 +974,12 @@ static long tcc_thsm_ioctl_asym_sign_digest(unsigned long arg)
 		return ret;
 	}
 
+	if (param.dig_size > sizeof(dig)) {
+		ELOG("The digSize(0x%x) should not exceed 0x%lx bytes\n",
+		     param.dig_size, sizeof(dig));
+		return ret;
+	}
+
 	if (copy_from_user(dig, (const uint8_t *)param.dig, param.dig_size)) {
 		ELOG("copy_from_user failed\n");
 		return ret;
@@ -891,6 +993,12 @@ static long tcc_thsm_ioctl_asym_sign_digest(unsigned long arg)
 	ret = tcc_thsm_cmd_asym_sign_digest(
 		device_id, param.key_index, dig, param.dig_size, sig,
 		&sig_size);
+
+	if (sig_size > sizeof(sig)) {
+		ELOG("The sigSize(0x%x) should not exceed 0x%lx bytes\n",
+		     sig_size, sizeof(sig));
+		return ret;
+	}
 
 	if (copy_to_user(param.sig, sig, sig_size)) {
 		ELOG("copy_to_user failed\n");
@@ -915,6 +1023,12 @@ static long tcc_thsm_ioctl_asym_verify_digest(unsigned long arg)
 		    (const struct tcc_thsm_ioctl_asym_verify_digest_param *)arg,
 		    sizeof(param))) {
 		ELOG("copy_from_user failed\n");
+		return ret;
+	}
+
+	if ((param.dig_size > sizeof(dig)) || (param.sig_size > sizeof(sig))) {
+		ELOG("Input size Err(dig_size=0x%x, sig_size=0x%x)\n",
+		     param.dig_size, param.sig_size);
 		return ret;
 	}
 
