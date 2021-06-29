@@ -1,5 +1,9 @@
-#include <linux/module.h>
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) Telechips Inc.
+ */
 #include <linux/gpio.h>
+#include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
@@ -88,13 +92,15 @@ static irqreturn_t tcc_gpio_irq_handler(int irq, void *data)
 	irq_hw_number_t hwirq;
 	int i;
 	int irq_source;
-	int pin;
+	int pin = 0;
 	int idx_sel_reg, idx_sel_plc;
+	int flag;
 
 	pr_debug("%s: ############name : %s %s %s %s %s\n"
 	    , __func__, d->chip->name, gpio_gr->name, port->gpio_gr->ic.name,
 	    port->gpio_gr->gc.label, port->gpio_gr->name);
 
+	flag = irqd_get_trigger_type(d);
 	hwirq = irqd_to_hwirq(d);
 	hwirq -= 32;
 
@@ -160,18 +166,38 @@ static irqreturn_t tcc_gpio_irq_handler(int irq, void *data)
 			break;
 		}
 	}
+#if !defined(CONFIG_ARCH_TCC897X)
+/*
+ * Exception handing. '0' in irq_source means something went wrong because irq
+ * source number starts with '1' and the '0' indicates 'disable'.
+ */
+	if (irq_source == 0) {
+		return IRQ_HANDLED;
+	}
+#endif
 
 	pr_debug("[GPIO][DEBUG] %s: pin num : %d\n", __func__, pin);
 
 	chained_irq_enter(chip, desc);
 
-	generic_handle_irq(irq_find_mapping(gpio_gr->gc.irqdomain, pin));
+	if(flag==IRQ_TYPE_EDGE_RISING)
+	    generic_handle_irq(irq_find_mapping(gpio_gr->gc.irqdomain, pin));
+	else if(flag==IRQ_TYPE_LEVEL_HIGH)
+	    handle_nested_irq(irq_find_mapping(gpio_gr->gc.irqdomain, pin));
+	else {
+	    chained_irq_exit(chip, desc);
+	    return IRQ_NONE;
+	}
 
 	chained_irq_exit(chip, desc);
 
 	return IRQ_HANDLED;
 }
 
+static int tcc_gpio_irq_set_type_dummy(struct irq_data *d, u32 type)
+{
+	return 0;
+}
 static int tcc_gpio_irq_set_type(struct irq_data *d, u32 type)
 {
 	struct tcc_gpio_port *port =
@@ -179,9 +205,9 @@ static int tcc_gpio_irq_set_type(struct irq_data *d, u32 type)
 	int ret;
 	int pin_valid = 0;
 	int i;
-	int irq_source;
+	int irq_source = 0;
 	int pin = d->hwirq;
-	int irq_mux_num;
+	int irq_mux_num = 0;
 	int idx_sel_reg, idx_sel_plc;
 	int irq_valid = 0;
 	struct tcc_gpio_group *gpio_gr;
@@ -313,20 +339,24 @@ static int tcc_gpio_irq_set_type(struct irq_data *d, u32 type)
 		break;
 	case IRQ_TYPE_LEVEL_LOW:
 		pr_debug("[GPIO][DEBUG] %s: type level low\n", __func__);
-		ret = devm_request_irq(gpio_gr->gc.parent,
-				       port->irq[irq_mux_num +
-						 port->irq_num / 2],
-				       tcc_gpio_irq_handler,
-				       IRQ_TYPE_LEVEL_HIGH, KBUILD_MODNAME,
-				       gpio_gr);
+		ret =
+		    devm_request_threaded_irq(gpio_gr->gc.parent,
+					port->irq[irq_mux_num +
+					port->irq_num / 2],
+					NULL,
+					tcc_gpio_irq_handler,
+					IRQF_TRIGGER_HIGH|IRQF_ONESHOT,
+					KBUILD_MODNAME, gpio_gr);
 		break;
 	case IRQ_TYPE_LEVEL_HIGH:
 		pr_debug("[GPIO][DEBUG] %s: type level high\n", __func__);
-		ret = devm_request_irq(gpio_gr->gc.parent,
+		ret =
+		    devm_request_threaded_irq(gpio_gr->gc.parent,
 					port->irq[irq_mux_num],
-				       tcc_gpio_irq_handler,
-				       IRQ_TYPE_LEVEL_HIGH, KBUILD_MODNAME,
-				       gpio_gr);
+					NULL,
+					tcc_gpio_irq_handler,
+					IRQF_TRIGGER_HIGH|IRQF_ONESHOT,
+					KBUILD_MODNAME, gpio_gr);
 		break;
 	default:
 		return -EINVAL;
@@ -524,6 +554,9 @@ static int telechips_gpio_probe(struct platform_device *pdev)
 	port->irq_port_map =
 		devm_kcalloc(&pdev->dev, irq_num, sizeof(int *), GFP_KERNEL);
 
+	if(port->irq_port_map == 0)
+	    return -ENOMEM;
+
 	for (i = 0; i < irq_num; i++) {
 		port->irq_port_map[i] = devm_kcalloc(&pdev->dev, 5, sizeof(int),
 		GFP_KERNEL);
@@ -539,6 +572,9 @@ static int telechips_gpio_probe(struct platform_device *pdev)
 #else
 	port->irq_port_map =
 	    devm_kcalloc(&pdev->dev, irq_num / 2, sizeof(int *), GFP_KERNEL);
+
+	if(port->irq_port_map == 0)
+	    return -ENOMEM;
 
 	for (i = 0; i < irq_num / 2; i++) {
 		port->irq_port_map[i] = devm_kcalloc(&pdev->dev, 4, sizeof(int),
@@ -556,6 +592,9 @@ static int telechips_gpio_probe(struct platform_device *pdev)
 
 	port->irq = devm_kcalloc(&pdev->dev, irq_num, sizeof(int), GFP_KERNEL);
 
+	if(port->irq == 0)
+	    return -ENOMEM;
+
 	for (i = 0; i < irq_num; i++) {
 		port->irq[i] = of_irq_get(node, i);
 		if (port->irq[i] < 0)
@@ -565,6 +604,9 @@ static int telechips_gpio_probe(struct platform_device *pdev)
 
 	port->gpio_gr = kcalloc(port->gpio_num_gr,
 		sizeof(struct tcc_gpio_group), GFP_KERNEL);
+
+	if(port->gpio_gr == 0)
+	    return -ENOMEM;
 
 	gpio_gr = port->gpio_gr;
 
@@ -653,7 +695,8 @@ static int telechips_gpio_probe(struct platform_device *pdev)
 		ic = &gpio_gr->ic;
 		ic->name = gpio_gr->name;
 		ic->irq_ack = tcc_irq_ack;
-		ic->irq_set_type = tcc_gpio_irq_set_type;
+		ic->irq_set_type = tcc_gpio_irq_set_type_dummy;
+		ic->irq_tcc_set_type = tcc_gpio_irq_set_type;
 
 		ret = gpiochip_irqchip_add(gc, ic, 0,
 			handle_simple_irq, IRQ_TYPE_NONE);

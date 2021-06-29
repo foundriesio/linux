@@ -1199,6 +1199,15 @@ __setup_irq(unsigned int irq, struct irq_desc *desc, struct irqaction *new)
 	if (!(new->flags & IRQF_TRIGGER_MASK))
 		new->flags |= irqd_get_trigger_type(&desc->irq_data);
 
+#if defined(CONFIG_ARCH_TCC)
+	if (desc->irq_data.chip->irq_tcc_set_type) {
+		ret = desc->irq_data.chip->irq_tcc_set_type(&desc->irq_data,
+					    new->flags & IRQF_TRIGGER_MASK);
+		if(ret)
+			goto out_mput;
+	}
+#endif
+
 	/*
 	 * Check whether the interrupt nests into another interrupt
 	 * thread.
