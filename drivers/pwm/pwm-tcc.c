@@ -321,7 +321,7 @@ static int32_t tcc_pwm_probe(struct platform_device *pdev)
 {
 	struct tcc_chip *tcc;
 	uint32_t freq;
-	int32_t ret;
+	int32_t ret, i, j;
 
 	dprintk(KERN_INFO " %s\n", __func__);
 
@@ -384,10 +384,28 @@ static int32_t tcc_pwm_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "get pwm number: %d\n", tcc->chip.npwm);
 
 #ifdef TCC_USE_GFB_PORT
+	for (i = 0; i < 4; i++) {
+		tcc->gfb_port[i] = 0xFF;
+	}
+
 	(void)of_property_read_u32_array(pdev->dev.of_node,
 			"gfb-port", tcc->gfb_port,
 			(size_t)of_property_count_elems_of_size(
 				pdev->dev.of_node, "gfb-port", 4));
+
+	for (i = 0; i < 4; i++) {
+		for (j = (i+1); j < 4; j++) {
+			if (tcc->gfb_port[j] == 0xFF)
+				continue;
+
+			if (tcc->gfb_port[i] == tcc->gfb_port[j]) {
+				dev_info(&pdev->dev, "pwm[%d] number(%d) is the same as pwm[%d].\n",
+						j, tcc->gfb_port[j], i);
+				dev_info(&pdev->dev, "pwm[%d] is forcibly set to 0xFF.\n", j);
+				tcc->gfb_port[j] = 0xFF;
+			}
+		}
+	}
 
 	dev_info(&pdev->dev, "pwm[A]:%d, pwm[B]:%d, pwm[C]:%d, pwm[D]:%d\n",
 		 tcc->gfb_port[0], tcc->gfb_port[1],
