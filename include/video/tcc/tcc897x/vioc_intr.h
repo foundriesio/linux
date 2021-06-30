@@ -143,7 +143,8 @@ enum vioc_vin_intr_src {
 	VIOC_VIN_INTR_INVS,
 	VIOC_VIN_INTR_MAX
 };
-#define VIOC_VIN_INT_MASK ((1 << VIOC_VIN_INTR_MAX) - 1)
+#define VIOC_VIN_INT_ENABLE			((1<<VIOC_VIN_INTR_MAX)-1)
+#define VIOC_VIN_INT_MASK			0xC
 
 /* VIOC SC irqs */
 #define VIOC_SC_INT_MASK 0xF
