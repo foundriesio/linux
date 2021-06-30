@@ -2863,8 +2863,7 @@ static int do_relocation(struct btrfs_trans_handle *trans,
 	u64 bytenr;
 	u64 generation;
 	int slot;
-	int ret;
-	int err = 0;
+	int ret = 0;
 
 	/*
 	 * If we are lowest then this is the first time we're processing this
@@ -2888,10 +2887,8 @@ static int do_relocation(struct btrfs_trans_handle *trans,
 			if (!lowest) {
 				ret = btrfs_bin_search(upper->eb, key,
 						       upper->level, &slot);
-				if (ret < 0) {
-					err = ret;
+				if (ret < 0)
 					goto next;
-				}
 				BUG_ON(ret);
 				bytenr = btrfs_node_blockptr(upper->eb, slot);
 				if (node->eb->start == bytenr)
@@ -2903,10 +2900,8 @@ static int do_relocation(struct btrfs_trans_handle *trans,
 		if (!upper->eb) {
 			ret = btrfs_search_slot(trans, root, key, path, 0, 1);
 			if (ret) {
-				if (ret < 0)
-					err = ret;
-				else
-					err = -ENOENT;
+				if (ret > 0)
+					ret = -ENOENT;
 
 				btrfs_release_path(path);
 				break;
@@ -2927,10 +2922,8 @@ static int do_relocation(struct btrfs_trans_handle *trans,
 		} else {
 			ret = btrfs_bin_search(upper->eb, key, upper->level,
 					       &slot);
-			if (ret < 0) {
-				err = ret;
+			if (ret < 0)
 				goto next;
-			}
 			BUG_ON(ret);
 		}
 
@@ -2941,7 +2934,7 @@ static int do_relocation(struct btrfs_trans_handle *trans,
 		"lowest leaf/node mismatch: bytenr %llu node->bytenr %llu slot %d upper %llu",
 					  bytenr, node->bytenr, slot,
 					  upper->eb->start);
-				err = -EIO;
+				ret = -EIO;
 				goto next;
 			}
 		} else {
@@ -2955,11 +2948,11 @@ static int do_relocation(struct btrfs_trans_handle *trans,
 		eb = read_tree_block(fs_info, bytenr, generation,
 				     upper->level - 1, &first_key);
 		if (IS_ERR(eb)) {
-			err = PTR_ERR(eb);
+			ret = PTR_ERR(eb);
 			goto next;
 		} else if (!extent_buffer_uptodate(eb)) {
 			free_extent_buffer(eb);
-			err = -EIO;
+			ret = -EIO;
 			goto next;
 		}
 		btrfs_tree_lock(eb);
@@ -2970,10 +2963,8 @@ static int do_relocation(struct btrfs_trans_handle *trans,
 					      slot, &eb);
 			btrfs_tree_unlock(eb);
 			free_extent_buffer(eb);
-			if (ret < 0) {
-				err = ret;
+			if (ret < 0)
 				goto next;
-			}
 			/*
 			 * We've just COWed this block, it should have updated
 			 * the correct backref node entry.
@@ -3003,11 +2994,11 @@ next:
 			drop_node_buffer(upper);
 		else
 			unlock_node_buffer(upper);
-		if (err)
+		if (ret)
 			break;
 	}
 
-	if (!err && node->pending) {
+	if (!ret && node->pending) {
 		drop_node_buffer(node);
 		list_move_tail(&node->list, &rc->backref_cache.changed);
 		node->pending = 0;
@@ -3019,7 +3010,7 @@ next:
 	 * shouldn't ENOSPC.
 	 */
 	ASSERT(ret != -ENOSPC);
-	return err;
+	return ret;
 }
 
 static int link_to_upper(struct btrfs_trans_handle *trans,
