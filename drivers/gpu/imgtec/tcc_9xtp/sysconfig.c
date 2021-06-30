@@ -346,7 +346,7 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 	iounmap(gpvRegBankOSID1);
 #else /* SUPPORT_DYNAMIC_DRIVER_MODE */
 // this should be updated accordingly with the dtb files:
-	iIrq = platform_get_irq(psDev, 0);
+	iIrq = platform_get_irq(psDev, PVRSRV_VZ_MODE_IS(GUEST) ? 1 : 0);
 	if (iIrq >= 0)
 		gsDevCfg.ui32IRQ  = (IMG_UINT32) iIrq;
 	else {
