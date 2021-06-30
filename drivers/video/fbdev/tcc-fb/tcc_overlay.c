@@ -1353,7 +1353,7 @@ static int tcc_overlay_release(struct inode *inode, struct file *file)
 	if (overlay_drv->open_cnt == 0) {
 		//VIOC_PlugInOutCheck VIOC_PlugIn;
 
-		layer = overlay_drv->layer_nlast;
+		layer = overlay_drv->layer_n;
 
 		if (overlay_drv->rdma[layer].reg)
 			VIOC_RDMA_SetImageDisable(overlay_drv->rdma[layer].reg);
