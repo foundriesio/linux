@@ -1242,13 +1242,16 @@ static noinline int commit_fs_roots(struct btrfs_trans_handle *trans,
 			break;
 		for (i = 0; i < ret; i++) {
 			struct btrfs_root *root = gang[i];
+			int ret2;
 			radix_tree_tag_clear(&fs_info->fs_roots_radix,
 					(unsigned long)root->root_key.objectid,
 					BTRFS_ROOT_TRANS_TAG);
 			spin_unlock(&fs_info->fs_roots_radix_lock);
 
 			btrfs_free_log(trans, root);
-			btrfs_update_reloc_root(trans, root);
+			ret2 = btrfs_update_reloc_root(trans, root);
+			if (ret2)
+				return ret2;
 
 			btrfs_save_ino_cache(root, trans);
 
