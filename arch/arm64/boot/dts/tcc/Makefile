@@ -10,11 +10,9 @@ dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc8030-android-lpd4321_sv0.1_for_t-sound.dtb \
 	tcc8030-android-lpd4321_sv0.1_vbus-pmic-output.dtb \
 	tcc803xpe-android-lpd4321_sv1.0.dtb
-ifeq ($(CONFIG_TCC_HDMI_DRIVER_V2_0),y)
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtb \
 	tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtb
-endif
 dtb-$(CONFIG_ARCH_TCC901X) += \
 	tcc9010-android-lpd4321-v0.1.dtb
 dtb-$(CONFIG_ARCH_TCC805X) += \
@@ -35,11 +33,9 @@ dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc8030-linux-lpd4321_sv0.1.dtb \
 	tcc8030-linux-lpd4321_sv0.1_vbus-pmic-output.dtb \
 	tcc8030-linux-lpd4321_sv0.1_for_t-sound.dtb
-ifeq ($(CONFIG_TCC_HDMI_DRIVER_V2_0),y)
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc8030-linux-lpd4321_sv0.1-hdmi-ext-output.dtb \
 	tcc8030-linux-lpd4321_sv0.1-hdmi-main-output.dtb
-endif
 dtb-$(CONFIG_ARCH_TCC901X) += \
 	tcc9010-linux-lpd4321-v0.1.dtb
 

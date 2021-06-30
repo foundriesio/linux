@@ -409,10 +409,6 @@ endmenu
 
 menu "TCC Extend Display"
 
-source "drivers/char/hdmi_v1_4/Kconfig"
-
-source "drivers/char/hdmi_v2_0/Kconfig"
-
 source "drivers/char/hdcp2_core/Kconfig"
 
 config TCC_HDMI_HDCP_USED
