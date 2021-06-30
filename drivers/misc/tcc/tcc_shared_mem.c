@@ -67,7 +67,7 @@ static void tcc_shmem_timer(unsigned long args)
 static void insert_pending_read_que(uint32_t read_req,
 	struct tcc_shm_data *shdev)
 {
-	uint32_t i, j, *que_pos, *que_next_pos, port_exist;
+	uint32_t i, j, *que_pos, *que_next_pos, port_exist = 0;
 	int32_t *read_que;
 
 	read_que = shdev->read_que;
