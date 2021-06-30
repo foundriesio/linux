@@ -1904,6 +1904,8 @@ again:
 		BUG_ON(level < lowest_level);
 
 		ret = btrfs_bin_search(parent, &key, level, &slot);
+		if (ret < 0)
+			break;
 		if (ret && slot > 0)
 			slot--;
 
@@ -2886,6 +2888,10 @@ static int do_relocation(struct btrfs_trans_handle *trans,
 			if (!lowest) {
 				ret = btrfs_bin_search(upper->eb, key,
 						       upper->level, &slot);
+				if (ret < 0) {
+					err = ret;
+					goto next;
+				}
 				BUG_ON(ret);
 				bytenr = btrfs_node_blockptr(upper->eb, slot);
 				if (node->eb->start == bytenr)
@@ -2921,6 +2927,10 @@ static int do_relocation(struct btrfs_trans_handle *trans,
 		} else {
 			ret = btrfs_bin_search(upper->eb, key, upper->level,
 					       &slot);
+			if (ret < 0) {
+				err = ret;
+				goto next;
+			}
 			BUG_ON(ret);
 		}
 
