@@ -1033,42 +1033,53 @@ static int fbX_activate_var(
 			region->x, region->y);
 
 		layer = VIOC_WMIX_GetLayer(par->pdata.wmixer_info.blk_num,
-					VIOC_RDMA_GetImageNum(par->pdata.rdma_info.blk_num));
+					VIOC_RDMA_GetImageNum(
+					   par->pdata.rdma_info.blk_num));
 		switch (layer) {
-		case 3 :
+		case 3:
 			channel = 0;
 			break;
-		case 2 :
+		case 2:
 			channel = 1;
 			break;
-		case 1 :
-			if (VIOC_WMIX_GetMixerType(par->pdata.wmixer_info.blk_num))
+		case 1:
+			if (VIOC_WMIX_GetMixerType(
+				par->pdata.wmixer_info.blk_num))
 				/* 4 to 2 mixer */
 				channel = 2;
 			else
 				/* 2 to 2 mixer */
 				channel = 0;
 			break;
-		default :
+		default:
 			break;
 		}
 
-		if (format == VIOC_IMG_FMT_RGB565){
+		if (format == VIOC_IMG_FMT_RGB565) {
 			VIOC_WMIX_SetChromaKey(
-				par->pdata.wmixer_info.virt_addr, channel, 1 /*ON*/,
-				par->pdata.chroma_info.key[0], par->pdata.chroma_info.key[1],
-				par->pdata.chroma_info.key[2], par->pdata.chroma_info.mkey[0],
-				par->pdata.chroma_info.mkey[1], par->pdata.chroma_info.mkey[2]);
+				par->pdata.wmixer_info.virt_addr,
+				channel, 1 /*ON*/,
+				par->pdata.chroma_info.key[0],
+				par->pdata.chroma_info.key[1],
+				par->pdata.chroma_info.key[2],
+				par->pdata.chroma_info.mkey[0],
+				par->pdata.chroma_info.mkey[1],
+				par->pdata.chroma_info.mkey[2]);
 
-			pr_debug("[INF][FBX][%s]RGB565 Set Chromakey\n"\
-				"key R : 0x%x\nkey G : 0x%x\nkey B : 0x%x\n"\
-				"mkey R : 0x%x\nmkey G : 0x%x\nmkey B : 0x%x\n", __func__,
-				par->pdata.chroma_info.key[0],par->pdata.chroma_info.key[1],
-				par->pdata.chroma_info.key[2],par->pdata.chroma_info.mkey[0],
-				par->pdata.chroma_info.mkey[1],par->pdata.chroma_info.mkey[2]);
+			pr_debug("[INF][FBX][%s]RGB565 Set Chromakey\n"
+				"key R : 0x%x\nkey G : 0x%x\nkey B : 0x%x\n"
+				"mkey R : 0x%x\nmkey G : 0x%x\nmkey B : 0x%x\n",
+				__func__,
+				par->pdata.chroma_info.key[0],
+				par->pdata.chroma_info.key[1],
+				par->pdata.chroma_info.key[2],
+				par->pdata.chroma_info.mkey[0],
+				par->pdata.chroma_info.mkey[1],
+				par->pdata.chroma_info.mkey[2]);
 		} else { // VIOC_IMG_FMT_ARGB8888
 			VIOC_WMIX_SetChromaKey(
-				par->pdata.wmixer_info.virt_addr, channel, 0 /*OFF*/,
+				par->pdata.wmixer_info.virt_addr,
+				channel, 0 /*OFF*/,
 				0, 0, 0, 0, 0, 0);
 			pr_debug("[INF][FBX]ARGB888 Disable Chromakey\n");
 		}
@@ -1772,21 +1783,27 @@ static int fb_dt_parse_data(struct fb_info *info)
 			goto err_dt_parse;
 		}
 
-        // get chroma key value only when bpp is 16
+		//get chroma key value only when bpp is 16
 		if (info->var.bits_per_pixel == 16) {
-			for (chroma_idx = 0 ; chroma_idx < 3 ; chroma_idx ++) {
-				if (of_property_read_u32_index(info->dev->of_node, "chroma-key",
-					chroma_idx, &par->pdata.chroma_info.key[chroma_idx]) < 0) {
-					pr_err("[ERROR][FBX] error in %s: can nod find chroma-key \n",
+			for (chroma_idx = 0 ; chroma_idx < 3 ; chroma_idx++) {
+				if (of_property_read_u32_index(
+					info->dev->of_node, "chroma-key",
+					chroma_idx,
+					&par->pdata.chroma_info.key[chroma_idx])
+					< 0) {
+					pr_err("[ERROR][FBX] error in %s: can nod find chroma-key\n",
 						__func__);
 					ret = -ENODEV;
 					goto err_dt_parse;
 				}
 			}
-			for (chroma_idx = 0 ; chroma_idx < 3 ; chroma_idx ++) {
-				if (of_property_read_u32_index(info->dev->of_node, "chroma-mkey",
-					chroma_idx, &par->pdata.chroma_info.mkey[chroma_idx]) < 0) {
-					pr_err("[ERROR][FBX] error in %s: can nod find chroma-mkey \n",
+			for (chroma_idx = 0 ; chroma_idx < 3 ; chroma_idx++) {
+				if (of_property_read_u32_index(
+					info->dev->of_node, "chroma-mkey",
+					chroma_idx,
+					&par->pdata.chroma_info.mkey[chroma_idx]
+					) < 0) {
+					pr_err("[ERROR][FBX] error in %s: can nod find chroma-mkey\n",
 						__func__);
 					ret = -ENODEV;
 					goto err_dt_parse;
@@ -2413,15 +2430,16 @@ fbx_set_display_controller(struct fb_info *info, struct videomode *vm)
 		par->pdata.region.y);
 
 	layer = VIOC_WMIX_GetLayer(par->pdata.wmixer_info.blk_num,
-					VIOC_RDMA_GetImageNum(par->pdata.rdma_info.blk_num));
+					VIOC_RDMA_GetImageNum(
+						par->pdata.rdma_info.blk_num));
 	switch (layer) {
-	case 3 :
+	case 3:
 		channel = 0;
 		break;
-	case 2 :
+	case 2:
 		channel = 1;
 		break;
-	case 1 :
+	case 1:
 		if (VIOC_WMIX_GetMixerType(par->pdata.wmixer_info.blk_num))
 			/* 4 to 2 mixer */
 			channel = 2;
@@ -2429,26 +2447,33 @@ fbx_set_display_controller(struct fb_info *info, struct videomode *vm)
 			/* 2 to 2 mixer */
 			channel = 0;
 		break;
-	default :
+	default:
 		break;
 	}
-	if (info->var.bits_per_pixel == VIOC_IMG_FMT_RGB565){
+	if (info->var.bits_per_pixel == VIOC_IMG_FMT_RGB565) {
 		VIOC_WMIX_SetChromaKey(
-				par->pdata.wmixer_info.virt_addr, channel, 1 /*ON*/,
-				par->pdata.chroma_info.key[0], par->pdata.chroma_info.key[1],
-				par->pdata.chroma_info.key[2], par->pdata.chroma_info.mkey[0],
-				par->pdata.chroma_info.mkey[1], par->pdata.chroma_info.mkey[2]);
-			pr_info("[INF][FBX]RGB565 Set Chromakey\n"\
-				"key R : 0x%x\nkey G : 0x%x\nkey B : 0x%x\n"\
+				par->pdata.wmixer_info.virt_addr, channel,
+				1 /*ON*/, par->pdata.chroma_info.key[0],
+				par->pdata.chroma_info.key[1],
+				par->pdata.chroma_info.key[2],
+				par->pdata.chroma_info.mkey[0],
+				par->pdata.chroma_info.mkey[1],
+				par->pdata.chroma_info.mkey[2]);
+			pr_info("[INF][FBX]RGB565 Set Chromakey\n"
+				"key R : 0x%x\nkey G : 0x%x\nkey B : 0x%x\n"
 				"mkey R : 0x%x\nmkey G : 0x%x\nmkey B : 0x%x\n",
-				par->pdata.chroma_info.key[0],par->pdata.chroma_info.key[1],
-				par->pdata.chroma_info.key[2],par->pdata.chroma_info.mkey[0],
-				par->pdata.chroma_info.mkey[1],par->pdata.chroma_info.mkey[2]);
+				par->pdata.chroma_info.key[0],
+				par->pdata.chroma_info.key[1],
+				par->pdata.chroma_info.key[2],
+				par->pdata.chroma_info.mkey[0],
+				par->pdata.chroma_info.mkey[1],
+				par->pdata.chroma_info.mkey[2]);
 	} else { // VIOC_IMG_FMT_ARGB8888
-			VIOC_WMIX_SetChromaKey(
-				par->pdata.wmixer_info.virt_addr, channel, 0 /*OFF*/,
-				0, 0, 0, 0, 0, 0);
-			pr_info("[INF][FBX]ARGB888 Disable Chromakey\n");
+		VIOC_WMIX_SetChromaKey(
+			par->pdata.wmixer_info.virt_addr,
+			channel, 0 /*OFF*/,
+			0, 0, 0, 0, 0, 0);
+		pr_info("[INF][FBX]ARGB888 Disable Chromakey\n");
 	}
 
 	VIOC_WMIX_SetOverlayPriority(

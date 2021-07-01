@@ -110,14 +110,7 @@
 #endif
 
 #if defined(CONFIG_SYNC_FB)
-#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-#include <sw_sync.h>
-#else
-#if KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE
-#include <linux/fence.h>
-#else
 #include <linux/dma-fence.h>
-#endif
 #include <linux/sync_file.h>
 extern struct sync_timeline *sync_timeline_create(
 	const char *name);
@@ -128,7 +121,6 @@ extern int sw_sync_create_fence(
 extern void sw_sync_timeline_inc(
 	struct sync_timeline *obj,
 	unsigned int value);
-#endif
 #include <linux/file.h>
 #endif
 
@@ -366,33 +358,18 @@ extern int tcc_fb_swap_vpu_frame(
 
 
 #if defined(CONFIG_SYNC_FB)
-#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-static void tcc_fd_fence_wait(struct sync_fence *fence)
-#else
 static void tcc_fd_fence_wait(struct fence *fence)
-#endif
 {
-#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-	int err = sync_fence_wait(fence, 1000);
-#elif KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE
-	int err = fence_default_wait(fence, 1, 1000);
-#else
 	int err = dma_fence_default_wait((struct dma_fence *) fence, 1, 1000);
-#endif
+
 	if (err >= 0) {
 		return;
 		/* prevent KCS warning */
 	}
 
 	if (err == -ETIME) {
-		#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-		err = sync_fence_wait(fence, 10 * MSEC_PER_SEC);
-		#elif KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE
-		err = fence_default_wait(fence, 1, 10 * MSEC_PER_SEC);
-		#else
 		err = dma_fence_default_wait((struct dma_fence *)fence,
 			1, 10 * MSEC_PER_SEC);
-		#endif
 	}
 }
 
@@ -407,13 +384,7 @@ static void tcc_fb_update_regs(
 	if ((regs->fence_fd > 0) && (regs->fence)) {
 		tcc_fd_fence_wait(regs->fence);
 
-		#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-		sync_fence_put(regs->fence);
-		#elif KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE
-		fence_put(regs->fence);
-		#else
 		dma_fence_put((struct dma_fence *) regs->fence);
-		#endif
 	}
 
 	#if defined(CONFIG_VIOC_AFBCDEC)
@@ -445,11 +416,7 @@ static void tcc_fb_update_regs(
 
 	pm_runtime_put_sync(tccfb->fb->dev);
 
-#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-	sw_sync_timeline_inc(tccfb->fb_timeline, 1);
-#else
 	sw_sync_timeline_inc((struct sync_timeline *)tccfb->fb_timeline, 1);
-#endif
 }
 
 static void fence_handler(struct kthread_work *work)
@@ -494,12 +461,8 @@ static void ext_fence_handler(struct kthread_work *work)
 	//TCC_OUTPUT_FB_UpdateSync(Output_SelectMode);
 
 	for (i = save_timeline_value; i < save_timeline_fb_max; i++) {
-		#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-		sw_sync_timeline_inc(tccfb->fb_timeline, 1);
-		#else
 		sw_sync_timeline_inc(
 			(struct sync_timeline *)tccfb->ext_timeline, 1);
-		#endif
 	}
 }
 #endif
@@ -1005,11 +968,6 @@ static int tccfb_ioctl(
 		struct tcc_dp_device *pdp_data = &ptccfb_info->pdata.Mdp_data;
 		int ret = 0, fd = 0;
 
-		#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-		struct sync_pt *pt;
-		struct sync_fence *fence;
-		#endif
-
 		if (copy_from_user(&var_info,
 			(struct fb_var_screeninfo __user *)arg,
 				sizeof(struct fb_var_screeninfo))) {
@@ -1028,32 +986,11 @@ static int tccfb_ioctl(
 			/* prevent KCS warning */
 		}
 
-		#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-		#if KERNEL_VERSION(3, 19, 0) > LINUX_VERSION_CODE
-		fd = get_unused_fd();
-		#else
-		fd = get_unused_fd_flags(0);
-		#endif
-
-		if (fd < 0) {
-			pr_err("[ERR][FB] fb fence sync get fd error : %d\n",
-				fd);
-			break;
-		}
-		#endif
-
 		mutex_lock(&ptccfb_info->output_lock);
 
 		if (!ptccfb_info->output_on) {
 			ptccfb_info->fb_timeline_max++;
 
-			#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-			pt = sw_sync_pt_create(ptccfb_info->fb_timeline,
-				ptccfb_info->fb_timeline_max);
-			fence = sync_fence_create("display", pt);
-			sync_fence_install(fence, fd);
-
-			#else
 			ret = sw_sync_create_fence(
 			(struct sync_timeline *)ptccfb_info->fb_timeline,
 				ptccfb_info->fb_timeline_max, &fd);
@@ -1064,17 +1001,12 @@ static int tccfb_ioctl(
 				mutex_unlock(&ptccfb_info->output_lock);
 				break;
 			}
-			#endif
 
 			var_info.reserved[2] = fd;
 			var_info.reserved[3] = 0xf;
 
-			#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-			sw_sync_timeline_inc(ptccfb_info->fb_timeline, 1);
-			#else
 			sw_sync_timeline_inc(
 			(struct sync_timeline *)ptccfb_info->fb_timeline, 1);
-			#endif
 
 			pr_info("[INF][FB] lcd display update on power off state\n");
 
@@ -1102,12 +1034,8 @@ static int tccfb_ioctl(
 
 		regs->fence_fd = var_info.reserved[2];
 		if (regs->fence_fd > 0) {
-			#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-			regs->fence = sync_fence_fdget(regs->fence_fd);
-			#else
 			regs->fence = (struct fence *)sync_file_get_fence(
 				regs->fence_fd);
-			#endif
 
 			if (!regs->fence) {
 				pr_warn("[WAR][FB] failed to import fence fd\n");
@@ -1119,13 +1047,6 @@ static int tccfb_ioctl(
 
 		ptccfb_info->fb_timeline_max++;
 
-		#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-		pt = sw_sync_pt_create(ptccfb_info->fb_timeline,
-			ptccfb_info->fb_timeline_max);
-		fence = sync_fence_create("display", pt);
-		sync_fence_install(fence, fd);
-
-		#else
 		ret = sw_sync_create_fence(
 			(struct sync_timeline *)ptccfb_info->fb_timeline,
 			ptccfb_info->fb_timeline_max, &fd);
@@ -1137,19 +1058,13 @@ static int tccfb_ioctl(
 			mutex_unlock(&ptccfb_info->output_lock);
 			break;
 		}
-		#endif
 
 		var_info.reserved[2] = fd;
 		var_info.reserved[3] = 0xf;
 		mutex_unlock(&ptccfb_info->fb_timeline_lock);
 
-		#if KERNEL_VERSION(4, 9, 0) > LINUX_VERSION_CODE
-		queue_kthread_work(&ptccfb_info->fb_update_regs_worker,
-			&ptccfb_info->fb_update_regs_work);
-		#else
 		kthread_queue_work(&ptccfb_info->fb_update_regs_worker,
 			&ptccfb_info->fb_update_regs_work);
-		#endif
 
 		mutex_unlock(&ptccfb_info->output_lock);
 
@@ -1805,18 +1720,6 @@ static int tccfb_ioctl(
 	#if defined(CONFIG_SYNC_FB)
 		int fd;
 
-		#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-		struct sync_pt *pt;
-		struct sync_fence *fence;
-		#endif
-
-		#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-			#if KERNEL_VERSION(3, 19, 0) > LINUX_VERSION_CODE
-			fd = get_unused_fd();
-			#else
-			fd = get_unused_fd_flags(0);
-			#endif
-		#endif
 	#endif
 
 		if (ptccfb_info == NULL) {
@@ -1862,23 +1765,8 @@ static int tccfb_ioctl(
 	#if defined(CONFIG_SYNC_FB)
 		mutex_lock(&ptccfb_info->ext_timeline_lock);
 
-		#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-		if (fd < 0) {
-			pr_err("[ERR][FB] TCC_XXX_FBIOPUT_VSCREENINFO fb fence sync get fd error : %d\n",
-				fd);
-			break;
-		}
-		#endif
-
 		ptccfb_info->ext_timeline_max++;
 
-		#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-		pt = sw_sync_pt_create(ptccfb_info->ext_timeline,
-			ptccfb_info->ext_timeline_max);
-		fence = sync_fence_create("display_ext", pt);
-		sync_fence_install(fence, fd);
-
-		#else
 		ret = sw_sync_create_fence(
 			(struct sync_timeline *)ptccfb_info->ext_timeline,
 			ptccfb_info->ext_timeline_max, &fd);
@@ -1888,16 +1776,11 @@ static int tccfb_ioctl(
 			mutex_unlock(&ptccfb_info->ext_timeline_lock);
 			return  -EFAULT;
 		}
-		#endif
 
 		sc_info.fence_fd = fd;
 
-		#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-		sw_sync_timeline_inc(ptccfb_info->fb_timeline, 1);
-		#else
 		sw_sync_timeline_inc(
 			(struct sync_timeline *)ptccfb_info->ext_timeline, 1);
-		#endif
 
 		mutex_unlock(&ptccfb_info->ext_timeline_lock);
 
@@ -3126,13 +3009,8 @@ static int tcc_fb_disable(struct fb_info *info)
 	mutex_lock(&fbi->output_lock);
 
 #if defined(CONFIG_SYNC_FB)
-#if KERNEL_VERSION(4, 9, 0) > LINUX_VERSION_CODE
-	flush_kthread_worker(&fbi->fb_update_regs_worker);
-	flush_kthread_worker(&fbi->ext_update_regs_worker);
-#else
 	kthread_flush_worker(&fbi->fb_update_regs_worker);
 	kthread_flush_worker(&fbi->ext_update_regs_worker);
-#endif
 #endif//
 	if (!fbi->output_on) {
 		ret = -EBUSY;
@@ -3249,32 +3127,16 @@ struct dma_buf_ops fb_dma_buf_ops = {
 	.unmap_dma_buf = fb_ion_unmap_dma_buf,
 	.mmap = fb_ion_mmap,
 	.release = fb_ion_dma_buf_release,
-#if KERNEL_VERSION(4, 11, 12) >= LINUX_VERSION_CODE
-	.kmap_atomic = fb_ion_dma_buf_map,
-	.kmap = fb_ion_dma_buf_map,
-#else
 	.map_atomic = fb_ion_dma_buf_map,
 	.map = fb_ion_dma_buf_map,
-#endif
 };
 
 struct dma_buf *tccfb_dmabuf_export(struct fb_info *info)
 {
 	struct dma_buf *dmabuf;
 
-#if KERNEL_VERSION(4, 0, 9) < LINUX_VERSION_CODE
-	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
-
-	exp_info.ops = &fb_dma_buf_ops;
-	exp_info.size = info->fix.smem_len;
-	exp_info.flags = O_RDWR;
-	exp_info.priv = info;
-
-	dmabuf = dma_buf_export(&exp_info);
-#else
 	dmabuf = dma_buf_export(info, &fb_dma_buf_ops, info->fix.smem_len,
 		O_RDWR, NULL);
-#endif
 
 	return dmabuf;
 }
@@ -3367,13 +3229,7 @@ static void dmabuf_vm_close(struct vm_area_struct *vma)
 {
 }
 
-#if KERNEL_VERSION(4, 10, 17) >= LINUX_VERSION_CODE
-static int dmabuf_vm_fault(
-	struct vm_area_struct *vma,
-	struct vm_fault *vmf)
-#else
 static int dmabuf_vm_fault(struct vm_fault *vmf)
-#endif
 {
 	return 0;
 }
@@ -3415,17 +3271,10 @@ static const struct dma_buf_ops dmabuf_ops = {
 	.map_dma_buf = dmabuf_map_dma_buf,
 	.unmap_dma_buf = dmabuf_unmap_dma_buf,
 	.release = dmabuf_release,
-#if KERNEL_VERSION(4, 11, 12) >= LINUX_VERSION_CODE
-	.kmap_atomic = dmabuf_kmap_atomic,
-	.kunmap_atomic = dmabuf_kunmap_atomic,
-	.kmap = dmabuf_kmap,
-	.kunmap = dmabuf_kunmap,
-#else
 	.map_atomic = dmabuf_kmap_atomic,
 	.unmap_atomic = dmabuf_kunmap_atomic,
 	.map = dmabuf_kmap,
 	.unmap = dmabuf_kunmap,
-#endif
 	.mmap = dmabuf_mmap,
 	.vmap = dmabuf_vmap,
 	.vunmap = dmabuf_vunmap,
@@ -3435,7 +3284,6 @@ struct dma_buf *tccfb_dmabuf_export(struct fb_info *info)
 {
 	struct dma_buf *dmabuf;
 
-#if KERNEL_VERSION(4, 0, 9) < LINUX_VERSION_CODE
 	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
 
 	exp_info.ops = &dmabuf_ops;
@@ -3444,10 +3292,6 @@ struct dma_buf *tccfb_dmabuf_export(struct fb_info *info)
 	exp_info.priv = info;
 
 	dmabuf = dma_buf_export(&exp_info);
-#else
-	dmabuf = dma_buf_export(info, &dmabuf_ops, info->fix.smem_len,
-		O_RDWR, NULL);
-#endif
 
 	return dmabuf;
 }
@@ -3571,8 +3415,8 @@ static int __init tccfb_map_video_memory(
 #endif
 
 	if (fbi->map_cpu) {
-		unsigned int tca_get_scaler_num(TCC_OUTPUT_TYPE Output,
-			unsigned int Layer);
+//		unsigned int tca_get_scaler_num(TCC_OUTPUT_TYPE Output,
+//			unsigned int Layer);
 
 		/* prevent initial garbage on screen */
 		#if defined(CONFIG_LOGO_PRESERVE_WITHOUT_FB_INIT)
@@ -3687,7 +3531,7 @@ static int tcc_vioc_set_rdma_arbitor(struct device_node *np)
 		virt_addr = of_iomap(np, is_VIOC_REMAP
 			? (i + num_of_arbitor) : i);
 
-		*(volatile uint *)virt_addr =
+		*(uint *)virt_addr =
 			((1<<31) | (0<<28) | (2<<16) | (0<<12) | (10<<0));
 	}
 
@@ -3954,11 +3798,7 @@ static int tccfb_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&info->fb_update_regs_list);
 	mutex_init(&info->fb_timeline_lock);
 
-#if KERNEL_VERSION(4, 9, 0) > LINUX_VERSION_CODE
-	init_kthread_worker(&info->fb_update_regs_worker);
-#else
 	kthread_init_worker(&info->fb_update_regs_worker);
-#endif
 	info->fb_update_regs_thread = kthread_run(kthread_worker_fn,
 			&info->fb_update_regs_worker, "tccfb");
 
@@ -3971,27 +3811,15 @@ static int tccfb_probe(struct platform_device *pdev)
 		return err;
 	}
 
-#if KERNEL_VERSION(4, 9, 0) > LINUX_VERSION_CODE
-	init_kthread_work(&info->fb_update_regs_work, fence_handler);
-#else
 	kthread_init_work(&info->fb_update_regs_work, fence_handler);
-#endif
 
-#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-	info->fb_timeline = sw_sync_timeline_create("tccfb");
-#else
 	info->fb_timeline =
 		(struct sw_sync_timeline *)sync_timeline_create("tccfb");
-#endif
 	info->fb_timeline_max	=  0;
 
 	INIT_LIST_HEAD(&info->ext_update_regs_list);
 	mutex_init(&info->ext_timeline_lock);
-#if KERNEL_VERSION(4, 9, 0) > LINUX_VERSION_CODE
-	init_kthread_worker(&info->ext_update_regs_worker);
-#else
 	kthread_init_worker(&info->ext_update_regs_worker);
-#endif
 
 	info->ext_update_regs_thread = kthread_run(kthread_worker_fn,
 			&info->ext_update_regs_worker, "tccfb-ext");
@@ -4005,19 +3833,10 @@ static int tccfb_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	#if KERNEL_VERSION(4, 9, 0) > LINUX_VERSION_CODE
-	init_kthread_work(&info->ext_update_regs_work, ext_fence_handler);
-	#else
 	kthread_init_work(&info->ext_update_regs_work, ext_fence_handler);
-	#endif
 
-#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
-	info->ext_timeline = sw_sync_timeline_create("tccfb-ext");
-	info->ext_timeline_max = 0;
-#else
 	info->ext_timeline =
 		(struct sw_sync_timeline *)sync_timeline_create("tccfb-ext");
-#endif
 #endif
 
 	if (lcd_panel->init) {
