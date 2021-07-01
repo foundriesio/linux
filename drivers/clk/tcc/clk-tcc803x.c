@@ -222,9 +222,197 @@ void tcc_ckc_restore(void)
 	ckc_backup = NULL;
 }
 
+static void *tcc_clk_start(struct seq_file *m, loff_t *pos)
+{
+	return (*pos < 1) ? (void *)1 : NULL;
+}
+
+static void *tcc_clk_next(struct seq_file *m, void *v, loff_t *pos)
+{
+	++*pos;
+	return NULL;
+}
+
+static void tcc_clk_stop(struct seq_file *m, void *v)
+{
+}
+
+static int tcc_clk_show(struct seq_file *m, void *v)
+{
+	struct arm_smccc_res res;
+	unsigned long rate, enabled;
+	char dis_str[] = "(disabled)";
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_CPU0,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_CPU0,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "CPU(CA53 MP) : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_CPU1,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_CPU1,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "CPU(CA7) : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_CMBUS,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_CMBUS,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "CM BUS : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_CBUS,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_CBUS,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "CPU BUS : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_MEM,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_MEM,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "MEMBUS Clock : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_MEM_PHY,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_MEM_PHY,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "MEMPHY Clock : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_SMU,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_SMU,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "SMU BUS : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_IO,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_IO,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "IO BUS : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_HSIO,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_HSIO,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "HSIO BUS : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_DDI,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_DDI,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "DISPLAY BUS(DDIBUS) : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_GPU,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_GPU,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "Graphic 3D BUS : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_G2D,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_G2D,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "Graphic 2D BUS : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_VBUS,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_VBUS,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "Video BUS : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_CODA,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_CODA,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "CODA Clock : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_CHEVC,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_CHEVC,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "HEVC_C : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	arm_smccc_smc((unsigned long)SIP_CLK_GET_CLKCTRL, FBUS_BHEVC,
+			0, 0, 0, 0, 0, 0, &res);
+	rate = res.a0;
+	arm_smccc_smc((unsigned long)SIP_CLK_IS_CLKCTRL, FBUS_BHEVC,
+			0, 0, 0, 0, 0, 0, &res);
+	enabled = res.a0;
+	seq_printf(m, "HEVC_B : %15lu Hz %s\n", rate,
+			(enabled == 1)?"":dis_str);
+
+	return 0;
+
+}
+
+static const struct seq_operations tcc_clk_op = {
+	.start	= tcc_clk_start,
+	.next	= tcc_clk_next,
+	.stop	= tcc_clk_stop,
+	.show	= tcc_clk_show
+};
+
+static int tcc_clk_open(struct inode *inode, struct file *file)
+{
+	return seq_open(file, &tcc_clk_op);
+}
+
+static const struct file_operations proc_tcc_clk_operations = {
+	.open		= tcc_clk_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= seq_release,
+};
+
 static int __init tcc_clk_proc_init(void)
 {
-	proc_symlink("clocks", NULL, "/sys/kernel/debug/clk/clk_summary");
+	proc_create("clocks", 0444, NULL, &proc_tcc_clk_operations);
 	return 0;
 }
 device_initcall(tcc_clk_proc_init);
