@@ -221,6 +221,7 @@ static int32_t mbox_receive_queue_init(
 			void *handler_pdata, const char_t *name)
 {
 	int32_t ret;
+	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
 
 	if (mbox_queue != NULL) {
 
@@ -242,6 +243,7 @@ static int32_t mbox_receive_queue_init(
 
 			ret = -ENOMEM;
 		} else {
+			sched_setscheduler(mbox_queue->kworker_task, SCHED_FIFO, &param);
 			kthread_init_work(&mbox_queue->pump_messages,
 				mbox_pump_messages);
 			ret = 0;

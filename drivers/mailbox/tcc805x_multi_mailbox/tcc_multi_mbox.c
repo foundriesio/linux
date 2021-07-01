@@ -21,6 +21,9 @@
 #include <linux/mailbox/tcc805x_multi_mailbox/tcc805x_multi_mbox.h>
 #include <dt-bindings/mailbox/tcc805x_multi_mailbox/tcc_mbox_ch.h>
 #include <soc/tcc/chipinfo.h>
+#include <linux/sched.h>
+#include <linux/sched/rt.h>
+#include <uapi/linux/sched/types.h>
 
 #define Hw37		(1LL << 37)
 #define Hw36		(1LL << 36)
@@ -491,6 +494,7 @@ static int32_t mbox_receive_queue_init(
 			const char_t *name)
 {
 	int32_t ret;
+	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
 
 	if (mbox_queue != NULL) {
 		INIT_LIST_HEAD(&mbox_queue->rx_queue);
@@ -510,6 +514,7 @@ static int32_t mbox_receive_queue_init(
 				LOG_TAG, __func__);
 			ret = -ENOMEM;
 		} else {
+			sched_setscheduler(mbox_queue->kworker_task, SCHED_FIFO, &param);
 			kthread_init_work(&mbox_queue->pump_messages,
 				mbox_pump_rx_messages);
 			ret = 0;
@@ -597,6 +602,7 @@ static int32_t mbox_transmit_queue_init(struct mbox_transmitQueue *mbox_queue,
 			void *handler_pdata, const char_t *name)
 {
 	int32_t ret;
+	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
 
 	if (mbox_queue != NULL) {
 		INIT_LIST_HEAD(&mbox_queue->tx_queue);
@@ -616,6 +622,7 @@ static int32_t mbox_transmit_queue_init(struct mbox_transmitQueue *mbox_queue,
 				LOG_TAG, __func__);
 			ret = -ENOMEM;
 		} else {
+			sched_setscheduler(mbox_queue->kworker_task, SCHED_FIFO, &param);
 			kthread_init_work(
 				&mbox_queue->pump_messages,
 				mbox_pump_tx_messages);
