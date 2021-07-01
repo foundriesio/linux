@@ -4563,14 +4563,13 @@ restart:
 		err = PTR_ERR(trans);
 		goto out_free;
 	}
-	btrfs_commit_transaction(trans);
 	ret = btrfs_commit_transaction(trans);
 	if (ret && !err)
 		err = ret;
+out_free:
 	ret = clean_dirty_subvols(rc);
 	if (ret < 0 && !err)
 		err = ret;
-out_free:
 	btrfs_free_block_rsv(fs_info, rc->block_rsv);
 	btrfs_free_path(path);
 	return err;
@@ -5047,7 +5046,7 @@ int btrfs_recover_relocation(struct btrfs_root *root)
 	trans = btrfs_join_transaction(rc->extent_root);
 	if (IS_ERR(trans)) {
 		err = PTR_ERR(trans);
-		goto out_unset;
+		goto out_clean;
 	}
 
 	if (resume_qgroups) {
@@ -5057,6 +5056,7 @@ int btrfs_recover_relocation(struct btrfs_root *root)
 	}
 	err = btrfs_commit_transaction(trans);
 
+out_clean:
 	ret = clean_dirty_subvols(rc);
 	if (ret < 0 && !err)
 		err = ret;
