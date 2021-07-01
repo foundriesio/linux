@@ -51,6 +51,12 @@ config TCC_SHMEM
 	depends on ARCH_TCC
 	bool "TCC shared memory driver"
 
+config TCC_SHMEM_SAMPLE
+	default n
+	depends on ARCH_TCC
+	depends on TCC_SHMEM
+	bool "TCC shared memory sample driver"
+
 config TCC_GPIO_TEST
 	default n
 	depends on PINCTRL_TCC

@@ -9,6 +9,7 @@ obj-$(CONFIG_TCC_G2D) += tcc_grp.o
 obj-$(CONFIG_GPIO_TCC_SAMPLE)   += gpio-tcc-sample.o
 obj-$(CONFIG_CLKOUT_TCC_SAMPLE)   += clkout-tcc-sample.o
 obj-$(CONFIG_TCC_SHMEM) += tcc_shared_mem.o
+obj-$(CONFIG_TCC_SHMEM_SAMPLE) += tcc_shared_mem_sample.o
 
 ifdef CONFIG_ARCH_TCC897X
 obj-$(CONFIG_TCC_SDR)   += tcc_sdr.o

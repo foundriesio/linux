@@ -3574,6 +3574,11 @@
 		core-num = <0>;
     };
 
+	tcc_shared_memory_sample: tcc_shared_memory_sample {
+		compatible = "tcc_shmem_sample";
+		status = "okay";
+	};
+
 	tcc_virt_eth: tcc_virt_eth {
 		compatible = "telechips,tcc_virt_eth";
 		status = "okay";
