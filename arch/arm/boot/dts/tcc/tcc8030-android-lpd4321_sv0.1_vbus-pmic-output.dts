@@ -3,9 +3,7 @@
  * Copyright (C) Telechips Inc.
  */
 
-/dts-v1/;
-
-#include "tcc8030-linux-lpd4321_sv0.1.dts"
+#include "tcc8030-android-lpd4321_sv0.1.dts"
 
 / {
 	vbus_supply_ehci: vbus_supply_ehci {
@@ -59,5 +57,4 @@
 	i2s@16701000 {
 		status = "okay";
 	};
-
 };

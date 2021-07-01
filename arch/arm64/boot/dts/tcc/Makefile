@@ -8,6 +8,7 @@ dtb-$(CONFIG_ARCH_TCC899X) += \
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc8030-android-lpd4321_sv0.1.dtb \
 	tcc8030-android-lpd4321_sv0.1_for_t-sound.dtb \
+	tcc8030-android-lpd4321_sv0.1_vbus-pmic-output.dtb \
 	tcc803xpe-android-lpd4321_sv1.0.dtb
 ifeq ($(CONFIG_TCC_HDMI_DRIVER_V2_0),y)
 dtb-$(CONFIG_ARCH_TCC803X) += \
@@ -32,6 +33,7 @@ dtb-$(CONFIG_ARCH_TCC899X) += \
 dtb-$(CONFIG_ARCH_TCC803X) += \
 	tcc803xpe-linux-lpd4321_sv1.0.dtb \
 	tcc8030-linux-lpd4321_sv0.1.dtb \
+	tcc8030-linux-lpd4321_sv0.1_vbus-pmic-output.dtb \
 	tcc8030-linux-lpd4321_sv0.1_for_t-sound.dtb
 ifeq ($(CONFIG_TCC_HDMI_DRIVER_V2_0),y)
 dtb-$(CONFIG_ARCH_TCC803X) += \
@@ -71,6 +73,7 @@ dtbo-y += \
 	overlay-tcc8030-android-lpd4321_sv0.1.dtbo \
 	overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dtbo \
 	overlay-tcc8030-android-lpd4321_sv0.1-hdmi-ext-panel.dtbo \
+	overlay-tcc8030-android-lpd4321_sv0.1_vbus-pmic-output.dtbo \
 	overlay-tcc803xpe-android-lpd4321_sv1.0.dtbo
 
 dtb-y += \
