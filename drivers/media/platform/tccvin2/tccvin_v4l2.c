@@ -50,13 +50,14 @@
  */
 
 int tccvin_get_imagesize(struct tccvin_streaming* stream,
-			 unsigned int width, unsigned int height,
-			 unsigned int fcc, unsigned int (*planes)[])
+	unsigned int width, unsigned int height,
+	unsigned int fcc, unsigned int (*planes)[])
 {
 	struct tccvin_format *format = NULL;
+	struct device *dev_ptr = tccvin_streaming_to_devptr(stream);
 
 	if (planes == NULL) {
-		loge(&stream->vdev.dev, "planes are not available\n");
+		loge(dev_ptr, "planes are not available\n");
 		return -EINVAL;
 	}
 
@@ -120,7 +121,7 @@ int tccvin_get_imagesize(struct tccvin_streaming* stream,
 		break;
 
 	default:
-		loge(&stream->vdev.dev, "fcc is wrong\n");
+		loge(dev_ptr, "fcc is wrong\n");
 		return -EINVAL;
 	}
 
@@ -151,23 +152,25 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	struct tccvin_format *format = NULL;
 	struct tccvin_frame frame_internal;
 	struct tccvin_frame *frame = NULL;
+	struct device *dev_ptr = NULL;
 	unsigned int i;
 	unsigned int imagesize[VIDEO_MAX_PLANES];
 	int idxpln = 0;
 	int ret = 0;
 	__u8 *fcc;
 
+	dev_ptr = tccvin_streaming_to_devptr(stream);
 	if (fmt->type != stream->type) {
-		loge(&stream->vdev.dev,
-		     "fmt->type: 0x%08x, stream->type: 0x%08x\n",
+		loge(dev_ptr,
+			"fmt->type: 0x%08x, stream->type: 0x%08x\n",
 			fmt->type, stream->type);
 		return -EINVAL;
 	}
 
 	fcc = (__u8 *)&fmt->fmt.pix_mp.pixelformat;
-	logi(&stream->vdev.dev, "Trying format %c%c%c%c: %ux%u.\n",
-			fcc[0], fcc[1], fcc[2], fcc[3],
-			fmt->fmt.pix_mp.width, fmt->fmt.pix_mp.height);
+	logi(dev_ptr, "Trying format %c%c%c%c: %ux%u.\n",
+		fcc[0], fcc[1], fcc[2], fcc[3],
+		fmt->fmt.pix_mp.width, fmt->fmt.pix_mp.height);
 
 	/* Check if the hardware supports the requested format, use the default
 	 * format otherwise.
@@ -176,9 +179,9 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 	for (i = 0; i < nformats; ++i) {
 		format = tccvin_format_by_index(i);
 		if (format->fcc == fmt->fmt.pix_mp.pixelformat) {
-			logd(&stream->vdev.dev,
-			     "format(%c%c%c%c) is available\n",
-			     fcc[0], fcc[1], fcc[2], fcc[3]);
+			logd(dev_ptr,
+				"format(%c%c%c%c) is available\n",
+				fcc[0], fcc[1], fcc[2], fcc[3]);
 			break;
 		}
 	}
@@ -190,7 +193,7 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 
 	if ((fmt->fmt.pix_mp.width * fmt->fmt.pix_mp.height) >=
 		(MAX_FRAMEWIDTH * MAX_FRAMEHEIGHT)) {
-		loge(&stream->vdev.dev, "frmaesize(%u * %u) is not supported\n",
+		loge(dev_ptr, "frmaesize(%u * %u) is not supported\n",
 			fmt->fmt.pix_mp.width,
 			fmt->fmt.pix_mp.height);
 		return -EINVAL;
@@ -212,20 +215,20 @@ static int tccvin_v4l2_try_format(struct tccvin_streaming *stream,
 			tccvin_v4l2_get_bytesperline(format, frame);
 	}
 
-	logd(&stream->vdev.dev, "width: %d, height: %d\n",
+	logd(dev_ptr, "width: %d, height: %d\n",
 		fmt->fmt.pix_mp.width, fmt->fmt.pix_mp.height);
-	logd(&stream->vdev.dev,
-	     "field: 0x%08x\n", fmt->fmt.pix_mp.field);
-	logd(&stream->vdev.dev,
-	     "colorspace: 0x%08x\n", fmt->fmt.pix_mp.colorspace);
-	logd(&stream->vdev.dev,
-	     "num_planes: 0x%08x\n", fmt->fmt.pix_mp.num_planes);
+	logd(dev_ptr,
+		"field: 0x%08x\n", fmt->fmt.pix_mp.field);
+	logd(dev_ptr,
+		"colorspace: 0x%08x\n", fmt->fmt.pix_mp.colorspace);
+	logd(dev_ptr,
+		"num_planes: 0x%08x\n", fmt->fmt.pix_mp.num_planes);
 	for (idxpln = 0; idxpln < fmt->fmt.pix_mp.num_planes; idxpln++) {
-		logd(&stream->vdev.dev,
-		     "idxpln: %d, bpl: 0x%08x, sizeimage: 0x%08x\n",
-		     idxpln,
-		     fmt->fmt.pix_mp.plane_fmt[idxpln].bytesperline,
-		     fmt->fmt.pix_mp.plane_fmt[idxpln].sizeimage);
+		logd(dev_ptr,
+			"idxpln: %d, bpl: 0x%08x, sizeimage: 0x%08x\n",
+			idxpln,
+			fmt->fmt.pix_mp.plane_fmt[idxpln].bytesperline,
+			fmt->fmt.pix_mp.plane_fmt[idxpln].sizeimage);
 	}
 
 	if (tccvin_format != NULL) {
@@ -245,13 +248,16 @@ static int tccvin_v4l2_get_format(struct tccvin_streaming *stream,
 {
 	struct tccvin_format *format;
 	struct tccvin_frame *frame;
+	struct device *dev_ptr = NULL;
 	int idxpln = 0;
-	unsigned int imagesize[VIDEO_MAX_PLANES];
 	int ret = 0;
+	unsigned int imagesize[VIDEO_MAX_PLANES];
+
+	dev_ptr = tccvin_streaming_to_devptr(stream);
 
 	if (fmt->type != stream->type) {
 		/* type is wrong */
-		loge(&stream->vdev.dev, "type is not matched\n");
+		loge(dev_ptr, "type is not matched\n");
 		return -EINVAL;
 	}
 
@@ -260,13 +266,13 @@ static int tccvin_v4l2_get_format(struct tccvin_streaming *stream,
 	frame = stream->cur_frame;
 
 	if (format == NULL) {
-		loge(&stream->vdev.dev, "format is null\n");
+		loge(dev_ptr, "format is null\n");
 		ret = -EINVAL;
 		goto done;
 	}
 
 	if (frame == NULL) {
-		loge(&stream->vdev.dev, "frame is null\n");
+		loge(dev_ptr, "frame is null\n");
 		ret = -EINVAL;
 		goto done;
 	}
@@ -296,10 +302,12 @@ static int tccvin_v4l2_set_format(struct tccvin_streaming *stream,
 {
 	struct tccvin_format *format;
 	struct tccvin_frame *frame;
+	struct device *dev_ptr = NULL;
 	int ret = 0;
 
+	dev_ptr = tccvin_streaming_to_devptr(stream);
 	if (fmt->type != stream->type) {
-		loge(&stream->vdev.dev, "fmt->type: 0x%08x, stream->type: 0x%08x\n",
+		loge(dev_ptr, "fmt->type: 0x%08x, stream->type: 0x%08x\n",
 			fmt->type, stream->type);
 		return -EINVAL;
 	}
@@ -309,14 +317,14 @@ static int tccvin_v4l2_set_format(struct tccvin_streaming *stream,
 
 	ret = tccvin_v4l2_try_format(stream, fmt, &format, &frame);
 	if (ret < 0) {
-		loge(&stream->vdev.dev, "tccvin_v4l2_try_format, ret: %d\n", ret);
+		loge(dev_ptr, "tccvin_v4l2_try_format, ret: %d\n", ret);
 		return ret;
 	}
 
 	mutex_lock(&stream->mutex);
 
 	if (tccvin_queue_is_allocated(&stream->queue)) {
-		loge(&stream->vdev.dev, "tccvin_queue_is_allocated\n");
+		loge(dev_ptr, "tccvin_queue_is_allocated\n");
 		ret = -EBUSY;
 		goto done;
 	}
@@ -334,12 +342,14 @@ static int tccvin_v4l2_get_frameinterval(struct tccvin_streaming *stream,
 {
 	struct v4l2_subdev *subdev = NULL;
 	struct v4l2_subdev_frame_interval interval;
+	struct device *dev_ptr = NULL;
 	int32_t n_subdev = 0;
 	int32_t idx_subdev = 0;
 	int ret = 0;
 
+	dev_ptr = tccvin_streaming_to_devptr(stream);
 	n_subdev = stream->dev->bounded_subdevs;
-	logd(&stream->vdev.dev, "The number of subdevs is %d\n", n_subdev);
+	logd(dev_ptr, "The number of subdevs is %d\n", n_subdev);
 
 	memset(&interval, 0, sizeof(interval));
 
@@ -348,21 +358,21 @@ static int tccvin_v4l2_get_frameinterval(struct tccvin_streaming *stream,
 
 		ret = v4l2_subdev_call(subdev,
 			video, g_frame_interval, &interval);
-		logd(&stream->vdev.dev, "v4l2_subdev_call, ret: %d\n", ret);
+		logd(dev_ptr, "v4l2_subdev_call, ret: %d\n", ret);
 		switch (ret) {
 		case -ENODEV:
-			loge(&stream->vdev.dev,
-			     "subdev is null\n");
+		loge(dev_ptr,
+			"subdev is null\n");
 			ret = -ENODEV;
 			break;
 		case -ENOIOCTLCMD:
-			logd(&stream->vdev.dev,
-			     "%s - not supported\n", subdev->name);
+		logd(dev_ptr,
+			"%s - not supported\n", subdev->name);
 			ret = -ENOIOCTLCMD;
 			break;
 		case -EINVAL:
-			logd(&stream->vdev.dev,
-			     "%s - condition is wrong\n", subdev->name);
+			logd(dev_ptr,
+			"%s - condition is wrong\n", subdev->name);
 			ret = -EINVAL;
 			break;
 		default:
@@ -380,12 +390,14 @@ static int tccvin_v4l2_set_frameinterval(struct tccvin_streaming *stream,
 {
 	struct v4l2_subdev *subdev = NULL;
 	struct v4l2_subdev_frame_interval interval;
+	struct device *dev_ptr = NULL;
 	int32_t n_subdev = 0;
 	int32_t idx_subdev = 0;
 	int ret = 0;
 
 	n_subdev = stream->dev->bounded_subdevs;
-	logd(&stream->vdev.dev, "The number of subdevs is %d\n", n_subdev);
+	dev_ptr = tccvin_streaming_to_devptr(stream);
+	logd(dev_ptr, "The number of subdevs is %d\n", n_subdev);
 
 	interval.interval = streamparm->parm.capture.timeperframe;
 
@@ -394,21 +406,21 @@ static int tccvin_v4l2_set_frameinterval(struct tccvin_streaming *stream,
 
 		ret = v4l2_subdev_call(subdev,
 			video, s_frame_interval, &interval);
-		logd(&stream->vdev.dev, "v4l2_subdev_call, ret: %d\n", ret);
+		logd(dev_ptr, "v4l2_subdev_call, ret: %d\n", ret);
 		switch (ret) {
 		case -ENODEV:
-			loge(&stream->vdev.dev,
-			     "subdev is null\n");
+			loge(dev_ptr,
+				"subdev is null\n");
 			ret = -ENODEV;
 			break;
 		case -ENOIOCTLCMD:
-			logd(&stream->vdev.dev,
-			     "%s - not supported\n", subdev->name);
+			logd(dev_ptr,
+				"%s - not supported\n", subdev->name);
 			ret = -ENOIOCTLCMD;
 			break;
 		case -EINVAL:
-			logd(&stream->vdev.dev,
-			     "%s - condition is wrong\n", subdev->name);
+			logd(dev_ptr,
+				"%s - condition is wrong\n", subdev->name);
 			ret = -EINVAL;
 			break;
 		default:
@@ -427,15 +439,17 @@ static int tccvin_v4l2_enum_framesizes(struct tccvin_streaming *stream,
 	int32_t idx_subdev = 0;
 	struct v4l2_subdev_frame_size_enum fse;
 	struct tccvin_format *format = NULL;
+	struct device *dev_ptr = NULL;
 	int ret = 0;
 
 	n_subdev = stream->dev->bounded_subdevs;
-	logd(&stream->vdev.dev, "The number of subdevs is %d\n", n_subdev);
+	dev_ptr = tccvin_streaming_to_devptr(stream);
+	logd(dev_ptr, "The number of subdevs is %d\n", n_subdev);
 
 	fse.index = fsize->index;
 	format = tccvin_format_by_fcc(fsize->pixel_format);
 	if (format == NULL) {
-		loge(&stream->vdev.dev, "format is NULL\n");
+		loge(dev_ptr, "format is NULL\n");
 		return -EINVAL;
 	}
 	fse.code = format->mbus_code;
@@ -447,24 +461,24 @@ static int tccvin_v4l2_enum_framesizes(struct tccvin_streaming *stream,
 		fse.pad = idx_subdev;
 		ret = v4l2_subdev_call(subdev,
 			pad, enum_frame_size, NULL, &fse);
-		logd(&stream->vdev.dev, "v4l2_subdev_call, ret: %d\n", ret);
+		logd(dev_ptr, "v4l2_subdev_call, ret: %d\n", ret);
 		switch (ret) {
 		case -ENODEV:
-			loge(&stream->vdev.dev,
-			     "subdev is null\n");
+			loge(dev_ptr,
+				"subdev is null\n");
 			break;
 		case -ENOIOCTLCMD:
-			logd(&stream->vdev.dev,
-			     "%s - not supported\n", subdev->name);
+			logd(dev_ptr,
+				"%s - not supported\n", subdev->name);
 			break;
 		case -EINVAL:
-			logd(&stream->vdev.dev,
-			     "%s - condition is wrong\n", subdev->name);
+			logd(dev_ptr,
+				"%s - condition is wrong\n", subdev->name);
 			break;
 		default:
-			logd(&stream->vdev.dev,
-			     "%s - size: %u * %u\n",
-			     subdev->name, fse.max_width, fse.max_height);
+			logd(dev_ptr,
+				"%s - size: %u * %u\n",
+				subdev->name, fse.max_width, fse.max_height);
 			fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
 			fsize->discrete.width = fse.max_width;
 			fsize->discrete.height = fse.max_height;
@@ -483,15 +497,18 @@ static int tccvin_v4l2_enum_frameintervals(struct tccvin_streaming *stream,
 	int32_t idx_subdev = 0;
 	struct v4l2_subdev_frame_interval_enum fie;
 	struct tccvin_format *format = NULL;
+	struct device *dev_ptr = NULL;
 	int ret = 0;
 
 	n_subdev = stream->dev->bounded_subdevs;
-	logd(&stream->vdev.dev, "The number of subdevs is %d\n", n_subdev);
+	dev_ptr = tccvin_streaming_to_devptr(stream);
+	logd(dev_ptr, "The number of subdevs is %d\n", n_subdev);
 
 	fie.index = fival->index;
 	format = tccvin_format_by_fcc(fival->pixel_format);
+	dev_ptr = tccvin_streaming_to_devptr(stream);
 	if (format == NULL) {
-		loge(&stream->vdev.dev, "format is NULL\n");
+		loge(dev_ptr, "format is NULL\n");
 		return -EINVAL;
 	}
 	fie.code = format->mbus_code;
@@ -505,36 +522,36 @@ static int tccvin_v4l2_enum_frameintervals(struct tccvin_streaming *stream,
 		fie.pad = idx_subdev;
 		ret = v4l2_subdev_call(subdev,
 			pad, enum_frame_interval, NULL, &fie);
-		logd(&stream->vdev.dev,
-		     "idx_subdev: %d, v4l2_subdev_call, ret: %d\n",
+		logd(dev_ptr,
+			"idx_subdev: %d, v4l2_subdev_call, ret: %d\n",
 			idx_subdev, ret);
 		switch (ret) {
 		case -ENODEV:
-			loge(&stream->vdev.dev,
-			     "subdev is null\n");
+		loge(dev_ptr,
+			"subdev is null\n");
 			break;
 		case -ENOIOCTLCMD:
-			logd(&stream->vdev.dev,
-			     "%s - not supported\n", subdev->name);
+		logd(dev_ptr,
+			"%s - not supported\n", subdev->name);
 			break;
 		case -EINVAL:
-			logd(&stream->vdev.dev,
-			     "%s - condition is wrong\n", subdev->name);
+		logd(dev_ptr,
+			"%s - condition is wrong\n", subdev->name);
 			break;
 		default:
 			fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
 			fival->discrete.numerator = fie.interval.numerator;
 			fival->discrete.denominator = fie.interval.denominator;
-			logd(&stream->vdev.dev,
-			     "index: %d, format: 0x%08x\n",
-			     fival->index, fival->pixel_format);
-			logd(&stream->vdev.dev,
-			     " . width: %d, height: %d\n",
-			     fival->width, fival->height);
-			logd(&stream->vdev.dev,
-			     " . numerator: %d, denominator: %d\n",
-			     fival->discrete.numerator,
-			     fival->discrete.denominator);
+			logd(dev_ptr,
+				"index: %d, format: 0x%08x\n",
+				fival->index, fival->pixel_format);
+			logd(dev_ptr,
+				" . width: %d, height: %d\n",
+				fival->width, fival->height);
+			logd(dev_ptr,
+				" . numerator: %d, denominator: %d\n",
+				fival->discrete.numerator,
+				fival->discrete.denominator);
 			return 0;
 		}
 	}
@@ -570,19 +587,21 @@ static int tccvin_v4l2_enum_frameintervals(struct tccvin_streaming *stream,
  * - VIDIOC_REQBUFS
  */
 static int tccvin_acquire_privileges(struct tccvin_streaming *stream,
-				     struct tccvin_fh *handle)
+	struct tccvin_fh *handle)
 {
+	struct device *dev_ptr = tccvin_streaming_to_devptr(stream);
+
 	/* Always succeed if the handle is already privileged. */
 	if (handle->state == TCCVIN_HANDLE_ACTIVE) {
-		logd(&stream->vdev.dev,
-		     "state is already active\n");
+		logd(dev_ptr,
+			"state is already active\n");
 		return 0;
 	}
 
 	/* Check if the device already has a privileged handle. */
 	if (atomic_inc_return(&handle->stream->active) != 1) {
-		loge(&stream->vdev.dev,
-		     "the device already has a privileged handle.\n");
+		loge(dev_ptr,
+			"the device already has a privileged handle.\n");
 		atomic_dec(&handle->stream->active);
 		return -EBUSY;
 	}
@@ -667,24 +686,29 @@ static int tccvin_ioctl_querycap(struct file *file, void *fh,
 	struct v4l2_capability *cap)
 {
 	struct video_device *vdev = video_devdata(file);
+	struct tccvin_streaming *stream = NULL;
+	struct device *dev_ptr;
+
+	stream = container_of(vdev, struct tccvin_streaming, vdev);
+	dev_ptr = tccvin_streaming_to_devptr(stream);
 
 	strlcpy(cap->driver, DRIVER_NAME, sizeof(cap->driver));
 	strlcpy(cap->card, vdev->name, sizeof(cap->card));
-	logd(&vdev->dev, "num: %d\n", vdev->num);
-	logd(&vdev->dev, "index: %d\n", vdev->index);
+	logd(dev_ptr, "num: %d\n", vdev->num);
+	logd(dev_ptr, "index: %d\n", vdev->index);
 	snprintf(cap->bus_info, sizeof(cap->bus_info), "video-capture-%s",
 		cap->driver);
 	cap->version = KERNEL_VERSION(4, 14, 00);
 	cap->device_caps = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_CAPTURE_MPLANE;
 	cap->capabilities = V4L2_CAP_DEVICE_CAPS | cap->device_caps;
 
-	logd(&vdev->dev, "driver: %s\n", cap->driver);
-	logd(&vdev->dev, "card: %s\n", cap->card);
-	logd(&vdev->dev, "bus_info: %s\n", cap->bus_info);
-	logd(&vdev->dev, "version: %u.%u.%u\n", (cap->version >> 16) & 0xFF,
+	logd(dev_ptr, "driver: %s\n", cap->driver);
+	logd(dev_ptr, "card: %s\n", cap->card);
+	logd(dev_ptr, "bus_info: %s\n", cap->bus_info);
+	logd(dev_ptr, "version: %u.%u.%u\n", (cap->version >> 16) & 0xFF,
 		(cap->version >> 8) & 0xFF, cap->version & 0xFF);
-	logd(&vdev->dev, "device_caps: 0x%08x\n", cap->device_caps);
-	logd(&vdev->dev, "capabilities: 0x%08x\n", cap->capabilities);
+	logd(dev_ptr, "device_caps: 0x%08x\n", cap->device_caps);
+	logd(dev_ptr, "capabilities: 0x%08x\n", cap->capabilities);
 
 	return 0;
 }
@@ -694,10 +718,12 @@ static int tccvin_ioctl_enum_fmt(struct tccvin_streaming *stream,
 {
 	unsigned int nformats;
 	struct tccvin_format *format;
+	struct device *dev_ptr;
 	enum v4l2_buf_type type = fmt->type;
 	__u32 index = fmt->index;
 
 	nformats = tccvin_count_supported_formats();
+	dev_ptr = tccvin_streaming_to_devptr(stream);
 	if (fmt->type != stream->type || fmt->index >= nformats) {
 		/* type or format is unavailable */
 		return -EINVAL;
@@ -712,11 +738,11 @@ static int tccvin_ioctl_enum_fmt(struct tccvin_streaming *stream,
 	fmt->description[sizeof(fmt->description) - 1] = 0;
 	fmt->pixelformat = format->fcc;
 
-	logd(&stream->vdev.dev, "index: %d\n", fmt->index);
-	logd(&stream->vdev.dev, "type: 0x%08x,\n", fmt->type);
-	logd(&stream->vdev.dev, "flags: 0x%08x\n", fmt->flags);
-	logd(&stream->vdev.dev, "description: %s\n", fmt->description);
-	logd(&stream->vdev.dev, "pixelformat: 0x%08x\n", fmt->pixelformat);
+	logd(dev_ptr, "index: %d\n", fmt->index);
+	logd(dev_ptr, "type: 0x%08x,\n", fmt->type);
+	logd(dev_ptr, "flags: 0x%08x\n", fmt->flags);
+	logd(dev_ptr, "description: %s\n", fmt->description);
+	logd(dev_ptr, "pixelformat: 0x%08x\n", fmt->pixelformat);
 
 	return 0;
 }
@@ -747,20 +773,21 @@ static int tccvin_ioctl_s_fmt_vid_cap_mplane(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
+	struct device *dev_ptr = tccvin_streaming_to_devptr(stream);
 	int ret;
 
 	ret = tccvin_acquire_privileges(stream, handle);
 	if (ret < 0) {
-		loge(&stream->vdev.dev,
-		     "tccvin_acquire_privileges, ret: %d\n", ret);
+		loge(dev_ptr,
+			"tccvin_acquire_privileges, ret: %d\n", ret);
 		return ret;
 	}
 
 	ret = tccvin_v4l2_set_format(stream, fmt);
 	if (ret < 0) {
 		/* failure of tccvin_v4l2_set_formats */
-		loge(&stream->vdev.dev,
-		     "tccvin_v4l2_set_format, ret: %d\n", ret);
+		loge(dev_ptr,
+			"tccvin_v4l2_set_format, ret: %d\n", ret);
 	}
 
 	return ret;
@@ -776,8 +803,8 @@ static int tccvin_ioctl_try_fmt_vid_cap_mplane(struct file *file, void *fh,
 	ret = tccvin_v4l2_try_format(stream, fmt, NULL, NULL);
 	if (ret < 0) {
 		/* failure of trying format */
-		loge(&stream->vdev.dev,
-		     "tccvin_v4l2_try_format, ret: %d\n", ret);
+		loge(tccvin_streaming_to_devptr(stream),
+			"tccvin_v4l2_try_format, ret: %d\n", ret);
 	}
 
 	return ret;
@@ -800,8 +827,8 @@ static int tccvin_ioctl_reqbufs(struct file *file, void *fh,
 	ret = tccvin_request_buffers(&stream->queue, rb);
 	mutex_unlock(&stream->mutex);
 	if (ret < 0) {
-		loge(&stream->vdev.dev,
-		     "tccvin_request_buffers, ret: %d\n", ret);
+		loge(tccvin_streaming_to_devptr(stream),
+			"tccvin_request_buffers, ret: %d\n", ret);
 		return ret;
 	}
 
@@ -828,8 +855,8 @@ static int tccvin_ioctl_querybuf(struct file *file, void *fh,
 	ret = tccvin_query_buffer(&stream->queue, buf);
 	if (ret < 0) {
 		/* failure of querying buffers */
-		loge(&stream->vdev.dev,
-		     "tccvin_query_buffer, ret: %d\n", ret);
+		loge(tccvin_streaming_to_devptr(stream),
+			"tccvin_query_buffer, ret: %d\n", ret);
 	}
 
 	return ret;
@@ -921,6 +948,7 @@ static int tccvin_ioctl_enum_input(struct file *file, void *fh,
 	struct tccvin_fh		*handle		= NULL;
 	struct tccvin_streaming		*stream		= NULL;
 	struct v4l2_subdev		*subdev		= NULL;
+	struct device			*dev_ptr	= NULL;
 	int32_t				n_subdev	= 0;
 	int32_t				idx_subdev	= 0;
 	uint32_t			status		= 0;
@@ -938,30 +966,31 @@ static int tccvin_ioctl_enum_input(struct file *file, void *fh,
 	input->type = V4L2_INPUT_TYPE_CAMERA;
 
 	n_subdev = stream->dev->bounded_subdevs;
-	logd(&stream->vdev.dev, "The number of subdevs is %d\n", n_subdev);
+	dev_ptr = tccvin_streaming_to_devptr(stream);
+	logd(dev_ptr, "The number of subdevs is %d\n", n_subdev);
 	for (idx_subdev = n_subdev - 1; idx_subdev >= 0; idx_subdev--) {
 		subdev = stream->dev->linked_subdevs[idx_subdev].sd;
 
 		ret = v4l2_subdev_call(subdev, video, g_input_status, &status);
-		logd(&stream->vdev.dev, "v4l2_subdev_call, ret: %d\n", ret);
+		logd(dev_ptr, "v4l2_subdev_call, ret: %d\n", ret);
 		switch (ret) {
 		case -ENODEV:
-			loge(&stream->vdev.dev, "subdev is null\n");
+			loge(dev_ptr, "subdev is null\n");
 			break;
 		case -ENOIOCTLCMD:
-			logd(&stream->vdev.dev,
-			     "%s - g_input_status is not supported\n",
+			logd(dev_ptr,
+				"%s - g_input_status is not supported\n",
 				subdev->name);
 			break;
 		default:
-			logd(&stream->vdev.dev, "VIN[%d] %s - status: 0x%08x\n",
+			logd(dev_ptr, "VIN[%d] %s - status: 0x%08x\n",
 				stream->dev->pdev->id, subdev->name, status);
 			input->status |= status;
 			break;
 		}
 	}
 
-	logi(&stream->vdev.dev, "VIN[%d] %s - type: 0x%08x, status: 0x%08x\n",
+	logi(dev_ptr, "VIN[%d] %s - type: 0x%08x, status: 0x%08x\n",
 		stream->dev->pdev->id,
 		input->name, input->type, input->status);
 
@@ -1022,8 +1051,8 @@ static struct v4l2_rect *tccvin_affordable_rect_for_sel(
 		ret = &stream->rect_compose;
 		break;
 	default:
-		logw(&stream->vdev.dev,
-		     "[WARN] Corresponding routine is not implemented\n");
+		logw(tccvin_streaming_to_devptr(stream),
+			"[WARN] Corresponding routine is not implemented\n");
 		ret = NULL;
 		break;
 	}
@@ -1085,24 +1114,25 @@ static int tccvin_ioctl_g_parm(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
+	struct device *dev_ptr = tccvin_streaming_to_devptr(stream);
 	int ret = 0;
 
 	if ((a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
 	    (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-		loge(&stream->vdev.dev,
-		     "V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE is supported only\n");
+		loge(dev_ptr,
+			"V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE is supported only\n");
 		return -EINVAL;
 	}
 
 	a->parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
 	ret = tccvin_v4l2_get_frameinterval(stream, a);
 	if (ret < 0) {
-		loge(&stream->vdev.dev,
-		     "tccvin_v4l2_get_frameinterval, ret: %d\n", ret);
+		loge(dev_ptr,
+			"tccvin_v4l2_get_frameinterval, ret: %d\n", ret);
 		ret = -1;
 	}
 
-	logi(&stream->vdev.dev, "framerate got from video source: %u / %d\n",
+	logi(dev_ptr, "framerate got from video source: %u / %d\n",
 		a->parm.capture.timeperframe.numerator,
 		a->parm.capture.timeperframe.denominator);
 
@@ -1114,30 +1144,31 @@ static int tccvin_ioctl_s_parm(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
+	struct device *dev_ptr = tccvin_streaming_to_devptr(stream);
 	int ret = 0;
 
 	if ((a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
 	    (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-		loge(&stream->vdev.dev,
-		     "V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE is supported only\n");
+		loge(dev_ptr,
+			"V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE is supported only\n");
 		return -EINVAL;
 	}
 
 	if (a->parm.capture.capability != V4L2_CAP_TIMEPERFRAME) {
-		loge(&stream->vdev.dev,
-		     "V4L2_CAP_TIMEPERFRAME is supported only\n");
+		loge(dev_ptr,
+			"V4L2_CAP_TIMEPERFRAME is supported only\n");
 		return -EINVAL;
 	}
 
-	logi(&stream->vdev.dev,
-	     "framerate to set to video source: %u / %d\n",
-	     a->parm.capture.timeperframe.numerator,
-	     a->parm.capture.timeperframe.denominator);
+	logi(dev_ptr,
+		"framerate to set to video source: %u / %d\n",
+		a->parm.capture.timeperframe.numerator,
+		a->parm.capture.timeperframe.denominator);
 
 	ret = tccvin_v4l2_set_frameinterval(stream, a);
 	if (ret < 0) {
-		loge(&stream->vdev.dev,
-		     "tccvin_v4l2_set_frameinterval, ret: %d\n", ret);
+		loge(dev_ptr,
+			"tccvin_v4l2_set_frameinterval, ret: %d\n", ret);
 		ret = -1;
 	}
 
@@ -1149,19 +1180,20 @@ static int tccvin_ioctl_enum_framesizes(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
+	struct device *dev_ptr = tccvin_streaming_to_devptr(stream);
 	__u8 *fcc;
 	int ret = 0;
 
 	ret = tccvin_v4l2_enum_framesizes(stream, fsize);
 	if (ret < 0) {
-		logd(&stream->vdev.dev,
-		     "VIN[%d] tccvin_v4l2_enum_framesizes(%d), ret: %d\n",
-		     stream->dev->pdev->id, fsize->index, ret);
+		logd(dev_ptr,
+			"VIN[%d] tccvin_v4l2_enum_framesizes(%d), ret: %d\n",
+			stream->dev->pdev->id, fsize->index, ret);
 		return ret;
 	}
 
 	fcc = (__u8 *)&fsize->pixel_format;
-	logi(&stream->vdev.dev, "idx: %u, fmt: %c%c%c%c, framesize: %u * %u\n",
+	logi(dev_ptr, "idx: %u, fmt: %c%c%c%c, framesize: %u * %u\n",
 		fsize->index, fcc[0], fcc[1], fcc[2], fcc[3],
 		fsize->discrete.width, fsize->discrete.height);
 
@@ -1173,23 +1205,24 @@ static int tccvin_ioctl_enum_frameintervals(struct file *file, void *fh,
 {
 	struct tccvin_fh *handle = fh;
 	struct tccvin_streaming *stream = handle->stream;
+	struct device *dev_ptr = tccvin_streaming_to_devptr(stream);
 	__u8 *fcc;
 	int ret = 0;
 
 	ret = tccvin_v4l2_enum_frameintervals(stream, fival);
 	if (ret < 0) {
-		logd(&stream->vdev.dev,
-		     "VIN[%d] tccvin_v4l2_enum_frameintervals(%d), ret: %d\n",
-		     stream->dev->pdev->id, fival->index, ret);
+		logd(dev_ptr,
+			"VIN[%d] tccvin_v4l2_enum_frameintervals(%d), ret: %d\n",
+			stream->dev->pdev->id, fival->index, ret);
 		return ret;
 	}
 
 	fcc = (__u8 *)&fival->pixel_format;
-	logi(&stream->vdev.dev,
-	     "idx: %u, fmt: %c%c%c%c, framesize: %u * %u, framerate: %u / %u\n",
-	     fival->index, fcc[0], fcc[1], fcc[2], fcc[3],
-	     fival->width, fival->height,
-	     fival->discrete.numerator, fival->discrete.denominator);
+	logi(dev_ptr,
+		"idx: %u, fmt: %c%c%c%c, framesize: %u * %u, framerate: %u / %u\n",
+		fival->index, fcc[0], fcc[1], fcc[2], fcc[3],
+		fival->width, fival->height,
+		fival->discrete.numerator, fival->discrete.denominator);
 
 	return 0;
 }
@@ -1234,7 +1267,8 @@ static unsigned int tccvin_v4l2_poll(struct file *file, poll_table *wait)
 
 	ret = tccvin_queue_poll(&stream->queue, file, wait);
 	if (ret < 0) {
-		logw(&stream->vdev.dev, "_qproc: %p, _key: 0x%08lx, ret: %d\n",
+		logw(tccvin_streaming_to_devptr(stream),
+			"_qproc: %p, _key: 0x%08lx, ret: %d\n",
 			wait->_qproc, wait->_key, ret);
 	}
 

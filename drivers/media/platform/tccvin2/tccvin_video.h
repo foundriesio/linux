@@ -230,6 +230,12 @@ struct tccvin_video_queue {
 	struct list_head irqqueue;
 };
 
+/* Get device instance from streaming object */
+#define tccvin_streaming_to_devptr(ptr)	\
+	&ptr->dev->pdev->dev
+#define tccvin_device_to_devptr(ptr) \
+	&ptr->pdev->dev
+
 struct tccvin_streaming {
 	struct tccvin_device			*dev;
 	struct video_device			vdev;
