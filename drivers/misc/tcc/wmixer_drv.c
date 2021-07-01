@@ -239,7 +239,9 @@ static int wmixer_drv_ctrl(struct wmixer_drv_type *wmixer)
 			(wmix_info->src_win_bottom - wmix_info->src_win_top),
 			0, &wmix_info->mapConv_info);
 		tca_map_convter_onoff(VIOC_MC0 + gMC_NUM, 1, 0);
-	} else
+	} else {
+		/* prevent KCS */
+	}
 	#endif
 	#if defined(CONFIG_VIOC_DTRC_DECOMP)
 	if (wmix_info->src_fmt_ext_info == 0x20) {
@@ -525,7 +527,9 @@ static int wmixer_drv_alpha_scaling_ctrl(struct wmixer_drv_type *wmixer)
 			(aps_info->src_win_bottom - aps_info->src_win_top),
 			0, &aps_info->mapConv_info);
 		tca_map_convter_onoff(VIOC_MC0 + gMC_NUM, 1, 0);
-	} else
+	} else {
+		/* prevent KCS */
+	}
 #endif
 #ifdef CONFIG_VIOC_DTRC_DECOMP
 	if (aps_info->src_fmt_ext_info == 0x20) {
@@ -764,7 +768,7 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
 
 	if (wmixer->sc.reg) {
 		wmixer->scaler_plug_status = 1;
-		if(apb_info->src0_use_scaler == false){
+		if (apb_info->src0_use_scaler == false) {
 			VIOC_SC_SetBypass(pWMIX_sc_base, true);
 			VIOC_SC_SetDstSize(pWMIX_sc_base,
 				apb_info->dst_width, apb_info->dst_height);
@@ -773,9 +777,11 @@ static int wmixer_drv_alpha_mixing_ctrl(struct wmixer_drv_type *wmixer)
 		} else {
 			VIOC_SC_SetBypass(pWMIX_sc_base, false);
 			VIOC_SC_SetDstSize(pWMIX_sc_base,
-				apb_info->src0_dst_width, apb_info->src0_dst_height);
+				apb_info->src0_dst_width,
+				apb_info->src0_dst_height);
 			VIOC_SC_SetOutSize(pWMIX_sc_base,
-				apb_info->src0_dst_width, apb_info->src0_dst_height);
+				apb_info->src0_dst_width,
+				apb_info->src0_dst_height);
 		}
 		VIOC_SC_SetOutPosition(pWMIX_sc_base, 0, 0);
 		VIOC_CONFIG_PlugIn(wmixer->sc.id, wmixer->rdma0.id);
