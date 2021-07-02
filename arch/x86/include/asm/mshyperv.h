@@ -47,10 +47,6 @@ void hyperv_vector_handler(struct pt_regs *regs);
 void hv_stimer0_vector_handler(struct pt_regs *regs);
 void hv_stimer0_callback_vector(void);
 
-static inline void hv_enable_stimer0_percpu_irq(int irq) {}
-static inline void hv_disable_stimer0_percpu_irq(int irq) {}
-
-
 #if IS_ENABLED(CONFIG_HYPERV)
 extern int hyperv_init_cpuhp;
 
