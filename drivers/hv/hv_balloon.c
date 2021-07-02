@@ -1206,6 +1206,7 @@ static void free_balloon_pages(struct hv_dynmem_device *dm,
 		__ClearPageOffline(pg);
 		__free_page(pg);
 		dm->num_pages_ballooned--;
+		adjust_managed_page_count(pg, 1);
 	}
 }
 
@@ -1246,8 +1247,10 @@ static unsigned int alloc_balloon_pages(struct hv_dynmem_device *dm,
 			split_page(pg, get_order(alloc_unit << PAGE_SHIFT));
 
 		/* mark all pages offline */
-		for (j = 0; j < alloc_unit; j++)
+		for (j = 0; j < alloc_unit; j++) {
 			__SetPageOffline(pg + j);
+			adjust_managed_page_count(pg + j, -1);
+		}
 
 		bl_resp->range_count++;
 		bl_resp->range_array[i].finfo.start_page =
