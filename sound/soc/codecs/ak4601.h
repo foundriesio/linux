@@ -14,6 +14,9 @@
  *
  */
 
+#define GPO_PDN_HIGH	1
+#define GPO_PDN_LOW		0
+
 #ifndef _AK4601_H
 #define _AK4601_H
 #define AK4601_I2C_IF

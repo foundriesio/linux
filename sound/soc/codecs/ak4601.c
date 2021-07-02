@@ -35,15 +35,12 @@
 #include "ak4601.h"
 
 //#define AK4601_DEBUG			//used at debug mode
-
+//#define AK4601_DEBUG_SUSPEND_TO_RAM
 //#define KERNEL_3_18_XX
 //#define KERNEL_4_4_XX
 #define KERNEL_4_9_XX
 
 #define PORT3_LINK	1			//Port Sel(1~2)
-
-#define TCC_USE_MUTE_GPIO
-#define TCC_ALWAYS_PMDAC_ON
 
 #define AIF1	"AIF1"
 #define AIF2	"AIF2"
@@ -63,7 +60,13 @@
 #define akdbgprt(format, arg...) do {} while (0)
 #endif
 
-#define TCC_CODEC_SAMPLING_FREQ
+//TCC Feature
+#define TCC_USE_MUTE_GPIO
+#define TCC_ALWAYS_PMDAC_ON
+#define TCC_SET_TDM_SLOT
+#define TCC_CODEC_SAMPLING_FREQ  //noise issue
+#define TCC_CODEC_CONNECTION_FAIL
+#define TCC_SUSPEND_TO_RAM
 
 /* AK4601 Codec Private Data */
 struct ak4601_priv {
@@ -2531,7 +2534,7 @@ static int ak4601_hw_params(struct snd_pcm_substream *substream,
 	setSDClock(codec, nPortNo);
 #ifdef TCC_CODEC_SAMPLING_FREQ
 	setCodecFSMode(codec, nPortNo);
-#endif
+#endif//TCC_CODEC_SAMPLING_FREQ
 
 	/* set Word length */
 	value = DIODLbit;
@@ -2760,31 +2763,21 @@ int datalen)
 }
 #endif
 
-unsigned int ak4601_read_register(struct snd_soc_codec *codec, unsigned int reg)
+static int ak4601_read_register(void *context, unsigned int reg, unsigned int *val)
 {
-	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
+	struct device *dev = context;
+	struct ak4601_priv *ak4601;
 	unsigned char tx[3], rx[1];
 	int	wlen, rlen;
 	int ret;
-	unsigned int rdata;
 
-	if (reg == SND_SOC_NOPM)
-		return 0;
-
-	if (!ak4601_readable(NULL, reg)) return(-EINVAL);
-
-	if (!ak4601_volatile(NULL, reg) && ak4601_readable(NULL, reg)) {
-		ret = regmap_read(ak4601->regmap, reg, &rdata);
-		akdbgprt("[AK4601] %s (%02x, %02x)\n",__FUNCTION__, reg, rdata);
-		if (ret >= 0) {
-			return rdata;
-		}
-        else {
-			dev_err(codec->dev, "Cache read from %x failed: %d\n",
-				reg, ret);
-			return 0;
-		}
+	if (reg == SND_SOC_NOPM) {
+		//for debug, ALSA dapm should not call reg if it is SND_SOC_NOPM
+		akdbgprt("\t[AK4601] %s error reg %02x invalied\n",__FUNCTION__, reg);
+		return -EINVAL;
 	}
+
+	ak4601 = dev_get_drvdata(dev);
 
 	wlen = 3;
 	rlen = 1;
@@ -2800,28 +2793,32 @@ unsigned int ak4601_read_register(struct snd_soc_codec *codec, unsigned int reg)
 
 	if (ret < 0) {
 		akdbgprt("\t[AK4601] %s error ret = %d\n",__FUNCTION__, ret);
-		rdata = -EIO;
+		return ret;
 	}
-	else {
-		rdata = (unsigned int)rx[0];
-	}
-	akdbgprt("[AK4601] %s (%02x, %02x)\n",__FUNCTION__, reg, rdata);
-	return rdata;
+
+	*val = (unsigned int)rx[0];
+	akdbgprt("[AK4601] %s (%02x, %02x)\n",__FUNCTION__, reg, *val);
+
+	return 0;
 }
 
 
-static int ak4601_write_register(struct snd_soc_codec *codec,  unsigned int reg,  unsigned int value)
+static int ak4601_write_register(void *context, unsigned int reg, unsigned int value)
 {
-	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
+	struct device *dev = context;
+	struct ak4601_priv *ak4601;
 	unsigned char tx[4];
 	int wlen;
-	int rc;
+	int ret;
 	unsigned int value2;
 
-	if (reg == SND_SOC_NOPM)
-		return 0;
+	if (reg == SND_SOC_NOPM) {
+		//for debug, ALSA dapm should not call reg if it is SND_SOC_NOPM
+		akdbgprt("\t[AK4601] %s error reg %02x invalied\n",__FUNCTION__, reg);
+		return -EINVAL;
+	}
 
-	if (!ak4601_writeable(NULL, reg)) return(-EINVAL);
+	ak4601 = dev_get_drvdata(dev);
 
 	value2 = ( ((unsigned int)(ak4601_access_masks[reg].writable)) & value );
 
@@ -2834,22 +2831,21 @@ static int ak4601_write_register(struct snd_soc_codec *codec,  unsigned int reg,
 	tx[3] = value2;
 
 #ifdef AK4601_I2C_IF
-	rc = i2c_master_send(ak4601->i2c, tx, wlen);
+	ret = i2c_master_send(ak4601->i2c, tx, wlen);
 #else
-	rc = spi_write(ak4601->spi, tx, wlen);
+	ret = spi_write(ak4601->spi, tx, wlen);
 #endif
 
-	if ( rc >= 0 ) {
-		if (!ak4601_volatile(NULL, reg)) {
-			rc = regmap_write(ak4601->regmap, reg, value);
-			if (rc != 0)
-				dev_err(codec->dev, "Cache write to %x failed: %d\n",
-					reg, rc);
-		}
+	if (ret < 0) {
+		akdbgprt("\t[AK4601] %s error ret = %d\n",__FUNCTION__, ret);
+		return ret;
+	}
+	else if(ret != wlen){
+		akdbgprt("\t[AK4601] %s error ret != wlen\n",__FUNCTION__);
+		return -EIO;
 	}
 
-	return rc;
-
+	return 0;
 }
 
 static int ak4601_set_bias_level(struct snd_soc_codec *codec,
@@ -2958,6 +2954,7 @@ static int ak4601_set_dai_mute(struct snd_soc_dai *dai, int mute)
 #define AK4601_DAC_FORMATS		SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE
 #define AK4601_ADC_FORMATS		SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE
 
+#ifdef TCC_SET_TDM_SLOT
 int ak4601_set_tdm_slot(struct snd_soc_dai *dai, unsigned int tx_mask, unsigned int rx_mask, int slots, int slot_width)
 {
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(dai->codec);
@@ -2972,7 +2969,17 @@ int ak4601_set_tdm_slot(struct snd_soc_dai *dai, unsigned int tx_mask, unsigned 
 			ak4601->DISLbit[i] = 0;		//24bit
 			ak4601->DOSLbit[i] = 0;		//24bit
 		}
+		snd_soc_update_bits(dai->codec, AK4601_05A_SDOUT_PHASE_SETTING, 0x01, 0x00); //sdout1 phase mode slow
 	} else {
+		for ( i = 0 ; i < NUM_SYNCDOMAIN ; i ++ ) {
+			ak4601->SDBick[i]  = 4; //256fs
+			if(slots == 16)
+				ak4601->SDBick[i]  = 5; //512fs
+			ak4601->SDfs[i] = 5;  // 48kHz
+			ak4601->SDCks[i] = 1;  // PLLMCLK
+
+			setSDClock(dai->codec, i);
+		}
 		for ( i = 0 ; i < NUM_SDIO ; i ++ ) {
 			ak4601->TDMSDINbit[i]  = 1; //TDM On
 			ak4601->TDMSDOUTbit[i] = 1; //TDM On
@@ -2981,10 +2988,11 @@ int ak4601_set_tdm_slot(struct snd_soc_dai *dai, unsigned int tx_mask, unsigned 
 			ak4601->DISLbit[i] = (slot_width == 24) ? 0 : (slot_width == 20) ? 1 : (slot_width == 16) ? 2 : 3;
 			ak4601->DOSLbit[i] = (slot_width == 24) ? 0 : (slot_width == 20) ? 1 : (slot_width == 16) ? 2 : 3;
 		}
+		snd_soc_update_bits(dai->codec, AK4601_05A_SDOUT_PHASE_SETTING, 0x01, 0x01); //sdout1 phase mode fast
 	}
-
 	return 0;
 }
+#endif//TCC_SET_TDM_SLOT
 
 #ifdef TCC_USE_MUTE_GPIO
 static int ak4601_trigger(struct snd_pcm_substream *substream, int cmd, struct snd_soc_dai *dai)
@@ -3022,7 +3030,9 @@ static struct snd_soc_dai_ops ak4601_dai_ops = {
 	.set_sysclk	= ak4601_set_dai_sysclk,
 	.set_fmt	= ak4601_set_dai_fmt,
 	.digital_mute = ak4601_set_dai_mute,
+#ifdef TCC_SET_TDM_SLOT
 	.set_tdm_slot = ak4601_set_tdm_slot,
+#endif//TCC_SET_TDM_SLOT
 #ifdef TCC_USE_MUTE_GPIO
 	.trigger	= ak4601_trigger,
 #endif//TCC_USE_MUTE_GPIO
@@ -3107,7 +3117,17 @@ static int ak4601_init_reg(struct snd_soc_codec *codec)
 	ak4601_write_spidmy(codec);
 #endif
 
+#ifdef TCC_CODEC_CONNECTION_FAIL
+
+	if(snd_soc_read(codec,AK4601_075_VOL1LCH_DIGITAL_VOLUME) == 0x18) {
+		printk("[AK4601] %s Check Connection...SUCCESS\n", __FUNCTION__);
+	} else {
+		printk("[AK4601] %s Check Connection...FAILUE\n", __FUNCTION__);
+		return -1;
+	}
+#else
 	printk("[AK4601] %s Check Connection...%s\n", __FUNCTION__, snd_soc_read(codec,AK4601_075_VOL1LCH_DIGITAL_VOLUME) == 0x18 ? "SUCCESS" : "FAILUE");
+#endif//TCC_CODEC_CONNECTION_FAIL
 
 	ak4601_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
@@ -3173,7 +3193,25 @@ static int ak4601_init_reg_for_subcore(struct snd_soc_codec *codec)
 
 	akdbgprt("\t[AK4601] %s\n",__FUNCTION__);
 
-	printk("[AK4601] %s Check Connection...%s\n", __FUNCTION__, snd_soc_read(codec,AK4601_075_VOL1LCH_DIGITAL_VOLUME) == 0x18 ? "SUCCESS" : "FAILUE");
+	if ( ak4601->pdn_gpio > 0 ) {
+		gpio_set_value(ak4601->pdn_gpio, 0);
+		mdelay(1);
+		gpio_set_value(ak4601->pdn_gpio, 1);
+		mdelay(1);
+	}
+
+#ifndef AK4601_I2C_IF
+	ak4601_write_spidmy(codec);
+#endif
+
+	if(snd_soc_read(codec, AK4601_075_VOL1LCH_DIGITAL_VOLUME) == 0x18) {
+		printk("[AK4601] %s Check Connection...SUCCESS\n", __FUNCTION__);
+	} else {
+		printk("[AK4601] %s Check Connection...FAILUE\n", __FUNCTION__);
+		return -1;
+	}
+
+	ak4601_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	ak4601->fs = 48000;
 	ak4601->PLLInput = 1; //BICK1
@@ -3204,9 +3242,17 @@ static int ak4601_init_reg_for_subcore(struct snd_soc_codec *codec)
 
 	snd_soc_update_bits( codec, AK4601_016_SYNC_DOMAIN_SELECT_6, 0x77, ((ak4601->EXBCK[0]<<4) + (ak4601->EXBCK[1])));
 	snd_soc_update_bits( codec, AK4601_017_SYNC_DOMAIN_SELECT_7, 0x70, ak4601->EXBCK[2]<<4 );
+
+
 	akdbgprt("\t[AK4601] %s\n addr=%03X data=%02X",__FUNCTION__, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x38);
 
 	snd_soc_update_bits( codec, AK4601_05E_OUTPUT_PORT_ENABLE_SETTING, 0x38, 0x38 );//SDOUT1~3 OutputEnable=1
+
+	snd_soc_update_bits( codec, AK4601_013_SYNC_DOMAIN_SELECT_3, 0x07, 0x01);
+	snd_soc_update_bits( codec, AK4601_014_SYNC_DOMAIN_SELECT_4, 0x77, 0x23);
+
+	snd_soc_update_bits( codec, AK4601_011_SYNC_DOMAIN_SELECT_1, 0x12, 0x12 );//LR/BICKx Output SDx
+
 	//'CODEC Sync Domain' 'SD1', 'ADC1 Sync Domain' 'SD1'
 	snd_soc_update_bits( codec, AK4601_020_SYNC_DOMAIN_SELECT_16, 0x77, 0x11);
 	//'MixerB Sync Domain' 'SD1'
@@ -3238,16 +3284,21 @@ static int ak4601_init_reg_for_subcore(struct snd_soc_codec *codec)
 	//'ADCM Mute' off
 	snd_soc_update_bits( codec, AK4601_06C_ADC_MUTE_AND_HPF_CONTROL, 0x50, 0x00);
 	//'DAC1 Source Selector' 'SDIN1'
-	//'DAC2 Source Selector' 'SDIN2'
-	//'DAC3 Source Selector' 'SDIN1'
+	//'DAC2 Source Selector' 'SDIN1B'
+	//'DAC3 Source Selector' 'SDIN1C'
 	snd_soc_update_bits( codec, AK4601_035_DAC1_INPUT_DATA_SELECT, 0x3F, 0x01);
-	snd_soc_update_bits( codec, AK4601_036_DAC2_INPUT_DATA_SELECT, 0x3F, 0x09);
-	snd_soc_update_bits( codec, AK4601_037_DAC3_INPUT_DATA_SELECT, 0x3F, 0x01);
+	snd_soc_update_bits( codec, AK4601_036_DAC2_INPUT_DATA_SELECT, 0x3F, 0x02);
+	snd_soc_update_bits( codec, AK4601_037_DAC3_INPUT_DATA_SELECT, 0x3F, 0x03);
+#ifdef TCC_ALWAYS_PMDAC_ON
+	snd_soc_update_bits( codec, AK4601_08A_POWER_MANAGEMENT1, 0x07, 0x07 );//DAC1,2,3 On
+#endif//TCC_ALWAYS_PMDAC_ON
 	//'DAC1 Mute' off
 	//'DAC2 Mute' off
 	//'DAC3 Mute' off
 	snd_soc_update_bits( codec, AK4601_073_DAC_MUTE_AND_FILTER_SETTING, 0x70, 0x00);
-
+#ifdef TCC_USE_MUTE_GPIO
+	ak4601->playback_active = 0;
+#endif//TCC_USE_MUTE_GPIO
 	return 0;
 }
 #endif//  defined(CONFIG_TCC803X_CA7S) || defined(CONFIG_SND_SOC_AK4601_SUBCORE)
@@ -3366,11 +3417,11 @@ static int ak4601_probe(struct snd_soc_codec *codec)
 		ret = gpio_request(ak4601->pdn_gpio, "ak4601 pdn");
 		gpio_direction_output(ak4601->pdn_gpio, 0);
 	}
-
-	ak4601_init_reg(codec);
 #if	defined(CONFIG_TCC803X_CA7S) || defined(CONFIG_SND_SOC_AK4601_SUBCORE)
 	ak4601_init_reg_for_subcore(codec);
-#endif
+#else
+	ak4601_init_reg(codec);
+#endif//defined(CONFIG_TCC803X_CA7S) || defined(CONFIG_SND_SOC_AK4601_SUBCORE)
 	akdbgprt("\t[AK4601] %s return(%d)\n",__FUNCTION__, ret );
 
 	return ret;
@@ -3392,16 +3443,88 @@ static int ak4601_remove(struct snd_soc_codec *codec)
 	return 0;
 }
 
+static int ak4601_hw_read_register(struct snd_soc_codec *codec, unsigned int reg)
+{
+	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
+	unsigned char tx[3], rx[1];
+	int	wlen, rlen;
+	int ret;
+
+	wlen = 3;
+	rlen = 1;
+	tx[0] = (unsigned char)(COMMAND_READ_REG & 0x7F);
+	tx[1] = (unsigned char)(0xFF & (reg >> 8));
+	tx[2] = (unsigned char)(0xFF & reg);
+
+#ifdef AK4601_I2C_IF
+	ret = ak4601_i2c_read(ak4601->i2c, tx, wlen, rx, rlen);
+#else
+	ret = spi_write_then_read(ak4601->spi, tx, wlen, rx, rlen);
+#endif
+
+	if (ret < 0) {
+		akdbgprt("\t[AK4601] %s error ret = %d\n",__FUNCTION__, ret);
+		return ret;
+	}
+
+	ret = (unsigned int)rx[0];
+
+	return ret;
+}
+
 static int ak4601_suspend(struct snd_soc_codec *codec)
 {
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
 
 	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
 
+#ifdef AK4601_DEBUG_SUSPEND_TO_RAM
+// Only for debug [[
+{
+	int i, regs, rege, value;
+	regs = 0x000;
+	rege = 0x102;
+
+	printk("\t[AK4601] %s(%d) cache reg dump ===>\n",__FUNCTION__,__LINE__);
+	for ( i = regs ; i <= rege ; i++ ){
+		value = snd_soc_read(codec, i);
+		printk("***AK4601 Addr,Reg=(%03x, %02x)\n", i, value);
+	}
+	printk("\t[AK4601] %s(%d) cache reg dump <===\n",__FUNCTION__,__LINE__);
+	printk("\t[AK4601] %s(%d) \n",__FUNCTION__,__LINE__);
+	printk("\t[AK4601] %s(%d) hw reg dump ===>\n",__FUNCTION__,__LINE__);
+	for ( i = regs ; i <= rege ; i++ ){
+		value = ak4601_hw_read_register(codec, i);
+		printk("***AK4601 Addr,Reg=(%03x, %02x)\n", i, value);
+	}
+	printk("\t[AK4601] %s(%d) hw reg dump <===\n",__FUNCTION__,__LINE__);
+}
+// Only for debug ]]
+#endif//AK4601_DEBUG_SUSPEND_TO_RAM
+
 	ak4601_set_bias_level(codec, SND_SOC_BIAS_OFF);
+
+	regcache_cache_only(ak4601->regmap, true);
+	regcache_mark_dirty(ak4601->regmap);
+
+#ifdef TCC_SUSPEND_TO_RAM
+	if (ak4601->cmute_gpio > 0) {
+		gpio_free(ak4601->cmute_gpio);
+	}
+	if (ak4601->amute_gpio > 0) {
+		gpio_free(ak4601->amute_gpio);
+	}
+	if (ak4601->stanby_gpio > 0) {
+		gpio_free(ak4601->stanby_gpio);
+	}
+#endif//TCC_SUSPEND_TO_RAM
+
 	if ( ak4601->pdn_gpio > 0 ) {
 		gpio_set_value(ak4601->pdn_gpio, 0);
 		msleep(1);
+#ifdef TCC_SUSPEND_TO_RAM
+		gpio_free(ak4601->pdn_gpio);
+#endif//TCC_SUSPEND_TO_RAM
 	}
 
 	return 0;
@@ -3410,14 +3533,78 @@ static int ak4601_suspend(struct snd_soc_codec *codec)
 static int ak4601_resume(struct snd_soc_codec *codec)
 {
 	struct ak4601_priv *ak4601 = snd_soc_codec_get_drvdata(codec);
-	int i;
+#ifdef TCC_SUSPEND_TO_RAM
+	int ret;
+#endif//TCC_SUSPEND_TO_RAM
 
-	for ( i = 0 ; i < ARRAY_SIZE(ak4601_reg) ; i++ ) {
-		regmap_write(ak4601->regmap, ak4601_reg[i].reg, ak4601_reg[i].def);
+	akdbgprt("\t[AK4601] %s(%d)\n",__FUNCTION__,__LINE__);
+
+#ifdef TCC_SUSPEND_TO_RAM
+	if (ak4601->cmute_gpio > 0) {
+		ret = gpio_request(ak4601->cmute_gpio, "cmute-gpios");
+   		if(ret)
+    		printk("\t[ak4601] %s FAILED Request cmute. err(%d) \n", __func__, ret);
+		else
+			gpio_direction_output(ak4601->cmute_gpio, ak4601->cmute_gpio_flags);	//mute on
+	}
+	if (ak4601->amute_gpio > 0) {
+		ret = gpio_request(ak4601->amute_gpio, "amute-gpios");
+   		if(ret)
+    		printk("\t[ak4601] %s FAILED Request amute. err(%d) \n", __func__, ret);
+		else
+			gpio_direction_output(ak4601->cmute_gpio, ak4601->amute_gpio);	//mute on
+	}
+	if (ak4601->stanby_gpio > 0) {
+		ret = gpio_request(ak4601->stanby_gpio, "stanby-gpios");
+   		if(ret)
+    		printk("\t[ak4601] %s FAILED Request stanby. err(%d) \n", __func__, ret);
+		else
+			gpio_direction_output(ak4601->stanby_gpio, ak4601->stanby_gpio_flags); //stanby on
+	}
+#endif//TCC_SUSPEND_TO_RAM
+
+	if ( ak4601->pdn_gpio > 0 ) {
+#ifdef TCC_SUSPEND_TO_RAM
+		ret = gpio_request(ak4601->pdn_gpio, "ak4601 pdn");
+	   	if(ret)
+        	printk("\t[ak4601] %s FAILED Request pdn. err(%d) \n", __func__, ret);
+		else
+			gpio_direction_output(ak4601->pdn_gpio, 0);
+#endif//TCC_SUSPEND_TO_RAM
+		gpio_set_value(ak4601->pdn_gpio, 0);
+		akdbgprt("\t[ak4601] %s External PDN[OFF]\n", __func__);
+		mdelay(1);
+		gpio_set_value(ak4601->pdn_gpio, 1);
+		akdbgprt("\t[ak4601] %s External PDN[ON]\n", __func__);
+		mdelay(1);
 	}
 
-	ak4601_init_reg(codec);
+	regcache_cache_only(ak4601->regmap, false);
+	regcache_sync(ak4601->regmap);
 
+#ifdef AK4601_DEBUG_SUSPEND_TO_RAM
+// Only for debug [[
+{
+	int i, regs, rege, value;
+	regs = 0x000;
+	rege = 0x102;
+
+	printk("\t[AK4601] %s(%d) cache reg dump ===>\n",__FUNCTION__,__LINE__);
+	for ( i = regs ; i <= rege ; i++ ){
+		value = snd_soc_read(codec, i);
+		printk("***AK4601 Addr,Reg=(%03x, %02x)\n", i, value);
+	}
+	printk("\t[AK4601] %s(%d) cache reg dump <===\n",__FUNCTION__,__LINE__);
+	printk("\t[AK4601] %s(%d) \n",__FUNCTION__,__LINE__);
+	printk("\t[AK4601] %s(%d) hw reg dump ===>\n",__FUNCTION__,__LINE__);
+	for ( i = regs ; i <= rege ; i++ ){
+		value = ak4601_hw_read_register(codec, i);
+		printk("***AK4601 Addr,Reg=(%03x, %02x)\n", i, value);
+	}
+	printk("\t[AK4601] %s(%d) hw reg dump <===\n",__FUNCTION__,__LINE__);
+}
+// Only for debug ]]
+#endif//AK4601_DEBUG_SUSPEND_TO_RAM
 	return 0;
 }
 
@@ -3427,10 +3614,8 @@ struct snd_soc_codec_driver soc_codec_dev_ak4601 = {
 	.suspend =	ak4601_suspend,
 	.resume =	ak4601_resume,
 
-	.read = ak4601_read_register,
-	.write = ak4601_write_register,
-
-//	.idle_bias_off = true,
+	//.idle_bias_off = true,
+	//ak4601.2-0010 can not start from non-off bias with idle_bias_off==1
 	.set_bias_level = ak4601_set_bias_level,
 
 #ifdef KERNEL_4_9_XX
@@ -3456,6 +3641,9 @@ static const struct regmap_config ak4601_regmap = {
 	.volatile_reg = ak4601_volatile,
 	.writeable_reg = ak4601_writeable,
 
+	.reg_read = ak4601_read_register,
+	.reg_write = ak4601_write_register,
+
 	.reg_defaults = ak4601_reg,
 	.num_reg_defaults = ARRAY_SIZE(ak4601_reg),
 	.cache_type = REGCACHE_RBTREE,
@@ -3480,7 +3668,7 @@ static int ak4601_i2c_probe(struct i2c_client *i2c,
 	ak4601 = devm_kzalloc(&i2c->dev, sizeof(struct ak4601_priv), GFP_KERNEL);
 	if (ak4601 == NULL) return -ENOMEM;
 
-	ak4601->regmap = devm_regmap_init_i2c(i2c, &ak4601_regmap);
+	ak4601->regmap = devm_regmap_init(&i2c->dev, NULL, &i2c->dev, &ak4601_regmap);
 	if (IS_ERR(ak4601->regmap)) {
 		devm_kfree(&i2c->dev, ak4601);
 		return PTR_ERR(ak4601->regmap);
@@ -3536,7 +3724,7 @@ static int ak4601_spi_probe(struct spi_device *spi)
 	if (ak4601 == NULL)
 		return -ENOMEM;
 
-	ak4601->regmap = devm_regmap_init_spi(spi, &ak4601_regmap);
+	ak4601->regmap = devm_regmap_init(&spi->dev, NULL, &spi->dev, &ak4601_regmap);
 	if (IS_ERR(ak4601->regmap)) {
 		ret = PTR_ERR(ak4601->regmap);
 		dev_err(&spi->dev, "Failed to allocate register map: %d\n",
