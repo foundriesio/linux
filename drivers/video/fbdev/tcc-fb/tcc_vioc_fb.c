@@ -3135,8 +3135,14 @@ struct dma_buf *tccfb_dmabuf_export(struct fb_info *info)
 {
 	struct dma_buf *dmabuf;
 
-	dmabuf = dma_buf_export(info, &fb_dma_buf_ops, info->fix.smem_len,
-		O_RDWR, NULL);
+	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
+
+	exp_info.ops = &fb_dma_buf_ops;
+	exp_info.size = info->fix.smem_len;
+	exp_info.flags = O_RDWR;
+	exp_info.priv = info;
+
+	dmabuf = dma_buf_export(&exp_info);
 
 	return dmabuf;
 }
