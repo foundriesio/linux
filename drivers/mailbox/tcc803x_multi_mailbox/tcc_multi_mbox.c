@@ -17,6 +17,9 @@
 #include <linux/mailbox/tcc803x_multi_mailbox/tcc803x_multi_mbox.h>
 #include <dt-bindings/mailbox/tcc803x_multi_mailbox/tcc_mbox_ch.h>
 #include <linux/types.h>
+#include <linux/sched.h>
+#include <linux/sched/rt.h>
+#include <uapi/linux/sched/types.h>
 #include "../mailbox.h"
 
 #define Hw37		(1LL << 37)
