@@ -105,6 +105,6 @@ struct tcc_shm_data {
 int32_t tcc_shmem_register_callback(int32_t port,
 	struct tcc_shm_callback shm_callback);
 int32_t tcc_shmem_transfer_port_nodev(int32_t port, uint32_t size, char *data);
-int32_t tcc_shmem_request_port_by_name(char *name, uint32_t size);
+int32_t tcc_shmem_request_port_by_name(const char *name, uint32_t size);
 int32_t tcc_shmem_find_port_by_name(char *name);
 uint32_t tcc_shmem_is_valid(void);

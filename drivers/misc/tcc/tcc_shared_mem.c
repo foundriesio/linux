@@ -38,6 +38,7 @@ static long tcc_shmem_ioctl(struct file *flip, unsigned int cmd,
 			    unsigned long arg);
 static int32_t tcc_shmem_release(struct inode *inode, struct file *file);
 static void tcc_shmem_initial_reset(struct device *dev);
+static void tcc_shmem_initial_port(struct device *dev);
 static void tcc_shmem_reset(struct device *dev);
 static int32_t tcc_shmem_receive_port(struct device *dev, int32_t port,
 				      uint32_t size, char *data);
@@ -45,6 +46,8 @@ static int32_t tcc_shmem_create_desc_handler(struct device *dev);
 static int32_t tcc_shmem_del_desc_handler(struct device *dev);
 static int32_t tcc_shmem_create_desc_req(struct device *dev, char *name,
 					 uint32_t size);
+static int32_t tcc_shmem_request_port_by_name_sync(struct device *dev,
+					    const char *name, uint32_t size);
 
 const static struct file_operations fops = {
 	.owner = THIS_MODULE,
@@ -60,6 +63,9 @@ static void tcc_shmem_timer(unsigned long args)
 	if (tcc_shm_valid != 1) {
 		pr_err("%s: sync mode failed. initial reset!\n", __func__);
 		tcc_shmem_initial_reset(shdev->dev);
+		if(shdev->core_num == 0)
+			tcc_shmem_initial_port(shdev->dev);
+
 	}
 
 }
@@ -235,13 +241,24 @@ static void tcc_shmem_initial_reset(struct device *dev)
 	struct tcc_shm_data *shdev = dev_get_drvdata(dev);
 	void __iomem *a72_base = shdev->base + TCC_SHM_A72_REQ_OFFSET;
 	void __iomem *a53_base = shdev->base + TCC_SHM_A53_REQ_OFFSET;
+	unsigned long j0, j1, delay;
+	uint32_t timeout = 0;
+
+	delay = msecs_to_jiffies(100);
+	j0 = jiffies;
+	j1 = j0 + delay;
 
 	if (shdev->core_num == 0) {
 		tcc_shmem_writel(tcc_shmem_readl(a53_base) & ~TCC_SHM_RESET_REQ,
 				    a53_base);
 
-		while (tcc_shmem_readl(a72_base) & TCC_SHM_RESET_SYNC_REQ)
+		while (tcc_shmem_readl(a72_base) & TCC_SHM_RESET_SYNC_REQ) {
+			if(!time_before(jiffies, j1)) {
+				timeout = 1;
+				break;
+			}
 			cpu_relax();
+		}
 
 		tcc_shmem_writel(TCC_SHM_ENABLED, a72_base);
 
@@ -249,14 +266,78 @@ static void tcc_shmem_initial_reset(struct device *dev)
 		tcc_shmem_writel(tcc_shmem_readl(a72_base)&~TCC_SHM_RESET_REQ,
 				    a72_base);
 
-		while (tcc_shmem_readl(a53_base) & TCC_SHM_RESET_SYNC_REQ)
+		while (tcc_shmem_readl(a53_base) & TCC_SHM_RESET_SYNC_REQ) {
+			if(!time_before(jiffies, j1)) {
+				timeout = 1;
+				break;
+			}
 			cpu_relax();
+		}
 
 		tcc_shmem_writel(TCC_SHM_ENABLED, a53_base);
 
 	}
+
+	if(timeout != 0) {
+	    pr_err("%s : timeout occured\n", __func__);
+	    return;
+	}
+
 	shdev->initial_reset_req = 0;
 	tcc_shm_valid = 1;
+
+}
+
+static void tcc_shmem_initial_port(struct device *dev)
+{
+	struct tcc_shm_data *shdev = dev_get_drvdata(dev);
+	struct device_node *np = dev->of_node;
+	struct device_node *child_np;
+	void __iomem *a72_base = shdev->base + TCC_SHM_A72_REQ_OFFSET;
+	const char *ch_name;
+	uint32_t ch_size;
+	int32_t ret;
+	unsigned long j0, j1, delay;
+	uint32_t timeout = 0;
+
+	delay = msecs_to_jiffies(1000);
+	j0 = jiffies;
+	j1 = j0 + delay;
+
+	for_each_available_child_of_node(np, child_np) {
+
+		ch_name = NULL;
+		ch_size = 0;
+
+		ret = of_property_read_string(child_np, "ch-name",
+							    &ch_name);
+		printk("shmem port name1 : %s\n", ch_name);
+		if(ret) {
+			pr_err("%s: failed to get channel name\n",
+							    __func__);
+			continue;
+		}
+
+		of_property_read_u32(child_np, "ch-size", &ch_size);
+		printk("shmem port size1 : %d\n", ch_size);
+		if(ret) {
+			pr_err("%s: failed to get channel size\n",
+							    __func__);
+			continue;
+		}
+		tcc_shmem_request_port_by_name_sync(dev, ch_name, ch_size);
+
+		while (tcc_shmem_readl(a72_base) & TCC_SHM_PORT_REQ) {
+			if(!time_before(jiffies, j1)) {
+				timeout = 1;
+				break;
+			}
+			cpu_relax();
+		}
+	}
+
+	if(timeout != 0)
+	    pr_err("%s : timeout occured\n", __func__);
 
 }
 
@@ -266,6 +347,7 @@ static void tcc_shmem_reset(struct device *dev)
 	struct tcc_shm_desc *desc_pos, *desc_pos_s;
 	uint32_t pending_offset = shdev->pending_offset;
 	uint32_t bit_place = shdev->bit_place;
+	uint32_t timeout = 0;
 	void __iomem *shm_base = shdev->base + TCC_SHM_BASE_OFFSET;
 	void __iomem *shm_size_base = shdev->base + TCC_SHM_SIZE_OFFSET;
 	void __iomem *shm_port_base = shdev->base + TCC_SHM_PORT_OFFSET;
@@ -275,6 +357,10 @@ static void tcc_shmem_reset(struct device *dev)
 	void __iomem *a72_base = shdev->base + TCC_SHM_A72_REQ_OFFSET;
 	void __iomem *a53_dist_reg = shdev->a53_dist_reg;
 	void __iomem *a72_dist_reg = shdev->a72_dist_reg;
+	unsigned long j0, j1, delay;
+	delay = msecs_to_jiffies(1000);
+	j0 = jiffies;
+	j1 = j0 + delay;
 
 	if (shdev->core_num == 0) {
 		tcc_shmem_writel(tcc_shmem_readl(a72_base) |
@@ -284,8 +370,13 @@ static void tcc_shmem_reset(struct device *dev)
 				 a53_dist_reg + (0x204 +
 						(4 * pending_offset)));
 
-		while (tcc_shmem_readl(a72_base) & TCC_SHM_RESET_SYNC_REQ)
+		while (tcc_shmem_readl(a72_base) & TCC_SHM_RESET_SYNC_REQ) {
+			if (!time_before(jiffies, j1)) {
+				timeout = 1;
+				break;
+			}
 			cpu_relax();
+		}
 
 	} else {
 		tcc_shmem_writel(tcc_shmem_readl(a53_base) |
@@ -295,10 +386,23 @@ static void tcc_shmem_reset(struct device *dev)
 				 a72_dist_reg + (0x204 +
 						(4 * pending_offset)));
 
-		while (tcc_shmem_readl(a53_base) & TCC_SHM_RESET_SYNC_REQ)
+		while (tcc_shmem_readl(a53_base) & TCC_SHM_RESET_SYNC_REQ) {
+			if (!time_before(jiffies, j1)) {
+				timeout = 1;
+				break;
+			}
 			cpu_relax();
+		}
 
 	}
+
+	if(timeout != 0) {
+		pr_err("%s : timeout occured\n", __func__);
+		return;
+	}
+
+	j0 = jiffies;
+	j1 = j0 + delay;
 
 	list_for_each_entry_safe(desc_pos, desc_pos_s, &tcc_shm_list, list) {
 
@@ -327,18 +431,36 @@ static void tcc_shmem_reset(struct device *dev)
 			tcc_shmem_writel((1 << bit_place),
 					 a53_dist_reg +
 						(0x204 + (4 * pending_offset)));
-			while (tcc_shmem_readl(a72_base) & TCC_SHM_PORT_REQ)
+			while (tcc_shmem_readl(a72_base) & TCC_SHM_PORT_REQ) {
+				if (!time_before(jiffies, j1)) {
+					timeout = 1;
+					break;
+				}
 				cpu_relax();
+			}
 		} else {
 			tcc_shmem_writel((1 << bit_place),
 					 a72_dist_reg +
 						(0x204 + (4 * pending_offset)));
-			while (tcc_shmem_readl(a53_base) & TCC_SHM_PORT_REQ)
+			while (tcc_shmem_readl(a53_base) & TCC_SHM_PORT_REQ) {
+				if (!time_before(jiffies, j1)) {
+					timeout = 1;
+					break;
+				}
 				cpu_relax();
+			}
 		}
 
 	}
 
+	if(timeout != 0) {
+		pr_err("%s : timeout occured\n", __func__);
+		return;
+	}
+
+
+	j0 = jiffies;
+	j1 = j0 + delay;
 
 	if (shdev->core_num == 0) {
 		tcc_shmem_writel(tcc_shmem_readl(a72_base)|TCC_SHM_RESET_DONE,
@@ -346,8 +468,13 @@ static void tcc_shmem_reset(struct device *dev)
 		tcc_shmem_writel((1 << bit_place),
 				a53_dist_reg + (0x204 +
 					(4 * pending_offset)));
-		while (tcc_shmem_readl(a72_base) & TCC_SHM_RESET_DONE)
+		while (tcc_shmem_readl(a72_base) & TCC_SHM_RESET_DONE) {
+			if (!time_before(jiffies, j1)) {
+				timeout = 1;
+				break;
+			}
 			cpu_relax();
+		}
 
 
 	} else {
@@ -357,8 +484,18 @@ static void tcc_shmem_reset(struct device *dev)
 		tcc_shmem_writel((1 << bit_place),
 				a72_dist_reg + (0x204 +
 					(4 * pending_offset)));
-		while (tcc_shmem_readl(a53_base) & TCC_SHM_RESET_DONE)
+		while (tcc_shmem_readl(a53_base) & TCC_SHM_RESET_DONE) {
+			if (!time_before(jiffies, j1)) {
+				timeout = 1;
+				break;
+			}
 			cpu_relax();
+		}
+	}
+
+	if(timeout != 0) {
+		pr_err("%s : timeout occured\n", __func__);
+		return;
 	}
 
 	shdev->reset_req = 0;
@@ -389,6 +526,8 @@ static void tcc_shmem_tasklet_handler(unsigned long data)
 	//switch clause needed.
 	if (*initial_reset_req != 0) {
 		tcc_shmem_initial_reset(shdev->dev);
+		if(shdev->core_num == 0)
+		tcc_shmem_initial_port(shdev->dev);
 		pr_info("%s : tcc shared mem. initial reset!!!\n", __func__);
 	}
 
@@ -493,7 +632,7 @@ static void tcc_shmem_tasklet_handler(unsigned long data)
 
 }
 
-static void tcc_shmem_port_req_tasklet_handler(unsigned long data)
+static void tcc_shmem_port_request(unsigned long data)
 {
 
 	struct tcc_shm_data *shdev = (struct tcc_shm_data *)data;
@@ -560,17 +699,27 @@ EXPORT_SYMBOL(tcc_shmem_register_callback);
 
 uint32_t tcc_shmem_is_valid(void)
 {
+	uint32_t valid, timeout = 0;
+	unsigned long j0, j1, delay;
+	delay = msecs_to_jiffies(10000);
+	j0 = jiffies;
+	j1 = j0 + delay;
 
-	uint32_t i = 0, valid = 0;
+	while (true) {
+		if(!time_before(jiffies, j1)) {
+			timeout = 1;
+			break;
+		}
 
-	while (i < 1000) {
 		if (tcc_shm_valid != 0) {
 			valid = 1;
 			break;
 		}
 		mdelay(10);
-		i++;
 	}
+
+	if(timeout != 0)
+	    pr_err("%s : timeout occured\n", __func__);
 
 	if (valid != 0)
 		return 1;
@@ -1086,9 +1235,8 @@ static int32_t tcc_shmem_create_desc_handler(struct device *dev)
 
 }
 
-int32_t tcc_shmem_request_port_by_name(char *name, uint32_t size)
+int32_t tcc_shmem_request_port_by_name(const char *name, uint32_t size)
 {
-
 	struct tcc_shm_desc *desc_pos, *desc_pos_s;
 	struct tcc_shm_req_port *req_port_pos, *req_port_pos_s, *req_port_new;
 	uint32_t port_found = 0;
@@ -1155,6 +1303,78 @@ int32_t tcc_shmem_request_port_by_name(char *name, uint32_t size)
 
 }
 EXPORT_SYMBOL(tcc_shmem_request_port_by_name);
+
+
+static int32_t tcc_shmem_request_port_by_name_sync(struct device *dev,
+						const char *name, uint32_t size)
+{
+	struct tcc_shm_data *shdev = dev_get_drvdata(dev);
+	struct tcc_shm_desc *desc_pos, *desc_pos_s;
+	struct tcc_shm_req_port *req_port_pos, *req_port_pos_s, *req_port_new;
+	uint32_t port_found = 0;
+
+	if (tcc_shm_valid != 0) {
+
+		//pr_info("%s\n", __func__);
+
+		list_for_each_entry_safe(desc_pos, desc_pos_s, &tcc_shm_list,
+					 list) {
+			//pr_info("%s: port name %s req name %s\n",
+			    //__func__, desc_pos->name, name);
+			if (desc_pos->name != NULL) {
+				if (strcmp(desc_pos->name, name) == 0) {
+					port_found = 1;
+					break;
+				}
+			}
+		}
+
+		if (port_found == 0) {
+			list_for_each_entry_safe(req_port_pos, req_port_pos_s,
+						 &tcc_shm_req_name, list) {
+				//pr_info("%s: port name %s req name %s\n",
+				//__func__, desc_pos->name, name);
+				if (req_port_pos->name != NULL) {
+					if (strcmp(req_port_pos->name, name) ==
+					    0) {
+						port_found = 1;
+						break;
+					}
+				}
+			}
+
+			if (port_found == 0) {
+				req_port_new =
+				    kzalloc(sizeof(struct tcc_shm_req_port),
+					    GFP_KERNEL);
+				req_port_new->name =
+				    kzalloc(strlen(name), GFP_KERNEL);
+				memcpy(req_port_new->name, name, strlen(name));
+				req_port_new->size = size;
+				//pr_info("%s: name : %s size : %d\n",
+				//__func__, req_port_new->name,
+				//req_port_new->size);
+				list_add_tail(&req_port_new->list,
+					      &tcc_shm_req_name);
+				//tasklet_schedule(&tcc_shm_port_req_tasklet);
+				tcc_shmem_port_request((unsigned long)shdev);
+			} else {
+				pr_info("%s: port already requested\n",
+				       __func__);
+				//port is already requested
+				return SHM_PORT_REQUESTED;
+			}
+		} else {
+			pr_info("%s: port already exist\n", __func__);
+			return SHM_PORT_EXIST;	// port already exist
+		}
+
+		return 0;
+	}
+	pr_err("shared memory is not ready\n");
+	return -1;
+
+}
 
 int32_t tcc_shmem_find_port_by_name(char *name)
 {
@@ -1761,7 +1981,7 @@ static int tcc_shmem_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, shdev);
 
 	tasklet_init(&tcc_shm_port_req_tasklet,
-		     tcc_shmem_port_req_tasklet_handler, (unsigned long)shdev);
+		     tcc_shmem_port_request, (unsigned long)shdev);
 
 	//temp port request and delay for virtual ethernet
 	shdev->irq_mode = 1;
@@ -1846,7 +2066,7 @@ static int32_t tcc_shmem_resume(struct device *dev)
 				(unsigned long)shdev);
 
 		tasklet_init(&tcc_shm_port_req_tasklet,
-				tcc_shmem_port_req_tasklet_handler,
+				tcc_shmem_port_request,
 				(unsigned long)shdev);
 
 
@@ -1935,7 +2155,8 @@ static void __exit tcc_shmem_exit(void)
 	platform_driver_unregister(&tcc_shmem_driver);
 }
 
-arch_initcall(tcc_shmem_init);
+//arch_initcall(tcc_shmem_init);
+subsys_initcall(tcc_shmem_init);
 module_exit(tcc_shmem_exit);
 
 MODULE_DESCRIPTION("Telechips shared memory driver");
