@@ -276,12 +276,6 @@ static int tcc_overlay_display_shared_screen(
 
 		VIOC_RDMA_SetImageEnable(overlay_drv->rdma[layer].reg);
 
-		if (layer != overlay_drv->layer_nlast) {
-			VIOC_RDMA_SetImageDisable(
-				overlay_drv->rdma[overlay_drv->layer_nlast]
-					.reg);
-		}
-
 		overlay_drv->layer_nlast = overlay_drv->layer_n;
 
 #ifdef CONFIG_DISPLAY_EXT_FRAME
@@ -458,12 +452,6 @@ static int tcc_overlay_display_video_buffer(
 
 		VIOC_RDMA_SetImageEnable(overlay_drv->rdma[layer].reg);
 
-		if (layer != overlay_drv->layer_nlast) {
-			VIOC_RDMA_SetImageDisable(
-				overlay_drv->rdma[overlay_drv->layer_nlast]
-					.reg);
-		}
-
 		overlay_drv->layer_nlast = overlay_drv->layer_n;
 
 #ifdef CONFIG_DISPLAY_EXT_FRAME
@@ -598,12 +586,6 @@ static int tcc_overlay_display_video_buffer_scaling(
 #endif
 
 		VIOC_RDMA_SetImageEnable(overlay_drv->rdma[layer].reg);
-
-		if (layer != overlay_drv->layer_nlast) {
-			VIOC_RDMA_SetImageDisable(
-				overlay_drv->rdma[overlay_drv->layer_nlast]
-					.reg);
-		}
 
 		overlay_drv->layer_nlast = overlay_drv->layer_n;
 
