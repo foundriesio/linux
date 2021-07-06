@@ -129,9 +129,6 @@ static int tcc_shmem_sample_probe(struct platform_device *pdev)
 	val = tcc_shmem_is_valid();
 
 	if (val != 0) {
-		//10MB, 10*1024*1024
-		tcc_shmem_request_port_by_name("tcc_shmem_sample", 10485760);
-
 		shmem_port = tcc_shmem_find_port_by_name("tcc_shmem_sample");
 
 		if (!(shmem_port < 0)) {
