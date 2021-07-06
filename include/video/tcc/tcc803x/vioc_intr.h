@@ -168,7 +168,7 @@ enum vioc_vin_intr_src {
 	VIOC_VIN_INTR_MAX
 };
 #define VIOC_VIN_INT_ENABLE			((1<<VIOC_VIN_INTR_MAX)-1)
-#define VIOC_VIN_INT_MASK			0x8C
+#define VIOC_VIN_INT_MASK			0xC
 
 #define VIOC_INTR_VIN_OFFSET		(VIOC_INTR_VIN4 - (VIOC_INTR_VIN3 + 1))
 

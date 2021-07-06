@@ -371,7 +371,7 @@ void VIOC_VIN_SetFlushBufferEnable(void __iomem *reg, unsigned int fvs)
 }
 #endif
 
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 /* VIN Interrupt Mask
  *	- VIN_INT
  *		. [19:16] = mask and set
@@ -381,15 +381,18 @@ void VIOC_VIN_SetIreqMask(
 	void __iomem *reg, unsigned int mask, unsigned int set)
 {
 	/*
-	 * set 1 : IREQ Masked(interrupt disable),
-	 * set 0 : IREQ UnMasked(interrput enable)
+	 * set 1 : IREQ Masked(interrupt enable),
+	 * set 0 : IREQ UnMasked(interrput disable)
 	 */
 	unsigned long value;
 
 	value = (__raw_readl(reg + VIN_INT) & ~(mask));
 
-	if (set) /* Interrupt Disable*/
+	if (set) /* Interrupt Enable*/
 		value |= mask;
+	else
+		value |= ~mask;
+
 	__raw_writel(value, reg + VIN_INT);
 }
 
