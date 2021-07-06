@@ -175,8 +175,6 @@ static netdev_tx_t dummy_xmit(struct sk_buff *skb, struct net_device *dev)
 	if (ret < 0) {
 		val = tcc_shmem_is_valid();
 		if (val != 0) {
-			//50MB, 50*1024*1024
-			tcc_shmem_request_port_by_name("eth", 52428800);
 			val = tcc_shmem_find_port_by_name("eth");
 			shmem_port = val;
 
@@ -323,9 +321,6 @@ static void dummy_setup(struct net_device *dev)
 
 	val = tcc_shmem_is_valid();
 	if (val != 0) {
-		//50MB, 50*1024*1024
-		tcc_shmem_request_port_by_name("eth", 52428800);
-
 		val = tcc_shmem_find_port_by_name("eth");
 		shmem_port = val;
 		//pr_info("%s:tcc_sh val : %d\n",__func__, val);
