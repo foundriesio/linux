@@ -846,7 +846,7 @@ static int _vp9mgr_cmd_release(char *str)
 
 	vp9mgr_data.nOpened_Count++;
 
-	printk(
+	V_DBG(VPU_DBG_CLOSE,
 	"======> _vp9mgr_%s_release Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n",
 	    str,
 	    atomic_read(&vp9mgr_data.dev_opened),
@@ -1104,7 +1104,7 @@ static int _vp9mgr_release(struct inode *inode, struct file *filp)
 	atomic_dec(&vp9mgr_data.dev_file_opened);
 	vp9mgr_data.nOpened_Count++;
 
-	printk(
+	V_DBG(VPU_DBG_CLOSE,
 	 "%s Out!! %d'th, total = %d  - DEC(%d/%d/%d/%d/%d)\n",
 	    __func__,
 	   vmgr_data.dev_file_opened, vmgr_data.nOpened_Count,
@@ -1228,7 +1228,7 @@ static int _vp9mgr_operation(void)
 				}
 			}
 		} else {
-			printk(
+			V_DBG(VPU_DBG_ERROR,
 			"%s :: missed info or unknown command => type = 0x%x, cmd = 0x%x,\n",
 				__func__, oper_data->type, oper_data->cmd_type);
 
@@ -1292,7 +1292,7 @@ static int _vp9mgr_thread(void *kthread)
 			} else {
 				struct VpuList *oper_data = NULL;
 
-				printk("DEL for empty\n");
+				V_DBG(VPU_DBG_ERROR, "DEL for empty");
 
 				oper_data =
 				    vp9mgr_list_manager(NULL, LIST_GET_ENTRY);
