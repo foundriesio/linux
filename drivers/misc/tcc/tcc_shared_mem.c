@@ -17,9 +17,7 @@
 
 // this should be moved into linked list because critical section
 // should be seperaged by channel
-DEFINE_SPINLOCK(tcc_shm_spinlock1);
-DEFINE_SPINLOCK(tcc_shm_spinlock2);
-DEFINE_SPINLOCK(tcc_shm_spinlock3);
+DEFINE_SPINLOCK(tcc_shm_spinlock);
 
 static uint32_t tcc_shm_valid;
 struct timer_list shm_timer;
@@ -76,6 +74,8 @@ static void insert_pending_read_que(uint32_t read_req,
 	uint32_t i, j, *que_pos, *que_next_pos, port_exist = 0;
 	int32_t *read_que;
 
+	spin_lock(&tcc_shm_spinlock);
+
 	read_que = shdev->read_que;
 	que_pos = &shdev->que_pos;
 	que_next_pos = &shdev->que_next_pos;
@@ -128,6 +128,7 @@ static void insert_pending_read_que(uint32_t read_req,
 
 	shdev->read_req = 1;
 
+	spin_unlock(&tcc_shm_spinlock);
 }
 
 static irqreturn_t tcc_shmem_handler(int irq, void *dev)
@@ -191,17 +192,11 @@ static irqreturn_t tcc_shmem_handler(int irq, void *dev)
 	} else {
 
 		if (shdev->core_num == 0) {
-
 			val = tcc_shmem_readl(a53_base);
-
 			read_req = tcc_shmem_readl(a53_read_req);
-
 		} else {
-
 			val = tcc_shmem_readl(a72_base);
-
 			read_req = tcc_shmem_readl(a72_read_req);
-
 		}
 		if (val & TCC_SHM_RESET_REQ) {
 			if (shdev->core_num == 0) {
@@ -311,7 +306,7 @@ static void tcc_shmem_initial_port(struct device *dev)
 
 		ret = of_property_read_string(child_np, "ch-name",
 							    &ch_name);
-		printk("shmem port name1 : %s\n", ch_name);
+		pr_info("shmem port name1 : %s\n", ch_name);
 		if(ret) {
 			pr_err("%s: failed to get channel name\n",
 							    __func__);
@@ -319,7 +314,7 @@ static void tcc_shmem_initial_port(struct device *dev)
 		}
 
 		of_property_read_u32(child_np, "ch-size", &ch_size);
-		printk("shmem port size1 : %d\n", ch_size);
+		pr_info("shmem port size1 : %d\n", ch_size);
 		if(ret) {
 			pr_err("%s: failed to get channel size\n",
 							    __func__);
@@ -547,13 +542,15 @@ static void tcc_shmem_tasklet_handler(unsigned long data)
 		//pr_info("%s: tcc_shared mem. desc. deletion\n", __func__);
 	}
 
+	spin_lock_irq(&tcc_shm_spinlock);
+
 	if (*read_req != 0) {
 		//pr_info("%s: tcc_shared mem. read request\n", __func__);
 		while (!(*que_pos == *que_next_pos)) {
 			list_for_each_entry_safe(desc_pos, desc_pos_s,
 				&tcc_shm_list, list) {
 				//pr_info("%s: desc port num : %d,
-				//read port num : %s\n", __func__,
+				//read port num : %d\n", __func__,
 				//desc_pos->port_num,
 				//shdev->read_que[shdev->que_pos]);
 				if (desc_pos->port_num == read_que[*que_pos]) {
@@ -567,6 +564,7 @@ static void tcc_shmem_tasklet_handler(unsigned long data)
 			if (port_found != 1) {
 				*read_req = 0;
 				pr_err("%s: no port exist!_0\n", __func__);
+				spin_unlock_irq(&tcc_shm_spinlock);
 				return;
 			}
 
@@ -629,6 +627,7 @@ static void tcc_shmem_tasklet_handler(unsigned long data)
 
 		shdev->read_req = 0;
 	}
+	spin_unlock_irq(&tcc_shm_spinlock);
 
 }
 
@@ -773,8 +772,6 @@ static int32_t tcc_shmem_receive_port(struct device *dev, int32_t port,
 
 	if (tcc_shm_valid != 0) {
 
-		//spin_lock_irq(&tcc_shm_spinlock1);
-
 		list_for_each_entry_safe(desc_pos, desc_pos_s, &tcc_shm_list,
 					 list) {
 			if (desc_pos->port_num == port) {
@@ -784,8 +781,8 @@ static int32_t tcc_shmem_receive_port(struct device *dev, int32_t port,
 		}
 
 		if (port_found != 1) {
-			pr_err("%s: no port exists!\n", __func__);
-			//spin_unlock_irq(&tcc_shm_spinlock1);
+			pr_err("%s: no port exists! port : %d\n", __func__, port);
+			spin_unlock_irq(&tcc_shm_spinlock);
 			return -1;
 		}
 
@@ -798,8 +795,8 @@ static int32_t tcc_shmem_receive_port(struct device *dev, int32_t port,
 				      shdev->base + desc_pos->offset_72 +
 				      desc_pos->size + TAIL_OFFSET_53,
 				      sizeof(uint32_t));
-			//pr_info("%s:1 head : 0x%x tail : 0x%x addr : 0x%px\n",
-			//__func__, head, tail,
+			//pr_info("1 %x %x %px\n",
+			//head, tail,
 			//shdev->base+desc_pos->offset_72
 			//+desc_pos->size+TAIL_OFFSET_53);
 		} else {
@@ -811,8 +808,8 @@ static int32_t tcc_shmem_receive_port(struct device *dev, int32_t port,
 				      shdev->base + desc_pos->offset_72 +
 				      desc_pos->size + TAIL_OFFSET_72,
 				      sizeof(uint32_t));
-			//pr_info("%s:2 head : 0x%x tail : 0x%x addr : 0x%px\n",
-			//__func__, head, tail,
+			//pr_info("2 %x %x %px\n",
+			//head, tail,
 			//shdev->base+desc_pos->offset_72
 			//+desc_pos->size+TAIL_OFFSET_72);
 		}
@@ -829,11 +826,14 @@ static int32_t tcc_shmem_receive_port(struct device *dev, int32_t port,
 		}
 
 		post_tail = tail + size;
-		//pr_info("%s: post tail : 0x%x size : %d\n",
-				//__func__, post_tail, size);
+		//pr_info("0x%x %d\n", post_tail, size);
 
 		if (post_tail < (((desc_pos->size + 1) / 2))) {
 			cnt = size;
+			//pr_info("%px %px\n", shdev->base +
+			//desc_pos->offset_53 + tail, shdev->base +
+			//desc_pos->offset_72 + desc_pos->size +
+			//TAIL_OFFSET_53);
 			if (shdev->core_num == 0) {
 				memcpy_fromio(data,
 					      shdev->base +
@@ -853,6 +853,11 @@ static int32_t tcc_shmem_receive_port(struct device *dev, int32_t port,
 			cnt = (((desc_pos->size + 1) / 2)) - tail;
 			left_cnt = post_tail - (((desc_pos->size + 1) / 2));
 			post_tail = left_cnt;
+			//pr_info("%px %px %px\n", shdev->base +
+			//desc_pos->offset_53 + tail, shdev->base +
+			//desc_pos->offset_53, shdev->base +
+			//desc_pos->offset_72 + desc_pos->size +
+			//TAIL_OFFSET_53);
 			if (shdev->core_num == 0) {
 				memcpy_fromio(data,
 					      shdev->base +
@@ -875,7 +880,6 @@ static int32_t tcc_shmem_receive_port(struct device *dev, int32_t port,
 					    &post_tail, sizeof(uint32_t));
 			}
 		}
-		//spin_unlock_irq(&tcc_shm_spinlock1);
 		return size;
 	}
 
@@ -891,7 +895,7 @@ int32_t tcc_shmem_transfer_port_nodev(int32_t port, uint32_t size, char *data)
 
 	if (tcc_shm_valid != 0) {
 
-		spin_lock_irq(&tcc_shm_spinlock2);
+		spin_lock_irq(&tcc_shm_spinlock);
 
 		list_for_each_entry_safe(desc_pos, desc_pos_s, &tcc_shm_list,
 					 list) {
@@ -902,8 +906,8 @@ int32_t tcc_shmem_transfer_port_nodev(int32_t port, uint32_t size, char *data)
 		}
 
 		if (port_found != 1) {
-			pr_err("%s: no port exists!\n", __func__);
-			spin_unlock_irq(&tcc_shm_spinlock2);
+			pr_err("%s: no port exists! port : %d\n", __func__, port);
+			spin_unlock_irq(&tcc_shm_spinlock);
 			return -1;
 		}
 
@@ -964,7 +968,7 @@ int32_t tcc_shmem_transfer_port_nodev(int32_t port, uint32_t size, char *data)
 				//__func__);
 				//pr_info(transfer through shared memory.);
 				//pr_info(increase size of shared memory\n);",
-				spin_unlock_irq(&tcc_shm_spinlock2);
+				spin_unlock_irq(&tcc_shm_spinlock);
 				return -1;
 			}
 
@@ -1027,7 +1031,7 @@ int32_t tcc_shmem_transfer_port_nodev(int32_t port, uint32_t size, char *data)
 				    (0x204 + (4 * desc_pos->pending_offset)));
 		}
 
-		spin_unlock_irq(&tcc_shm_spinlock2);
+		spin_unlock_irq(&tcc_shm_spinlock);
 		return 0;
 
 	} else {
@@ -1591,7 +1595,7 @@ static int32_t tcc_shmem_create_desc_req(struct device *dev, char *name,
 
 	if (tcc_shm_valid != 0) {
 
-		spin_lock_irq(&tcc_shm_spinlock3);
+		spin_lock_irq(&tcc_shm_spinlock);
 
 		if (shdev->core_num == 0) {
 			val =
@@ -1607,7 +1611,7 @@ static int32_t tcc_shmem_create_desc_req(struct device *dev, char *name,
 			pr_info
 			("%s: port creation and deletion req. is in progress\n",
 			     __func__);
-			spin_unlock_irq(&tcc_shm_spinlock3);
+			spin_unlock_irq(&tcc_shm_spinlock);
 			return -1;
 		}
 
@@ -1720,17 +1724,19 @@ static int32_t tcc_shmem_create_desc_req(struct device *dev, char *name,
 						(4 * shdev->pending_offset)));
 			}
 
-			spin_unlock_irq(&tcc_shm_spinlock3);
+			spin_unlock_irq(&tcc_shm_spinlock);
 			return desc_new->port_num;
 		}
 
-		spin_unlock_irq(&tcc_shm_spinlock3);
+		spin_unlock_irq(&tcc_shm_spinlock);
 		return -1;
 	}
 
 	pr_err("shared memory is not ready\n");
 	return -1;
 }
+
+#if 0
 
 static int32_t tcc_shmem_deletion_desc_req(struct device *dev, int32_t port)
 {
@@ -1835,6 +1841,7 @@ static ssize_t shm_trans_read(struct device *dev, struct device_attribute *attr,
 	char *received_data;
 	int32_t ret, received_num;
 
+	spin_lock_irq(&tcc_shm_spinlock);
 	received_data =
 	    devm_kzalloc(dev, sizeof(char) * SHM_RECV_BUF_NUM, GFP_KERNEL);
 
@@ -1845,6 +1852,7 @@ static ssize_t shm_trans_read(struct device *dev, struct device_attribute *attr,
 	ret = sprintf(buf, "received num : %d\n", received_num);
 
 	devm_kfree(dev, received_data);
+	spin_unlock_irq(&tcc_shm_spinlock);
 
 	return ret;
 }
@@ -1879,6 +1887,7 @@ static struct attribute *tcc_shmem_test_attrs[] = {
 static const struct attribute_group tcc_shmem_test_attr_group = {
 	.attrs = tcc_shmem_test_attrs,
 };
+#endif
 
 static int tcc_shmem_probe(struct platform_device *pdev)
 {
@@ -1964,10 +1973,12 @@ static int tcc_shmem_probe(struct platform_device *pdev)
 		return -1;
 	}
 
+#if 0
 	ret = sysfs_create_group(&pdev->dev.kobj, &tcc_shmem_test_attr_group);
 
 	if (ret != 0)
 		sysfs_remove_group(&pdev->dev.kobj, &tcc_shmem_test_attr_group);
+#endif
 
 	shdev->core_num = core_num;
 	shdev->pending_offset = pending_offset;
