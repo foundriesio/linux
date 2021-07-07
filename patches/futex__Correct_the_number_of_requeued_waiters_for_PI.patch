@@ -1,0 +1,41 @@
+Subject: futex: Correct the number of requeued waiters for PI
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Tue Jul  6 16:36:55 2021 +0200
+
+From: Thomas Gleixner <tglx@linutronix.de>
+
+The accounting is wrong when either the PI sanity check or the
+requeue PI operation fails. Adjust it in the failure path.
+
+Will be simplified in the next step.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+
+---
+ kernel/futex.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+---
+diff --git a/kernel/futex.c b/kernel/futex.c
+index e0f266fa7249..3b037ebd04f0 100644
+--- a/kernel/futex.c
++++ b/kernel/futex.c
+@@ -2131,6 +2131,8 @@ static int futex_requeue(u32 __user *uaddr1, unsigned int flags,
+ 
+ 		/* Ensure we requeue to the expected futex for requeue_pi. */
+ 		if (requeue_pi && !match_futex(this->requeue_pi_key, &key2)) {
++			/* Don't account for it */
++			task_count--;
+ 			ret = -EINVAL;
+ 			break;
+ 		}
+@@ -2172,6 +2174,8 @@ static int futex_requeue(u32 __user *uaddr1, unsigned int flags,
+ 				 */
+ 				this->pi_state = NULL;
+ 				put_pi_state(pi_state);
++				/* Don't account for it */
++				task_count--;
+ 				/*
+ 				 * We stop queueing more waiters and let user
+ 				 * space deal with the mess.

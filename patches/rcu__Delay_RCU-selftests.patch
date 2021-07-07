@@ -1,0 +1,76 @@
+Subject: rcu: Delay RCU-selftests
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Wed Mar 10 15:09:02 2021 +0100
+
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+
+Delay RCU-selftests until ksoftirqd is up and running.
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ init/main.c        |  7 +++++++
+ kernel/rcu/tasks.h |  9 ++-------
+ 2 files changed, 9 insertions(+), 7 deletions(-)
+---
+diff --git a/init/main.c b/init/main.c
+index e9c42a183e33..7dfb7731c160 100644
+--- a/init/main.c
++++ b/init/main.c
+@@ -1522,6 +1522,12 @@ void __init console_on_rootfs(void)
+ 	fput(file);
+ }
+ 
++#ifdef CONFIG_PROVE_RCU
++void rcu_tasks_initiate_self_tests(void);
++#else
++static inline void rcu_tasks_initiate_self_tests(void) {}
++#endif
++
+ static noinline void __init kernel_init_freeable(void)
+ {
+ 	/*
+@@ -1547,6 +1553,7 @@ static noinline void __init kernel_init_freeable(void)
+ 
+ 	rcu_init_tasks_generic();
+ 	do_pre_smp_initcalls();
++	rcu_tasks_initiate_self_tests();
+ 	lockup_detector_init();
+ 
+ 	smp_init();
+diff --git a/kernel/rcu/tasks.h b/kernel/rcu/tasks.h
+index 350ebf5051f9..51ca46e4ec55 100644
+--- a/kernel/rcu/tasks.h
++++ b/kernel/rcu/tasks.h
+@@ -1295,7 +1295,7 @@ static void test_rcu_tasks_callback(struct rcu_head *rhp)
+ 	rttd->notrun = true;
+ }
+ 
+-static void rcu_tasks_initiate_self_tests(void)
++void rcu_tasks_initiate_self_tests(void)
+ {
+ 	pr_info("Running RCU-tasks wait API self tests\n");
+ #ifdef CONFIG_TASKS_RCU
+@@ -1332,9 +1332,7 @@ static int rcu_tasks_verify_self_tests(void)
+ 	return ret;
+ }
+ late_initcall(rcu_tasks_verify_self_tests);
+-#else /* #ifdef CONFIG_PROVE_RCU */
+-static void rcu_tasks_initiate_self_tests(void) { }
+-#endif /* #else #ifdef CONFIG_PROVE_RCU */
++#endif /* #ifdef CONFIG_PROVE_RCU */
+ 
+ void __init rcu_init_tasks_generic(void)
+ {
+@@ -1349,9 +1347,6 @@ void __init rcu_init_tasks_generic(void)
+ #ifdef CONFIG_TASKS_TRACE_RCU
+ 	rcu_spawn_tasks_trace_kthread();
+ #endif
+-
+-	// Run the self-tests.
+-	rcu_tasks_initiate_self_tests();
+ }
+ 
+ #else /* #ifdef CONFIG_TASKS_RCU_GENERIC */

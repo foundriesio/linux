@@ -1,0 +1,36 @@
+Subject: locking/rtmutex: Prevent future include recursion hell
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Tue Jul  6 16:36:48 2021 +0200
+
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+
+rtmutex only needs raw_spinlock_t, but it includes spinlock_types.h which
+is not a problem on an non RT enabled kernel.
+
+RT kernels substitute regular spinlocks with 'sleeping' spinlocks which
+are based on rtmutexes and therefore must be able to include rtmutex.h.
+
+Include spinlock_types_raw.h instead.
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+
+---
+ include/linux/rtmutex.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+---
+diff --git a/include/linux/rtmutex.h b/include/linux/rtmutex.h
+index d1672de9ca89..9c1c67f2d810 100644
+--- a/include/linux/rtmutex.h
++++ b/include/linux/rtmutex.h
+@@ -15,7 +15,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <linux/rbtree.h>
+-#include <linux/spinlock_types.h>
++#include <linux/spinlock_types_raw.h>
+ 
+ extern int max_lock_depth; /* for sysctl */
+ 

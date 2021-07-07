@@ -1,0 +1,75 @@
+Subject: locking/rtmutex: Prepare RT rt_mutex_wake_q for RT locks
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Tue Jul  6 16:36:47 2021 +0200
+
+From: Thomas Gleixner <tglx@linutronix.de>
+
+Add a rtlock_task pointer to rt_mutex_wake_q which allows to handle the RT
+specific wakeup for spin/rwlock waiters. The pointer is just consuming 4/8
+bytes on stack so it is provided unconditionaly to avoid #ifdeffery all
+over the place.
+
+No functional change for non-RT enabled kernels.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+
+---
+ kernel/locking/rtmutex.c        | 16 ++++++++++++++--
+ kernel/locking/rtmutex_common.h |  3 +++
+ 2 files changed, 17 insertions(+), 2 deletions(-)
+---
+diff --git a/kernel/locking/rtmutex.c b/kernel/locking/rtmutex.c
+index 11b2e7d29641..63c255aaf121 100644
+--- a/kernel/locking/rtmutex.c
++++ b/kernel/locking/rtmutex.c
+@@ -351,12 +351,24 @@ static __always_inline void rt_mutex_adjust_prio(struct task_struct *p)
+ static __always_inline void rt_mutex_wake_q_add(struct rt_mutex_wake_q_head *wqh,
+ 						struct rt_mutex_waiter *w)
+ {
+-	wake_q_add(&wqh->head, w->task);
++	if (IS_ENABLED(CONFIG_PREEMPT_RT) && w->wake_state != TASK_NORMAL) {
++		get_task_struct(w->task);
++		wqh->rtlock_task = w->task;
++	} else {
++		wake_q_add(&wqh->head, w->task);
++	}
+ }
+ 
+ static __always_inline void rt_mutex_wake_up_q(struct rt_mutex_wake_q_head *wqh)
+ {
+-	wake_up_q(&wqh->head);
++	if (IS_ENABLED(CONFIG_PREEMPT_RT) && wqh->rtlock_task) {
++		wake_up_state(wqh->rtlock_task, TASK_RTLOCK_WAIT);
++		put_task_struct(wqh->rtlock_task);
++		wqh->rtlock_task = NULL;
++	}
++
++	if (!wake_q_empty(&wqh->head))
++		wake_up_q(&wqh->head);
+ 
+ 	/* Pairs with preempt_disable() in mark_wakeup_next_waiter() */
+ 	preempt_enable();
+diff --git a/kernel/locking/rtmutex_common.h b/kernel/locking/rtmutex_common.h
+index f6a453c4ad69..5ccb9a7f0f56 100644
+--- a/kernel/locking/rtmutex_common.h
++++ b/kernel/locking/rtmutex_common.h
+@@ -43,14 +43,17 @@ struct rt_mutex_waiter {
+  * rt_mutex_wake_q_head - Wrapper around regular wake_q_head to support
+  *			  "sleeping" spinlocks on RT
+  * @head:		The regular wake_q_head for sleeping lock variants
++ * @rtlock_task:	Task pointer for RT lock (spin/rwlock) wakeups
+  */
+ struct rt_mutex_wake_q_head {
+ 	struct wake_q_head	head;
++	struct task_struct	*rtlock_task;
+ };
+ 
+ #define DEFINE_RT_MUTEX_WAKE_Q_HEAD(name)				\
+ 	struct rt_mutex_wake_q_head name = {				\
+ 		.head		= WAKE_Q_HEAD_INITIALIZER(name.head),	\
++		.rtlock_task	= NULL,					\
+ 	}
+ 
+ /*

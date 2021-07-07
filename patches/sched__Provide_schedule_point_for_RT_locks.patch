@@ -1,0 +1,84 @@
+Subject: sched: Provide schedule point for RT locks
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Tue Jul  6 16:36:45 2021 +0200
+
+From: Thomas Gleixner <tglx@linutronix.de>
+
+RT enabled kernels substitute spin/rwlocks with 'sleeping' variants based
+on rtmutex. Blocking on such a lock is similar to preemption versus:
+
+ - I/O scheduling and worker handling because these functions might block
+   on another substituted lock or come from a lock contention within these
+   functions.
+
+ - RCU considers this like a preemption because the task might be in a read
+   side critical section.
+
+Add a seperate scheduling point for this and hand a new scheduling mode
+argument to __schedule() which allows along with seperate mode masks to
+handle this gracefully from within the scheduler without proliferating that
+to other subsystems like RCU.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+
+---
+ include/linux/sched.h |  3 +++
+ kernel/sched/core.c   | 22 ++++++++++++++++++++--
+ 2 files changed, 23 insertions(+), 2 deletions(-)
+---
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index 9d1242f48891..e9081a4d5fe2 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -290,6 +290,9 @@ extern long schedule_timeout_idle(long timeout);
+ asmlinkage void schedule(void);
+ extern void schedule_preempt_disabled(void);
+ asmlinkage void preempt_schedule_irq(void);
++#ifdef CONFIG_PREEMPT_RT
++ extern void schedule_rtlock(void);
++#endif
+ 
+ extern int __must_check io_schedule_prepare(void);
+ extern void io_schedule_finish(int token);
+diff --git a/kernel/sched/core.c b/kernel/sched/core.c
+index 2664708731ed..25276f76935e 100644
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -5039,8 +5039,14 @@ pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
+  */
+ #define	SM_NONE			0x0
+ #define	SM_PREEMPT		0x1
+-#define SM_MASK_PREEMPT		UINT_MAX
+-#define SM_MASK_STATE		SM_MASK_PREEMPT
++#ifndef CONFIG_PREEMPT_RT
++# define SM_MASK_PREEMPT	UINT_MAX
++# define SM_MASK_STATE		SM_MASK_PREEMPT
++#else
++# define SM_RTLOCK_WAIT		0x2
++# define SM_MASK_PREEMPT	SM_PREEMPT
++# define SM_MASK_STATE		(SM_PREEMPT | SM_RTLOCK_WAIT)
++#endif
+ 
+ /*
+  * __schedule() is the main scheduler function.
+@@ -5345,6 +5351,18 @@ void __sched schedule_preempt_disabled(void)
+ 	preempt_disable();
+ }
+ 
++#ifdef CONFIG_PREEMPT_RT
++void __sched notrace schedule_rtlock(void)
++{
++	do {
++		preempt_disable();
++		__schedule(SM_RTLOCK_WAIT);
++		sched_preempt_enable_no_resched();
++	} while (need_resched());
++}
++NOKPROBE_SYMBOL(schedule_rtlock);
++#endif
++
+ static void __sched notrace preempt_schedule_common(void)
+ {
+ 	do {

@@ -1,0 +1,153 @@
+Subject: mm, slub: optionally save/restore irqs in slab_[un]lock()/
+From: Vlastimil Babka <vbabka@suse.cz>
+Date: Fri Jun  4 12:55:55 2021 +0200
+
+From: Vlastimil Babka <vbabka@suse.cz>
+
+For PREEMPT_RT we will need to disable irqs for this bit spinlock. As a
+preparation, add a flags parameter, and an internal version that takes
+additional bool parameter to control irq saving/restoring (the flags
+parameter is compile-time unused if the bool is a constant false).
+
+Convert ___cmpxchg_double_slab(), which also comes with the same bool
+parameter, to use the internal version.
+
+Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ mm/slub.c | 49 +++++++++++++++++++++++++++++++------------------
+ 1 file changed, 31 insertions(+), 18 deletions(-)
+---
+diff --git a/mm/slub.c b/mm/slub.c
+index 7970a651d234..07cc715ca2e7 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -354,18 +354,35 @@ static inline unsigned int oo_objects(struct kmem_cache_order_objects x)
+ /*
+  * Per slab locking using the pagelock
+  */
+-static __always_inline void slab_lock(struct page *page)
++static __always_inline void
++__slab_lock(struct page *page, unsigned long *flags, bool disable_irqs)
+ {
+ 	VM_BUG_ON_PAGE(PageTail(page), page);
++	if (disable_irqs)
++		local_irq_save(*flags);
+ 	bit_spin_lock(PG_locked, &page->flags);
+ }
+ 
+-static __always_inline void slab_unlock(struct page *page)
++static __always_inline void
++__slab_unlock(struct page *page, unsigned long *flags, bool disable_irqs)
+ {
+ 	VM_BUG_ON_PAGE(PageTail(page), page);
++	if (disable_irqs)
++		local_irq_restore(*flags);
+ 	__bit_spin_unlock(PG_locked, &page->flags);
+ }
+ 
++static __always_inline void
++slab_lock(struct page *page, unsigned long *flags)
++{
++	__slab_lock(page, flags, false);
++}
++
++static __always_inline void slab_unlock(struct page *page, unsigned long *flags)
++{
++	__slab_unlock(page, flags, false);
++}
++
+ static inline bool ___cmpxchg_double_slab(struct kmem_cache *s, struct page *page,
+ 		void *freelist_old, unsigned long counters_old,
+ 		void *freelist_new, unsigned long counters_new,
+@@ -385,21 +402,15 @@ static inline bool ___cmpxchg_double_slab(struct kmem_cache *s, struct page *pag
+ 	{
+ 		unsigned long flags;
+ 
+-		if (disable_irqs)
+-			local_irq_save(flags);
+-		slab_lock(page);
++		__slab_lock(page, &flags, disable_irqs);
+ 		if (page->freelist == freelist_old &&
+ 					page->counters == counters_old) {
+ 			page->freelist = freelist_new;
+ 			page->counters = counters_new;
+-			slab_unlock(page);
+-			if (disable_irqs)
+-				local_irq_restore(flags);
++			__slab_unlock(page, &flags, disable_irqs);
+ 			return true;
+ 		}
+-		slab_unlock(page);
+-		if (disable_irqs)
+-			local_irq_restore(flags);
++		__slab_unlock(page, &flags, disable_irqs);
+ 	}
+ 
+ 	cpu_relax();
+@@ -1215,11 +1226,11 @@ static noinline int free_debug_processing(
+ 	struct kmem_cache_node *n = get_node(s, page_to_nid(page));
+ 	void *object = head;
+ 	int cnt = 0;
+-	unsigned long flags;
++	unsigned long flags, flags2;
+ 	int ret = 0;
+ 
+ 	spin_lock_irqsave(&n->list_lock, flags);
+-	slab_lock(page);
++	slab_lock(page, &flags2);
+ 
+ 	if (s->flags & SLAB_CONSISTENCY_CHECKS) {
+ 		if (!check_slab(s, page))
+@@ -1252,7 +1263,7 @@ static noinline int free_debug_processing(
+ 		slab_err(s, page, "Bulk freelist count(%d) invalid(%d)\n",
+ 			 bulk_cnt, cnt);
+ 
+-	slab_unlock(page);
++	slab_unlock(page, &flags2);
+ 	spin_unlock_irqrestore(&n->list_lock, flags);
+ 	if (!ret)
+ 		slab_fix(s, "Object at 0x%p not freed", object);
+@@ -4002,9 +4013,10 @@ static void list_slab_objects(struct kmem_cache *s, struct page *page,
+ 	void *addr = page_address(page);
+ 	unsigned long *map;
+ 	void *p;
++	unsigned long flags;
+ 
+ 	slab_err(s, page, text, s->name);
+-	slab_lock(page);
++	slab_lock(page, &flags);
+ 
+ 	map = get_map(s, page);
+ 	for_each_object(p, s, addr, page->objects) {
+@@ -4015,7 +4027,7 @@ static void list_slab_objects(struct kmem_cache *s, struct page *page,
+ 		}
+ 	}
+ 	put_map(map);
+-	slab_unlock(page);
++	slab_unlock(page, &flags);
+ #endif
+ }
+ 
+@@ -4731,8 +4743,9 @@ static void validate_slab(struct kmem_cache *s, struct page *page,
+ {
+ 	void *p;
+ 	void *addr = page_address(page);
++	unsigned long flags;
+ 
+-	slab_lock(page);
++	slab_lock(page, &flags);
+ 
+ 	if (!check_slab(s, page) || !on_freelist(s, page, NULL))
+ 		goto unlock;
+@@ -4747,7 +4760,7 @@ static void validate_slab(struct kmem_cache *s, struct page *page,
+ 			break;
+ 	}
+ unlock:
+-	slab_unlock(page);
++	slab_unlock(page, &flags);
+ }
+ 
+ static int validate_slab_node(struct kmem_cache *s,

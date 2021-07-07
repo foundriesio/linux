@@ -1,0 +1,38 @@
+Subject: mm, slub: discard slabs in unfreeze_partials() without irqs disabled
+From: Vlastimil Babka <vbabka@suse.cz>
+Date: Thu May 20 14:01:57 2021 +0200
+
+From: Vlastimil Babka <vbabka@suse.cz>
+
+No need for disabled irqs when discarding slabs, so restore them before
+discarding.
+
+Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ mm/slub.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+---
+diff --git a/mm/slub.c b/mm/slub.c
+index 5570ba7ae66c..11a4edb6aec2 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -2347,6 +2347,8 @@ static void unfreeze_partials(struct kmem_cache *s,
+ 	if (n)
+ 		spin_unlock(&n->list_lock);
+ 
++	local_irq_restore(flags);
++
+ 	while (discard_page) {
+ 		page = discard_page;
+ 		discard_page = discard_page->next;
+@@ -2356,7 +2358,6 @@ static void unfreeze_partials(struct kmem_cache *s,
+ 		stat(s, FREE_SLAB);
+ 	}
+ 
+-	local_irq_restore(flags);
+ #endif	/* CONFIG_SLUB_CPU_PARTIAL */
+ }
+ 

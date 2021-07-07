@@ -1,0 +1,34 @@
+Subject: futex: Validate waiter correctly in futex_proxy_trylock_atomic()
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Tue Jul  6 16:36:54 2021 +0200
+
+From: Thomas Gleixner <tglx@linutronix.de>
+
+The loop in futex_requeue() has a sanity check for the waiter which is
+missing in futex_proxy_trylock_atomic(). In theory the key2 check is
+sufficient, but futexes are cursed so add it for completness and paranoia
+sake.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+
+---
+ kernel/futex.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+---
+diff --git a/kernel/futex.c b/kernel/futex.c
+index e60bcddec287..b8eab7a2934b 100644
+--- a/kernel/futex.c
++++ b/kernel/futex.c
+@@ -1882,6 +1882,10 @@ futex_proxy_trylock_atomic(u32 __user *pifutex, struct futex_hash_bucket *hb1,
+ 	if (!top_waiter)
+ 		return 0;
+ 
++	/* Ensure that this is a waiter sitting in futex_wait_requeue_pi() */
++	if (!top_waiter->rt_waiter || top_waiter->pi_state)
++		ret = -EINVAL;
++
+ 	/* Ensure we requeue to the expected futex. */
+ 	if (!match_futex(top_waiter->requeue_pi_key, key2))
+ 		return -EINVAL;

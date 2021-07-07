@@ -1,0 +1,62 @@
+Subject: mm/vmstat: Inline NUMA event counter updates
+From: Mel Gorman <mgorman@techsingularity.net>
+Date: Wed May 12 10:54:53 2021 +0100
+
+From: Mel Gorman <mgorman@techsingularity.net>
+
+__count_numa_event is small enough to be treated similarly to
+__count_vm_event so inline it.
+
+Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ include/linux/vmstat.h | 10 +++++++++-
+ mm/vmstat.c            |  9 ---------
+ 2 files changed, 9 insertions(+), 10 deletions(-)
+---
+diff --git a/include/linux/vmstat.h b/include/linux/vmstat.h
+index 59748bbbba4c..fe32a2210e73 100644
+--- a/include/linux/vmstat.h
++++ b/include/linux/vmstat.h
+@@ -238,7 +238,15 @@ static inline unsigned long zone_page_state_snapshot(struct zone *zone,
+ }
+ 
+ #ifdef CONFIG_NUMA
+-extern void __count_numa_event(struct zone *zone, enum numa_stat_item item);
++/* See __count_vm_event comment on why raw_cpu_inc is used. */
++static inline void
++__count_numa_event(struct zone *zone, enum numa_stat_item item)
++{
++	struct per_cpu_zonestat __percpu *pzstats = zone->per_cpu_zonestats;
++
++	raw_cpu_inc(pzstats->vm_numa_event[item]);
++}
++
+ extern unsigned long sum_zone_node_page_state(int node,
+ 					      enum zone_stat_item item);
+ extern unsigned long sum_zone_numa_event_state(int node, enum numa_stat_item item);
+diff --git a/mm/vmstat.c b/mm/vmstat.c
+index c6434bab7feb..f71387aced32 100644
+--- a/mm/vmstat.c
++++ b/mm/vmstat.c
+@@ -938,15 +938,6 @@ void drain_zonestat(struct zone *zone, struct per_cpu_zonestat *pzstats)
+ #endif
+ 
+ #ifdef CONFIG_NUMA
+-/* See __count_vm_event comment on why raw_cpu_inc is used. */
+-void __count_numa_event(struct zone *zone,
+-				 enum numa_stat_item item)
+-{
+-	struct per_cpu_zonestat __percpu *pzstats = zone->per_cpu_zonestats;
+-
+-	raw_cpu_inc(pzstats->vm_numa_event[item]);
+-}
+-
+ /*
+  * Determine the per node value of a stat item. This function
+  * is called frequently in a NUMA machine, so try to be as

@@ -1,0 +1,126 @@
+Subject: mm, slub: unify cmpxchg_double_slab() and __cmpxchg_double_slab()
+From: Vlastimil Babka <vbabka@suse.cz>
+Date: Fri Jun  4 12:16:14 2021 +0200
+
+From: Vlastimil Babka <vbabka@suse.cz>
+
+These functions differ only in irq disabling in the slow path. We can create a
+common function with an extra bool parameter to control the irq disabling.
+As the functions are inline and the parameter compile-time constant, there
+will be no runtime overhead due to this change.
+
+Also change the DEBUG_VM based irqs disable assert to the more standard
+lockdep_assert based one.
+
+Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ mm/slub.c | 62 ++++++++++++++++++++++++--------------------------------------
+ 1 file changed, 24 insertions(+), 38 deletions(-)
+---
+diff --git a/mm/slub.c b/mm/slub.c
+index a95f24291f56..b0f233fd63da 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -366,13 +366,13 @@ static __always_inline void slab_unlock(struct page *page)
+ 	__bit_spin_unlock(PG_locked, &page->flags);
+ }
+ 
+-/* Interrupts must be disabled (for the fallback code to work right) */
+-static inline bool __cmpxchg_double_slab(struct kmem_cache *s, struct page *page,
++static inline bool ___cmpxchg_double_slab(struct kmem_cache *s, struct page *page,
+ 		void *freelist_old, unsigned long counters_old,
+ 		void *freelist_new, unsigned long counters_new,
+-		const char *n)
++		const char *n, bool disable_irqs)
+ {
+-	VM_BUG_ON(!irqs_disabled());
++	if (!disable_irqs)
++		lockdep_assert_irqs_disabled();
+ #if defined(CONFIG_HAVE_CMPXCHG_DOUBLE) && \
+     defined(CONFIG_HAVE_ALIGNED_STRUCT_PAGE)
+ 	if (s->flags & __CMPXCHG_DOUBLE) {
+@@ -383,15 +383,23 @@ static inline bool __cmpxchg_double_slab(struct kmem_cache *s, struct page *page
+ 	} else
+ #endif
+ 	{
++		unsigned long flags;
++
++		if (disable_irqs)
++			local_irq_save(flags);
+ 		slab_lock(page);
+ 		if (page->freelist == freelist_old &&
+ 					page->counters == counters_old) {
+ 			page->freelist = freelist_new;
+ 			page->counters = counters_new;
+ 			slab_unlock(page);
++			if (disable_irqs)
++				local_irq_restore(flags);
+ 			return true;
+ 		}
+ 		slab_unlock(page);
++		if (disable_irqs)
++			local_irq_restore(flags);
+ 	}
+ 
+ 	cpu_relax();
+@@ -404,45 +412,23 @@ static inline bool __cmpxchg_double_slab(struct kmem_cache *s, struct page *page
+ 	return false;
+ }
+ 
+-static inline bool cmpxchg_double_slab(struct kmem_cache *s, struct page *page,
++/* Interrupts must be disabled (for the fallback code to work right) */
++static inline bool __cmpxchg_double_slab(struct kmem_cache *s, struct page *page,
+ 		void *freelist_old, unsigned long counters_old,
+ 		void *freelist_new, unsigned long counters_new,
+ 		const char *n)
+ {
+-#if defined(CONFIG_HAVE_CMPXCHG_DOUBLE) && \
+-    defined(CONFIG_HAVE_ALIGNED_STRUCT_PAGE)
+-	if (s->flags & __CMPXCHG_DOUBLE) {
+-		if (cmpxchg_double(&page->freelist, &page->counters,
+-				   freelist_old, counters_old,
+-				   freelist_new, counters_new))
+-			return true;
+-	} else
+-#endif
+-	{
+-		unsigned long flags;
+-
+-		local_irq_save(flags);
+-		slab_lock(page);
+-		if (page->freelist == freelist_old &&
+-					page->counters == counters_old) {
+-			page->freelist = freelist_new;
+-			page->counters = counters_new;
+-			slab_unlock(page);
+-			local_irq_restore(flags);
+-			return true;
+-		}
+-		slab_unlock(page);
+-		local_irq_restore(flags);
+-	}
+-
+-	cpu_relax();
+-	stat(s, CMPXCHG_DOUBLE_FAIL);
+-
+-#ifdef SLUB_DEBUG_CMPXCHG
+-	pr_info("%s %s: cmpxchg double redo ", n, s->name);
+-#endif
++	return ___cmpxchg_double_slab(s, page, freelist_old, counters_old,
++				      freelist_new, counters_new, n, false);
++}
+ 
+-	return false;
++static inline bool cmpxchg_double_slab(struct kmem_cache *s, struct page *page,
++		void *freelist_old, unsigned long counters_old,
++		void *freelist_new, unsigned long counters_new,
++		const char *n)
++{
++	return ___cmpxchg_double_slab(s, page, freelist_old, counters_old,
++				      freelist_new, counters_new, n, true);
+ }
+ 
+ #ifdef CONFIG_SLUB_DEBUG

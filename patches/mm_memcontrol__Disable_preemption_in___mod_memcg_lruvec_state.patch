@@ -1,0 +1,43 @@
+Subject: mm/memcontrol: Disable preemption in __mod_memcg_lruvec_state()
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Wed Oct 28 18:15:32 2020 +0100
+
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+
+The callers expect disabled preemption/interrupts while invoking
+__mod_memcg_lruvec_state(). This works mainline because a lock of
+somekind is acquired.
+
+Use preempt_disable_rt() where per-CPU variables are accessed and a
+stable pointer is expected. This is also done in __mod_zone_page_state()
+for the same reason.
+
+Cc: stable-rt@vger.kernel.org
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ mm/memcontrol.c | 2 ++
+ 1 file changed, 2 insertions(+)
+---
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index 64ada9e650a5..238707ecbf3e 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -693,6 +693,7 @@ void __mod_memcg_lruvec_state(struct lruvec *lruvec, enum node_stat_item idx,
+ 	pn = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
+ 	memcg = pn->memcg;
+ 
++	preempt_disable_rt();
+ 	/* Update memcg */
+ 	__mod_memcg_state(memcg, idx, val);
+ 
+@@ -712,6 +713,7 @@ void __mod_memcg_lruvec_state(struct lruvec *lruvec, enum node_stat_item idx,
+ 		x = 0;
+ 	}
+ 	__this_cpu_write(pn->lruvec_stat_cpu->count[idx], x);
++	preempt_enable_rt();
+ }
+ 
+ /**

@@ -1,0 +1,74 @@
+Subject: mm, slab: make flush_slab() possible to call with irqs enabled
+From: Vlastimil Babka <vbabka@suse.cz>
+Date: Thu Jun  3 19:17:42 2021 +0200
+
+From: Vlastimil Babka <vbabka@suse.cz>
+
+Currently flush_slab() is always called with disabled IRQs if it's needed, but
+the following patches will change that, so add a parameter to control IRQ
+disabling within the function, which only protects the kmem_cache_cpu
+manipulation and not the call to deactivate_slab() which doesn't need it.
+
+Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ mm/slub.c | 24 ++++++++++++++++++------
+ 1 file changed, 18 insertions(+), 6 deletions(-)
+---
+diff --git a/mm/slub.c b/mm/slub.c
+index ae4a9bcdec33..60ee128f8004 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -2439,16 +2439,28 @@ static void put_cpu_partial(struct kmem_cache *s, struct page *page, int drain)
+ #endif	/* CONFIG_SLUB_CPU_PARTIAL */
+ }
+ 
+-static inline void flush_slab(struct kmem_cache *s, struct kmem_cache_cpu *c)
++static inline void flush_slab(struct kmem_cache *s, struct kmem_cache_cpu *c,
++			      bool lock)
+ {
+-	void *freelist = c->freelist;
+-	struct page *page = c->page;
++	unsigned long flags;
++	void *freelist;
++	struct page *page;
++
++	if (lock)
++		local_irq_save(flags);
++
++	freelist = c->freelist;
++	page = c->page;
+ 
+ 	c->page = NULL;
+ 	c->freelist = NULL;
+ 	c->tid = next_tid(c->tid);
+ 
+-	deactivate_slab(s, page, freelist);
++	if (lock)
++		local_irq_restore(flags);
++
++	if (page)
++		deactivate_slab(s, page, freelist);
+ 
+ 	stat(s, CPUSLAB_FLUSH);
+ }
+@@ -2458,7 +2470,7 @@ static inline void __flush_cpu_slab(struct kmem_cache *s, int cpu)
+ 	struct kmem_cache_cpu *c = per_cpu_ptr(s->cpu_slab, cpu);
+ 
+ 	if (c->page)
+-		flush_slab(s, c);
++		flush_slab(s, c, false);
+ 
+ 	unfreeze_partials_cpu(s, c);
+ }
+@@ -2474,7 +2486,7 @@ static void flush_cpu_slab(void *d)
+ 	struct kmem_cache_cpu *c = this_cpu_ptr(s->cpu_slab);
+ 
+ 	if (c->page)
+-		flush_slab(s, c);
++		flush_slab(s, c, false);
+ 
+ 	unfreeze_partials(s);
+ }

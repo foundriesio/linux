@@ -1,0 +1,68 @@
+Subject: mm, slub: make locking in deactivate_slab() irq-safe
+From: Vlastimil Babka <vbabka@suse.cz>
+Date: Wed May 12 13:59:58 2021 +0200
+
+From: Vlastimil Babka <vbabka@suse.cz>
+
+dectivate_slab() now no longer touches the kmem_cache_cpu structure, so it will
+be possible to call it with irqs enabled. Just convert the spin_lock calls to
+their irq saving/restoring variants to make it irq-safe.
+
+Note we now have to use cmpxchg_double_slab() for irq-safe slab_lock(), because
+in some situations we don't take the list_lock, which would disable irqs.
+
+Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ mm/slub.c |  9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+---
+diff --git a/mm/slub.c b/mm/slub.c
+index d6ebae070a24..31199b2b170c 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -2164,6 +2164,7 @@ static void deactivate_slab(struct kmem_cache *s, struct page *page,
+ 	enum slab_modes l = M_NONE, m = M_NONE;
+ 	void *nextfree, *freelist_iter, *freelist_tail;
+ 	int tail = DEACTIVATE_TO_HEAD;
++	unsigned long flags = 0;
+ 	struct page new;
+ 	struct page old;
+ 
+@@ -2239,7 +2240,7 @@ static void deactivate_slab(struct kmem_cache *s, struct page *page,
+ 			 * that acquire_slab() will see a slab page that
+ 			 * is frozen
+ 			 */
+-			spin_lock(&n->list_lock);
++			spin_lock_irqsave(&n->list_lock, flags);
+ 		}
+ 	} else {
+ 		m = M_FULL;
+@@ -2250,7 +2251,7 @@ static void deactivate_slab(struct kmem_cache *s, struct page *page,
+ 			 * slabs from diagnostic functions will not see
+ 			 * any frozen slabs.
+ 			 */
+-			spin_lock(&n->list_lock);
++			spin_lock_irqsave(&n->list_lock, flags);
+ 		}
+ 	}
+ 
+@@ -2267,14 +2268,14 @@ static void deactivate_slab(struct kmem_cache *s, struct page *page,
+ 	}
+ 
+ 	l = m;
+-	if (!__cmpxchg_double_slab(s, page,
++	if (!cmpxchg_double_slab(s, page,
+ 				old.freelist, old.counters,
+ 				new.freelist, new.counters,
+ 				"unfreezing slab"))
+ 		goto redo;
+ 
+ 	if (lock)
+-		spin_unlock(&n->list_lock);
++		spin_unlock_irqrestore(&n->list_lock, flags);
+ 
+ 	if (m == M_PARTIAL)
+ 		stat(s, tail);

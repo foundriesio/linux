@@ -1,0 +1,101 @@
+Subject: mm, slub: allocate private object map for validate_slab_cache()
+From: Vlastimil Babka <vbabka@suse.cz>
+Date: Sun May 23 01:37:07 2021 +0200
+
+From: Vlastimil Babka <vbabka@suse.cz>
+
+validate_slab_cache() is called either to handle a sysfs write, or from a
+self-test context. In both situations it's straightforward to preallocate a
+private object bitmap instead of grabbing the shared static one meant for
+critical sections, so let's do that.
+
+Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Christoph Lameter <cl@linux.com>
+Acked-by: Mel Gorman <mgorman@techsingularity.net>
+
+
+---
+ mm/slub.c | 24 +++++++++++++++---------
+ 1 file changed, 15 insertions(+), 9 deletions(-)
+---
+diff --git a/mm/slub.c b/mm/slub.c
+index f07e4e08733e..f3a2cd6268d3 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -4617,11 +4617,11 @@ static int count_total(struct page *page)
+ #endif
+ 
+ #ifdef CONFIG_SLUB_DEBUG
+-static void validate_slab(struct kmem_cache *s, struct page *page)
++static void validate_slab(struct kmem_cache *s, struct page *page,
++			  unsigned long *obj_map)
+ {
+ 	void *p;
+ 	void *addr = page_address(page);
+-	unsigned long *map;
+ 
+ 	slab_lock(page);
+ 
+@@ -4629,21 +4629,20 @@ static void validate_slab(struct kmem_cache *s, struct page *page)
+ 		goto unlock;
+ 
+ 	/* Now we know that a valid freelist exists */
+-	map = get_map(s, page);
++	__fill_map(obj_map, s, page);
+ 	for_each_object(p, s, addr, page->objects) {
+-		u8 val = test_bit(__obj_to_index(s, addr, p), map) ?
++		u8 val = test_bit(__obj_to_index(s, addr, p), obj_map) ?
+ 			 SLUB_RED_INACTIVE : SLUB_RED_ACTIVE;
+ 
+ 		if (!check_object(s, page, p, val))
+ 			break;
+ 	}
+-	put_map(map);
+ unlock:
+ 	slab_unlock(page);
+ }
+ 
+ static int validate_slab_node(struct kmem_cache *s,
+-		struct kmem_cache_node *n)
++		struct kmem_cache_node *n, unsigned long *obj_map)
+ {
+ 	unsigned long count = 0;
+ 	struct page *page;
+@@ -4652,7 +4651,7 @@ static int validate_slab_node(struct kmem_cache *s,
+ 	spin_lock_irqsave(&n->list_lock, flags);
+ 
+ 	list_for_each_entry(page, &n->partial, slab_list) {
+-		validate_slab(s, page);
++		validate_slab(s, page, obj_map);
+ 		count++;
+ 	}
+ 	if (count != n->nr_partial)
+@@ -4663,7 +4662,7 @@ static int validate_slab_node(struct kmem_cache *s,
+ 		goto out;
+ 
+ 	list_for_each_entry(page, &n->full, slab_list) {
+-		validate_slab(s, page);
++		validate_slab(s, page, obj_map);
+ 		count++;
+ 	}
+ 	if (count != atomic_long_read(&n->nr_slabs))
+@@ -4680,10 +4679,17 @@ static long validate_slab_cache(struct kmem_cache *s)
+ 	int node;
+ 	unsigned long count = 0;
+ 	struct kmem_cache_node *n;
++	unsigned long *obj_map;
++
++	obj_map = bitmap_alloc(oo_objects(s->oo), GFP_KERNEL);
++	if (!obj_map)
++		return -ENOMEM;
+ 
+ 	flush_all(s);
+ 	for_each_kmem_cache_node(s, node, n)
+-		count += validate_slab_node(s, n);
++		count += validate_slab_node(s, n, obj_map);
++
++	bitmap_free(obj_map);
+ 
+ 	return count;
+ }

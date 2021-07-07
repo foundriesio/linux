@@ -1,0 +1,32 @@
+Subject: mm, slub: Correct ordering in slab_unlock()
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Fri Jul  2 15:33:20 2021 +0200
+
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+
+Fold into
+    mm, slub: optionally save/restore irqs in slab_[un]lock()/
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ mm/slub.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+---
+diff --git a/mm/slub.c b/mm/slub.c
+index 4b071fd17b11..02011a177f9d 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -426,9 +426,9 @@ static __always_inline void
+ __slab_unlock(struct page *page, unsigned long *flags, bool disable_irqs)
+ {
+ 	VM_BUG_ON_PAGE(PageTail(page), page);
++	__bit_spin_unlock(PG_locked, &page->flags);
+ 	if (disable_irqs)
+ 		local_irq_restore(*flags);
+-	__bit_spin_unlock(PG_locked, &page->flags);
+ }
+ 
+ static __always_inline void

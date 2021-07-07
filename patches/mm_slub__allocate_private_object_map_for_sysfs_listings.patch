@@ -1,0 +1,124 @@
+Subject: mm, slub: allocate private object map for sysfs listings
+From: Vlastimil Babka <vbabka@suse.cz>
+Date: Sun May 23 01:28:37 2021 +0200
+
+From: Vlastimil Babka <vbabka@suse.cz>
+
+Slub has a static spinlock protected bitmap for marking which objects are on
+freelist when it wants to list them, for situations where dynamically
+allocating such map can lead to recursion or locking issues, and on-stack
+bitmap would be too large.
+
+The handlers of sysfs files alloc_calls and free_calls also currently use this
+shared bitmap, but their syscall context makes it straightforward to allocate a
+private map before entering locked sections, so switch these processing paths
+to use a private bitmap.
+
+Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Christoph Lameter <cl@linux.com>
+Acked-by: Mel Gorman <mgorman@techsingularity.net>
+
+
+---
+ mm/slub.c | 42 ++++++++++++++++++++++++++++--------------
+ 1 file changed, 28 insertions(+), 14 deletions(-)
+---
+diff --git a/mm/slub.c b/mm/slub.c
+index ee29879d194d..f07e4e08733e 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -449,6 +449,18 @@ static inline bool cmpxchg_double_slab(struct kmem_cache *s, struct page *page,
+ static unsigned long object_map[BITS_TO_LONGS(MAX_OBJS_PER_PAGE)];
+ static DEFINE_SPINLOCK(object_map_lock);
+ 
++static void __fill_map(unsigned long *obj_map, struct kmem_cache *s,
++		       struct page *page)
++{
++	void *addr = page_address(page);
++	void *p;
++
++	bitmap_zero(obj_map, page->objects);
++
++	for (p = page->freelist; p; p = get_freepointer(s, p))
++		set_bit(__obj_to_index(s, addr, p), obj_map);
++}
++
+ /*
+  * Determine a map of object in use on a page.
+  *
+@@ -458,17 +470,11 @@ static DEFINE_SPINLOCK(object_map_lock);
+ static unsigned long *get_map(struct kmem_cache *s, struct page *page)
+ 	__acquires(&object_map_lock)
+ {
+-	void *p;
+-	void *addr = page_address(page);
+-
+ 	VM_BUG_ON(!irqs_disabled());
+ 
+ 	spin_lock(&object_map_lock);
+ 
+-	bitmap_zero(object_map, page->objects);
+-
+-	for (p = page->freelist; p; p = get_freepointer(s, p))
+-		set_bit(__obj_to_index(s, addr, p), object_map);
++	__fill_map(object_map, s, page);
+ 
+ 	return object_map;
+ }
+@@ -4808,17 +4814,17 @@ static int add_location(struct loc_track *t, struct kmem_cache *s,
+ }
+ 
+ static void process_slab(struct loc_track *t, struct kmem_cache *s,
+-		struct page *page, enum track_item alloc)
++		struct page *page, enum track_item alloc,
++		unsigned long *obj_map)
+ {
+ 	void *addr = page_address(page);
+ 	void *p;
+-	unsigned long *map;
+ 
+-	map = get_map(s, page);
++	__fill_map(obj_map, s, page);
++
+ 	for_each_object(p, s, addr, page->objects)
+-		if (!test_bit(__obj_to_index(s, addr, p), map))
++		if (!test_bit(__obj_to_index(s, addr, p), obj_map))
+ 			add_location(t, s, get_track(s, p, alloc));
+-	put_map(map);
+ }
+ 
+ static int list_locations(struct kmem_cache *s, char *buf,
+@@ -4829,9 +4835,15 @@ static int list_locations(struct kmem_cache *s, char *buf,
+ 	struct loc_track t = { 0, 0, NULL };
+ 	int node;
+ 	struct kmem_cache_node *n;
++	unsigned long *obj_map;
++
++	obj_map = bitmap_alloc(oo_objects(s->oo), GFP_KERNEL);
++	if (!obj_map)
++		return sysfs_emit(buf, "Out of memory\n");
+ 
+ 	if (!alloc_loc_track(&t, PAGE_SIZE / sizeof(struct location),
+ 			     GFP_KERNEL)) {
++		bitmap_free(obj_map);
+ 		return sysfs_emit(buf, "Out of memory\n");
+ 	}
+ 
+@@ -4844,12 +4856,14 @@ static int list_locations(struct kmem_cache *s, char *buf,
+ 
+ 		spin_lock_irqsave(&n->list_lock, flags);
+ 		list_for_each_entry(page, &n->partial, slab_list)
+-			process_slab(&t, s, page, alloc);
++			process_slab(&t, s, page, alloc, obj_map);
+ 		list_for_each_entry(page, &n->full, slab_list)
+-			process_slab(&t, s, page, alloc);
++			process_slab(&t, s, page, alloc, obj_map);
+ 		spin_unlock_irqrestore(&n->list_lock, flags);
+ 	}
+ 
++	bitmap_free(obj_map);
++
+ 	for (i = 0; i < t.count; i++) {
+ 		struct location *l = &t.loc[i];
+ 

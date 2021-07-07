@@ -1,0 +1,37 @@
+Subject: mm, slub: don't disable irqs in slub_cpu_dead()
+From: Vlastimil Babka <vbabka@suse.cz>
+Date: Fri May 21 01:48:56 2021 +0200
+
+From: Vlastimil Babka <vbabka@suse.cz>
+
+slub_cpu_dead() cleans up for an offlined cpu from another cpu and calls only
+functions that are now irq safe, so we don't need to disable irqs anymore.
+
+Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ mm/slub.c | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+---
+diff --git a/mm/slub.c b/mm/slub.c
+index 560ade92681f..ae4a9bcdec33 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -2499,14 +2499,10 @@ static void flush_all(struct kmem_cache *s)
+ static int slub_cpu_dead(unsigned int cpu)
+ {
+ 	struct kmem_cache *s;
+-	unsigned long flags;
+ 
+ 	mutex_lock(&slab_mutex);
+-	list_for_each_entry(s, &slab_caches, list) {
+-		local_irq_save(flags);
++	list_for_each_entry(s, &slab_caches, list)
+ 		__flush_cpu_slab(s, cpu);
+-		local_irq_restore(flags);
+-	}
+ 	mutex_unlock(&slab_mutex);
+ 	return 0;
+ }

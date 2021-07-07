@@ -1,0 +1,57 @@
+Subject: locking/mutex: Rearrange items in mutex.h
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Tue Jul  6 16:36:51 2021 +0200
+
+From: Thomas Gleixner <tglx@linutronix.de>
+
+Move the lockdep map initializer to a different place so it can be shared
+with the upcoming RT variant of struct mutex.
+
+No functional change.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+
+---
+ include/linux/mutex.h | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+---
+diff --git a/include/linux/mutex.h b/include/linux/mutex.h
+index 9183e3f7911d..827c32bb44bc 100644
+--- a/include/linux/mutex.h
++++ b/include/linux/mutex.h
+@@ -49,6 +49,16 @@
+  *   locks and tasks (and only those tasks)
+  */
+ 
++#ifdef CONFIG_DEBUG_LOCK_ALLOC
++# define __DEP_MAP_MUTEX_INITIALIZER(lockname)			\
++		, .dep_map = {					\
++			.name = #lockname,			\
++			.wait_type_inner = LD_WAIT_SLEEP,	\
++		}
++#else
++# define __DEP_MAP_MUTEX_INITIALIZER(lockname)
++#endif
++
+ /*
+  * Typedef _mutex_t for ww_mutex and core code to allow ww_mutex being
+  * built on the regular mutex code in RT kernels while mutex itself is
+@@ -104,16 +114,6 @@ do {									\
+ 	__mutex_t_init((mutex), name, key);				\
+ } while (0)
+ 
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
+-# define __DEP_MAP_MUTEX_INITIALIZER(lockname)			\
+-		, .dep_map = {					\
+-			.name = #lockname,			\
+-			.wait_type_inner = LD_WAIT_SLEEP,	\
+-		}
+-#else
+-# define __DEP_MAP_MUTEX_INITIALIZER(lockname)
+-#endif
+-
+ #define __MUTEX_INITIALIZER(lockname) \
+ 		{ .owner = ATOMIC_LONG_INIT(0) \
+ 		, .wait_lock = __RAW_SPIN_LOCK_UNLOCKED(lockname.wait_lock) \

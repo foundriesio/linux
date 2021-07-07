@@ -1,0 +1,159 @@
+Subject: mm, slub: detach percpu partial list in unfreeze_partials() using this_cpu_cmpxchg()
+From: Vlastimil Babka <vbabka@suse.cz>
+Date: Thu May 20 16:39:51 2021 +0200
+
+From: Vlastimil Babka <vbabka@suse.cz>
+
+Instead of relying on disabled irqs for atomicity when detaching the percpu
+partial list, we can use this_cpu_cmpxchg() and detach without irqs disabled.
+However, unfreeze_partials() can be also called from another cpu on behalf of
+a cpu that is being offlined, so we need to restructure the code accordingly:
+
+- __unfreeze_partials() is the bulk of unfreeze_partials() that processes the
+  detached percpu partial list
+- unfreeze_partials() uses this_cpu_cmpxchg() to detach list from current cpu
+- unfreeze_partials_cpu() is to be called for the offlined cpu so it needs no
+  protection, and is called from __flush_cpu_slab()
+- flush_cpu_slab() is for the local cpu thus it needs to call
+  unfreeze_partials(). So it can't simply call
+  __flush_cpu_slab(smp_processor_id()) anymore and we have to open-code it
+
+Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ mm/slub.c | 77 +++++++++++++++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 55 insertions(+), 22 deletions(-)
+---
+diff --git a/mm/slub.c b/mm/slub.c
+index 577a002605fe..6a1c2e43eb0e 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -2288,25 +2288,15 @@ static void deactivate_slab(struct kmem_cache *s, struct page *page,
+ 	}
+ }
+ 
+-/*
+- * Unfreeze all the cpu partial slabs.
+- *
+- * This function must be called with preemption or migration
+- * disabled with c local to the cpu.
+- */
+-static void unfreeze_partials(struct kmem_cache *s,
+-		struct kmem_cache_cpu *c)
+-{
+ #ifdef CONFIG_SLUB_CPU_PARTIAL
++static void __unfreeze_partials(struct kmem_cache *s, struct page *partial_page)
++{
+ 	struct kmem_cache_node *n = NULL, *n2 = NULL;
+-	struct page *page, *partial_page, *discard_page = NULL;
++	struct page *page, *discard_page = NULL;
+ 	unsigned long flags;
+ 
+ 	local_irq_save(flags);
+ 
+-	partial_page = slub_percpu_partial(c);
+-	c->partial = NULL;
+-
+ 	while (partial_page) {
+ 		struct page new;
+ 		struct page old;
+@@ -2361,10 +2351,49 @@ static void unfreeze_partials(struct kmem_cache *s,
+ 		discard_slab(s, page);
+ 		stat(s, FREE_SLAB);
+ 	}
++}
+ 
+-#endif	/* CONFIG_SLUB_CPU_PARTIAL */
++/*
++ * Unfreeze all the cpu partial slabs.
++ *
++ * This function must be called with preemption or migration
++ * disabled.
++ */
++static void unfreeze_partials(struct kmem_cache *s)
++{
++	struct page *partial_page;
++
++	do {
++		partial_page = this_cpu_read(s->cpu_slab->partial);
++
++	} while (partial_page &&
++		 this_cpu_cmpxchg(s->cpu_slab->partial, partial_page, NULL)
++				  != partial_page);
++
++	if (partial_page)
++		__unfreeze_partials(s, partial_page);
+ }
+ 
++static void unfreeze_partials_cpu(struct kmem_cache *s,
++				  struct kmem_cache_cpu *c)
++{
++	struct page *partial_page;
++
++	partial_page = slub_percpu_partial(c);
++	c->partial = NULL;
++
++	if (partial_page)
++		__unfreeze_partials(s, partial_page);
++}
++
++#else	/* CONFIG_SLUB_CPU_PARTIAL */
++
++static void unfreeze_partials(struct kmem_cache *s) { }
++static void unfreeze_partials_cpu(struct kmem_cache *s,
++				  struct kmem_cache_cpu *c) { }
++
++#endif	/* CONFIG_SLUB_CPU_PARTIAL */
++
+ /*
+  * Put a page that was just frozen (in __slab_free|get_partial_node) into a
+  * partial page slot if available.
+@@ -2393,7 +2422,7 @@ static void put_cpu_partial(struct kmem_cache *s, struct page *page, int drain)
+ 				 * partial array is full. Move the existing
+ 				 * set to the per node partial list.
+ 				 */
+-				unfreeze_partials(s, this_cpu_ptr(s->cpu_slab));
++				unfreeze_partials(s);
+ 				oldpage = NULL;
+ 				pobjects = 0;
+ 				pages = 0;
+@@ -2428,11 +2457,6 @@ static inline void flush_slab(struct kmem_cache *s, struct kmem_cache_cpu *c)
+ 	stat(s, CPUSLAB_FLUSH);
+ }
+ 
+-/*
+- * Flush cpu slab.
+- *
+- * Called from IPI handler with interrupts disabled.
+- */
+ static inline void __flush_cpu_slab(struct kmem_cache *s, int cpu)
+ {
+ 	struct kmem_cache_cpu *c = per_cpu_ptr(s->cpu_slab, cpu);
+@@ -2440,14 +2464,23 @@ static inline void __flush_cpu_slab(struct kmem_cache *s, int cpu)
+ 	if (c->page)
+ 		flush_slab(s, c);
+ 
+-	unfreeze_partials(s, c);
++	unfreeze_partials_cpu(s, c);
+ }
+ 
++/*
++ * Flush cpu slab.
++ *
++ * Called from IPI handler with interrupts disabled.
++ */
+ static void flush_cpu_slab(void *d)
+ {
+ 	struct kmem_cache *s = d;
++	struct kmem_cache_cpu *c = this_cpu_ptr(s->cpu_slab);
+ 
+-	__flush_cpu_slab(s, smp_processor_id());
++	if (c->page)
++		flush_slab(s, c);
++
++	unfreeze_partials(s);
+ }
+ 
+ static bool has_cpu_slab(int cpu, void *info)

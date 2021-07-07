@@ -1,0 +1,31 @@
+Subject: mm, slub: don't call flush_all() from list_locations()
+From: Vlastimil Babka <vbabka@suse.cz>
+Date: Fri May 28 14:32:10 2021 +0200
+
+From: Vlastimil Babka <vbabka@suse.cz>
+
+list_locations() can only be called on caches with SLAB_STORE_USER flag and as
+with all slub debugging flags, such caches avoid cpu or percpu partial slabs
+altogether, so there's nothing to flush.
+
+Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ mm/slub.c | 2 --
+ 1 file changed, 2 deletions(-)
+---
+diff --git a/mm/slub.c b/mm/slub.c
+index 61bd40e3eb9a..ee29879d194d 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -4834,8 +4834,6 @@ static int list_locations(struct kmem_cache *s, char *buf,
+ 			     GFP_KERNEL)) {
+ 		return sysfs_emit(buf, "Out of memory\n");
+ 	}
+-	/* Push back cpu slabs */
+-	flush_all(s);
+ 
+ 	for_each_kmem_cache_node(s, node, n) {
+ 		unsigned long flags;

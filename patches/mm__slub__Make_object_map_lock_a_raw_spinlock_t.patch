@@ -1,0 +1,51 @@
+Subject: mm: slub: Make object_map_lock a raw_spinlock_t
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Thu Jul 16 18:47:50 2020 +0200
+
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+
+The variable object_map is protected by object_map_lock. The lock is always
+acquired in debug code and within already atomic context
+
+Make object_map_lock a raw_spinlock_t.
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ mm/slub.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+---
+diff --git a/mm/slub.c b/mm/slub.c
+index 01defffad919..7970a651d234 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -433,7 +433,7 @@ static inline bool cmpxchg_double_slab(struct kmem_cache *s, struct page *page,
+ 
+ #ifdef CONFIG_SLUB_DEBUG
+ static unsigned long object_map[BITS_TO_LONGS(MAX_OBJS_PER_PAGE)];
+-static DEFINE_SPINLOCK(object_map_lock);
++static DEFINE_RAW_SPINLOCK(object_map_lock);
+ 
+ static void __fill_map(unsigned long *obj_map, struct kmem_cache *s,
+ 		       struct page *page)
+@@ -458,7 +458,7 @@ static unsigned long *get_map(struct kmem_cache *s, struct page *page)
+ {
+ 	VM_BUG_ON(!irqs_disabled());
+ 
+-	spin_lock(&object_map_lock);
++	raw_spin_lock(&object_map_lock);
+ 
+ 	__fill_map(object_map, s, page);
+ 
+@@ -468,7 +468,7 @@ static unsigned long *get_map(struct kmem_cache *s, struct page *page)
+ static void put_map(unsigned long *map) __releases(&object_map_lock)
+ {
+ 	VM_BUG_ON(map != object_map);
+-	spin_unlock(&object_map_lock);
++	raw_spin_unlock(&object_map_lock);
+ }
+ 
+ static inline unsigned int size_from_object(struct kmem_cache *s)

@@ -1,0 +1,40 @@
+Subject: mm/page_alloc: Update PGFREE outside the zone lock in __free_pages_ok
+From: Mel Gorman <mgorman@techsingularity.net>
+Date: Wed May 12 10:54:58 2021 +0100
+
+From: Mel Gorman <mgorman@techsingularity.net>
+
+VM events do not need explicit protection by disabling IRQs so
+update the counter with IRQs enabled in __free_pages_ok.
+
+Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Vlastimil Babka <vbabka@suse.cz>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+---
+ mm/page_alloc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+---
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 8781b0c4dbd7..93e0d2d10135 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -1589,13 +1589,14 @@ static void __free_pages_ok(struct page *page, unsigned int order,
+ 	migratetype = get_pfnblock_migratetype(page, pfn);
+ 
+ 	spin_lock_irqsave(&zone->lock, flags);
+-	__count_vm_events(PGFREE, 1 << order);
+ 	if (unlikely(has_isolate_pageblock(zone) ||
+ 		is_migrate_isolate(migratetype))) {
+ 		migratetype = get_pfnblock_migratetype(page, pfn);
+ 	}
+ 	__free_one_page(page, pfn, zone, order, migratetype, fpi_flags);
+ 	spin_unlock_irqrestore(&zone->lock, flags);
++
++	__count_vm_events(PGFREE, 1 << order);
+ }
+ 
+ void __free_pages_core(struct page *page, unsigned int order)

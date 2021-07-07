@@ -1,0 +1,77 @@
+Subject: locking/mutex: Introduce _mutex_t
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Tue Jul  6 16:36:50 2021 +0200
+
+From: Thomas Gleixner <tglx@linutronix.de>
+
+PREEMPT_RT replaces 'struct mutex' with a rtmutex based variant so all
+mutex operations are included into the priority inheritance scheme.
+
+But a complete replacement of the mutex implementation would require to
+reimplement ww_mutex on top of the rtmutex based variant. That has been
+tried, but the outcome is dubious if not outright wrong in some cases:
+
+   1) ww_mutex by it's semantics can never provide any realtime properties
+
+   2) The waiter ordering of ww_mutex depends on the associated context
+      stamp, which is not possible with priority based ordering on a
+      rtmutex based implementation
+
+So a rtmutex based ww_mutex would be semanticaly different and
+incomplete. Aside of that the ww_mutex specific helpers cannot be shared
+between the regular mutex and the RT variant, so they are likely to diverge
+further and grow different properties and bugs.
+
+The alternative solution is to make it possible to compile the ww_mutex
+specific part of the regular mutex implementation as is on RT and have a
+rtmutex based 'struct mutex' variant.
+
+As the regular mutex and ww_mutex implementation are tightly coupled
+(ww_mutex has a 'struct mutex' inside) and share a lot of code (ww_mutex is
+mostly an extension) a simple replacement of 'struct mutex' does not work.
+
+To solve this attach a typedef to 'struct mutex': _mutex_t
+
+This new type is then used to replace 'struct mutex' in 'struct ww_mutex',
+in a few helper functions and in the actual regular mutex code. None of the
+actual usage sites of mutexes are affected.
+
+That allows in the final step to have a RT specific 'struct mutex' and the
+regular _mutex_t type.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+
+
+
+---
+ include/linux/mutex.h | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+---
+diff --git a/include/linux/mutex.h b/include/linux/mutex.h
+index 0bbc872ba72b..87dafe179ed2 100644
+--- a/include/linux/mutex.h
++++ b/include/linux/mutex.h
+@@ -48,7 +48,13 @@
+  * - detects multi-task circular deadlocks and prints out all affected
+  *   locks and tasks (and only those tasks)
+  */
+-struct mutex {
++
++/*
++ * Typedef _mutex_t for ww_mutex and core code to allow ww_mutex being
++ * built on the regular mutex code in RT kernels while mutex itself is
++ * substituted by a rt_mutex.
++ */
++typedef struct mutex {
+ 	atomic_long_t		owner;
+ 	raw_spinlock_t		wait_lock;
+ #ifdef CONFIG_MUTEX_SPIN_ON_OWNER
+@@ -61,7 +67,7 @@ struct mutex {
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ 	struct lockdep_map	dep_map;
+ #endif
+-};
++} _mutex_t;
+ 
+ #ifdef CONFIG_DEBUG_MUTEXES
+ 
