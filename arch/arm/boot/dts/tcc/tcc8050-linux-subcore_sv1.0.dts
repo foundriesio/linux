@@ -217,6 +217,15 @@
 		#size-cells = <1>;
 		ranges;
 
+		pmap_tcc_shmem: tcc_shmem {
+			compatible = "telechips,pmap";
+			reg = <0x38000000 0x8000000>;
+			telechips,pmap-name = "tcc_shmem";
+			no-map;
+			status = "disabled";
+		};
+
+
 		/*-----------------------------------------------------------
 		 * Secure Area 1 (CPU R/W, VPU X, GPU R/W, VIOC R)
 		 *-----------------------------------------------------------
@@ -841,6 +850,33 @@
                 demarcation = <192>;
                 max_irq = <480>;
         };
+
+	tcc_shared_memory: tcc_shared_memory {
+		compatible = "telechips,tcc_shmem";
+		reg = <0x38000000 0x8000000>;
+		reg-names = "tcc_shmem";
+		interrupts = <GIC_SPI 50 0>;
+		lable = "TCC shared memory";
+		memory-region = <&pmap_tcc_shmem>;
+		dist_regs = <0x17301000 0x1000 0x17C01000 0x1000>;
+		core-num = <1>;
+
+		tcc_shmem_sample: tcc_shmem_sample {
+			ch-name = "tcc_shmem_sample";
+			//10MiB, 10*1024*1024
+			ch-size = <1024>;
+			status = "okay";
+		};
+
+		tcc_shmem_v_eth: tcc_shmem_v_eth {
+			ch-name = "eth";
+			//50MiB, 50*1024*1024
+			ch-size = <52428800>;
+			status = "okay";
+		};
+
+	};
+
 
 	uart0: serial@16600000 {
                 compatible = "arm,pl011", "arm,primecell";
@@ -2634,6 +2670,18 @@
                         };
                 };
         };
+
+	tcc_shared_memory_sample: tcc_shared_memory_sample {
+		compatible = "tcc_shmem_sample";
+		shared-memory = <&tcc_shmem_sample>;
+		status = "okay";
+	};
+
+	tcc_virt_eth: tcc_virt_eth {
+		compatible = "telechips,tcc_virt_eth";
+		shared-memory = <&tcc_shmem_v_eth>;
+		status = "okay";
+	};
 
 };
 
