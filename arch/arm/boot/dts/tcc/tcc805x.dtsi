@@ -3509,36 +3509,11 @@
 	tcc_bt_dev: tcc_bt_dev {};
 
 	thermal: thermal@14700000 {
-		compatible = "telechips,tcc-thermal";
+		compatible = "telechips,tcc-thermal-805x";
 
 		sc-firmware = <&tcc_sc_fw>;
 
-                reg = <0x0 0x14700000 0x0 0x4>, //0:Enable register
-                      <0x0 0x14700004 0x0 0x4>, //1:Control register
-                      <0x0 0x1470000C 0x0 0x4>, //2:Probe select register
-                      <0x0 0x147000D0 0x0 0x4>,
-                      <0x0 0x147000D4 0x0 0x4>,
-                      <0x0 0x147000D8 0x0 0x4>,
-                      <0x0 0x147000DC 0x0 0x4>,
-                      <0x0 0x147000E0 0x0 0x4>,
-                      <0x0 0x147000E4 0x0 0x4>, //3-8:TSENSOR Data register
-                      <0x0 0x14700024 0x0 0x4>, //9:Interrupt Eable register
-                      <0x0 0x14700034 0x0 0x4>, //10:Interrupt Status register
-                      <0x0 0x14700050 0x0 0x4>,
-                      <0x0 0x14700054 0x0 0x4>, // 11, 12:Threshold Data register(MAIN)
-                      <0x0 0x14700058 0x0 0x4>,
-                      <0x0 0x1470005C 0x0 0x4>, // 13, 14:Threshold Data register(Probe0)
-                      <0x0 0x14700060 0x0 0x4>,
-                      <0x0 0x14700064 0x0 0x4>, // 15, 16:Threshold Data register(Probe1)
-                      <0x0 0x14700068 0x0 0x4>,
-                      <0x0 0x1470006C 0x0 0x4>, // 17, 18:Threshold Data register(Probe2)
-                      <0x0 0x14700070 0x0 0x4>,
-                      <0x0 0x14700074 0x0 0x4>, // 19, 20:Threshold Data register(Probe3)
-                      <0x0 0x14700078 0x0 0x4>,
-                      <0x0 0x1470007C 0x0 0x4>, // 21, 22:Threshold Data register(Probe4)
-                      <0x0 0x14700044 0x0 0x4>, // 23:Interrupt Clear register
-                      <0x0 0x1470002C 0x0 0x4>, // 24:Interrupt Mask register
-                      <0x0 0x14700154 0x0 0x4>; // 25:Interval time register
+		reg = <0x0 0x14700000 0x0 0x160>;//0:Enable register
 
 		status = "okay";
 
@@ -3558,19 +3533,15 @@
 		throttle_table {
 			throttle_tab_0 {
 				temp = <75>;
-				freq_max_cluster0 = <1690>;
 			};
 			throttle_tab_1 {
 				temp = <85>;
-				freq_max_cluster0 = <1500>;
 			};
 			throttle_tab_2 {
 				temp = <95>;
-				freq_max_cluster0 = <1460>;
 			};
 			throttle_tab_3 {
 				temp = <105>;
-				freq_max_cluster0 = <950>;
 			};
 		};
 	};

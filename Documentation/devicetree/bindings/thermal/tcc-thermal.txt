@@ -27,6 +27,15 @@
 	polls when performing passive cooling (throttling).
 
 Example:
+Property for TCC805x
+
+- core : A property to indicate whether or not to initialize the thermal driver.
+	If the core value is “CPU0”, it is recognized as the primary core and
+	the thermal configuration register is set.
+- interval_time : Period at which the thermal sensor captures the temperature in
+	continuous mode.
+
+Example(TCC802x/TCC803x/TCC897x/TCC899x/TCC901x):
 
 &thermal {
         compatible = "telechips,tcc-thermal";
@@ -72,4 +81,43 @@ Example:
                         freq_max_cluster1 = <540000>;
                 };
         };
+};
+
+Example(TCC805x):
+thermal: thermal@14700000 {
+	compatible = "telechips,tcc-thermal-805x";
+
+	sc-firmware = <&tcc_sc_fw>;
+
+	reg = <0x0 0x14700000 0x0 0x160>,//0:Enable register
+
+	status = "okay";
+
+	throttle_count = <4>;
+	throttle_active_count = <0>;
+	throttle_passive_count = <4>;
+	interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
+	cal_type = "TYPE_TWO_POINT_TRIMMING";
+	polling-delay-idle = <1000>;
+	polling-delay-passive = <1000>;
+	core = "CPU0";
+
+	threshold_high_temp = <75>;
+	threshold_low_temp = <(-40)>;
+	interval_time = <262143>;
+
+	throttle_table {
+		throttle_tab_0 {
+			temp = <75>;
+		};
+		throttle_tab_1 {
+			temp = <85>;
+		};
+		throttle_tab_2 {
+			temp = <95>;
+		};
+		throttle_tab_3 {
+			temp = <105>;
+		};
+	};
 };
