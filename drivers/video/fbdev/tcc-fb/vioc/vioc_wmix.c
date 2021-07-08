@@ -149,8 +149,7 @@ int VIOC_WMIX_GetLayer(
 				if (image_num == -1) {
 					/* Prevent KCS Warning */
 					goto err;
-				}
-				else {
+				} else {
 					/* Prevent KCS Warning */
 					return layer;
 				}

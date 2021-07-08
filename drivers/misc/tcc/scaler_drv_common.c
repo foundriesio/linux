@@ -171,6 +171,12 @@ struct scaler_common_drv_type {
 	SCALER_TYPE		*info;
 };
 
+enum dma_type {
+	DMA_TYPE_RDMA,
+	DMA_TYPE_MC,
+	DMA_TYPE_DTRC
+};
+
 static int scaler_drv_common_mmap(
 	struct file *filp, struct vm_area_struct *vma)
 {
@@ -502,6 +508,7 @@ static char tcc_scaler_drv_common_run(struct scaler_common_drv_type *scaler)
 	void __iomem *pSC_WMIXBase = scaler->wmix.reg;
 	void __iomem *pSC_WDMABase = scaler->wdma.reg;
 	void __iomem *pSC_SCALERBase = scaler->sc.reg;
+	int type;
 
 	scaler->force_fmt_RGB = 0;
 	scaler->force_fmt_YUV = 0;
@@ -582,79 +589,18 @@ static char tcc_scaler_drv_common_run(struct scaler_common_drv_type *scaler)
 	}
 	#endif
 
-	#ifdef CONFIG_VIOC_MAP_DECOMP
-	if (scaler->info->mapConv_info.m_CompressedY[0] != 0) {
-		int y2r = 0;
-
-		dprintk("scaler %d path-id(rdma:%d, sc:%d)\n",
-			scaler->sc.id, scaler->rdma.id, scaler->sc.path);
-
-		dprintk("scaler %d src  map converter: size: %d %d pos:%d %d\n",
-			scaler->sc.id,
-			scaler->info->src_winRight - scaler->info->src_winLeft,
-			scaler->info->src_winBottom - scaler->info->src_winTop,
-			scaler->info->src_winLeft, scaler->info->src_winTop);
-
-		if (VIOC_CONFIG_DMAPath_Support()) {
-			if ((component_num < VIOC_MC0) ||
-				(component_num > (VIOC_MC0 + VIOC_MC_MAX))) {
-				VIOC_CONFIG_DMAPath_UnSet(component_num);
-				//disable it to prevent system-hang!!
-				tca_map_convter_swreset(VIOC_MC1);
-			}
-			VIOC_CONFIG_DMAPath_Set(scaler->rdma.id, VIOC_MC1);
-		}
-
-		if (scaler->info->dest_fmt < TCC_LCDC_IMG_FMT_COMP)
-			y2r = 1;
-
-		// scaler limitation
-		tca_map_convter_driver_set(VIOC_MC1, scaler->info->src_ImgWidth,
-			scaler->info->src_ImgHeight, scaler->info->src_winLeft,
-			scaler->info->src_winTop,
-			scaler->info->src_winRight - scaler->info->src_winLeft,
-			scaler->info->src_winBottom - scaler->info->src_winTop,
-			y2r, &scaler->info->mapConv_info);
-		tca_map_convter_onoff(VIOC_MC1, 1, 0);
-	} else
-	#endif//
+	type = DMA_TYPE_RDMA;
 	#ifdef CONFIG_VIOC_DTRC_DECOMP
-	if (scaler->info->dtrcConv_info.m_CompressedY[0] != 0) {
-		int y2r = 0;
+	if (scaler->info->dtrcConv_info.m_CompressedY[0] != 0)
+		type = DMA_TYPE_DTRC;
+	#endif
+	#ifdef CONFIG_VIOC_MAP_DECOMP
+	if (scaler->info->mapConv_info.m_CompressedY[0] != 0)
+		type = DMA_TYPE_MC;
+	#endif
 
-		dprintk(
-			"scaler %d src  dtrc converter: size: %d %d pos:%d %d\n",
-			scaler->sc.id,
-			scaler->info->src_winRight - scaler->info->src_winLeft,
-			scaler->info->src_winBottom - scaler->info->src_winTop,
-			scaler->info->src_winLeft, scaler->info->src_winTop);
-
-		if (VIOC_CONFIG_DMAPath_Support()) {
-			if ((component_num < VIOC_DTRC0) ||
-				(component_num >
-				(VIOC_DTRC0 + VIOC_DTRC_MAX))) {
-				VIOC_CONFIG_DMAPath_UnSet(component_num);
-				//tca_dtrc_convter_swreset(VIOC_DTRC1);
-				//disable it to prevent system-hang!!
-			}
-			VIOC_CONFIG_DMAPath_Set(scaler->rdma.id, VIOC_DTRC1);
-		}
-
-		if (scaler->info->dest_fmt < TCC_LCDC_IMG_FMT_COMP)
-			y2r = 1;
-
-		// scaler limitation
-		tca_dtrc_convter_driver_set(VIOC_DTRC1,
-			scaler->info->src_winRight -
-			scaler->info->src_winLeft,
-			scaler->info->src_winBottom -
-			scaler->info->src_winTop,
-				scaler->info->src_winLeft,
-				scaler->info->src_winTop, y2r,
-				&scaler->info->dtrcConv_info);
-		tca_dtrc_convter_onoff(VIOC_DTRC1, 1, 0);
-	} else
-	#endif//
+	switch (type) {
+	case DMA_TYPE_RDMA:
 	{
 		tcc_scaler_drv_common_set_path_selection(scaler);
 		VIOC_RDMA_SetImageAlphaEnable(pSC_RDMABase, 1);
@@ -746,6 +692,94 @@ static char tcc_scaler_drv_common_run(struct scaler_common_drv_type *scaler)
 			VIOC_RDMA_SetIssue(pSC_RDMABase, 15, 16);
 
 		VIOC_RDMA_SetImageEnable(pSC_RDMABase); // SoC guide info.
+
+		break;
+	}
+
+	case DMA_TYPE_MC:
+	{
+		#ifdef CONFIG_VIOC_MAP_DECOMP
+		int y2r = 0;
+
+		dprintk("scaler %d path-id(rdma:%d, sc:%d)\n",
+			scaler->sc.id, scaler->rdma.id, scaler->sc.path);
+
+		dprintk("scaler %d src  map converter: size: %d %d pos:%d %d\n",
+			scaler->sc.id,
+			scaler->info->src_winRight - scaler->info->src_winLeft,
+			scaler->info->src_winBottom - scaler->info->src_winTop,
+			scaler->info->src_winLeft, scaler->info->src_winTop);
+
+		if (VIOC_CONFIG_DMAPath_Support()) {
+			if ((component_num < VIOC_MC0) ||
+				(component_num > (VIOC_MC0 + VIOC_MC_MAX))) {
+				VIOC_CONFIG_DMAPath_UnSet(component_num);
+				//disable it to prevent system-hang!!
+				tca_map_convter_swreset(VIOC_MC1);
+			}
+			VIOC_CONFIG_DMAPath_Set(scaler->rdma.id, VIOC_MC1);
+		}
+
+		if (scaler->info->dest_fmt < TCC_LCDC_IMG_FMT_COMP)
+			y2r = 1;
+
+		// scaler limitation
+		tca_map_convter_driver_set(VIOC_MC1, scaler->info->src_ImgWidth,
+			scaler->info->src_ImgHeight, scaler->info->src_winLeft,
+			scaler->info->src_winTop,
+			scaler->info->src_winRight - scaler->info->src_winLeft,
+			scaler->info->src_winBottom - scaler->info->src_winTop,
+			y2r, &scaler->info->mapConv_info);
+		tca_map_convter_onoff(VIOC_MC1, 1, 0);
+		#endif
+
+		break;
+	}
+
+	case DMA_TYPE_DTRC:
+	{
+		#ifdef CONFIG_VIOC_DTRC_DECOMP
+		int y2r = 0;
+
+		dprintk(
+			"scaler %d src  dtrc converter: size: %d %d pos:%d %d\n",
+			scaler->sc.id,
+			scaler->info->src_winRight - scaler->info->src_winLeft,
+			scaler->info->src_winBottom - scaler->info->src_winTop,
+			scaler->info->src_winLeft, scaler->info->src_winTop);
+
+		if (VIOC_CONFIG_DMAPath_Support()) {
+			if ((component_num < VIOC_DTRC0) ||
+				(component_num >
+				(VIOC_DTRC0 + VIOC_DTRC_MAX))) {
+				VIOC_CONFIG_DMAPath_UnSet(component_num);
+				//tca_dtrc_convter_swreset(VIOC_DTRC1);
+				//disable it to prevent system-hang!!
+			}
+			VIOC_CONFIG_DMAPath_Set(scaler->rdma.id, VIOC_DTRC1);
+		}
+
+		if (scaler->info->dest_fmt < TCC_LCDC_IMG_FMT_COMP)
+			y2r = 1;
+
+		// scaler limitation
+		tca_dtrc_convter_driver_set(VIOC_DTRC1,
+			scaler->info->src_winRight -
+			scaler->info->src_winLeft,
+			scaler->info->src_winBottom -
+			scaler->info->src_winTop,
+				scaler->info->src_winLeft,
+				scaler->info->src_winTop, y2r,
+				&scaler->info->dtrcConv_info);
+		tca_dtrc_convter_onoff(VIOC_DTRC1, 1, 0);
+		#endif
+
+		break;
+	}
+
+	default:
+		pr_err("[ERR][SCALER] %s: invalid type(%d)\n", __func__, type);
+		return -1;
 	}
 
 	// look up table use

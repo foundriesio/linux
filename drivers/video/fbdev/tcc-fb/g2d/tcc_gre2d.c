@@ -31,19 +31,17 @@ void __iomem *pGre2D_reg;
 
 void GRE_2D_SetInterrupt(char onoff)
 {
-	#if 0
-	PPIC pHwPIC = (volatile PPIC)tcc_p2v(HwPIC_BASE);
-
-	if (onoff) {
-		BITSET(pHwPIC->CLR1, HwINT1_G2D);
-		BITCLR(pHwPIC->POL1, HwINT1_G2D);
-		BITSET(pHwPIC->SEL1, HwINT1_G2D);
-		BITSET(pHwPIC->IEN1, HwINT1_G2D);
-		BITSET(pHwPIC->MODE1, HwINT1_G2D);
-	} else {
-		BITCLR(pHwPIC->IEN1, HwINT1_G2D);
-	}
-	#endif
+	//PPIC pHwPIC = (volatile PPIC)tcc_p2v(HwPIC_BASE);
+	//
+	//if (onoff) {
+	//	BITSET(pHwPIC->CLR1, HwINT1_G2D);
+	//	BITCLR(pHwPIC->POL1, HwINT1_G2D);
+	//	BITSET(pHwPIC->SEL1, HwINT1_G2D);
+	//	BITSET(pHwPIC->IEN1, HwINT1_G2D);
+	//	BITSET(pHwPIC->MODE1, HwINT1_G2D);
+	//} else {
+	//	BITCLR(pHwPIC->IEN1, HwINT1_G2D);
+	//}
 }
 
 /*------------------------------------------------------------------
