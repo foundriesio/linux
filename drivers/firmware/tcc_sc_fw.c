@@ -123,7 +123,7 @@ static void tcc_sc_fw_set_xfer_status(struct tcc_sc_fw_xfer *xfer, u8 status)
 {
 	unsigned long flags;
 
-	if(xfer != NULL) {
+	if (xfer != NULL) {
 		spin_lock_irqsave(&xfer->lock, flags);
 		xfer->status = status;
 		trace_tcc_sc_fw_xfer_status(xfer);
@@ -136,7 +136,7 @@ static u8 tcc_sc_fw_get_xfer_status(struct tcc_sc_fw_xfer *xfer)
 	unsigned long flags;
 	u8 status = 0;
 
-	if(xfer != NULL) {
+	if (xfer != NULL) {
 		spin_lock_irqsave(&xfer->lock, flags);
 		status = xfer->status;
 		spin_unlock_irqrestore(&xfer->lock, flags);
@@ -214,7 +214,7 @@ static void tcc_sc_fw_halt_xfer(struct tcc_sc_fw_info *info,
 			xfer);
 		return;
 	} else if ((status == TCC_SC_FW_XFER_STAT_TX_START) ||
-		(status == TCC_SC_FW_XFER_STAT_RX_PEND)){
+		(status == TCC_SC_FW_XFER_STAT_RX_PEND)) {
 		tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_HALT);
 	} else {
 		dev_warn(info->dev, "[WARN][TCC_SC_FW] Wrong xfer(%p) status 0x%x (%s)\n",
@@ -225,26 +225,29 @@ static void tcc_sc_fw_halt_xfer(struct tcc_sc_fw_info *info,
 	}
 
 	spin_lock_irqsave(&info->rx_lock, flags);
-	if (!list_empty(&info->rx_pending)) {
-		list_for_each_entry(list, &info->rx_pending, node) {
-			if(((list->tx_mssg.cmd[0] & 0xFFFF0000UL) ==
-				(xfer->tx_mssg.cmd[0] & 0xFFFF0000UL)) &&
-				(list->tx_mssg.cmd[1] == xfer->tx_mssg.cmd[1])) {
+	if (list_empty(&info->rx_pending)) {
+		spin_unlock_irqrestore(&info->rx_lock, flags);
+		return;
+	}
 
-				list_del_init(&list->node);
+	list_for_each_entry(list, &info->rx_pending, node) {
+		if (((list->tx_mssg.cmd[0] & 0xFFFF0000UL) ==
+			(xfer->tx_mssg.cmd[0] & 0xFFFF0000UL)) &&
+			(list->tx_mssg.cmd[1] == xfer->tx_mssg.cmd[1])) {
 
-				if(status == TCC_SC_FW_XFER_STAT_RX_PEND) {
-					dev_err(info->dev,
+			list_del_init(&list->node);
+
+			if (status == TCC_SC_FW_XFER_STAT_RX_PEND) {
+				dev_err(info->dev,
 						"[ERROR][TCC_SC_FW] Halt xfer, remove xfer(%p) from rx_pending list, put to pool\n",
 						xfer);
-					put_tcc_sc_fw_xfer(xfer, info);
-				} else {
-					dev_err(info->dev,
+				put_tcc_sc_fw_xfer(xfer, info);
+			} else {
+				dev_err(info->dev,
 						"[ERROR][TCC_SC_FW] Halt xfer, remove xfer(%p) from rx_pending list\n",
 						xfer);
-				}
-				break;
 			}
+			break;
 		}
 	}
 	spin_unlock_irqrestore(&info->rx_lock, flags);
@@ -377,7 +380,7 @@ static void tcc_sc_fw_tx_done(struct mbox_client *cl, void *msg, int r)
 			xfer, r);
 
 		put_tcc_sc_fw_xfer(xfer, info);
-	} else if (xfer->status == TCC_SC_FW_XFER_STAT_TX_START){
+	} else if (xfer->status == TCC_SC_FW_XFER_STAT_TX_START) {
 		tcc_sc_fw_set_xfer_status(xfer, TCC_SC_FW_XFER_STAT_RX_PEND);
 	} else {
 		/*do noting*/
@@ -438,9 +441,8 @@ static void tcc_sc_fw_rx_callback(struct mbox_client *cl, void *mssg)
 			memcpy(rx_mbox_msg->data_buf, mbox_msg->data_buf,
 			       (size_t) (rx_mbox_msg->data_len * 4UL));
 
-		if (match->complete != NULL) {
+		if (match->complete != NULL)
 			match->complete(match->args, (void *)rx_mbox_msg->cmd);
-		}
 
 		put_tcc_sc_fw_xfer(xfer, info);
 
@@ -520,11 +522,10 @@ static void *tcc_sc_fw_cmd_request_mmc_cmd(
 	xfer->args = args;
 	ret = tcc_sc_fw_xfer_async(info, xfer);
 
-	if (ret < 0) {
+	if (ret < 0)
 		xfer_handle = NULL;
-	} else {
+	else
 		xfer_handle = (void *)xfer;
-	}
 
 	return xfer_handle;
 }
@@ -648,32 +649,29 @@ void *tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 
 	xfer->complete = complete;
 	xfer->args = args;
-	if(sc_cmd->dir == 0xf) {
+	if (sc_cmd->dir == 0xf) {
 		dev_dbg(info->dev, "[INFO][TCC_SC_FW] ufs sync msg\n");
 		ret = tcc_sc_fw_xfer_sync(info, xfer, &res_cmd);
 		if (ret != 0) {
 			dev_err(info->dev, "[ERROR][TCC_SC_FW] Failed to send mbox (%d)\n",
 					ret);
+		} else if ((res_cmd.bsid != info->bsid)
+				|| (res_cmd.cid != (u8)TCC_SC_CID_SC)) {
+			dev_err(info->dev,
+					"[ERROR][TCC_SC_FW] Receive NAK for CMD 0x%x (BSID 0x%x CID 0x%x)\n",
+					req_cmd.cmd, res_cmd.bsid, res_cmd.cid);
+			ret = -ENODEV;
 		} else {
-			if ((res_cmd.bsid != info->bsid)
-					|| (res_cmd.cid != (u8)TCC_SC_CID_SC)) {
-				dev_err(info->dev,
-						"[ERROR][TCC_SC_FW] Receive NAK for CMD 0x%x (BSID 0x%x CID 0x%x)\n",
-						req_cmd.cmd, res_cmd.bsid, res_cmd.cid);
-				ret = -ENODEV;
-			} else {
-				;
-			}
+			;
 		}
 	} else {
 		ret = tcc_sc_fw_xfer_async(info, xfer);
 	}
 
-	if (ret < 0) {
+	if (ret < 0)
 		xfer_handle = NULL;
-	} else {
+	else
 		xfer_handle = (void *)xfer;
-	}
 
 	return xfer_handle;
 }
