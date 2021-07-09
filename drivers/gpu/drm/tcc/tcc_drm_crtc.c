@@ -267,6 +267,22 @@ static const struct drm_crtc_funcs tcc_crtc_funcs = {
 	.disable_vblank = tcc_drm_crtc_disable_vblank,
 };
 
+static int tcc_drm_crtc_check_pixelclock_match(unsigned long res,
+			unsigned long data, unsigned int clk_div)
+{
+	unsigned long bp;
+	int match = 0;
+
+	if (clk_div)
+		data *= clk_div*2;
+
+	bp = DIV_ROUND_UP(data, 10);
+	if (res > (data - bp) && res < (data + bp))
+		match = 1;
+	return match;
+}
+
+#if defined(CONFIG_ARCH_TCC805X)
 static  u32 tcc_drm_crtc_calc_vactive(struct drm_display_mode *mode)
 {
 	u32 vactive;
@@ -294,21 +310,6 @@ static  u32 tcc_drm_crtc_calc_vactive(struct drm_display_mode *mode)
 
 err_null_pointer:
 	return 0;
-}
-
-static int tcc_drm_crtc_check_pixelclock_match(unsigned long res,
-			unsigned long data, unsigned int clk_div)
-{
-	unsigned long bp;
-	int match = 0;
-
-	if (clk_div)
-		data *= clk_div*2;
-
-	bp = DIV_ROUND_UP(data, 10);
-	if (res > (data - bp) && res < (data + bp))
-		match = 1;
-	return match;
 }
 
 static void tcc_drm_crtc_force_disable(struct drm_crtc *crtc,
@@ -411,6 +412,7 @@ out_turnoff:
 out_state_on:
 	return need_reset;
 }
+#endif
 
 struct tcc_drm_crtc *tcc_drm_crtc_create(struct drm_device *drm_dev,
 					struct drm_plane *primary,

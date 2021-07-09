@@ -756,7 +756,9 @@ static int lcd_get_chromakey(struct tcc_drm_crtc *crtc,
 static void lcd_mode_set_nofb(struct tcc_drm_crtc *crtc)
 {
 	struct lcd_context *ctx = crtc->ctx;
+	#if defined(CONFIG_ARCH_TCC805X)
 	struct drm_crtc_state *state = crtc->base.state;
+	#endif
 	#if defined(CONFIG_DRM_TCC_CTRL_CHROMAKEY)
 	int i;
 	#endif
