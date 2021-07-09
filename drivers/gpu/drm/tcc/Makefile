@@ -6,7 +6,7 @@ ifeq ($(CONFIG_TCC_DP_DRIVER_V1_4),y)
 EXTRA_CFLAGS += -I$(srctree)/drivers/char/displayport_v1_4
 endif
 ifeq ($(CONFIG_TCC_SCREEN_SHARE),y)
-EXTRA_CFLAGS += -I$(srctree)/drivers/char -Idrivers/clk/tcc
+EXTRA_CFLAGS += -I$(srctree)/drivers/char -I$(srctree)/drivers/clk/tcc
 endif
 
 tccdrm-y := tcc_drm_drv.o tcc_drm_crtc.o tcc_drm_fb.o \
