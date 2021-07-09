@@ -225,9 +225,8 @@ static struct tcc_dma_desc *tcc_dma_next_desc(struct tcc_dma_chan *tdmac)
 {
 	struct tcc_dma_desc *ret;
 
-	if (list_empty(&tdmac->desc_issued) != 0) {
+	if (list_empty(&tdmac->desc_issued) != 0)
 		return NULL;
-	}
 
 	ret = list_first_entry(&tdmac->desc_issued, struct tcc_dma_desc, node);
 	return ret;
@@ -362,11 +361,11 @@ static void tcc_dma_do_single_block(struct tcc_dma_chan *tdmac,
 	 * So, source address must be memory address not peripheral register.
 	 */
 	channel_writel(tdmac, DMA_CHCTRL, 0);
-	if (tdmac->direction == DMA_DEV_TO_MEM) {
+	if (tdmac->direction == DMA_DEV_TO_MEM)
 		channel_writel(tdmac, DMA_ST_SADR, desc->dst_addr);
-	} else {
+	else
 		channel_writel(tdmac, DMA_ST_SADR, desc->src_addr);
-	}
+
 	channel_writel(tdmac, DMA_HCOUNT, 0);
 	channel_writel(tdmac, DMA_CHCTRL, 0x201);
 	channel_writel(tdmac, DMA_CHCTRL, DMA_CHCTRL_FLAG);
@@ -392,9 +391,8 @@ static void tcc_dma_do_single_block(struct tcc_dma_chan *tdmac,
 		u32 slave_id;
 
 		slave_id = (u32)desc->slave_id;
-		if (slave_id >= 32U) {
+		if (slave_id >= 32U)
 			slave_id = slave_id - 32U;
-		}
 
 		chctrl |= DMA_CHCTRL_TYPE(3U);
 		channel_writel(tdmac, DMA_EXTREQ, ((u32)1UL << slave_id));
@@ -465,9 +463,8 @@ static void tcc_dma_tasklet(ulong data)
 	    list_first_entry(&tdmac->desc_completed, struct tcc_dma_desc, node);
 	dma_cookie_complete(&desc->txd);
 
-	if (desc->txd.callback != NULL) {
+	if (desc->txd.callback != NULL)
 		desc->txd.callback(desc->txd.callback_param);
-	}
 
 	tcc_dma_clean_completed_descriptors(tdmac);
 #if 0
@@ -526,9 +523,8 @@ static dma_cookie_t tcc_dma_tx_submit(struct dma_async_tx_descriptor *tx)
 	spin_lock_irqsave(&tdmac->lock, flags);
 	cookie = dma_cookie_assign(tx);
 	list_add_tail(&desc->node, &tdmac->desc_submitted);
-	if (desc->tx_list.next != &desc->tx_list) {
+	if (desc->tx_list.next != &desc->tx_list)
 		list_splice_tail(&desc->tx_list, &tdmac->desc_submitted);
-	}
 
 	spin_unlock_irqrestore(&tdmac->lock, flags);
 
@@ -625,9 +621,8 @@ static bool tcc_dma_of_filter(struct dma_chan *chan, void *param)
 		return (bool)false;
 	}
 
-	if (chan->device != &fargs->tdma->dma) {
+	if (chan->device != &fargs->tdma->dma)
 		return (bool)false;
-	}
 
 	chan->chan_id = fargs->chan_id;
 	tdmac->slave_config.slave_id = (u32)fargs->slave_id;
@@ -665,9 +660,8 @@ static void tcc_dma_set_req(struct of_dma *ofdma, s32 num)
 	req = tcc_readl(tdma->req_reg, 0x0);
 	req_val = ((u32)1UL << (u32)sel);
 	req &= ~(req_val);
-	if (sw == 1) {
+	if (sw == 1)
 		req |= (req_val);
-	}
 
 	tcc_writel(tdma->req_reg, 0x0, req);
 }
@@ -691,9 +685,8 @@ static struct dma_chan *tcc_dma_of_xlate(struct of_phandle_args *dma_spec,
 	dev_vdbg(tdma->dma.dev, "[DEBUG][GDMA] %s: args_count=%d, args[0]=%d\n",
 			__func__, count, dma_spec->args[0]);
 
-	if (count != 2) {
+	if (count != 2)
 		return NULL;
-	}
 
 	fargs.tdma = tdma;
 	fargs.chan_id = (s32)dma_spec->args[0];
@@ -737,9 +730,8 @@ static enum dma_status tcc_dma_tx_status(struct dma_chan *chan,
 		 chan->chan_id, cookie, ret);
 
 	ret = dma_cookie_status(chan, cookie, txstate);
-	if (ret == DMA_COMPLETE) {
+	if (ret == DMA_COMPLETE)
 		return ret;
-	}
 
 	if (tdmac->direction == DMA_MEM_TO_DEV) {
 		current_count = channel_readl(tdmac, 0x20) >> 16U;
@@ -832,11 +824,10 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_dma_memcpy(
 		desc->len = xfer_count;
 		desc->burst = 1;
 
-		if (first == NULL) {
+		if (first == NULL)
 			first = desc;
-		} else {
+		else
 			list_add_tail(&desc->node, &first->tx_list);
-		}
 
 		remain_len -= xfer_count;
 		offset = xfer_count;
@@ -883,9 +874,8 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_slave_sg(
 		 "[DEBUG][GDMA] %s: chan=%d, direction=%d, flags=0x%lx\n",
 		 __func__, chan->chan_id, direction, flags);
 
-	if (!is_slave_direction(direction)) {
+	if (!is_slave_direction(direction))
 		return NULL;
-	}
 
 	tdmac->direction = direction;
 
@@ -918,11 +908,10 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_slave_sg(
 			}
 			desc->burst = config->src_maxburst;
 
-			if (first == NULL) {
+			if (first == NULL)
 				first = desc;
-			} else {
+			else
 				list_add_tail(&desc->node, &first->tx_list);
-			}
 		}
 	} else { /* DMA_DEV_TO_MEM */
 		dev_addr = (u32)config->src_addr;
@@ -953,11 +942,10 @@ static struct dma_async_tx_descriptor *tcc_dma_prep_slave_sg(
 			}
 			desc->burst = config->dst_maxburst;
 
-			if (first == NULL) {
+			if (first == NULL)
 				first = desc;
-			} else {
+			else
 				list_add_tail(&desc->node, &first->tx_list);
-			}
 		}
 	}
 
@@ -1056,9 +1044,8 @@ static void tcc_dma_issue_pending(struct dma_chan *chan)
 
 	list_splice_init(&tdmac->desc_submitted, &tdmac->desc_issued);
 
-	if (list_empty(&tdmac->desc_issued) != 0) {
+	if (list_empty(&tdmac->desc_issued) != 0)
 		return;
-	}
 
 	desc = tcc_dma_next_desc(tdmac);
 	tcc_dma_dostart(tdmac, desc);
@@ -1076,14 +1063,12 @@ static struct tcc_dma_platform_data *tcc_dma_parse_dt(
 	pdata =
 	    devm_kzalloc(&pdev->dev, sizeof(struct tcc_dma_platform_data),
 			 GFP_KERNEL);
-	if (pdata == NULL) {
+	if (pdata == NULL)
 		return NULL;
-	}
 
 	ret = of_property_read_u32(np, "dma-channels", &nr_channels);
-	if (ret != 0) {
+	if (ret != 0)
 		return NULL;
-	}
 	pdata->nr_channels = (s32)nr_channels;
 
 	return pdata;
@@ -1098,9 +1083,8 @@ static struct tcc_dma_platform_data *tcc_dma_parse_dt(
 
 static void tcc_dma_set_access_control(struct tcc_dma *tdma)
 {
-	if (tdma->ac_reg == NULL) {
+	if (tdma->ac_reg == NULL)
 		return;
-	}
 
 	tcc_writel(tdma->ac_reg, DMA_AC0_START, tdma->ac_val[0][0]);
 	tcc_writel(tdma->ac_reg, DMA_AC0_LIMIT, tdma->ac_val[0][1]);
@@ -1112,7 +1096,7 @@ static void tcc_dma_set_access_control(struct tcc_dma *tdma)
 	tcc_writel(tdma->ac_reg, DMA_AC3_LIMIT, tdma->ac_val[3][1]);
 }
 
-static int __init tcc_dma_probe(struct platform_device *pdev)
+static int tcc_dma_probe(struct platform_device *pdev)
 {
 	struct tcc_dma_platform_data *pdata;
 	struct tcc_dma *tdma;
@@ -1133,9 +1117,8 @@ static int __init tcc_dma_probe(struct platform_device *pdev)
 	}
 
 	irq = platform_get_irq(pdev, 0);
-	if (irq < 0) {
+	if (irq < 0)
 		return irq;
-	}
 
 	ret = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
 	if (ret != 0) {
@@ -1144,26 +1127,20 @@ static int __init tcc_dma_probe(struct platform_device *pdev)
 	}
 
 	pdata = dev_get_platdata(&pdev->dev);
-	if (pdata == NULL) {
+	if (pdata == NULL)
 		pdata = tcc_dma_parse_dt(pdev);
-	}
 
-	if ((pdata == NULL) || (pdata->nr_channels > TCC_MAX_DMA_CHANNELS)) {
+	if ((pdata == NULL) || (pdata->nr_channels > TCC_MAX_DMA_CHANNELS))
 		return -EINVAL;
-	}
 
 	tdma = devm_kzalloc(&pdev->dev, sizeof(struct tcc_dma), GFP_KERNEL);
-	if (tdma == NULL) {
-		dev_err(&pdev->dev, "[ERROR][GDMA] failed to alloc tdma\n");
+	if (tdma == NULL)
 		return -ENOMEM;
-	}
 
 	tdma->chan = devm_kcalloc(&pdev->dev, (size_t)pdata->nr_channels,
 			sizeof(struct tcc_dma_chan), GFP_KERNEL);
-	if (tdma->chan == NULL) {
-		dev_err(&pdev->dev, "[ERROR][GDMA] failed to alloc chan\n");
+	if (tdma->chan == NULL)
 		return -ENOMEM;
-	}
 
 	tdma->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(tdma->clk)) {
@@ -1180,9 +1157,8 @@ static int __init tcc_dma_probe(struct platform_device *pdev)
 
 	ret = devm_request_irq(&(pdev->dev), (uint)irq, &tcc_dma_interrupt,
 			       IRQF_SHARED, "tcc_dma", (void *)tdma);
-	if (ret != 0) {
+	if (ret != 0)
 		return ret;
-	}
 
 	platform_set_drvdata(pdev, (void *)tdma);
 
@@ -1326,9 +1302,8 @@ static int tcc_dma_remove(struct platform_device *pdev)
 	}
 
 	np = dev_of_node(&pdev->dev);
-	if (np != NULL) {
+	if (np != NULL)
 		of_dma_controller_free(np);
-	}
 	dma_async_device_unregister(&tdma->dma);
 	clk_disable_unprepare(tdma->clk);
 
