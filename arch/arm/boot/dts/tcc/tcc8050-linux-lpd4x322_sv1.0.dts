@@ -208,7 +208,7 @@
 	dwc3_phy@11D90000 {
 		status = "okay";
 		vbus-ctrl-able;
-		vbus_supply_ehci = <&vbus_supply_dwc3>;
+		vbus_supply = <&vbus_supply_dwc3>;
 	};
 
 	dwc3_platform {
