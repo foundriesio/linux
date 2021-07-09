@@ -1149,13 +1149,6 @@
 		compatible = "telechips,tcc805x-sc-fw";
 	};
 
-	tcc_pm_fw: tcc_pm_fw {
-		compatible = "telechips,pm-fw";
-		mbox-names ="power-mbox";
-		mboxes = <&micom_mbox TCC_MICOM_MBOX0_POWER>;
-		mbox-id = TCC_MBOX_POWER_ID;
-	};
-
 	pinctrl: pinctrl {
 		compatible = "telechips,tcc-pinctrl";
 		reg = <0x0 0x14200000 0x0 0x7C0>,

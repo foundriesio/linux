@@ -2263,13 +2263,6 @@
 		compatible = "telechips,tcc805x-sc-fw";
 	};
 
-	tcc_pm_fw {
-		compatible = "telechips,pm-fw";
-		mbox-names ="power-mbox";
-		mboxes = <&micom_mbox TCC_MICOM_MBOX1_POWER>;
-		mbox-id = TCC_MBOX_POWER_ID;
-	};
-
 	tcc-gpio-sample {
 		compatible = "gpio-sample";
 		leble = "TCC GPIO";

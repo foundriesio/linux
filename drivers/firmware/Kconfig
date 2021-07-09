@@ -235,7 +235,6 @@ config TCC_PMI
 	tristate "Telechips Power Management Interface (PMI) driver"
 	depends on ARCH_TCC805X
 	depends on TCC_MULTI_MAILBOX
-	depends on !TCC_PM_FIRMWARE
 	default y
 	help
 	  Telechips Power Management Interface (PMI) driver is a mailbox client
@@ -255,13 +254,6 @@ config TCC_SC_FW_PROTOCOL
 	depends on TCC_SC_MAILBOX
 	help
 	  Storage Core Interface Protocol is used to communicate with Storage Core.
-
-config TCC_PM_FIRMWARE
-	bool "Telechips power management firmware driver"
-	depends on PM && TCC_MULTI_MAILBOX
-	help
-	  Telechips power management firmware driver is used to communcate with
-	  MICOM for handling power management event sent from MICOM F/W.
 
 config HAVE_ARM_SMCCC
 	bool

@@ -25,7 +25,6 @@ CFLAGS_qcom_scm-32.o :=$(call as-instr,.arch armv7-a\n.arch_extension sec,-DREQU
 obj-$(CONFIG_TI_SCI_PROTOCOL)	+= ti_sci.o
 obj-$(CONFIG_TCC_PMI)		+= tcc_pmi.o
 obj-$(CONFIG_TCC_SC_FW_PROTOCOL)	+= tcc_sc_fw.o
-obj-$(CONFIG_TCC_PM_FIRMWARE)	+= tcc_pm_fw.o
 
 obj-y				+= broadcom/
 obj-y				+= meson/
