@@ -286,6 +286,9 @@ static int tcc_drm_fbdev_update(struct drm_fb_helper *helper,
 	fbi->fix.smem_len = size;
 	helper->dev->mode_config.fb_base = tcc_gem->dma_addr;
 
+	/* Initialize framebuffer memory with zero */
+	memset_io(fbi->screen_base, 0, fbi->screen_size);
+
 	return 0;
 }
 
@@ -306,7 +309,9 @@ static int tcc_drm_fbdev_probe(struct drm_fb_helper *helper,
 
 	mode_cmd.width = sizes->surface_width;
 	mode_cmd.height = sizes->surface_height;
-	mode_cmd.pitches[0] = sizes->surface_width * (sizes->surface_bpp >> 3);
+	mode_cmd.pitches[0] =
+		ALIGN(sizes->surface_width *
+		      DIV_ROUND_UP(sizes->surface_bpp, 8), 8);
 	mode_cmd.pixel_format = drm_mode_legacy_fb_format(sizes->surface_bpp,
 							  sizes->surface_depth);
 
