@@ -1100,15 +1100,11 @@ static bool tcc_multich_mbox_last_tx_done(struct mbox_chan *chan)
 
 		d1printk((mdev), mdev->mbox.dev, "In\n");
 
-		mutex_lock(&mdev->lock);
-
 		/* check transmmit cmd fifo */
 		if ((readl_relaxed(mdev->base + MBOXSTR) & (uint32_t)MEMP_MASK)
 			== (uint32_t)MEMP_MASK) {
 			ret = (bool)true;
 		}
-
-		mutex_unlock(&mdev->lock);
 	}
 	return ret;
 }

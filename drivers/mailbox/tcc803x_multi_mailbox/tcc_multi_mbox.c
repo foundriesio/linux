@@ -129,6 +129,7 @@ struct tcc_mbox_device {
 	void __iomem *base;
 	int32_t irq;
 	struct mutex lock;
+	struct mutex reglock;
 	int32_t ch_enable[TCC_MBOX_CH_LIMIT];
 };
 
@@ -338,7 +339,7 @@ static int32_t tcc_multich_mbox_send(struct mbox_chan *chan, void *mbox_msg)
 		} else {
 			int32_t timeOutCnt = 30;  //30*100us = 3000us
 
-			mutex_lock(&mdev->lock);
+			mutex_lock(&mdev->reglock);
 
 			/* check fifo */
 			while (((readl_relaxed(mdev->base + MBOXSTR)
@@ -408,7 +409,7 @@ static int32_t tcc_multich_mbox_send(struct mbox_chan *chan, void *mbox_msg)
 					"mbox is not empty. timeout\n");
 			}
 
-			mutex_unlock(&mdev->lock);
+			mutex_unlock(&mdev->reglock);
 		}
 	} else {
 		(void)pr_err("[ERROR][%s]%s: Parameter Error",
@@ -504,7 +505,7 @@ static bool tcc_multich_mbox_tx_done(struct mbox_chan *chan)
 		if (mdev != NULL) {
 			dprintk(mdev->mbox.dev, "In\n");
 
-			mutex_lock(&mdev->lock);
+			mutex_lock(&mdev->reglock);
 
 			/* check transmmit cmd fifo */
 			if ((readl_relaxed(
@@ -516,7 +517,7 @@ static bool tcc_multich_mbox_tx_done(struct mbox_chan *chan)
 				ret = (bool)true;
 			}
 
-			mutex_unlock(&mdev->lock);
+			mutex_unlock(&mdev->reglock);
 		} else {
 			ret = (bool)false;
 		}
@@ -796,6 +797,7 @@ static int32_t tcc_multich_mbox_probe(struct platform_device *pdev)
 			if (ret == 0) {
 
 				mutex_init(&mdev->lock);
+				mutex_init(&mdev->reglock);
 
 				mdev->irq = platform_get_irq(pdev, 0);
 				if (mdev->irq < 0) {
