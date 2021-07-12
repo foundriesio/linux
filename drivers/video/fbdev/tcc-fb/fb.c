@@ -72,7 +72,7 @@
 #define FBDC_ALIGNED(w, mul) (((unsigned int)w + (mul - 1)) & ~(mul - 1))
 #endif
 
-#define FB_VERSION "1.0.7"
+#define FB_VERSION "1.0.8"
 #define FB_BUF_MAX_NUM (3)
 #define BYTE_TO_PAGES(range) (((range) + (PAGE_SIZE - 1)) >> PAGE_SHIFT)
 
@@ -634,230 +634,7 @@ err_out:
 	return ret;
 }
 
-static int fbX_prepare_m2m(struct fb_info *info)
-{
-	struct fbX_par *par;
-	struct pmap pmap;
-	char *name = NULL;
-	int ret = -ENODEV;
 
-	do {
-		if (info == NULL) {
-			pr_err("%s parameter is NULL\r\n", __func__);
-			break;
-		}
-
-		par = info->par;
-		if (par->pdata.filp != NULL) {
-			/* Already opend */
-			ret = 0;
-			break;
-		}
-
-		if (par->pdata.FbUpdateType == FBX_ATTACH_UPDATE)
-			name = kasprintf(
-				GFP_KERNEL, "/dev/attach%d",
-				get_vioc_index(par->pdata.ddc_info.blk_num));
-		else
-			name = kasprintf(
-				GFP_KERNEL, "/dev/scaler%d",
-				get_vioc_index(par->pdata.scaler_info.blk_num));
-		if (name == NULL) {
-			pr_err(
-				"%s out of memory at line(%d)\r\n",
-				__func__, __LINE__);
-			break;
-		}
-		par->pdata.filp = filp_open(name, O_RDWR, 666);
-		kfree(name);
-		name = NULL;
-
-		if (IS_ERR(par->pdata.filp)) {
-			pr_err(
-				"error in %s: can not open misc device(%s)\n",
-				__func__, name);
-			break;
-		}
-
-		if (par->pdata.FbUpdateType == FBX_ATTACH_UPDATE)
-			name = kasprintf(GFP_KERNEL, "fb%d_video", info->node);
-		else
-			name = kasprintf(
-				GFP_KERNEL, "fb_scaler%d",
-				get_vioc_index(par->pdata.scaler_info.blk_num));
-		if (name == NULL) {
-			pr_err(
-				"%s out of memory at line(%d)\r\n",
-				__func__, __LINE__);
-			break;
-		}
-		pmap_get_info((const char *)name, &pmap);
-		kfree(name);
-		name = NULL;
-		if (pmap.size > (info->var.xres * info->var.yres_virtual
-				 * (info->var.bits_per_pixel / 8))) {
-			unsigned int buf_offset =
-				(info->var.xres * info->var.yres
-				 * (info->var.bits_per_pixel / 8));
-			unsigned int idx = 0;
-
-			for (idx = 0; idx < ATTACH_BUF_NUM; idx++) {
-				par->pdata.dst_addr[idx] =
-					(pmap.base + (buf_offset * idx));
-				pr_info("Buf%d: 0x%08x\n", idx,
-					par->pdata.dst_addr[idx]);
-			}
-			ret = 0;
-		} else {
-			pr_err(
-				"error in %s: pmap size are not enough(%lld)\n",
-				__func__, pmap.size);
-			ret = -ENODEV;
-		}
-	} while (0);
-
-	return ret;
-}
-
-static int fbX_m2m_activate_var(
-	unsigned int dma_addr, struct fb_var_screeninfo *var,
-	struct fb_info *info)
-{
-	unsigned int width, height, format, channel;
-	struct fb_region *region;
-	struct fb_scale *scale;
-	struct fbX_par *par;
-	int ret = -ENODEV;
-
-	if (!info || !info->par)
-		goto err_out;
-
-	par = info->par;
-	region = &par->pdata.region;
-	scale = &region->scale;
-
-	VIOC_DISP_GetSize(par->pdata.ddc_info.virt_addr, &width, &height);
-	if ((width == 0) || (height == 0)) {
-		pr_err(
-			"[ERROR][TSVFB] error in %s: vioc invalid status (%dx%d)\n",
-			__func__, width, height);
-		goto err_out;
-	}
-
-	switch (var->bits_per_pixel) {
-	case 16:
-		format = VIOC_IMG_FMT_RGB565;
-		break;
-	case 32:
-		format = VIOC_IMG_FMT_ARGB8888;
-		break;
-	default:
-		pr_err(
-			"[ERROR][TSVFB] error in %s: can not support bpp %d\n",
-			__func__, var->bits_per_pixel);
-		ret = -EINVAL;
-		goto err_out;
-	}
-
-	ret = tsvfb_check_regions(info, var, width, height);
-	if (ret < 0)
-		goto err_out;
-
-	if (par->pdata.FbUpdateType == FBX_M2M_RDMA_UPDATE) {
-		struct SCALER_TYPE scaler;
-
-		memset(&scaler, 0x00, sizeof(struct SCALER_TYPE));
-
-		scaler.responsetype = SCALER_POLLING;
-
-		scaler.src_Yaddr = dma_addr;
-		scaler.src_fmt = format;
-		scaler.src_ImgWidth = scale->srcwidth;
-		scaler.src_ImgHeight = scale->srcheight;
-		scaler.src_winLeft = 0;
-		scaler.src_winTop = 0;
-		scaler.src_winRight = var->xres;
-		scaler.src_winBottom = var->yres;
-
-		scaler.dest_Yaddr = par->pdata.dst_addr[par->pdata.buf_idx++];
-		if (par->pdata.buf_idx >= (var->yres_virtual / var->yres))
-			par->pdata.buf_idx = 0;
-
-		scaler.dest_fmt = format;
-		scaler.dest_ImgWidth =
-			scale->destwidth; // destination image width
-		scaler.dest_ImgHeight =
-			scale->destheight; // destination image height
-		scaler.dest_winLeft = 0;
-		scaler.dest_winTop = 0;
-		scaler.dest_winRight = scale->outwidth;
-		scaler.dest_winBottom = scale->outheight;
-
-		if (par->pdata.filp)
-			par->pdata.filp->f_op->unlocked_ioctl(
-				par->pdata.filp, TCC_SCALER_IOCTRL_KERENL,
-				(unsigned long)&scaler);
-
-		VIOC_RDMA_SetImageIntl(par->pdata.rdma_info.virt_addr, 0);
-		VIOC_RDMA_SetImageFormat(
-			par->pdata.rdma_info.virt_addr, format);
-		VIOC_RDMA_SetImageSize(
-			par->pdata.rdma_info.virt_addr,
-			scale->outwidth, scale->outheight);
-		VIOC_RDMA_SetImageOffset(
-			par->pdata.rdma_info.virt_addr, format,
-			scale->destwidth);
-		VIOC_RDMA_SetImageBase(
-			par->pdata.rdma_info.virt_addr, scaler.dest_Yaddr, 0,
-			0);
-		if (format == VIOC_IMG_FMT_ARGB8888) {
-			VIOC_RDMA_SetImageAlphaSelect(
-				par->pdata.rdma_info.virt_addr, 1);
-			VIOC_RDMA_SetImageAlphaEnable(
-				par->pdata.rdma_info.virt_addr,
-				par->pdata.fb_no_pixel_alphablend ? 0 : 1);
-		} else {
-			VIOC_RDMA_SetImageAlphaEnable(
-				par->pdata.rdma_info.virt_addr, 0);
-		}
-		VIOC_RDMA_SetImageY2REnable(par->pdata.rdma_info.virt_addr, 0);
-		VIOC_RDMA_SetImageR2YEnable(par->pdata.rdma_info.virt_addr, 0);
-
-		channel = get_vioc_index(par->pdata.rdma_info.blk_num)
-			- (4 * get_vioc_index(par->pdata.ddc_info.blk_num));
-		VIOC_WMIX_SetPosition(
-			par->pdata.wmixer_info.virt_addr, channel,
-			region->x, region->y);
-		VIOC_WMIX_SetChromaKey(
-			par->pdata.wmixer_info.virt_addr, channel, 1 /*ON*/,
-			0x0, 0x0, 0x0, 0xF8, 0xFC, 0xF8);
-		VIOC_WMIX_SetUpdate(par->pdata.wmixer_info.virt_addr);
-
-		VIOC_RDMA_SetImageEnable(par->pdata.rdma_info.virt_addr);
-	} else { /* FBX_ATTACH_UPDATE */
-		ATTACH_INFO_TYPE attach;
-		unsigned int idx = 0;
-
-		memset(&attach, 0x0, sizeof(ATTACH_INFO_TYPE));
-
-		attach.fmt = format;
-		attach.img_width = region->width;
-		attach.img_height = region->height;
-		attach.offset_x = 0;
-		attach.offset_y = 0;
-		attach.mode = ATTACH_PREVIEW_MODE;
-		for (idx = 0; idx < (var->yres_virtual / var->yres); idx++)
-			attach.addr_y[idx] = par->pdata.dst_addr[idx];
-
-		if (par->pdata.filp)
-			par->pdata.filp->f_op->unlocked_ioctl(
-				par->pdata.filp, TCC_ATTACH_IOCTRL_KERNEL,
-				(unsigned long)&attach);
-	}
-	return 0;
-err_out:
-	return ret;
-}
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
 static void tca_vioc_configure_FBCDEC(
 	unsigned int vioc_dec_id, unsigned int base_addr,
@@ -1166,28 +943,6 @@ static int fbX_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	case FBX_OVERLAY_UPDATE:
 	case FBX_NOWAIT_UPDATE:
 		ret = fbX_activate_var(dma_addr, var, info);
-		break;
-	case FBX_M2M_RDMA_UPDATE:
-		ret = fbX_prepare_m2m(info);
-		if (ret < 0)
-			break;
-		ret = fbX_m2m_activate_var(dma_addr, var, info);
-		break;
-	case FBX_ATTACH_UPDATE:
-		if (par->pdata.filp == NULL) {
-			ret = fbX_prepare_m2m(info);
-			if (ret < 0)
-				break;
-			ret = fbX_m2m_activate_var(
-				(
-					par->map_dma +
-					(
-						info->var.xres *
-						info->var.yoffset *
-						info->var.bits_per_pixel /
-						8)),
-				&info->var, info);
-		}
 		break;
 	default:
 		ret = -EINVAL;
@@ -2294,16 +2049,6 @@ static int fbX_remove(struct platform_device *pdev)
 
 	if (info) {
 		switch (par->pdata.FbUpdateType) {
-		case FBX_M2M_RDMA_UPDATE:
-			if (par->pdata.filp)
-				filp_close(par->pdata.filp, 0);
-			fb_unregister_isr(info);
-			break;
-		case FBX_ATTACH_UPDATE:
-			if (par->pdata.filp)
-				filp_close(par->pdata.filp, 0);
-			fb_unregister_isr(info);
-			break;
 		case FBX_RDMA_UPDATE:
 			fb_unregister_isr(info);
 			break;
