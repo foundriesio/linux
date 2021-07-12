@@ -47,7 +47,7 @@ examples:
         compatible = "st,stm32-cec";
         reg = <0x40006c00 0x400>;
         interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH>;
-        clocks = <&rcc CEC_K>, <&clk_lse>;
+        clocks = <&rcc CEC_K>, <&rcc CEC>;
         clock-names = "cec", "hdmi-cec";
     };
 
