@@ -96,7 +96,7 @@ typedef struct {
  */
 #define MC_PIC_HEIGHT_SHIFT (0) // Picture Height
 
-#define MC_PIC_HEIGHT_MASK (0xFFFF << MC_PIC_HEIGHT_SHIFT)
+#define MC_PIC_HEIGHT_MASK (0x3FFF << MC_PIC_HEIGHT_SHIFT)
 
 /*
  * MC Compressed Data Strida Register
@@ -127,8 +127,8 @@ typedef struct {
 #define MC_FRM_POS_YPOS_SHIFT (16) // vertical base position for crop image
 #define MC_FRM_POS_XPOS_SHIFT (0)  // horizontal base position for crop image
 
-#define MC_FRM_POS_YPOS_MASK (0xFFFF << MC_FRM_POS_YPOS_SHIFT)
-#define MC_FRM_POS_XPOS_MASK (0xFFFF << MC_FRM_POS_XPOS_SHIFT)
+#define MC_FRM_POS_YPOS_MASK (0x1FFF << MC_FRM_POS_YPOS_SHIFT)
+#define MC_FRM_POS_XPOS_MASK (0x1FFF << MC_FRM_POS_XPOS_SHIFT)
 
 /*
  * MC Frame Size for Crop Register
@@ -136,8 +136,8 @@ typedef struct {
 #define MC_FRM_SIZE_YSIZE_SHIFT (16) // the vertical size for crop image
 #define MC_FRM_SIZE_XSIZE_SHIFT (0) // the horizontal size for crop image
 
-#define MC_FRM_SIZE_YSIZE_MASK (0xFFFF << MC_FRM_SIZE_YSIZE_SHIFT)
-#define MC_FRM_SIZE_XSIZE_MASK (0xFFFF << MC_FRM_SIZE_XSIZE_SHIFT)
+#define MC_FRM_SIZE_YSIZE_MASK (0x3FFF << MC_FRM_SIZE_YSIZE_SHIFT)
+#define MC_FRM_SIZE_XSIZE_MASK (0x3FFF << MC_FRM_SIZE_XSIZE_SHIFT)
 
 /*
  * MC Miscellaneous Register
@@ -155,19 +155,13 @@ typedef struct {
 /*
  * MC Miscellaneous Register (FOR DEBUG)
  */
-#define MC_FRM_MISC1_OUTMUX7_SHIFT (28) // Select Mux7 Path
-#define MC_FRM_MISC1_OUTMUX6_SHIFT (24) // Select Mux6 Path
-#define MC_FRM_MISC1_OUTMUX5_SHIFT (20) // Select Mux5 Path
-#define MC_FRM_MISC1_OUTMUX4_SHIFT (16) // Select Mux4 Path
+#define MC_FRM_MISC1_ALPHA_SHIFT   (16) // Set default alpha value
 #define MC_FRM_MISC1_OUTMUX3_SHIFT (12) // Select Mux3 Path
 #define MC_FRM_MISC1_OUTMUX2_SHIFT (8)  // Select Mux2 Path
 #define MC_FRM_MISC1_OUTMUX1_SHIFT (4)  // Select Mux1 Path
 #define MC_FRM_MISC1_OUTMUX0_SHIFT (0)  // Select Mux0 Path
 
-#define MC_FRM_MISC1_OUTMUX7_MASK (0x7 << MC_FRM_MISC1_OUTMUX7_SHIFT)
-#define MC_FRM_MISC1_OUTMUX6_MASK (0x7 << MC_FRM_MISC1_OUTMUX6_SHIFT)
-#define MC_FRM_MISC1_OUTMUX5_MASK (0x7 << MC_FRM_MISC1_OUTMUX5_SHIFT)
-#define MC_FRM_MISC1_OUTMUX4_MASK (0x7 << MC_FRM_MISC1_OUTMUX4_SHIFT)
+#define MC_FRM_MISC1_ALPHA_MASK   (0xFF << MC_FRM_MISC1_ALPHA_SHIFT)
 #define MC_FRM_MISC1_OUTMUX3_MASK (0x7 << MC_FRM_MISC1_OUTMUX3_SHIFT)
 #define MC_FRM_MISC1_OUTMUX2_MASK (0x7 << MC_FRM_MISC1_OUTMUX2_SHIFT)
 #define MC_FRM_MISC1_OUTMUX1_MASK (0x7 << MC_FRM_MISC1_OUTMUX1_SHIFT)
@@ -176,10 +170,8 @@ typedef struct {
 /*
  * MC Timeout Register
  */
-#define MC_TIMEOUT_ALPHA_SHIFT   (16) // Set default alpha value
 #define MC_TIMEOUT_TIMEOUT_SHIFT (0)  // CHeck dead-lock mode (FOR DEBUG)
 
-#define MC_TIMEOUT_ALPHA_MASK   (0x3FF << MC_TIMEOUT_ALPHA_SHIFT)
 #define MC_TIMEOUT_TIMEOUT_MASK (0xFFFF << MC_TIMEOUT_TIMEOUT_SHIFT)
 
 /*
@@ -267,7 +259,7 @@ typedef struct {
  * MC DMA status Register
  */
 #define MC_DMA_STAT_CDMA_AXI_C_SHIFT	(28)
-#define MC_DMA_STAT_CDMA_C_SHIFT		(25)
+#define MC_DMA_STAT_CDMA_C_SHIFT		(24)
 #define MC_DMA_STAT_CDMA_AXI_Y_SHIFT	(20)
 #define MC_DMA_STAT_CDMA_Y_SHIFT		(16)
 #define MC_DMA_STAT_ODMA_AXI_C_SHIFT	(12)
@@ -291,8 +283,8 @@ typedef struct {
 #define MC_LBUF_CNT0_YBUF_CNT1_SHIFT (16)
 #define MC_LBUF_CNT0_YBUF_CNT0_SHIFT (0)
 
-#define MC_LBUF_CNT0_YBUF_CNT1_MASK (0xFFFF << MC_LBUF_CNT0_YBUF_CNT1_SHIFT)
-#define MC_LBUF_CNT0_YBUF_CNT0_MASK (0xFFFF << MC_LBUF_CNT0_YBUF_CNT0_SHIFT)
+#define MC_LBUF_CNT0_YBUF_CNT1_MASK (0x3FF << MC_LBUF_CNT0_YBUF_CNT1_SHIFT)
+#define MC_LBUF_CNT0_YBUF_CNT0_MASK (0x3FF << MC_LBUF_CNT0_YBUF_CNT0_SHIFT)
 
 /*
  * MC Luma LineBuffer Count 1 Register
@@ -301,8 +293,8 @@ typedef struct {
 #define MC_LBUF_CNT0_YBUF_CNT3_SHIFT (16)
 #define MC_LBUF_CNT0_YBUF_CNT2_SHIFT (0)
 
-#define MC_LBUF_CNT0_YBUF_CNT3_MASK (0xFFFF << MC_LBUF_CNT0_YBUF_CNT3_SHIFT)
-#define MC_LBUF_CNT0_YBUF_CNT2_MASK (0xFFFF << MC_LBUF_CNT0_YBUF_CNT2_SHIFT)
+#define MC_LBUF_CNT0_YBUF_CNT3_MASK (0x3FF << MC_LBUF_CNT0_YBUF_CNT3_SHIFT)
+#define MC_LBUF_CNT0_YBUF_CNT2_MASK (0x3FF << MC_LBUF_CNT0_YBUF_CNT2_SHIFT)
 
 /*
  * MC Chroma LineBuffer Count 0 Register
@@ -311,8 +303,8 @@ typedef struct {
 #define MC_CBUF_CNT_YBUF_CNT1_SHIFT (16)
 #define MC_CBUF_CNT_YBUF_CNT0_SHIFT (0)
 
-#define MC_CBUF_CNT_YBUF_CNT1_MASK (0xFFFF << MC_CBUF_CNT_YBUF_CNT1_SHIFT)
-#define MC_CBUF_CNT_YBUF_CNT0_MASK (0xFFFF << MC_CBUF_CNT_YBUF_CNT0_SHIFT)
+#define MC_CBUF_CNT_YBUF_CNT1_MASK (0x1FF << MC_CBUF_CNT_YBUF_CNT1_SHIFT)
+#define MC_CBUF_CNT_YBUF_CNT0_MASK (0x1FF << MC_CBUF_CNT_YBUF_CNT0_SHIFT)
 
 /*
  * MC Position Status Register

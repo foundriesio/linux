@@ -56,7 +56,7 @@
 #define TIMER_COUNTER_SHIFT		(0)
 
 #define TIMER_EN_MASK			(0x1 << TIMER_EN_SHIFT)
-#define TIMER_COUNTER_MASK		(0xFFFF << TIMER_COUNTER_SHIFT)
+#define TIMER_COUNTER_MASK		(0xFFFFF << TIMER_COUNTER_SHIFT)
 
 /*
  * Timer Interrupt k Register

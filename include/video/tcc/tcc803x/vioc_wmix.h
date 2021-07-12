@@ -140,11 +140,11 @@ enum VIOC_WMIX_ALPHA_CCON1_Type {
 /*
  * WMIX Control Resiger
  */
+#define MCTRL_3DMD3_SHIFT		(26) // 3D mode for IMG3
 #define MCTRL_3DMD2_SHIFT		(23) // 3D mode for IMG2
 #define MCTRL_3DMD1_SHIFT		(20) // 3D mode for IMG1
 #define MCTRL_3DMD0_SHIFT		(17) // 3D mode for IMG0
 #define MCTRL_UPD_SHIFT			(16) // Update
-#define MCTRL_3DMD3_SHIFT		(26) // 3D mode for IMG3
 #define MCTRL_3DEN3_SHIFT		(11) // 3D mode enable in IMG3
 #define MCTRL_3DEN2_SHIFT		(10) // 3D mode enable in IMG2
 #define MCTRL_3DEN1_SHIFT		(9)  // 3D mode enable in IMG1
@@ -193,7 +193,7 @@ enum VIOC_WMIX_ALPHA_CCON1_Type {
 #define MPOS_YPOS_SHIFT (16) // Y-Position in Image k
 #define MPOS_XPOS_SHIFT (0)  // X-Position in Image k
 
-#define MPOS_3DSM_MASK (0x1 << MPOS_3DSM_SHIFT)
+#define MPOS_3DSM_MASK (0x3 << MPOS_3DSM_SHIFT)
 #define MPOS_YPOS_MASK (0x1FFF << MPOS_YPOS_SHIFT)
 #define MPOS_XPOS_MASK (0x1FFF << MPOS_XPOS_SHIFT)
 
@@ -217,9 +217,9 @@ enum VIOC_WMIX_ALPHA_CCON1_Type {
 #define MKEY1_MKEYG_SHIFT (8)  // Masked Chroma-Key value of G channel
 #define MKEY1_MKEYB_SHIFT (0)  // Masked Chroma-Key value of B channel
 
-#define MKEY1_MKEYR_MASK (0xFFFF << MKEY1_MKEYR_SHIFT)
-#define MKEY1_MKEYG_MASK (0xFFFF << MKEY1_MKEYG_SHIFT)
-#define MKEY1_MKEYB_MASK (0xFFFF << MKEY1_MKEYB_SHIFT)
+#define MKEY1_MKEYR_MASK (0xFF << MKEY1_MKEYR_SHIFT)
+#define MKEY1_MKEYG_MASK (0xFF << MKEY1_MKEYG_SHIFT)
+#define MKEY1_MKEYB_MASK (0xFF << MKEY1_MKEYB_SHIFT)
 
 /*
  * WMIX Status Register
@@ -300,14 +300,14 @@ enum VIOC_WMIX_ALPHA_CCON1_Type {
 #define MCCON_CCON1_00_SHIFT		(4)  // ACON1 for Region A
 #define MCCON_CCON0_00_SHIFT		(0)  // ACON0 for Region A
 
-#define MCCON_CCON1_11_MASK			(0x7 << MCCON_CCON1_11_SHIFT)
-#define MCCON_CCON0_11_MASK			(0x7 << MCCON_CCON0_11_SHIFT)
-#define MCCON_CCON1_10_MASK			(0x7 << MCCON_CCON1_10_SHIFT)
-#define MCCON_CCON0_10_MASK			(0x7 << MCCON_CCON0_10_SHIFT)
-#define MCCON_CCON1_01_MASK			(0x7 << MCCON_CCON1_01_SHIFT)
-#define MCCON_CCON0_01_MASK			(0x7 << MCCON_CCON0_01_SHIFT)
-#define MCCON_CCON1_00_MASK			(0x7 << MCCON_CCON1_00_SHIFT)
-#define MCCON_CCON0_00_MASK			(0x7 << MCCON_CCON0_00_SHIFT)
+#define MCCON_CCON1_11_MASK			(0xF << MCCON_CCON1_11_SHIFT)
+#define MCCON_CCON0_11_MASK			(0xF << MCCON_CCON0_11_SHIFT)
+#define MCCON_CCON1_10_MASK			(0xF << MCCON_CCON1_10_SHIFT)
+#define MCCON_CCON0_10_MASK			(0xF << MCCON_CCON0_10_SHIFT)
+#define MCCON_CCON1_01_MASK			(0xF << MCCON_CCON1_01_SHIFT)
+#define MCCON_CCON0_01_MASK			(0xF << MCCON_CCON0_01_SHIFT)
+#define MCCON_CCON1_00_MASK			(0xF << MCCON_CCON1_00_SHIFT)
+#define MCCON_CCON0_00_MASK			(0xF << MCCON_CCON0_00_SHIFT)
 
 /*
  * WMIX ROPk1 Control Register

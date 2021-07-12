@@ -60,8 +60,6 @@
 #define RDMA_RBASE0      0x34
 #define RDMA_RBASE1      0x38
 #define RDMA_RBASE2      0x3C
-#define RDMA_CROP_SIZE   0x40
-#define RDMA_CROP_POS    0x44
 
 /*
  * RDMA Control Register
@@ -83,8 +81,6 @@
 #define RDMACTRL_Y2RMD_SHIFT  (9)  // Y2R Converter Mode
 #define RDMACTRL_Y2R_SHIFT    (8)  // Y2R Converter Enable
 #define RDMACTRL_BR_SHIFT     (7)  // Bit Reverse
-#define RDMACTRL_R2YMD2_SHIFT (6)  // R2Y Converter Mode2
-#define RDMACTRL_Y2RMD2_SHIFT (5)  // Y2R Converter Mode2
 #define RDMACTRL_FMT_SHIFT    (0)  // Image Format
 
 #define RDMACTRL_INTL_MASK   (0x1 << RDMACTRL_INTL_SHIFT)
@@ -104,8 +100,6 @@
 #define RDMACTRL_Y2RMD_MASK  (0x3 << RDMACTRL_Y2RMD_SHIFT)
 #define RDMACTRL_Y2R_MASK    (0x1 << RDMACTRL_Y2R_SHIFT)
 #define RDMACTRL_BR_MASK     (0x1 << RDMACTRL_BR_SHIFT)
-#define RDMACTRL_R2YMD2_MASK (0x1 << RDMACTRL_R2YMD2_SHIFT)
-#define RDMACTRL_Y2RMD2_MASK (0x1 << RDMACTRL_Y2RMD2_SHIFT)
 #define RDMACTRL_FMT_MASK    (0x1F << RDMACTRL_FMT_SHIFT)
 
 /*
@@ -177,13 +171,11 @@
 /*
  * Alpha Information Register for Each Image
  */
-#define RDMAALPHA_A13_SHIFT (16)
-#define RDMAALPHA_SEL_SHIFT (12)
-#define RDMAALPHA_A02_SHIFT (0)
+#define RDMAALPHA_A1_SHIFT (16)
+#define RDMAALPHA_A0_SHIFT (0)
 
-#define RDMAALPHA_A13_MASK (0x3FF << RDMAALPHA_A13_SHIFT)
-#define RDMAALPHA_SEL_MASK (0x1 << RDMAALPHA_SEL_SHIFT)
-#define RDMAALPHA_A02_MASK (0x3FF << RDMAALPHA_A02_SHIFT)
+#define RDMAALPHA_A1_MASK (0xFF << RDMAALPHA_A1_SHIFT)
+#define RDMAALPHA_A0_MASK (0xFF << RDMAALPHA_A0_SHIFT)
 
 /*
  * RDMA Status Register

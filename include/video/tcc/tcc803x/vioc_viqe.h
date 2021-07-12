@@ -188,7 +188,7 @@ typedef enum {
 #define VMISC_GED_SHIFT		(3) // Don't generate EOF Signal
 #define VMISC_SDDU_SHIFT	(2) // Don't use Stream Info. for de-interlacer
 #define VMISC_TSDU_SHIFT	(1) // Don't use Size Info.
-#define VMISC_GENDU_SHIFT	(0) // Don't use Global ENable
+#define VMISC_GENDU_SHIFT	(0) // Don't use Global Enable
 
 #define VMISC_GED_MASK				(0x1 << VMISC_GED_SHIFT)
 #define VMISC_SDDU_MASK				(0x1 << VMISC_SDDU_SHIFT)
@@ -251,7 +251,7 @@ typedef enum {
 #define DI_DEC_MISC_FLUSH_SHIFT			(1)
 #define DI_DEC_MISC_DE_SHIFT			(0)
 
-#define DI_DEC_MISC_FMT_MASK		(0xF << DI_DEC_MISC_FMT_SHIFT)
+#define DI_DEC_MISC_FMT_MASK		(0x1F << DI_DEC_MISC_FMT_SHIFT)
 #define DI_DEC_MISC_DEC_DIV_MASK	(0x3 << DI_DEC_MISC_DEC_DIV_SHIFT)
 #define DI_DEC_MISC_SF_MASK		(0x1 << DI_DEC_MISC_SF_SHIFT)
 #define DI_DEC_MISC_ECR_MASK		(0x1 << DI_DEC_MISC_ECR_SHIFT)
@@ -299,7 +299,7 @@ typedef enum {
 #define DI_DEC_CTRL_SELECT_SHIFT		(0)
 
 #define DI_DEC_CTRL_EN_MASK        (0x1 << DI_DEC_CTRL_EN_SHIFT)
-#define DI_DEC_CTRL_STS_MASK       (0xF << DI_DEC_CTRL_STS_SHIFT)
+#define DI_DEC_CTRL_STS_MASK       (0xFF << DI_DEC_CTRL_STS_SHIFT)
 #define DI_DEC_CTRL_HEADER_EN_MASK (0x1 << DI_DEC_CTRL_HEADER_EN_SHIFT)
 #define DI_DEC_CTRL_ER_CK_MASK     (0x1 << DI_DEC_CTRL_ER_CK_SHIFT)
 #define DI_DEC_CTRL_SELECT_MASK    (0xFF << DI_DEC_CTRL_SELECT_SHIFT)
@@ -313,7 +313,7 @@ typedef enum {
 #define DI_COM0_MISC_FLUSH_SHIFT		(1)
 #define DI_COM0_MISC_DE_SHIFT			(0)
 
-#define DI_COM0_MISC_FMT_MASK     (0xF << DI_COM0_MISC_FMT_SHIFT)
+#define DI_COM0_MISC_FMT_MASK     (0x1F << DI_COM0_MISC_FMT_SHIFT)
 #define DI_COM0_MISC_ENC_DIV_MASK (0x3 << DI_COM0_MISC_ENC_DIV_SHIFT)
 #define DI_COM0_MISC_SF_MASK      (0x1 << DI_COM0_MISC_SF_SHIFT)
 #define DI_COM0_MISC_FLUSH_MASK   (0x1 << DI_COM0_MISC_FLUSH_SHIFT)
@@ -340,7 +340,7 @@ typedef enum {
 #define DI_COM0_CTRL_SELECT_SHIFT		(0)
 
 #define DI_COM0_CTRL_EN_MASK     (0x1 << DI_COM0_CTRL_EN_SHIFT)
-#define DI_COM0_CTRL_STS_MASK    (0xF << DI_COM0_CTRL_STS_SHIFT)
+#define DI_COM0_CTRL_STS_MASK    (0xFF << DI_COM0_CTRL_STS_SHIFT)
 #define DI_COM0_CTRL_SELECT_MASK (0xFF << DI_COM0_CTRL_SELECT_SHIFT)
 
 /*

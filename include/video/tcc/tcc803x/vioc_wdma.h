@@ -233,17 +233,6 @@ struct VIOC_WDMA_IMAGE_INFO_Type {
 #define WDMADMAT1_DITH20_MASK (0x7 << WDMADMAT1_DITH20_SHIFT)
 
 /*
- * WDMA Color Enhancement Register
- */
-#define WDMAENH_HUE_SHIFT      (24) // Hue
-#define WDMAENH_BRIGHT_SHIFT   (16) // Bright
-#define WDMAENH_CONTRAST_SHIFT (0)  // Contrast
-
-#define WDMAENH_HUE_MASK      (0xFF << WDMAENH_HUE_SHIFT)
-#define WDMAENH_BRIGHT_MASK   (0xFF << WDMAENH_BRIGHT_SHIFT)
-#define WDMAENH_CONTRAST_MASK (0xFF << WDMAENH_CONTRAST_SHIFT)
-
-/*
  * WDMA Rolling Control Register
  */
 #define WDMAROLL_ROL_SHIFT     (31) // Rolling Enable Register

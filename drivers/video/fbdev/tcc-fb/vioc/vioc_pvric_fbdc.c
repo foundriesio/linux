@@ -229,6 +229,7 @@ int VIOC_PVRIC_FBDC_SetBasicConfiguration(void __iomem *reg,
 	VIOC_PVRIC_FBDC_SetOutBufBase(reg, base);
 
 	//pr_info("%s - End\n", __func__);
+	return 0;
 }
 
 void VIOC_PVRIC_FBDC_DUMP(void __iomem *reg, unsigned int vioc_id)

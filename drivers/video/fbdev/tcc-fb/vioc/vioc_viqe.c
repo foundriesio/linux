@@ -469,7 +469,7 @@ void VIOC_VIQE_SetDeintlModeWeave(void __iomem *reg)
 	// BITCLR(pVIQE->cDEINTL.nDI_ENGINE3, (0xfff<<20));                //
 	// 0x290
 	val = (__raw_readl(reg + DI_ENGINE3) & ~(DI_ENGINE3_STTHW_MASK));
-	__raw_writel(val, reg + DI_CTRL2);
+	__raw_writel(val, reg + DI_ENGINE3);
 
 	// BITCSET(pVIQE->cDEINTL.nDI_ENGINE4, 0xffffffff, 0x124f2582);	// 0x294
 	__raw_writel(0x124f2582, reg + DI_ENGINE4);

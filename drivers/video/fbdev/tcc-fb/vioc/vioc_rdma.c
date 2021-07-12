@@ -40,8 +40,11 @@ static void __iomem *pRDMA_reg[VIOC_RDMA_MAX] = {0};
 
 #if defined(CONFIG_ARCH_TCC805X)
 static int VRDMAS[VIOC_RDMA_MAX] = {
-	[3] = {1},  [7] = {1},  [10] = {1}, [11] = {1}, [12] = {1},
-	[13] = {1}, [14] = {1}, [15] = {1}, [16] = {1}, [17] = {1},
+	0, 0, 0, 1, /* RDMA3 is VRDMA */
+	0, 0, 0, 1, /* RDMA7 is VRDMA */
+	0, 0, 1, 1, /* RDMA10 and RDMA11 are VRDMA */
+	1, 1, 1, 1, /* RDMA12 -- RDMA15 are VRDMA */
+	1, 1,       /* RDMA16 and RDMA17 are VRDMA */
 };
 static int IMAGE_NUM[VIOC_RDMA_MAX] = {
 	0, 1, 2, 3, /* RDMA00 - RDMA03 */
@@ -56,8 +59,11 @@ static int IMAGE_NUM[VIOC_RDMA_MAX] = {
 
 #if defined(CONFIG_ARCH_TCC803X)
 static int VRDMAS[VIOC_RDMA_MAX] = {
-	[3] = {1},  [7] = {1}, [11] = {1}, [12] = {1},	[13] = {1},
-	[14] = {1}, [15] = {1}, [16] = {1}, [17] = {1},
+	0, 0, 0, 1, /* RDMA3 is VRDMA */
+	0, 0, 0, 1, /* RDMA7 is VRDMA */
+	0, 0, 0, 1, /* RDMA11 are VRDMA */
+	1, 1, 1, 1, /* RDMA12 -- RDMA15 are VRDMA */
+	1, 1,       /* RDMA16 and RDMA17 are VRDMA */
 };
 static int IMAGE_NUM[VIOC_RDMA_MAX] = {
 	0, 1, 2, 3, /* RDMA00 - RDMA03 */
@@ -72,7 +78,11 @@ static int IMAGE_NUM[VIOC_RDMA_MAX] = {
 
 #if defined(CONFIG_ARCH_TCC897X)
 static int VRDMAS[VIOC_RDMA_MAX] = {
-	[3] = {1},  [7] = {1}, [13] = {1}, [15] = {1}, [16] = {1},
+	0, 0, 0, 1, /* RDMA3 is VRDMA */
+	0, 0, 0, 1, /* RDMA7 is VRDMA */
+	0, 0, 0, 0, 
+	0, 1, 0, 1, /* RDMA13 and RDMA15 are VRDMA */
+	1,       /* RDMA16 is VRDMA */
 };
 static int IMAGE_NUM[VIOC_RDMA_MAX] = {
 	0, 1, 2, 3, /* RDMA00 - RDMA03 */
@@ -433,10 +443,15 @@ void VIOC_RDMA_SetImageY2RMode(
 {
 	unsigned long val;
 
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	val = (__raw_readl(reg + RDMACTRL) & ~(RDMACTRL_Y2RMD_MASK));
+	val |= (((y2r_mode & 0x3) << RDMACTRL_Y2RMD_SHIFT));
+#else
 	val = (__raw_readl(reg + RDMACTRL)
 	       & ~(RDMACTRL_Y2RMD_MASK | RDMACTRL_Y2RMD2_MASK));
 	val |= (((y2r_mode & 0x3) << RDMACTRL_Y2RMD_SHIFT)
 		| ((!!((y2r_mode & 0x4) >> 2)) << RDMACTRL_Y2RMD2_SHIFT));
+#endif
 	__raw_writel(val, reg + RDMACTRL);
 }
 EXPORT_SYMBOL(VIOC_RDMA_SetImageY2RMode);
@@ -463,10 +478,15 @@ void VIOC_RDMA_SetImageR2YMode(
 {
 	unsigned long val;
 
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	val = (__raw_readl(reg + RDMACTRL) & ~(RDMACTRL_R2YMD_MASK));
+	val |= (((r2y_mode & 0x3) << RDMACTRL_R2YMD_SHIFT));
+#else
 	val = (__raw_readl(reg + RDMACTRL)
 	       & ~(RDMACTRL_R2YMD_MASK | RDMACTRL_R2YMD2_MASK));
 	val |= (((r2y_mode & 0x3) << RDMACTRL_R2YMD_SHIFT)
 		| ((!!(r2y_mode & 0x4) >> 2) << RDMACTRL_R2YMD2_SHIFT));
+#endif
 	__raw_writel(val, reg + RDMACTRL);
 }
 EXPORT_SYMBOL(VIOC_RDMA_SetImageR2YMode);
@@ -500,9 +520,14 @@ void VIOC_RDMA_SetImageAlpha(
 	void __iomem *reg, unsigned int nAlpha0, unsigned int nAlpha1)
 {
 	unsigned long val;
-
+	
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	val = ((nAlpha1 << RDMAALPHA_A1_SHIFT)
+	       | (nAlpha0 << RDMAALPHA_A0_SHIFT));
+#else
 	val = ((nAlpha1 << RDMAALPHA_A13_SHIFT)
 	       | (nAlpha0 << RDMAALPHA_A02_SHIFT));
+#endif
 	__raw_writel(val, reg + RDMAALPHA);
 }
 EXPORT_SYMBOL(VIOC_RDMA_SetImageAlpha);
@@ -511,12 +536,21 @@ void VIOC_RDMA_GetImageAlpha(
 	void __iomem *reg, unsigned int *nAlpha0,
 	unsigned int *nAlpha1)
 {
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	*nAlpha1 =
+		((__raw_readl(reg + RDMAALPHA) & RDMAALPHA_A1_MASK)
+		 >> RDMAALPHA_A1_SHIFT);
+	*nAlpha0 =
+		((__raw_readl(reg + RDMAALPHA) & RDMAALPHA_A0_MASK)
+		 >> RDMAALPHA_A0_SHIFT);
+#else
 	*nAlpha1 =
 		((__raw_readl(reg + RDMAALPHA) & RDMAALPHA_A13_MASK)
 		 >> RDMAALPHA_A13_SHIFT);
 	*nAlpha0 =
 		((__raw_readl(reg + RDMAALPHA) & RDMAALPHA_A02_MASK)
 		 >> RDMAALPHA_A02_SHIFT);
+#endif
 }
 EXPORT_SYMBOL(VIOC_RDMA_GetImageAlpha);
 

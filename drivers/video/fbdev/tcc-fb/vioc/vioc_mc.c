@@ -133,8 +133,8 @@ void VIOC_MC_FRM_SIZE(void __iomem *reg, uint xsize, uint ysize)
 		ysize += 0x4;
 #endif
 
-	val = (((ysize & 0xFFFF) << MC_FRM_SIZE_YSIZE_SHIFT)
-	       | ((xsize & 0xFFFF) << MC_FRM_SIZE_XSIZE_SHIFT));
+	val = (((ysize & 0x3FFF) << MC_FRM_SIZE_YSIZE_SHIFT)
+	       | ((xsize & 0x3FFF) << MC_FRM_SIZE_XSIZE_SHIFT));
 	__raw_writel(val, reg + MC_FRM_SIZE);
 }
 
@@ -156,8 +156,8 @@ void VIOC_MC_FRM_POS(void __iomem *reg, uint xpos, uint ypos)
 {
 	unsigned long val;
 
-	val = (((ypos & 0xFFFF) << MC_FRM_POS_YPOS_SHIFT)
-	       | ((xpos & 0xFFFF) << MC_FRM_POS_XPOS_SHIFT));
+	val = (((ypos & 0x1FFF) << MC_FRM_POS_YPOS_SHIFT)
+	       | ((xpos & 0x1FFF) << MC_FRM_POS_XPOS_SHIFT));
 	__raw_writel(val, reg + MC_FRM_POS);
 }
 
@@ -189,9 +189,15 @@ void VIOC_MC_SetDefaultAlpha(void __iomem *reg, uint alpha)
 {
 	unsigned long val;
 
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	val = (__raw_readl(reg + MC_FRM_MISC1) & ~(MC_FRM_MISC1_ALPHA_MASK));
+	val |= ((alpha & 0xFF) << MC_FRM_MISC1_ALPHA_SHIFT);
+	__raw_writel(val, reg + MC_FRM_MISC1);
+#else
 	val = (__raw_readl(reg + MC_TIMEOUT) & ~(MC_TIMEOUT_ALPHA_MASK));
 	val |= ((alpha & 0x3FF) << MC_TIMEOUT_ALPHA_SHIFT);
 	__raw_writel(val, reg + MC_TIMEOUT);
+#endif
 }
 
 void __iomem *VIOC_MC_GetAddress(unsigned int vioc_id)

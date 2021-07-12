@@ -38,6 +38,7 @@
 #define CFG_PATH_SC3_OFFSET (0x050)
 #define CFG_PATH_VIQE0_OFFSET (0x054)
 #define CFG_PATH_DEINTLS_OFFSET (0x058)
+#define CFG_PATH_FDLY_OFFSET (0x078)
 #define CFG_MISC1_OFFSET (0x084)
 #define CFG_FBC_DEC_SEL_OFFSET (0x0B0)
 #define CFG_VIN_SEL_OFFSET (0x0B8)
@@ -472,9 +473,9 @@
 #define CFG_MISC0_MIX03_MASK (0x1 <<  CFG_MISC0_MIX03_SHIFT)
 #define CFG_MISC0_MIX00_MASK (0x1 <<  CFG_MISC0_MIX00_SHIFT)
 #define CFG_MISC0_L3_EVS_SEL_MASK (0xF <<  CFG_MISC0_L3_EVS_SEL_SHIFT)
-#define CFG_MISC0_L2_EVS_SEL_MASK (0x7 <<  CFG_MISC0_L2_EVS_SEL_SHIFT)
-#define CFG_MISC0_L1_EVS_SEL_MASK (0x7 <<  CFG_MISC0_L1_EVS_SEL_SHIFT)
-#define CFG_MISC0_L0_EVS_SEL_MASK (0x7 <<  CFG_MISC0_L0_EVS_SEL_SHIFT)
+#define CFG_MISC0_L2_EVS_SEL_MASK (0xF <<  CFG_MISC0_L2_EVS_SEL_SHIFT)
+#define CFG_MISC0_L1_EVS_SEL_MASK (0xF <<  CFG_MISC0_L1_EVS_SEL_SHIFT)
+#define CFG_MISC0_L0_EVS_SEL_MASK (0xF <<  CFG_MISC0_L0_EVS_SEL_SHIFT)
 
 /*
  * Map Conv Path Configuration Register
@@ -497,7 +498,7 @@
 #define CFG_PATH_MC_RD07_MASK (0x1 << CFG_PATH_MC_RD07_SHIFT)
 #define CFG_PATH_MC_RD03_MASK (0x1 << CFG_PATH_MC_RD03_SHIFT)
 
-/* Scaler / VIQE / DEINTLS register fileds are all the same */
+/* Scaler / VIQE / DEINTLS / FDLY register fileds are all the same */
 #define CFG_PATH_EN_SHIFT (31)	// PATH Enable
 #define CFG_PATH_ERR_SHIFT (18)	// Device Error
 #define CFG_PATH_STS_SHIFT (16)	// Path Status
@@ -608,14 +609,14 @@
  */
 #define ARID_ARID_SHIFT (0)	// ARID of Master DMA
 
-#define ARID_ARID_MASK (0xFFFFFFF << ARID_ARID_SHIFT)
+#define ARID_ARID_MASK (0x1FFFFFFF << ARID_ARID_SHIFT)
 
 /*
  * AWID of DMA Registers
  */
 #define AWID_AWID_SHIFT (0)	// AWID of Master DMA
 
-#define AWID_AWID_MASK (0x7FFFF << AWID_AWID_SHIFT)
+#define AWID_AWID_MASK (0x7FFFFFFF << AWID_AWID_SHIFT)
 
 /*
  * Power Auto Power Down Registers
@@ -752,42 +753,6 @@
 #define PWR_BLK_SWR1_WDMA_MASK (0x1FF << PWR_BLK_SWR1_WDMA_SHIFT)
 
 /*
- * Power Block Power Down 2 Registers
- * @Description: 0 - Normal, 1 - PWD
- */
-#define PWR_BLK_PWDN2_SC_SHIFT (16)	// Scaler Block Power Down
-
-#define PWR_BLK_PWDN2_SC_MASK (0xFF << PWR_BLK_PWDN2_SC_SHIFT)
-
-/*
- * Power Block Power Down 3 Registers
- * @Description: 0 - Normal, 1 - PWDN
- */
-#define PWR_BLK_PWDN3_VIN_SHIFT (8)	// VIN Block Power Down
-#define PWR_BLK_PWDN3_WD_SHIFT (0)	// WDMA Power Down
-
-#define PWR_BLK_PWDN3_VIN_MASK (0xF << PWR_BLK_PWDN3_VIN_SHIFT)
-#define PWR_BLK_PWDN3_WD_MASK (0x1F << PWR_BLK_PWDN3_WD_SHIFT)
-
-/*
- * Power Block SWRESET 3 Registers
- * @Description: 0 - Normal, 1 - Reset
- */
-#define PWR_BLK_SWR3_SC_SHIFT (16)	// RD Reset
-
-#define PWR_BLK_SWR3_SC_MASK (0x3FFFF << PWR_BLK_SWR3_SC_SHIFT)
-
-/*
- * Power Block SWRESET 4 Registers
- * @Description: 0 - Normal, 1 - Reset
- */
-#define PWR_BLK_SWR4_VIN_SHIFT (8)	// VIN Reset
-#define PWR_BLK_SWR4_WD_SHIFT (0)	// WDMA Reset
-
-#define PWR_BLK_SWR4_VIN_MASK (0xF << PWR_BLK_SWR4_VIN_SHIFT)
-#define PWR_BLK_SWR4_WD_MASK (0x1F << PWR_BLK_SWR4_WD_SHIFT)
-
-/*
  * WMIX PATH SWRESET Register
  * @Description: 0 - Normal, 1 - Mixing PATH reset
  */
@@ -815,6 +780,41 @@
 #define WMIX_PATH_SWR_MIX03_MASK (0x1 << WMIX_PATH_SWR_MIX03_SHIFT)
 #define WMIX_PATH_SWR_MIX00_MASK (0x1 << WMIX_PATH_SWR_MIX00_SHIFT)
 
+/*
+ * Power Block Power Down 2 Registers
+ * @Description: 0 - Normal, 1 - PWD
+ */
+#define PWR_BLK_PWDN2_SC_SHIFT (16)	// Scaler Block Power Down
+
+#define PWR_BLK_PWDN2_SC_MASK (0xFF << PWR_BLK_PWDN2_SC_SHIFT)
+
+/*
+ * Power Block SWRESET 3 Registers
+ * @Description: 0 - Normal, 1 - Reset
+ */
+#define PWR_BLK_SWR3_SC_SHIFT (16) // Scaler Reset
+
+#define PWR_BLK_SWR3_SC_MASK (0xFF << PWR_BLK_SWR3_SC_SHIFT)
+
+/*
+ * Power Block Power Down 3 Registers
+ * @Description: 0 - Normal, 1 - PWDN
+ */
+#define PWR_BLK_PWDN3_VIN_SHIFT (8)	// VIN Block Power Down
+#define PWR_BLK_PWDN3_WD_SHIFT (0)	// WDMA Power Down
+
+#define PWR_BLK_PWDN3_VIN_MASK (0xF << PWR_BLK_PWDN3_VIN_SHIFT)
+#define PWR_BLK_PWDN3_WD_MASK (0x1F << PWR_BLK_PWDN3_WD_SHIFT)
+
+/*
+ * Power Block SWRESET 4 Registers
+ * @Description: 0 - Normal, 1 - Reset
+ */
+#define PWR_BLK_SWR4_VIN_SHIFT (8)	// VIN Reset
+#define PWR_BLK_SWR4_WD_SHIFT (0)	// WDMA Reset
+
+#define PWR_BLK_SWR4_VIN_MASK (0xF << PWR_BLK_SWR4_VIN_SHIFT)
+#define PWR_BLK_SWR4_WD_MASK (0x1F << PWR_BLK_SWR4_WD_SHIFT)
 
 /*
  * Interrupt Select 0 Registers
@@ -1098,14 +1098,14 @@
 #define IRQMASKSET2_WD13_SHIFT (18) // WDMA13 Interrupt Mask
 #define IRQMASKSET2_SC7_SHIFT (17) // Scaler7 Interrupt Msk
 #define IRQMASKSET2_SC6_SHIFT (16) // Scaler6 Interrupt Msk
-#define IRQMASKSET2_VIN7_SHIFT (5) // VIN7 Interrupt Mask
-#define IRQMASKSET2_VIN6_SHIFT (5) // VIN6 Interrupt Mask
-#define IRQMASKSET2_VIN5_SHIFT (5) // VIN5 Interrupt Mask
-#define IRQMASKSET2_VIN4_SHIFT (5) // VIN4 Interrupt Mask
-#define IRQMASKSET2_WD12_SHIFT (4) // WDMA12 Interrupt Mask
-#define IRQMASKSET2_WD11_SHIFT (4) // WDMA11 Interrupt Mask
-#define IRQMASKSET2_WD10_SHIFT (4) // WDMA10 Interrupt Mask
-#define IRQMASKSET2_WD9_SHIFT (4) // WDMA9 Interrupt Mask
+#define IRQMASKSET2_VIN7_SHIFT (15) // VIN7 Interrupt Mask
+#define IRQMASKSET2_VIN6_SHIFT (14) // VIN6 Interrupt Mask
+#define IRQMASKSET2_VIN5_SHIFT (13) // VIN5 Interrupt Mask
+#define IRQMASKSET2_VIN4_SHIFT (12) // VIN4 Interrupt Mask
+#define IRQMASKSET2_WD12_SHIFT (11) // WDMA12 Interrupt Mask
+#define IRQMASKSET2_WD11_SHIFT (10) // WDMA11 Interrupt Mask
+#define IRQMASKSET2_WD10_SHIFT (9) // WDMA10 Interrupt Mask
+#define IRQMASKSET2_WD9_SHIFT (8) // WDMA9 Interrupt Mask
 #define IRQMASKSET2_FBC_DEC1_SHIFT (1) // PVRIC_FBDC1 Interrupt Mask
 #define IRQMASKSET2_FBC_DEC0_SHIFT (0) // PVRIC_FBDC0 Interrupt Mask
 

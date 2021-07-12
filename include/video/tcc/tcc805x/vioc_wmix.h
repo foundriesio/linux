@@ -143,8 +143,8 @@ enum VIOC_WMIX_ALPHA_CCON1_Type {
 #define MCTRL_3DMD3_SHIFT		(26) // 3D mode for IMG3
 #define MCTRL_3DMD2_SHIFT		(23) // 3D mode for IMG2
 #define MCTRL_3DMD1_SHIFT		(20) // 3D mode for IMG1
-#define MCTRL_UPD_SHIFT			(16) // Update
 #define MCTRL_3DMD0_SHIFT		(17) // 3D mode for IMG0
+#define MCTRL_UPD_SHIFT			(16) // Update
 #define MCTRL_3DEN3_SHIFT		(11) // 3D mode enable in IMG3
 #define MCTRL_3DEN2_SHIFT		(10) // 3D mode enable in IMG2
 #define MCTRL_3DEN1_SHIFT		(9)  // 3D mode enable in IMG1

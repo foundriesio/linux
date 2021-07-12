@@ -166,7 +166,7 @@ typedef struct {
 #define DHTIME2_LEWC_SHIFT (0)  // Line end wait clock
 
 #define DHTIME2_LSWC_MASK			(0x1FF << DHTIME2_LSWC_SHIFT)
-#define DHTIME2_LEWC_MASK			(0x1FF << DHTIME2_LEWC_SHIFT)
+#define DHTIME2_LEWC_MASK			(0xFFF << DHTIME2_LEWC_SHIFT)
 
 /*
  * Display Device Vertical Timing Register 1
