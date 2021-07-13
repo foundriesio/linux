@@ -53,6 +53,8 @@ struct isp_state {
 
 struct tcc_mipi_csi2_state {
 	struct platform_device *pdev;
+	struct v4l2_dv_timings dv_timings;
+
 	struct v4l2_subdev sd;
 
 	void __iomem *csi_base;
@@ -134,21 +136,6 @@ static u32 code_to_csi_dt(u32 mbus_code)
 
 	return dt;
 }
-
-struct v4l2_dv_timings tcc_mipi_csi2_dv_timings = {
-	.type			= V4L2_DV_BT_656_1120,
-	.bt			= {
-		.width			= DEFAULT_WIDTH,
-		.height			= DEFAULT_HEIGHT,
-		.interlaced		= V4L2_DV_PROGRESSIVE,
-		/* IMPORTANT
-		 * The below field "polarities" is not used
-		 * becasue polarities for vsync and hsync are supported only.
-		 * So, use flags of "struct v4l2_mbus_config".
-		 */
-		.polarities		= 0,
-	},
-};
 
 static u32 tcc_mipi_csi2_codes[] = {
 	MEDIA_BUS_FMT_UYVY8_2X8,
@@ -1171,6 +1158,17 @@ static void tcc_mipi_csi2_init_format(struct tcc_mipi_csi2_state *state)
 {
 	int i = 0;
 
+	state->dv_timings.type = V4L2_DV_BT_656_1120;
+	state->dv_timings.bt.width =  DEFAULT_WIDTH;
+	state->dv_timings.bt.height = DEFAULT_HEIGHT;
+	state->dv_timings.bt.interlaced = V4L2_DV_PROGRESSIVE;
+	/* IMPORTANT
+	 * The below field "polarities" is not used
+	 * becasue polarities for vsync and hsync are supported only.
+	 * So, use flags of "struct v4l2_mbus_config".
+	 */
+	state->dv_timings.bt.polarities = 0;
+
 	for (i = 0; i < MAX_VC; i++) {
 		state->isp_info[i].fmt.width = DEFAULT_WIDTH;
 		state->isp_info[i].fmt.height = DEFAULT_HEIGHT;
@@ -1285,7 +1283,7 @@ static int tcc_mipi_csi2_g_dv_timings(struct v4l2_subdev *sd,
 	mutex_lock(&state->lock);
 
 	memcpy((void *)timings,
-		(const void *)&tcc_mipi_csi2_dv_timings,
+		(const void *)&state->dv_timings,
 		sizeof(*timings));
 
 	mutex_unlock(&state->lock);
@@ -1332,8 +1330,8 @@ static int tcc_mipi_csi2_set_fmt(struct v4l2_subdev *sd,
 			code_to_csi_dt(state->isp_info[i].fmt.code);
 	}
 
-	tcc_mipi_csi2_dv_timings.bt.width = format->format.width;
-	tcc_mipi_csi2_dv_timings.bt.height = format->format.height;
+	state->dv_timings.bt.width = format->format.width;
+	state->dv_timings.bt.height = format->format.height;
 
 	mutex_unlock(&state->lock);
 
