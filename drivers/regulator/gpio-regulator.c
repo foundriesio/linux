@@ -82,6 +82,9 @@ static int gpio_regulator_set_voltage(struct regulator_dev *dev,
 
 	for (ptr = 0; ptr < data->nr_gpios; ptr++) {
 		state = (target & (1 << ptr)) >> ptr;
+#if defined(CONFIG_ARCH_TCC)
+		gpio_direction_output(data->gpios[ptr].gpio, 1);
+#endif
 		gpio_set_value_cansleep(data->gpios[ptr].gpio, state);
 	}
 	data->state = target;
