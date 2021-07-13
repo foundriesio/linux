@@ -238,14 +238,12 @@ static int32_t tcc_dxb_ctrl_probe(struct platform_device *pdev)
 	gDxbCtrl->gpio_tuner_pwr =
 	    of_get_named_gpio(dev->of_node, "tuner-gpios", 1);
 #endif
-	(void)pr_info("[INFO][TCC_DXB_CTRL] %s [0x%X] ",
-		      __func__, gDxbCtrl->gpio_dxb_on);
-	(void)pr_info("[0x%X][0x%X] ",
-		      gDxbCtrl->gpio_dxb_0_pwdn, gDxbCtrl->gpio_dxb_0_rst);
-	(void)pr_info("[0x%X][0x%X] ",
+	(void)pr_info("[INFO][TCC_DXB_CTRL] %s dxb [%d][%d][%d][%d][%d]\n",
+		      __func__, gDxbCtrl->gpio_dxb_on,
+		      gDxbCtrl->gpio_dxb_0_pwdn, gDxbCtrl->gpio_dxb_0_rst,
 		      gDxbCtrl->gpio_dxb_1_pwdn, gDxbCtrl->gpio_dxb_1_rst);
-	(void)pr_info("[0x%X][0x%X]\n",
-		      gDxbCtrl->gpio_tuner_rst, gDxbCtrl->gpio_tuner_pwr);
+	(void)pr_info("[INFO][TCC_DXB_CTRL] %s tuner [%d][%d]\n",
+		      __func__, gDxbCtrl->gpio_tuner_rst, gDxbCtrl->gpio_tuner_pwr);
 
 	gDxbCtrl->board_type = (int32_t)DEFAULT_BOARD_TYPE;
 	gDxbCtrl->bb_index = get_bb_index(gDxbCtrl->board_type);
