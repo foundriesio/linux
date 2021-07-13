@@ -224,7 +224,11 @@ config POWER_RESET_TCC_MBOX
 	depends on TCC803X_CA7S && TCC_MULTI_MAILBOX
 	default y
 	help
-	  Reboot support for TCC803x subcore (Cortex-A7 Single Core) kernel.
+	  Reset support for CPUs on Telechips SoC family which don't have
+	  PSCI implementation and requests for reset to MCU via mailbox
+	  instead of resetting by itself.
+
+	  For now, TCC803x subcore (Cortex-A7 Single Core) is the only target.
 
 config REBOOT_MODE
 	tristate
