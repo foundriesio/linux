@@ -333,8 +333,8 @@ static int32_t tcc_thermal_resume(struct device *dev)
 	ret = pdata->ops->init(pdata);
 #if defined(CONFIG_CPU_FREQ) && defined(CONFIG_CPU_THERMAL)
 	ret = tcc_register_thermal(thermal_zone->sensor_conf, pdata);
-	mutex_unlock(&thermal_zone->therm_dev->lock);
 #endif
+	mutex_unlock(&thermal_zone->therm_dev->lock);
 	return ret;
 }
 
