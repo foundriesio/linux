@@ -577,14 +577,6 @@
 			no-map;
 		};
 
-		reserved_ramoops: ramoops {
-			compatible = "telechips,pmap";
-			telechips,pmap-name = "ramoops";
-			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
-			size = <PMAP_SIZE_RAMOOPS>;
-			no-map;
-		};
-
 		reserved_cma: linux,cma {
 			compatible = "shared-dma-pool";
 			alloc-ranges = <RESERVED_MEM_BASE RESERVED_MEM_SIZE>;
@@ -778,16 +770,6 @@
 			reg = <PMAP_BASE_SECURE_TSIF PMAP_SIZE_SECURE_TSIF>;
 			no-map;
 		};
-	};
-
-	ramoops {
-		compatible = "ramoops";
-		memory-region = <&reserved_ramoops>;
-		record-size = <0x00000000 0x00020000>;
-		console-size = <0x00000000 0x00020000>;
-		ecc-size = <16>;
-		unbuffered;
-		status = "okay";
 	};
 
 	tcc_pm: tcc_pm {
