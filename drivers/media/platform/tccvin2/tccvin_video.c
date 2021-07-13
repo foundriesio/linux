@@ -376,11 +376,13 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 		return -ENODEV;
 	}
 
+	/* get video-input path id */
+	vin_id		= vdev->dev->pdev->id;
+
 	vioc_path = &vdev->cif.vioc_path;
 
 	/* VIN */
 	vioc_path->vin = -1;
-	vdev->cif.vin_irq_num   = -1;
 	vioc_node = of_parse_phandle(main_node, "vin", 0);
 	if (vioc_node != NULL) {
 		of_property_read_u32_index(main_node,
@@ -390,12 +392,6 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 			address	= VIOC_VIN_GetAddress(vioc_path->vin);
 			logd(dev_ptr,
 				"%10s[%2d]: 0x%px\n", "VIN", vioc_id, address);
-
-			/* VIN interrupt */
-			vdev->cif.vin_irq_num =
-				irq_of_parse_and_map(vioc_node, vioc_id);
-			logd(dev_ptr,
-				"vin irq_num: %d\n", vdev->cif.vin_irq_num);
 		}
 	} else {
 		loge(dev_ptr,
@@ -422,7 +418,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 #if defined(CONFIG_OVERLAY_PGL)
 	vioc_path->pgl = -1;
 	vdev->cif.use_pgl = -1;
-#if IS_ENABLED(CONFIG_ARCH_TCC803X) || IS_ENABLED(CONFIG_TCC803X_CA7S)
+#if defined(CONFIG_ARCH_TCC803X)
 	/* VIDEO_IN00~02 have RDMA */
 	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN20)) {
 #elif defined(CONFIG_ARCH_TCC805X)
@@ -550,7 +546,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 	}
 
 #if defined(CONFIG_OVERLAY_PGL)
-#if IS_ENABLED(CONFIG_ARCH_TCC803X) || IS_ENABLED(CONFIG_TCC803X_CA7S)
+#if defined(CONFIG_ARCH_TCC803X)
 	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN20)) {
 #elif defined(CONFIG_ARCH_TCC805X)
 	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN30)) {
@@ -578,7 +574,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 	}
 #endif/* defined(CONFIG_OVERLAY_PGL) */
 
-#if IS_ENABLED(CONFIG_ARCH_TCC803X) || IS_ENABLED(CONFIG_TCC803X_CA7S)
+#if defined(CONFIG_ARCH_TCC803X)
 	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN20)) {
 #elif defined(CONFIG_ARCH_TCC805X)
 	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN30)) {
@@ -1277,120 +1273,82 @@ static int32_t tccvin_set_wdma(struct tccvin_streaming *vdev)
 	return 0;
 }
 
-static irqreturn_t tccvin_vin_isr(int irq, void *data)
+static void tccvin_work_thread(struct work_struct *data)
 {
+	struct tccvin_cif		*cif		= NULL;
 	struct tccvin_streaming		*stream		= NULL;
 	struct tccvin_video_queue	*queue		= NULL;
 	struct device			*dev_ptr	= NULL;
-	void __iomem			*vin		= NULL;
 	void __iomem			*wdma		= NULL;
 	unsigned long			flags;
-	uint32_t			status		= 0;
-	int				idxpln		= 0;
-	int				npln		= 0;
-	unsigned long			addr[3]		= { 0, };
-	bool				ret		= 0;
+	long				ts_enabled	= 0;
 
 	WARN_ON(IS_ERR_OR_NULL(data));
 
-	stream		= (struct tccvin_streaming *)data;
+	cif		= container_of(data, struct tccvin_cif, wdma_work);
+	stream		= container_of(cif, struct tccvin_streaming, cif);
 	queue		= &stream->queue;
-	vin		= VIOC_VIN_GetAddress(stream->cif.vioc_path.vin);
-	wdma		= VIOC_WDMA_GetAddress(stream->cif.vioc_path.wdma);
 	dev_ptr		= tccvin_streaming_to_devptr(stream);
 
-	ret = is_vioc_intr_activatied(stream->cif.vin_intr.id,
-		stream->cif.vin_intr.bits);
-	if (ret == false) {
-		/* interrupt is not activated */
-		return IRQ_NONE;
-	}
+	wdma		= VIOC_WDMA_GetAddress(stream->cif.vioc_path.wdma);
 
-	VIOC_VIN_GetStatus(vin, &status);
-	if (status & VIN_INT_VS_MASK) {
-		vioc_intr_clear(stream->cif.vin_intr.id, VIN_INT_VS_MASK);
-
-		spin_lock_irqsave(&queue->irqlock, flags);
-
-		stream->prev_buf = NULL;
-		stream->next_buf = NULL;
-
-		/* check if frameskip is needed */
-		if (stream->skip_frame_cnt > 0) {
-			logd(dev_ptr, "skip frame count: 0x%08x\n",
-				stream->skip_frame_cnt);
-			stream->skip_frame_cnt--;
-			goto wdma_update;
-		}
-
-		/* check if the incoming buffer list is empty */
-		if (list_empty(&stream->queue.irqqueue)) {
-			logi(dev_ptr, "The incoming buffer list is empty\n");
-			goto wdma_update;
-		}
-
-		stream->prev_buf = list_first_entry(&queue->irqqueue,
-			struct tccvin_buffer, queue);
-
-		ret = (queue->flags & TCCVIN_QUEUE_DROP_CORRUPTED) &&
-			stream->prev_buf->error;
-		if (ret != 0) {
-			loge(dev_ptr, "The buffer is corrupted\n");
-			stream->prev_buf = NULL;
-			goto wdma_update;
-		}
-
-		/* check if the incoming buffer list has only one entry */
-		if (list_is_last(&stream->prev_buf->queue, &queue->irqqueue)) {
-			logd(dev_ptr, "driver has only one buffer\n");
-			stream->prev_buf = NULL;
-			goto wdma_update;
-		}
-
-		/* The incoming buffer list has two or more entries.
-		 * so,
-		 */
-		stream->next_buf = list_next_entry(stream->prev_buf, queue);
-		stream->next_buf->state = TCCVIN_BUF_STATE_READY;
-
-		if ((stream->prev_buf == NULL) || (stream->next_buf == NULL)) {
-			loge(dev_ptr, "prev(0x%px) or next(0x%px) is wrong\n",
-				stream->prev_buf, stream->next_buf);
-			goto wdma_update;
-		}
-
-		logd(dev_ptr, "bufidx: %d, type: 0x%08x, memory: 0x%08x\n",
-			stream->next_buf->buf.vb2_buf.index,
-			stream->next_buf->buf.vb2_buf.type,
-			stream->next_buf->buf.vb2_buf.memory);
-
-		switch (stream->next_buf->buf.vb2_buf.memory) {
-		case VB2_MEMORY_MMAP:
-			npln = stream->next_buf->buf.vb2_buf.num_planes;
-			for (idxpln = 0; idxpln < npln; idxpln++) {
-				/* get address */
-				addr[idxpln] = vb2_dma_contig_plane_dma_addr(
-					&stream->next_buf->buf.vb2_buf,
-					idxpln);
-			}
-			break;
-		default:
-			loge(dev_ptr, "memory type: %d\n",
-				stream->next_buf->buf.vb2_buf.memory);
-			break;
-		}
-
-		logd(dev_ptr, "bufidx: %d, addr: 0x%08lx, 0x%08lx, 0x%08lx\n",
-			stream->next_buf->buf.vb2_buf.index,
-			addr[0], addr[1], addr[2]);
-		VIOC_WDMA_SetImageBase(wdma, addr[0], addr[1], addr[2]);
-wdma_update:
+	spin_lock_irqsave(&queue->irqlock, flags);
+	if (list_empty(&stream->queue.irqqueue)) {
+		loge(dev_ptr, "The incoming buffer list is empty\n");
 		spin_unlock_irqrestore(&queue->irqlock, flags);
+		return;
+	}
+	spin_unlock_irqrestore(&queue->irqlock, flags);
 
-		VIOC_WDMA_SetImageEnable(wdma, OFF);
+	if ((stream->prev_buf == NULL) || (stream->next_buf == NULL)) {
+		loge(dev_ptr,
+			"prev_buf(0x%px) or next_buf(0x%px) is wrong\n",
+			stream->prev_buf, stream->next_buf);
+		return;
 	}
 
-	return IRQ_HANDLED;
+	ts_enabled = atomic_read(&stream->timestamp);
+	if (ts_enabled) {
+		/* calc diff of timestamp */
+		if ((stream->ts_prev.tv_sec  != 0) &&
+		    (stream->ts_prev.tv_nsec != 0)) {
+			stream->ts_diff.tv_sec  =
+				stream->ts_next.tv_sec  -
+				stream->ts_prev.tv_sec;
+			stream->ts_diff.tv_nsec =
+				stream->ts_next.tv_nsec -
+				stream->ts_prev.tv_nsec;
+			if (stream->ts_diff.tv_nsec < 0) {
+				stream->ts_diff.tv_sec  -= 1;
+				stream->ts_diff.tv_nsec += 1000000000;
+			}
+		}
+		logi(dev_ptr,
+			"timestamp curr: %9ld.%09ld, diff: %9ld.%09ld\n",
+			stream->ts_next.tv_sec, stream->ts_next.tv_nsec,
+			stream->ts_diff.tv_sec, stream->ts_diff.tv_nsec);
+
+		stream->ts_prev = stream->ts_next;
+	}
+
+	/* fill the buffer info */
+	stream->prev_buf->buf.vb2_buf.timestamp =
+		timespec_to_ns(&stream->ts_next);
+	stream->prev_buf->buf.field = V4L2_FIELD_NONE;
+	stream->prev_buf->buf.sequence = stream->sequence++;
+	stream->prev_buf->state = stream->prev_buf->error ?
+		TCCVIN_BUF_STATE_ERROR : TCCVIN_BUF_STATE_DONE;
+	stream->prev_buf->bytesused = stream->prev_buf->length;
+	vb2_set_plane_payload(&stream->prev_buf->buf.vb2_buf,
+		0, stream->prev_buf->bytesused);
+
+	spin_lock_irqsave(&queue->irqlock, flags);
+	/* dequeue prev_buf from the incoming buffer list */
+	list_del(&stream->prev_buf->queue);
+
+	/* queue the prev_buf to the outgoing buffer list */
+	vb2_buffer_done(&stream->prev_buf->buf.vb2_buf, VB2_BUF_STATE_DONE);
+	spin_unlock_irqrestore(&queue->irqlock, flags);
 }
 
 static irqreturn_t tccvin_wdma_isr(int irq, void *data)
@@ -1401,7 +1359,9 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 	void __iomem			*wdma		= NULL;
 	unsigned long			flags;
 	uint32_t			status		= 0;
-	long				ts_enabled	= 0;
+	int				idxpln		= 0;
+	int				npln		= 0;
+	unsigned long			addr[3]		= { 0, };
 	bool				ret		= 0;
 
 	WARN_ON(IS_ERR_OR_NULL(data));
@@ -1426,61 +1386,86 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 
 		getrawmonotonic(&stream->ts_next);
 
-		ts_enabled = atomic_read(&stream->timestamp);
-		if (ts_enabled) {
-			/* calc diff of timestamp */
-			if ((stream->ts_prev.tv_sec  != 0) &&
-			    (stream->ts_prev.tv_nsec != 0)) {
-				stream->ts_diff.tv_sec  =
-					stream->ts_next.tv_sec  -
-					stream->ts_prev.tv_sec;
-				stream->ts_diff.tv_nsec =
-					stream->ts_next.tv_nsec -
-					stream->ts_prev.tv_nsec;
-				if (stream->ts_diff.tv_nsec < 0) {
-					stream->ts_diff.tv_sec  -= 1;
-					stream->ts_diff.tv_nsec += 1000000000;
-				}
-			}
-
-			logi(dev_ptr,
-				"timestamp curr: %9ld.%09ld, diff: %9ld.%09ld\n",
-				stream->ts_next.tv_sec, stream->ts_next.tv_nsec,
-				stream->ts_diff.tv_sec, stream->ts_diff.tv_nsec);
-
-			stream->ts_prev = stream->ts_next;
+		/* check if frameskip is needed */
+		if (stream->skip_frame_cnt > 0) {
+			logd(dev_ptr,
+				"skip frame count: 0x%08x\n",
+				stream->skip_frame_cnt);
+			stream->skip_frame_cnt--;
+			goto wdma_update;
 		}
 
 		spin_lock_irqsave(&queue->irqlock, flags);
-
-		if ((stream->prev_buf == NULL) || (stream->next_buf == NULL)) {
-			logd(dev_ptr, "skip to switch buffer\n");
-			goto end;
+		/* check if the incoming buffer list is empty */
+		if (list_empty(&stream->queue.irqqueue)) {
+			logd(dev_ptr,
+				"The incoming buffer list is empty\n");
+			spin_unlock_irqrestore(&queue->irqlock, flags);
+			goto wdma_update;
 		}
 
-		/* fill the buffer info */
-		stream->prev_buf->buf.vb2_buf.timestamp =
-			timespec_to_ns(&stream->ts_next);
-		stream->prev_buf->buf.field = V4L2_FIELD_NONE;
-		stream->prev_buf->buf.sequence = stream->sequence++;
-		stream->prev_buf->state = stream->prev_buf->error ?
-			TCCVIN_BUF_STATE_ERROR : TCCVIN_BUF_STATE_DONE;
-		stream->prev_buf->bytesused = stream->prev_buf->length;
-		vb2_set_plane_payload(&stream->prev_buf->buf.vb2_buf,
-			0, stream->prev_buf->bytesused);
+		stream->prev_buf = list_first_entry(&queue->irqqueue,
+			struct tccvin_buffer, queue);
 
-		/* dequeue prev_buf from the incoming buffer list */
-		list_del(&stream->prev_buf->queue);
+		ret = (queue->flags & TCCVIN_QUEUE_DROP_CORRUPTED) &&
+			stream->prev_buf->error;
+		if (ret != 0) {
+			loge(dev_ptr,
+				"The buffer is corrupted\n");
+			spin_unlock_irqrestore(&queue->irqlock, flags);
+			goto wdma_update;
+		}
 
-		/* queue the prev_buf to the outgoing buffer list */
-		vb2_buffer_done(&stream->prev_buf->buf.vb2_buf,
-			VB2_BUF_STATE_DONE);
+		/* check if the incoming buffer list has only one entry */
+		if (list_is_last(&stream->prev_buf->queue, &queue->irqqueue)) {
+			logw(dev_ptr,
+				"driver has only one buffer\n");
+			spin_unlock_irqrestore(&queue->irqlock, flags);
+			goto wdma_update;
+		}
 
-		stream->prev_buf = NULL;
-		stream->next_buf = NULL;
-
-end:
+		/* The incoming buffer list has two ore more entries.
+		 * so,
+		 */
+		stream->next_buf = list_next_entry(stream->prev_buf, queue);
+		stream->next_buf->state = TCCVIN_BUF_STATE_READY;
 		spin_unlock_irqrestore(&queue->irqlock, flags);
+
+		logd(dev_ptr, "buffer index: %d -> %d\n",
+			stream->prev_buf->buf.vb2_buf.index,
+			stream->next_buf->buf.vb2_buf.index);
+
+		switch (stream->next_buf->buf.vb2_buf.memory) {
+		case VB2_MEMORY_MMAP:
+			npln = stream->next_buf->buf.vb2_buf.num_planes;
+			for (idxpln = 0; idxpln < npln; idxpln++) {
+				/* get address */
+				addr[idxpln] = vb2_dma_contig_plane_dma_addr(
+					&stream->next_buf->buf.vb2_buf,
+					idxpln);
+			}
+			break;
+		default:
+			loge(dev_ptr, "memory type: %d\n",
+				stream->next_buf->buf.vb2_buf.memory);
+			break;
+		}
+
+		logd(dev_ptr,
+			"bufidx: %d, type: 0x%08x, memory: 0x%08x\n",
+			stream->next_buf->buf.vb2_buf.index,
+			stream->next_buf->buf.vb2_buf.type,
+			stream->next_buf->buf.vb2_buf.memory);
+		logd(dev_ptr,
+			"bufidx: %d, addr: 0x%08lx, 0x%08lx, 0x%08lx\n",
+			stream->next_buf->buf.vb2_buf.index,
+			addr[0], addr[1], addr[2]);
+		VIOC_WDMA_SetImageBase(wdma, addr[0], addr[1], addr[2]);
+
+		schedule_work(&stream->cif.wdma_work);
+
+wdma_update:
+		VIOC_WDMA_SetImageEnable(wdma, OFF);
 	}
 
 	return IRQ_HANDLED;
@@ -1733,74 +1718,14 @@ static int32_t tccvin_request_irq(struct tccvin_streaming *vdev)
 	struct device			*dev_ptr	= NULL;
 	uint32_t			intr_base_id	= 0;
 	uint32_t			vioc_base_id	= 0;
-	uint32_t			vioc_vin_id	= 0;
 	uint32_t			vioc_wdma_id	= 0;
 	int32_t				ret		= 0;
 
 	WARN_ON(IS_ERR_OR_NULL(vdev));
 
-	/* vin interrupt */
-	vioc_path	= &vdev->cif.vioc_path;
-	vioc_intr	= &vdev->cif.vin_intr;
-	dev_ptr		= tccvin_streaming_to_devptr(vdev);
-
-	if ((vdev->cif.vin_irq_num != -1) && (vdev->cif.vin_irq_reg == 0)) {
-		vioc_intr->id   = -1;
-		vioc_intr->bits = -1;
-
-		vioc_base_id	= VIOC_VIN00;
-		intr_base_id	= VIOC_INTR_VIN0;
-#if defined(CONFIG_ARCH_TCC803X)
-		if (vioc_path->vin >= VIOC_VIN30) {
-			vioc_base_id	= VIOC_VIN30;
-			intr_base_id	= VIOC_INTR_VIN3;
-		}
-#elif defined(CONFIG_ARCH_TCC805X)
-		if (vioc_path->vin >= VIOC_VIN40) {
-			vioc_base_id	= VIOC_VIN40;
-			intr_base_id	= VIOC_INTR_VIN4;
-		}
-#endif
-
-		/* convert to raw index */
-		vioc_base_id	= get_vioc_index(vioc_base_id) / 2;
-		vioc_vin_id	= get_vioc_index(vioc_path->vin) / 2;
-
-		vioc_intr->id	= intr_base_id + (vioc_vin_id - vioc_base_id);
-		vioc_intr->bits	= VIN_INT_VS_MASK;
-		logd(dev_ptr,
-			"vioc_base_id: %d, vioc_vin_id: %d, vioc_intr->id: %d\n",
-			vioc_base_id,
-			vioc_vin_id, vioc_intr->id);
-
-		if (vdev->cif.vin_irq_reg == 0) {
-			vioc_intr_disable(vdev->cif.vin_irq_num,
-				vioc_intr->id, 0xFFFFFFFF);
-			vioc_intr_clear(vioc_intr->id,
-				0xFFFFFFFF);
-			ret = request_irq(vdev->cif.vin_irq_num,
-				tccvin_vin_isr, IRQF_SHARED,
-				vdev->vdev.name, vdev);
-			logd(dev_ptr,
-				"vin irq num: %d, id: %d, bits: 0x%08x\n",
-				vdev->cif.vin_irq_num,
-				vioc_intr->id, vioc_intr->bits);
-			vioc_intr_enable(vdev->cif.vin_irq_num,
-				vioc_intr->id, vioc_intr->bits);
-			vdev->cif.vin_irq_reg = 1;
-		} else {
-			loge(dev_ptr, "The irq(%d) is already registered.\n",
-				vdev->cif.vin_irq_num);
-			return -1;
-		}
-	} else {
-		loge(dev_ptr, "The irq node is NOT found.\n");
-		return -1;
-	}
-
-	/* wdma interrupt */
 	vioc_path	= &vdev->cif.vioc_path;
 	vioc_intr	= &vdev->cif.vioc_intr;
+	dev_ptr		= tccvin_streaming_to_devptr(vdev);
 
 	if ((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == 0)) {
 		vioc_intr->id   = -1;
@@ -1821,10 +1746,6 @@ static int32_t tccvin_request_irq(struct tccvin_streaming *vdev)
 
 		vioc_intr->id	= intr_base_id + (vioc_wdma_id - vioc_base_id);
 		vioc_intr->bits	= VIOC_WDMA_IREQ_EOFR_MASK;
-		logd(dev_ptr,
-			"wdma - vioc_base_id: %d, vioc_vin_id: %d, vioc_intr->id: %d\n",
-			vioc_base_id,
-			vioc_wdma_id, vioc_intr->id);
 
 		if (vdev->cif.vioc_irq_reg == 0) {
 			vioc_intr_disable(vdev->cif.vioc_irq_num,
@@ -1834,10 +1755,6 @@ static int32_t tccvin_request_irq(struct tccvin_streaming *vdev)
 			ret = request_irq(vdev->cif.vioc_irq_num,
 				tccvin_wdma_isr, IRQF_SHARED,
 				vdev->vdev.name, vdev);
-			logd(dev_ptr,
-				"wdma irq num: %d, id: %d, bits: 0x%08x\n",
-				vdev->cif.vioc_irq_num,
-				vioc_intr->id, vioc_intr->bits);
 			vioc_intr_enable(vdev->cif.vioc_irq_num,
 				vioc_intr->id, vioc_intr->bits);
 			vdev->cif.vioc_irq_reg = 1;
@@ -1865,9 +1782,8 @@ static int32_t tccvin_free_irq(struct tccvin_streaming *vdev)
 	WARN_ON(IS_ERR_OR_NULL(vdev));
 
 	dev_ptr = tccvin_streaming_to_devptr(vdev);
-
-	/* wdma interrupt */
 	vioc_intr	= &vdev->cif.vioc_intr;
+
 	if ((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == 1)) {
 		if (vdev->cif.vioc_irq_reg == 1) {
 			vioc_intr_clear(vioc_intr->id, vioc_intr->bits);
@@ -1879,25 +1795,6 @@ static int32_t tccvin_free_irq(struct tccvin_streaming *vdev)
 			loge(dev_ptr,
 				"The irq(%d) is NOT registered.\n",
 				vdev->cif.vioc_irq_num);
-			return -1;
-		}
-	} else {
-		loge(dev_ptr, "The irq node is NOT found.\n");
-		return -1;
-	}
-
-	/* vin interrupt */
-	vioc_intr	= &vdev->cif.vin_intr;
-	if ((vdev->cif.vin_irq_num != -1) && (vdev->cif.vin_irq_reg == 1)) {
-		if (vdev->cif.vin_irq_reg == 1) {
-			vioc_intr_clear(vioc_intr->id, vioc_intr->bits);
-			vioc_intr_disable(vdev->cif.vin_irq_num,
-				vioc_intr->id, vioc_intr->bits);
-			free_irq(vdev->cif.vin_irq_num, vdev);
-			vdev->cif.vin_irq_reg = 0;
-		} else {
-			loge(dev_ptr, "The irq(%d) is NOT registered.\n",
-				vdev->cif.vin_irq_num);
 			return -1;
 		}
 	} else {
@@ -2007,6 +1904,9 @@ int tccvin_video_init(struct tccvin_streaming *stream)
 
 	/* init v4l2 resources */
 	mutex_init(&stream->cif.lock);
+
+	/* init work thread */
+	INIT_WORK(&stream->cif.wdma_work, tccvin_work_thread);
 
 	atomic_set(&stream->active, 0);
 

@@ -101,9 +101,6 @@ struct tccvin_cif {
 	struct clk			*vioc_clk;
 	struct vioc_path		vioc_path;
 
-	unsigned int			vin_irq_reg;
-	unsigned int			vin_irq_num;
-	struct vioc_intr_type		vin_intr;
 	unsigned int			vioc_irq_reg;
 	unsigned int			vioc_irq_num;
 	struct vioc_intr_type		vioc_intr;
