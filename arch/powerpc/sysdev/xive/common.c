@@ -1521,7 +1521,7 @@ bool __init xive_core_init(const struct xive_ops *ops, void __iomem *area, u32 o
 	/* Get ready for interrupts */
 	xive_setup_cpu();
 
-	pr_info("Interrupt handling intialized with %s backend\n",
+	pr_info("Interrupt handling initialized with %s backend\n",
 		xive_ops->name);
 	pr_info("Using priority %d for all interrupts\n", max_prio);
 

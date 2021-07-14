@@ -144,10 +144,10 @@ static int get_serial_info(struct usb_serial_port *port,
 	tmp.line            = port->minor;
 	tmp.port            = port->port_number;
 	tmp.baud_base       = tty_get_baud_rate(port->port.tty);
-	tmp.close_delay	    = port->port.close_delay / 10;
+	tmp.close_delay	    = jiffies_to_msecs(port->port.close_delay) / 10;
 	tmp.closing_wait    = port->port.closing_wait == ASYNC_CLOSING_WAIT_NONE ?
 				 ASYNC_CLOSING_WAIT_NONE :
-				 port->port.closing_wait / 10;
+				 jiffies_to_msecs(port->port.closing_wait) / 10;
 
 	if (copy_to_user(retinfo, &tmp, sizeof(*retinfo)))
 		return -EFAULT;
@@ -164,9 +164,10 @@ static int set_serial_info(struct usb_serial_port *port,
 	if (copy_from_user(&new_serial, newinfo, sizeof(new_serial)))
 		return -EFAULT;
 
-	close_delay = new_serial.close_delay * 10;
+	close_delay = msecs_to_jiffies(new_serial.close_delay * 10);
 	closing_wait = new_serial.closing_wait == ASYNC_CLOSING_WAIT_NONE ?
-			ASYNC_CLOSING_WAIT_NONE : new_serial.closing_wait * 10;
+			ASYNC_CLOSING_WAIT_NONE : 
+			msecs_to_jiffies(new_serial.closing_wait * 10);
 
 	mutex_lock(&port->port.mutex);
 
@@ -174,8 +175,6 @@ static int set_serial_info(struct usb_serial_port *port,
 		if ((close_delay != port->port.close_delay) ||
 		    (closing_wait != port->port.closing_wait))
 			retval = -EPERM;
-		else
-			retval = -EOPNOTSUPP;
 	} else {
 		port->port.close_delay  = close_delay;
 		port->port.closing_wait = closing_wait;

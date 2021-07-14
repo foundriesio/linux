@@ -411,6 +411,13 @@ static int hclgevf_knic_setup(struct hclgevf_dev *hdev)
 		kinfo->tqp[i] = &hdev->htqp[i].q;
 	}
 
+	/* after init the max rss_size and tqps, adjust the default tqp numbers
+	 * and rss size with the actual vector numbers
+	 */
+	kinfo->num_tqps = min_t(u16, hdev->num_nic_msix - 1, kinfo->num_tqps);
+	kinfo->rss_size = min_t(u16, kinfo->num_tqps / kinfo->num_tc,
+				kinfo->rss_size);
+
 	return 0;
 }
 
@@ -502,6 +509,7 @@ static int hclgevf_get_vector(struct hnae3_handle *handle, u16 vector_num,
 	int alloc = 0;
 	int i, j;
 
+	vector_num = min_t(u16, hdev->num_nic_msix - 1, vector_num);
 	vector_num = min(hdev->num_msi_left, vector_num);
 
 	for (j = 0; j < vector_num; j++) {
@@ -1396,19 +1404,22 @@ static int hclgevf_reset_wait(struct hclgevf_dev *hdev)
 	u32 val;
 	int ret;
 
-	/* wait to check the hardware reset completion status */
-	val = hclgevf_read_dev(&hdev->hw, HCLGEVF_RST_ING);
-	dev_info(&hdev->pdev->dev, "checking vf resetting status: %x\n", val);
-
 	if (hdev->reset_type == HNAE3_FLR_RESET)
 		return hclgevf_flr_poll_timeout(hdev,
 						HCLGEVF_RESET_WAIT_US,
 						HCLGEVF_RESET_WAIT_CNT);
-
-	ret = readl_poll_timeout(hdev->hw.io_base + HCLGEVF_RST_ING, val,
-				 !(val & HCLGEVF_RST_ING_BITS),
-				 HCLGEVF_RESET_WAIT_US,
-				 HCLGEVF_RESET_WAIT_TIMEOUT_US);
+	else if (hdev->reset_type == HNAE3_VF_RESET)
+		ret = readl_poll_timeout(hdev->hw.io_base +
+					 HCLGEVF_VF_RST_ING, val,
+					 !(val & HCLGEVF_VF_RST_ING_BIT),
+					 HCLGEVF_RESET_WAIT_US,
+					 HCLGEVF_RESET_WAIT_TIMEOUT_US);
+	else
+		ret = readl_poll_timeout(hdev->hw.io_base +
+					 HCLGEVF_RST_ING, val,
+					 !(val & HCLGEVF_RST_ING_BITS),
+					 HCLGEVF_RESET_WAIT_US,
+					 HCLGEVF_RESET_WAIT_TIMEOUT_US);
 
 	/* hardware completion status should be available by this time */
 	if (ret) {
@@ -1886,29 +1897,45 @@ static void hclgevf_clear_event_cause(struct hclgevf_dev *hdev, u32 regclr)
 static enum hclgevf_evt_cause hclgevf_check_evt_cause(struct hclgevf_dev *hdev,
 						      u32 *clearval)
 {
-	u32 cmdq_src_reg, rst_ing_reg;
+	u32 val, cmdq_stat_reg, rst_ing_reg;
 
 	/* fetch the events from their corresponding regs */
-	cmdq_src_reg = hclgevf_read_dev(&hdev->hw,
-					HCLGEVF_VECTOR0_CMDQ_SRC_REG);
+	cmdq_stat_reg = hclgevf_read_dev(&hdev->hw,
+					 HCLGEVF_VECTOR0_CMDQ_STAT_REG);
 
-	if (BIT(HCLGEVF_VECTOR0_RST_INT_B) & cmdq_src_reg) {
+	if (BIT(HCLGEVF_VECTOR0_RST_INT_B) & cmdq_stat_reg) {
 		rst_ing_reg = hclgevf_read_dev(&hdev->hw, HCLGEVF_RST_ING);
 		dev_info(&hdev->pdev->dev,
 			 "receive reset interrupt 0x%x!\n", rst_ing_reg);
 		set_bit(HNAE3_VF_RESET, &hdev->reset_pending);
 		set_bit(HCLGEVF_RESET_PENDING, &hdev->reset_state);
 		set_bit(HCLGEVF_STATE_CMD_DISABLE, &hdev->state);
-		cmdq_src_reg &= ~BIT(HCLGEVF_VECTOR0_RST_INT_B);
-		*clearval = cmdq_src_reg;
+		*clearval = ~(1U << HCLGEVF_VECTOR0_RST_INT_B);
 		hdev->rst_stats.vf_rst_cnt++;
+		/* set up VF hardware reset status, its PF will clear
+		 * this status when PF has initialized done.
+		 */
+		val = hclgevf_read_dev(&hdev->hw, HCLGEVF_VF_RST_ING);
+		hclgevf_write_dev(&hdev->hw, HCLGEVF_VF_RST_ING,
+				  val | HCLGEVF_VF_RST_ING_BIT);
 		return HCLGEVF_VECTOR0_EVENT_RST;
 	}
 
 	/* check for vector0 mailbox(=CMDQ RX) event source */
-	if (BIT(HCLGEVF_VECTOR0_RX_CMDQ_INT_B) & cmdq_src_reg) {
-		cmdq_src_reg &= ~BIT(HCLGEVF_VECTOR0_RX_CMDQ_INT_B);
-		*clearval = cmdq_src_reg;
+	if (BIT(HCLGEVF_VECTOR0_RX_CMDQ_INT_B) & cmdq_stat_reg) {
+		/* for revision 0x21, clearing interrupt is writing bit 0
+		 * to the clear register, writing bit 1 means to keep the
+		 * old value.
+		 * for revision 0x20, the clear register is a read & write
+		 * register, so we should just write 0 to the bit we are
+		 * handling, and keep other bits as cmdq_stat_reg.
+		 */
+		if (hdev->pdev->revision >= 0x21)
+			*clearval = ~(1U << HCLGEVF_VECTOR0_RX_CMDQ_INT_B);
+		else
+			*clearval = cmdq_stat_reg &
+				    ~BIT(HCLGEVF_VECTOR0_RX_CMDQ_INT_B);
+
 		return HCLGEVF_VECTOR0_EVENT_MBX;
 	}
 
@@ -2113,13 +2140,13 @@ static int hclgevf_ae_start(struct hnae3_handle *handle)
 {
 	struct hclgevf_dev *hdev = hclgevf_ae_get_hdev(handle);
 
+	clear_bit(HCLGEVF_STATE_DOWN, &hdev->state);
+
 	hclgevf_reset_tqp_stats(handle);
 
 	hclgevf_request_link_info(hdev);
 
 	hclgevf_update_link_mode(hdev);
-
-	clear_bit(HCLGEVF_STATE_DOWN, &hdev->state);
 
 	return 0;
 }
@@ -2228,13 +2255,14 @@ static int hclgevf_init_msi(struct hclgevf_dev *hdev)
 	int vectors;
 	int i;
 
-	if (hnae3_get_bit(hdev->ae_dev->flag, HNAE3_DEV_SUPPORT_ROCE_B))
+	if (hnae3_dev_roce_supported(hdev))
 		vectors = pci_alloc_irq_vectors(pdev,
 						hdev->roce_base_msix_offset + 1,
 						hdev->num_msi,
 						PCI_IRQ_MSIX);
 	else
-		vectors = pci_alloc_irq_vectors(pdev, 1, hdev->num_msi,
+		vectors = pci_alloc_irq_vectors(pdev, HNAE3_MIN_VECTOR_NUM,
+						hdev->num_msi,
 						PCI_IRQ_MSI | PCI_IRQ_MSIX);
 
 	if (vectors < 0) {
@@ -2250,6 +2278,7 @@ static int hclgevf_init_msi(struct hclgevf_dev *hdev)
 
 	hdev->num_msi = vectors;
 	hdev->num_msi_left = vectors;
+
 	hdev->base_msi_vector = pdev->irq;
 	hdev->roce_base_vector = pdev->irq + hdev->roce_base_msix_offset;
 
@@ -2515,7 +2544,7 @@ static int hclgevf_query_vf_resource(struct hclgevf_dev *hdev)
 
 	req = (struct hclgevf_query_res_cmd *)desc.data;
 
-	if (hnae3_get_bit(hdev->ae_dev->flag, HNAE3_DEV_SUPPORT_ROCE_B)) {
+	if (hnae3_dev_roce_supported(hdev)) {
 		hdev->roce_base_msix_offset =
 		hnae3_get_field(__le16_to_cpu(req->msixcap_localid_ba_rocee),
 				HCLGEVF_MSIX_OFT_ROCEE_M,
@@ -2523,6 +2552,9 @@ static int hclgevf_query_vf_resource(struct hclgevf_dev *hdev)
 		hdev->num_roce_msix =
 		hnae3_get_field(__le16_to_cpu(req->vf_intr_vector_number),
 				HCLGEVF_VEC_NUM_M, HCLGEVF_VEC_NUM_S);
+
+		/* nic's msix numbers is always equals to the roce's. */
+		hdev->num_nic_msix = hdev->num_roce_msix;
 
 		/* VF should have NIC vectors and Roce vectors, NIC vectors
 		 * are queued before Roce vectors. The offset is fixed to 64.
@@ -2533,6 +2565,15 @@ static int hclgevf_query_vf_resource(struct hclgevf_dev *hdev)
 		hdev->num_msi =
 		hnae3_get_field(__le16_to_cpu(req->vf_intr_vector_number),
 				HCLGEVF_VEC_NUM_M, HCLGEVF_VEC_NUM_S);
+
+		hdev->num_nic_msix = hdev->num_msi;
+	}
+
+	if (hdev->num_nic_msix < HNAE3_MIN_VECTOR_NUM) {
+		dev_err(&hdev->pdev->dev,
+			"Just %u msi resources, not enough for vf(min:2).\n",
+			hdev->num_nic_msix);
+		return -EINVAL;
 	}
 
 	return 0;

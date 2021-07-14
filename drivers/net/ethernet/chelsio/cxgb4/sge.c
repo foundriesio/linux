@@ -1475,16 +1475,7 @@ out_free:	dev_kfree_skb_any(skb);
 		 * has opened up.
 		 */
 		eth_txq_stop(q);
-
-		/* If we're using the SGE Doorbell Queue Timer facility, we
-		 * don't need to ask the Firmware to send us Egress Queue CIDX
-		 * Updates: the Hardware will do this automatically.  And
-		 * since we send the Ingress Queue CIDX Updates to the
-		 * corresponding Ethernet Response Queue, we'll get them very
-		 * quickly.
-		 */
-		if (!q->dbqt)
-			wr_mid |= FW_WR_EQUEQ_F | FW_WR_EQUIQ_F;
+		wr_mid |= FW_WR_EQUEQ_F | FW_WR_EQUIQ_F;
 	}
 
 	wr = (void *)&q->q.desc[q->q.pidx];
@@ -1519,8 +1510,7 @@ out_free:	dev_kfree_skb_any(skb);
 			if (iph->version == 4) {
 				iph->check = 0;
 				iph->tot_len = 0;
-				iph->check = (u16)(~ip_fast_csum((u8 *)iph,
-								 iph->ihl));
+				iph->check = ~ip_fast_csum((u8 *)iph, iph->ihl);
 			}
 			if (skb->ip_summed == CHECKSUM_PARTIAL)
 				cntrl = hwcsum(adap->params.chip, skb);
@@ -1799,16 +1789,7 @@ static netdev_tx_t cxgb4_vf_eth_xmit(struct sk_buff *skb,
 		 * has opened up.
 		 */
 		eth_txq_stop(txq);
-
-		/* If we're using the SGE Doorbell Queue Timer facility, we
-		 * don't need to ask the Firmware to send us Egress Queue CIDX
-		 * Updates: the Hardware will do this automatically.  And
-		 * since we send the Ingress Queue CIDX Updates to the
-		 * corresponding Ethernet Response Queue, we'll get them very
-		 * quickly.
-		 */
-		if (!txq->dbqt)
-			wr_mid |= FW_WR_EQUEQ_F | FW_WR_EQUIQ_F;
+		wr_mid |= FW_WR_EQUEQ_F | FW_WR_EQUIQ_F;
 	}
 
 	/* Start filling in our Work Request.  Note that we do _not_ handle
@@ -2177,17 +2158,22 @@ int t4_mgmt_tx(struct adapter *adap, struct sk_buff *skb)
  *	@skb: the packet
  *
  *	Returns true if a packet can be sent as an offload WR with immediate
- *	data.  We currently use the same limit as for Ethernet packets.
+ *	data.
+ *	FW_OFLD_TX_DATA_WR limits the payload to 255 bytes due to 8-bit field.
+ *      However, FW_ULPTX_WR commands have a 256 byte immediate only
+ *      payload limit.
  */
 static inline int is_ofld_imm(const struct sk_buff *skb)
 {
 	struct work_request_hdr *req = (struct work_request_hdr *)skb->data;
 	unsigned long opcode = FW_WR_OP_G(ntohl(req->wr_hi));
 
-	if (opcode == FW_CRYPTO_LOOKASIDE_WR)
+	if (unlikely(opcode == FW_ULPTX_WR))
+		return skb->len <= MAX_IMM_ULPTX_WR_LEN;
+	else if (opcode == FW_CRYPTO_LOOKASIDE_WR)
 		return skb->len <= SGE_MAX_WR_LEN;
 	else
-		return skb->len <= MAX_IMM_TX_PKT_LEN;
+		return skb->len <= MAX_IMM_OFLD_TX_DATA_WR_LEN;
 }
 
 /**
@@ -2835,7 +2821,7 @@ static noinline int t4_systim_to_hwstamp(struct adapter *adapter,
 
 	hwtstamps = skb_hwtstamps(skb);
 	memset(hwtstamps, 0, sizeof(*hwtstamps));
-	hwtstamps->hwtstamp = ns_to_ktime(be64_to_cpu(*((u64 *)data)));
+	hwtstamps->hwtstamp = ns_to_ktime(get_unaligned_be64(data));
 
 	return RX_PTP_PKT_SUC;
 }
@@ -2931,26 +2917,6 @@ static void t4_tx_completion_handler(struct sge_rspq *rspq,
 	}
 
 	txq = &s->ethtxq[pi->first_qset + rspq->idx];
-
-	/* We've got the Hardware Consumer Index Update in the Egress Update
-	 * message.  If we're using the SGE Doorbell Queue Timer mechanism,
-	 * these Egress Update messages will be our sole CIDX Updates we get
-	 * since we don't want to chew up PCIe bandwidth for both Ingress
-	 * Messages and Status Page writes.  However, The code which manages
-	 * reclaiming successfully DMA'ed TX Work Requests uses the CIDX value
-	 * stored in the Status Page at the end of the TX Queue.  It's easiest
-	 * to simply copy the CIDX Update value from the Egress Update message
-	 * to the Status Page.  Also note that no Endian issues need to be
-	 * considered here since both are Big Endian and we're just copying
-	 * bytes consistently ...
-	 */
-	if (txq->dbqt) {
-		struct cpl_sge_egr_update *egr;
-
-		egr = (struct cpl_sge_egr_update *)rsp;
-		WRITE_ONCE(txq->q.stat->cidx, egr->cidx);
-	}
-
 	t4_sge_eth_txq_egress_update(adapter, txq, -1);
 }
 

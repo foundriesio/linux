@@ -224,11 +224,11 @@ static int __btrfs_add_ordered_extent(struct inode *inode, u64 file_offset,
 	if (type != BTRFS_ORDERED_IO_DONE && type != BTRFS_ORDERED_COMPLETE)
 		set_bit(type, &entry->flags);
 
-	if (dio) {
-		percpu_counter_add_batch(&fs_info->dio_bytes, num_bytes,
-					 fs_info->delalloc_batch);
+	percpu_counter_add_batch(&fs_info->ordered_bytes, num_bytes,
+				 fs_info->delalloc_batch);
+
+	if (dio)
 		set_bit(BTRFS_ORDERED_DIRECT, &entry->flags);
-	}
 
 	/* one ref for the tree */
 	refcount_set(&entry->refs, 1);
@@ -512,9 +512,8 @@ void btrfs_remove_ordered_extent(struct inode *inode,
 		btrfs_delalloc_release_metadata(btrfs_inode, entry->num_bytes,
 						false);
 
-	if (test_bit(BTRFS_ORDERED_DIRECT, &entry->flags))
-		percpu_counter_add_batch(&fs_info->dio_bytes, -entry->num_bytes,
-					 fs_info->delalloc_batch);
+	percpu_counter_add_batch(&fs_info->ordered_bytes, -entry->num_bytes,
+				 fs_info->delalloc_batch);
 
 	tree = &btrfs_inode->ordered_tree;
 	spin_lock_irq(&tree->lock);
@@ -859,134 +858,6 @@ btrfs_lookup_first_ordered_extent(struct inode *inode, u64 file_offset)
 out:
 	spin_unlock_irq(&tree->lock);
 	return entry;
-}
-
-/*
- * After an extent is done, call this to conditionally update the on disk
- * i_size.  i_size is updated to cover any fully written part of the file.
- */
-int btrfs_ordered_update_i_size(struct inode *inode, u64 offset,
-				struct btrfs_ordered_extent *ordered)
-{
-	struct btrfs_ordered_inode_tree *tree = &BTRFS_I(inode)->ordered_tree;
-	u64 disk_i_size;
-	u64 new_i_size;
-	u64 i_size = i_size_read(inode);
-	struct rb_node *node;
-	struct rb_node *prev = NULL;
-	struct btrfs_ordered_extent *test;
-	int ret = 1;
-	u64 orig_offset = offset;
-
-	spin_lock_irq(&tree->lock);
-	if (ordered) {
-		offset = entry_end(ordered);
-		if (test_bit(BTRFS_ORDERED_TRUNCATED, &ordered->flags))
-			offset = min(offset,
-				     ordered->file_offset +
-				     ordered->truncated_len);
-	} else {
-		offset = ALIGN(offset, btrfs_inode_sectorsize(inode));
-	}
-	disk_i_size = BTRFS_I(inode)->disk_i_size;
-
-	/*
-	 * truncate file.
-	 * If ordered is not NULL, then this is called from endio and
-	 * disk_i_size will be updated by either truncate itself or any
-	 * in-flight IOs which are inside the disk_i_size.
-	 *
-	 * Because btrfs_setsize() may set i_size with disk_i_size if truncate
-	 * fails somehow, we need to make sure we have a precise disk_i_size by
-	 * updating it as usual.
-	 *
-	 */
-	if (!ordered && disk_i_size > i_size) {
-		BTRFS_I(inode)->disk_i_size = orig_offset;
-		ret = 0;
-		goto out;
-	}
-
-	/*
-	 * if the disk i_size is already at the inode->i_size, or
-	 * this ordered extent is inside the disk i_size, we're done
-	 */
-	if (disk_i_size == i_size)
-		goto out;
-
-	/*
-	 * We still need to update disk_i_size if outstanding_isize is greater
-	 * than disk_i_size.
-	 */
-	if (offset <= disk_i_size &&
-	    (!ordered || ordered->outstanding_isize <= disk_i_size))
-		goto out;
-
-	/*
-	 * walk backward from this ordered extent to disk_i_size.
-	 * if we find an ordered extent then we can't update disk i_size
-	 * yet
-	 */
-	if (ordered) {
-		node = rb_prev(&ordered->rb_node);
-	} else {
-		prev = tree_search(tree, offset);
-		/*
-		 * we insert file extents without involving ordered struct,
-		 * so there should be no ordered struct cover this offset
-		 */
-		if (prev) {
-			test = rb_entry(prev, struct btrfs_ordered_extent,
-					rb_node);
-			BUG_ON(offset_in_entry(test, offset));
-		}
-		node = prev;
-	}
-	for (; node; node = rb_prev(node)) {
-		test = rb_entry(node, struct btrfs_ordered_extent, rb_node);
-
-		/* We treat this entry as if it doesn't exist */
-		if (test_bit(BTRFS_ORDERED_UPDATED_ISIZE, &test->flags))
-			continue;
-
-		if (entry_end(test) <= disk_i_size)
-			break;
-		if (test->file_offset >= i_size)
-			break;
-
-		/*
-		 * We don't update disk_i_size now, so record this undealt
-		 * i_size. Or we will not know the real i_size.
-		 */
-		if (test->outstanding_isize < offset)
-			test->outstanding_isize = offset;
-		if (ordered &&
-		    ordered->outstanding_isize > test->outstanding_isize)
-			test->outstanding_isize = ordered->outstanding_isize;
-		goto out;
-	}
-	new_i_size = min_t(u64, offset, i_size);
-
-	/*
-	 * Some ordered extents may completed before the current one, and
-	 * we hold the real i_size in ->outstanding_isize.
-	 */
-	if (ordered && ordered->outstanding_isize > new_i_size)
-		new_i_size = min_t(u64, ordered->outstanding_isize, i_size);
-	BTRFS_I(inode)->disk_i_size = new_i_size;
-	ret = 0;
-out:
-	/*
-	 * We need to do this because we can't remove ordered extents until
-	 * after the i_disk_size has been updated and then the inode has been
-	 * updated to reflect the change, so we need to tell anybody who finds
-	 * this ordered extent that we've already done all the real work, we
-	 * just haven't completed all the other work.
-	 */
-	if (ordered)
-		set_bit(BTRFS_ORDERED_UPDATED_ISIZE, &ordered->flags);
-	spin_unlock_irq(&tree->lock);
-	return ret;
 }
 
 /*

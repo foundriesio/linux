@@ -76,6 +76,7 @@ struct nvme_tcp_queue {
 	/* send state */
 	struct nvme_tcp_request *request;
 
+	struct mutex		queue_lock;
 	int			queue_size;
 	size_t			cmnd_capsule_len;
 	struct nvme_tcp_ctrl	*ctrl;
@@ -419,7 +420,8 @@ static void nvme_tcp_error_recovery(struct nvme_ctrl *ctrl)
 	if (!nvme_change_ctrl_state(ctrl, NVME_CTRL_RESETTING))
 		return;
 
-	queue_work(nvme_wq, &to_tcp_ctrl(ctrl)->err_work);
+	dev_warn(ctrl->device, "starting error recovery\n");
+	queue_work(nvme_reset_wq, &to_tcp_ctrl(ctrl)->err_work);
 }
 
 static int nvme_tcp_process_nvme_cqe(struct nvme_tcp_queue *queue,
@@ -1140,6 +1142,7 @@ static void nvme_tcp_free_queue(struct nvme_ctrl *nctrl, int qid)
 
 	sock_release(queue->sock);
 	kfree(queue->pdu);
+	mutex_destroy(&queue->queue_lock);
 }
 
 static int nvme_tcp_init_connection(struct nvme_tcp_queue *queue)
@@ -1248,6 +1251,7 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
 	struct linger sol = { .l_onoff = 1, .l_linger = 0 };
 	int ret, opt, rcv_pdu_size;
 
+	mutex_init(&queue->queue_lock);
 	queue->ctrl = ctrl;
 	INIT_LIST_HEAD(&queue->send_list);
 	spin_lock_init(&queue->lock);
@@ -1265,7 +1269,7 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
 	if (ret) {
 		dev_err(ctrl->ctrl.device,
 			"failed to create socket: %d\n", ret);
-		return ret;
+		goto err_destroy_mutex;
 	}
 
 	/* Single syn retry */
@@ -1381,6 +1385,8 @@ err_crypto:
 err_sock:
 	sock_release(queue->sock);
 	queue->sock = NULL;
+err_destroy_mutex:
+	mutex_destroy(&queue->queue_lock);
 	return ret;
 }
 
@@ -1408,10 +1414,10 @@ static void nvme_tcp_stop_queue(struct nvme_ctrl *nctrl, int qid)
 	struct nvme_tcp_ctrl *ctrl = to_tcp_ctrl(nctrl);
 	struct nvme_tcp_queue *queue = &ctrl->queues[qid];
 
-	if (!test_and_clear_bit(NVME_TCP_Q_LIVE, &queue->flags))
-		return;
-
-	__nvme_tcp_stop_queue(queue);
+	mutex_lock(&queue->queue_lock);
+	if (test_and_clear_bit(NVME_TCP_Q_LIVE, &queue->flags))
+		__nvme_tcp_stop_queue(queue);
+	mutex_unlock(&queue->queue_lock);
 }
 
 static int nvme_tcp_start_queue(struct nvme_ctrl *nctrl, int idx)
@@ -1572,8 +1578,11 @@ static int nvme_alloc_io_queues(struct nvme_ctrl *ctrl)
 		return ret;
 
 	ctrl->queue_count = nr_io_queues + 1;
-	if (ctrl->queue_count < 2)
-		return 0;
+	if (ctrl->queue_count < 2) {
+		dev_err(ctrl->device,
+			"unable to set any I/O queues\n");
+		return -ENOMEM;
+	}
 
 	dev_info(ctrl->device,
 		"creating %d I/O queues.\n", nr_io_queues);
@@ -1614,14 +1623,19 @@ static int nvme_tcp_configure_io_queues(struct nvme_ctrl *ctrl, bool new)
 				goto out_free_tag_set;
 			}
 		}
-	} else {
-		blk_mq_update_nr_hw_queues(ctrl->tagset,
-			ctrl->queue_count - 1);
 	}
 
 	ret = nvme_tcp_start_io_queues(ctrl);
 	if (ret)
 		goto out_cleanup_connect_q;
+
+	if (!new) {
+		nvme_start_queues(ctrl);
+		nvme_wait_freeze(ctrl);
+		blk_mq_update_nr_hw_queues(ctrl->tagset,
+			ctrl->queue_count - 1);
+		nvme_unfreeze(ctrl);
+	}
 
 	return 0;
 
@@ -1642,6 +1656,9 @@ static void nvme_tcp_destroy_admin_queue(struct nvme_ctrl *ctrl, bool remove)
 	if (remove) {
 		free_opal_dev(ctrl->opal_dev);
 		blk_cleanup_queue(ctrl->admin_q);
+#ifndef __GENKSYMS__
+		blk_cleanup_queue(ctrl->fabrics_q);
+#endif
 		blk_mq_free_tag_set(ctrl->admin_tagset);
 	}
 	nvme_tcp_free_admin_queue(ctrl);
@@ -1662,10 +1679,18 @@ static int nvme_tcp_configure_admin_queue(struct nvme_ctrl *ctrl, bool new)
 			goto out_free_queue;
 		}
 
+#ifndef __GENKSYMS__
+		ctrl->fabrics_q = blk_mq_init_queue(ctrl->admin_tagset);
+		if (IS_ERR(ctrl->fabrics_q)) {
+			error = PTR_ERR(ctrl->fabrics_q);
+			goto out_free_tagset;
+		}
+#endif
+
 		ctrl->admin_q = blk_mq_init_queue(ctrl->admin_tagset);
 		if (IS_ERR(ctrl->admin_q)) {
 			error = PTR_ERR(ctrl->admin_q);
-			goto out_free_tagset;
+			goto out_cleanup_fabrics_q;
 		}
 	}
 
@@ -1686,6 +1711,8 @@ static int nvme_tcp_configure_admin_queue(struct nvme_ctrl *ctrl, bool new)
 	if (error)
 		goto out_stop_queue;
 
+	blk_mq_unquiesce_queue(ctrl->admin_q);
+
 	error = nvme_init_identify(ctrl);
 	if (error)
 		goto out_stop_queue;
@@ -1697,6 +1724,11 @@ out_stop_queue:
 out_cleanup_queue:
 	if (new)
 		blk_cleanup_queue(ctrl->admin_q);
+out_cleanup_fabrics_q:
+#ifndef __GENKSYMS__
+	if (new)
+		blk_cleanup_queue(ctrl->fabrics_q);
+#endif
 out_free_tagset:
 	if (new)
 		blk_mq_free_tag_set(ctrl->admin_tagset);
@@ -1709,13 +1741,15 @@ static void nvme_tcp_teardown_admin_queue(struct nvme_ctrl *ctrl,
 		bool remove)
 {
 	blk_mq_quiesce_queue(ctrl->admin_q);
+	blk_sync_queue(ctrl->admin_q);
 	nvme_tcp_stop_queue(ctrl, 0);
 	if (ctrl->admin_tagset) {
 		blk_mq_tagset_busy_iter(ctrl->admin_tagset,
 			nvme_cancel_request, ctrl);
 		blk_mq_tagset_wait_completed_request(ctrl->admin_tagset);
 	}
-	blk_mq_unquiesce_queue(ctrl->admin_q);
+	if (remove)
+		blk_mq_unquiesce_queue(ctrl->admin_q);
 	nvme_tcp_destroy_admin_queue(ctrl, remove);
 }
 
@@ -1724,7 +1758,10 @@ static void nvme_tcp_teardown_io_queues(struct nvme_ctrl *ctrl,
 {
 	if (ctrl->queue_count <= 1)
 		return;
+	blk_mq_quiesce_queue(ctrl->admin_q);
+	nvme_start_freeze(ctrl);
 	nvme_stop_queues(ctrl);
+	nvme_sync_io_queues(ctrl);
 	nvme_tcp_stop_io_queues(ctrl);
 	if (ctrl->tagset) {
 		blk_mq_tagset_busy_iter(ctrl->tagset,
@@ -1842,6 +1879,7 @@ static void nvme_tcp_error_recovery_work(struct work_struct *work)
 	/* unquiesce to fail fast pending requests */
 	nvme_start_queues(ctrl);
 	nvme_tcp_teardown_admin_queue(ctrl, false);
+	blk_mq_unquiesce_queue(ctrl->admin_q);
 
 	if (!nvme_change_ctrl_state(ctrl, NVME_CTRL_CONNECTING)) {
 		/* state change failure is ok if we're in DELETING state */
@@ -1855,6 +1893,7 @@ static void nvme_tcp_error_recovery_work(struct work_struct *work)
 static void nvme_tcp_teardown_ctrl(struct nvme_ctrl *ctrl, bool shutdown)
 {
 	nvme_tcp_teardown_io_queues(ctrl, shutdown);
+	blk_mq_quiesce_queue(ctrl->admin_q);
 	if (shutdown)
 		nvme_shutdown_ctrl(ctrl);
 	else
@@ -1973,32 +2012,52 @@ static void nvme_tcp_submit_async_event(struct nvme_ctrl *arg)
 	nvme_tcp_queue_request(&ctrl->async_req);
 }
 
+static void nvme_tcp_complete_timed_out(struct request *rq)
+{
+	struct nvme_tcp_request *req = blk_mq_rq_to_pdu(rq);
+	struct nvme_ctrl *ctrl = &req->queue->ctrl->ctrl;
+
+	nvme_tcp_stop_queue(ctrl, nvme_tcp_queue_id(req->queue));
+	if (blk_mq_request_started(rq) && !blk_mq_request_completed(rq)) {
+		nvme_req(rq)->status = NVME_SC_HOST_ABORTED_CMD;
+		blk_mq_complete_request(rq);
+	}
+}
+
 static enum blk_eh_timer_return
 nvme_tcp_timeout(struct request *rq, bool reserved)
 {
 	struct nvme_tcp_request *req = blk_mq_rq_to_pdu(rq);
-	struct nvme_tcp_ctrl *ctrl = req->queue->ctrl;
+	struct nvme_ctrl *ctrl = &req->queue->ctrl->ctrl;
 	struct nvme_tcp_cmd_pdu *pdu = req->pdu;
 
-	dev_warn(ctrl->ctrl.device,
+	dev_warn(ctrl->device,
 		"queue %d: timeout request %#x type %d\n",
 		nvme_tcp_queue_id(req->queue), rq->tag, pdu->hdr.type);
 
-	if (ctrl->ctrl.state != NVME_CTRL_LIVE) {
+	if (ctrl->state != NVME_CTRL_LIVE) {
 		/*
-		 * Teardown immediately if controller times out while starting
-		 * or we are already started error recovery. all outstanding
-		 * requests are completed on shutdown, so we return BLK_EH_DONE.
+		 * If we are resetting, connecting or deleting we should
+		 * complete immediately because we may block controller
+		 * teardown or setup sequence
+		 * - ctrl disable/shutdown fabrics requests
+		 * - connect requests
+		 * - initialization admin requests
+		 * - I/O requests that entered after unquiescing and
+		 *   the controller stopped responding
+		 *
+		 * All other requests should be cancelled by the error
+		 * recovery work, so it's fine that we fail it here.
 		 */
-		flush_work(&ctrl->err_work);
-		nvme_tcp_teardown_io_queues(&ctrl->ctrl, false);
-		nvme_tcp_teardown_admin_queue(&ctrl->ctrl, false);
+		nvme_tcp_complete_timed_out(rq);
 		return BLK_EH_DONE;
 	}
 
-	dev_warn(ctrl->ctrl.device, "starting error recovery\n");
-	nvme_tcp_error_recovery(&ctrl->ctrl);
-
+	/*
+	 * LIVE state should trigger the normal error recovery which will
+	 * handle completing this request.
+	 */
+	nvme_tcp_error_recovery(ctrl);
 	return BLK_EH_RESET_TIMER;
 }
 

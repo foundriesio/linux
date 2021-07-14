@@ -1450,8 +1450,30 @@ get_old_root(struct btrfs_root *root, u64 time_seq)
 				   "failed to read tree block %llu from get_old_root",
 				   logical);
 		} else {
+			struct tree_mod_elem *tm2;
+
+			btrfs_tree_read_lock(old);
 			eb = btrfs_clone_extent_buffer(old);
+			/*
+			 * After the lookup for the most recent tree mod operation
+			 * above and before we locked and cloned the extent buffer
+			 * 'old', a new tree mod log operation may have been added.
+			 * So lookup for a more recent one to make sure the number
+			 * of mod log operations we replay is consistent with the
+			 * number of items we have in the cloned extent buffer,
+			 * otherwise we can hit a BUG_ON when rewinding the extent
+			 * buffer.
+			 */
+			tm2 = tree_mod_log_search(fs_info, logical, time_seq);
+			btrfs_tree_read_unlock(old);
 			free_extent_buffer(old);
+			ASSERT(tm2);
+			ASSERT(tm2 == tm || tm2->seq > tm->seq);
+			if (!tm2 || tm2->seq < tm->seq) {
+				free_extent_buffer(eb);
+				return NULL;
+			}
+			tm = tm2;
 		}
 	} else if (old_root) {
 		eb_root_owner = btrfs_header_owner(eb_root);
@@ -2773,8 +2795,14 @@ out:
  * @p:		Holds all btree nodes along the search path
  * @root:	The root node of the tree
  * @key:	The key we are looking for
- * @ins_len:	Indicates purpose of search, for inserts it is 1, for
- *		deletions it's -1. 0 for plain searches
+ * @ins_len:	Indicates purpose of search:
+ *              >0  for inserts it's size of item inserted (*)
+ *              <0  for deletions
+ *               0  for plain searches, not modifying the tree
+ *
+ *              (*) If size of item inserted doesn't include
+ *              sizeof(struct btrfs_item), then p->search_for_extension must
+ *              be set.
  * @cow:	boolean should CoW operations be performed. Must always be 1
  *		when modifying the tree.
  *
@@ -2985,6 +3013,20 @@ cow_done:
 			}
 		} else {
 			p->slots[level] = slot;
+			/*
+			 * Item key already exists. In this case, if we are
+			 * allowed to insert the item (for example, in dir_item
+			 * case, item key collision is allowed), it will be
+			 * merged with the original item. Only the item size
+			 * grows, no new btrfs item will be added. If
+			 * search_for_extension is not set, ins_len already
+			 * accounts the size btrfs_item, deduct it here so leaf
+			 * space check will be correct.
+			 */
+			if (ret == 0 && ins_len > 0 && !p->search_for_extension) {
+				ASSERT(ins_len >= sizeof(struct btrfs_item));
+				ins_len -= sizeof(struct btrfs_item);
+			}
 			if (ins_len > 0 &&
 			    btrfs_leaf_free_space(fs_info, b) < ins_len) {
 				if (write_lock_level < 1) {
@@ -3077,6 +3119,8 @@ again:
 		 */
 		prev_cmp = -1;
 		ret = key_search(b, key, level, &prev_cmp, &slot);
+		if (ret < 0)
+			goto done;
 
 		if (level != 0) {
 			int dec = 0;
@@ -5249,6 +5293,10 @@ again:
 		nritems = btrfs_header_nritems(cur);
 		level = btrfs_header_level(cur);
 		sret = btrfs_bin_search(cur, min_key, level, &slot);
+		if (sret < 0) {
+			ret = sret;
+			goto out;
+		}
 
 		/* at the lowest level, we're done, setup the path and exit */
 		if (level == path->lowest_level) {

@@ -419,7 +419,7 @@ static inline void atmel_lcdfb_free_video_memory(struct atmel_lcdfb_info *sinfo)
 /**
  *	atmel_lcdfb_alloc_video_memory - Allocate framebuffer memory
  *	@sinfo: the frame buffer to allocate memory for
- * 	
+ *
  * 	This function is called only from the atmel_lcdfb_probe()
  * 	so no locking by fb_info->mm_lock around smem_len setting is needed.
  */
@@ -1071,8 +1071,8 @@ static int atmel_lcdfb_of_init(struct atmel_lcdfb_info *sinfo)
 	}
 
 	INIT_LIST_HEAD(&pdata->pwr_gpios);
-	ret = -ENOMEM;
 	for (i = 0; i < of_gpio_named_count(display_np, "atmel,power-control-gpio"); i++) {
+		ret = -ENOMEM;
 		gpio = of_get_named_gpio_flags(display_np, "atmel,power-control-gpio",
 					       i, &flags);
 		if (gpio < 0)

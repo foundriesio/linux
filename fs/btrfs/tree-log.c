@@ -844,6 +844,11 @@ static noinline int replay_one_extent(struct btrfs_trans_handle *trans,
 			goto out;
 	}
 
+	ret = btrfs_inode_set_file_extent_range(BTRFS_I(inode), start,
+						extent_end - start);
+	if (ret)
+		goto out;
+
 	inode_add_bytes(inode, nbytes);
 update_inode:
 	ret = btrfs_update_inode(trans, root, inode);
@@ -3856,6 +3861,8 @@ static int drop_objectid_items(struct btrfs_trans_handle *trans,
 		found_key.type = 0;
 		ret = btrfs_bin_search(path->nodes[0], &found_key, 0,
 				       &start_slot);
+		if (ret < 0)
+			break;
 
 		ret = btrfs_del_items(trans, log, path, start_slot,
 				      path->slots[0] - start_slot + 1);
@@ -6308,8 +6315,13 @@ again:
 		}
 
 		wc.replay_dest->log_root = log;
-		btrfs_record_root_in_trans(trans, wc.replay_dest);
-		ret = walk_log_tree(trans, log, &wc);
+		ret = btrfs_record_root_in_trans(trans, wc.replay_dest);
+		if (ret)
+			/* The loop needs to continue due to the root refs */
+			btrfs_handle_fs_error(fs_info, ret,
+				"failed to record the log root in transaction");
+		else
+			ret = walk_log_tree(trans, log, &wc);
 
 		if (!ret && wc.stage == LOG_WALK_REPLAY_ALL) {
 			ret = fixup_inode_link_counts(trans, wc.replay_dest,

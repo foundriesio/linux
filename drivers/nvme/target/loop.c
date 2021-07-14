@@ -240,6 +240,7 @@ static int nvme_loop_init_hctx(struct blk_mq_hw_ctx *hctx, void *data,
 
 	BUG_ON(hctx_idx >= ctrl->ctrl.queue_count);
 
+	blk_queue_flag_set(QUEUE_FLAG_BIOVEC_PHYS_NOMERGE, hctx->queue);
 	hctx->driver_data = queue;
 	return 0;
 }
@@ -277,6 +278,9 @@ static void nvme_loop_destroy_admin_queue(struct nvme_loop_ctrl *ctrl)
 	clear_bit(NVME_LOOP_Q_LIVE, &ctrl->queues[0].flags);
 	nvmet_sq_destroy(&ctrl->queues[0].nvme_sq);
 	blk_cleanup_queue(ctrl->ctrl.admin_q);
+#ifndef __GENKSYMS__
+	blk_cleanup_queue(ctrl->ctrl.fabrics_q);
+#endif
 	blk_mq_free_tag_set(&ctrl->admin_tag_set);
 }
 
@@ -381,10 +385,18 @@ static int nvme_loop_configure_admin_queue(struct nvme_loop_ctrl *ctrl)
 		goto out_free_sq;
 	ctrl->ctrl.admin_tagset = &ctrl->admin_tag_set;
 
+#ifndef __GENKSYMS__
+	ctrl->ctrl.fabrics_q = blk_mq_init_queue(&ctrl->admin_tag_set);
+	if (IS_ERR(ctrl->ctrl.fabrics_q)) {
+		error = PTR_ERR(ctrl->ctrl.fabrics_q);
+		goto out_free_tagset;
+	}
+#endif
+
 	ctrl->ctrl.admin_q = blk_mq_init_queue(&ctrl->admin_tag_set);
 	if (IS_ERR(ctrl->ctrl.admin_q)) {
 		error = PTR_ERR(ctrl->ctrl.admin_q);
-		goto out_free_tagset;
+		goto out_cleanup_fabrics_q;
 	}
 
 	error = nvmf_connect_admin_queue(&ctrl->ctrl);
@@ -410,6 +422,8 @@ static int nvme_loop_configure_admin_queue(struct nvme_loop_ctrl *ctrl)
 	ctrl->ctrl.max_hw_sectors =
 		(NVME_LOOP_MAX_SEGMENTS - 1) << (PAGE_SHIFT - 9);
 
+	blk_mq_unquiesce_queue(ctrl->ctrl.admin_q);
+
 	error = nvme_init_identify(&ctrl->ctrl);
 	if (error)
 		goto out_cleanup_queue;
@@ -418,6 +432,10 @@ static int nvme_loop_configure_admin_queue(struct nvme_loop_ctrl *ctrl)
 
 out_cleanup_queue:
 	blk_cleanup_queue(ctrl->ctrl.admin_q);
+out_cleanup_fabrics_q:
+#ifndef __GENKSYMS__
+	blk_cleanup_queue(ctrl->ctrl.fabrics_q);
+#endif
 out_free_tagset:
 	blk_mq_free_tag_set(&ctrl->admin_tag_set);
 out_free_sq:
@@ -435,14 +453,13 @@ static void nvme_loop_shutdown_ctrl(struct nvme_loop_ctrl *ctrl)
 		nvme_loop_destroy_io_queues(ctrl);
 	}
 
+	blk_mq_quiesce_queue(ctrl->ctrl.admin_q);
 	if (ctrl->ctrl.state == NVME_CTRL_LIVE)
 		nvme_shutdown_ctrl(&ctrl->ctrl);
 
-	blk_mq_quiesce_queue(ctrl->ctrl.admin_q);
 	blk_mq_tagset_busy_iter(&ctrl->admin_tag_set,
 				nvme_cancel_request, &ctrl->ctrl);
 	blk_mq_tagset_wait_completed_request(&ctrl->admin_tag_set);
-	blk_mq_unquiesce_queue(ctrl->ctrl.admin_q);
 	nvme_loop_destroy_admin_queue(ctrl);
 }
 

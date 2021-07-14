@@ -269,6 +269,15 @@ static unsigned long pfn_first(struct dev_pagemap *pgmap)
 	return pfn;
 }
 
+bool pgmap_pfn_valid(struct dev_pagemap *pgmap, unsigned long pfn)
+{
+	const struct resource *res = &pgmap->res;
+
+	if (pfn >= PHYS_PFN(res->start) && pfn <= PHYS_PFN(res->end))
+		return pfn >= pfn_first(pgmap);
+	return false;
+}
+
 static unsigned long pfn_end(struct dev_pagemap *pgmap)
 {
 	const struct resource *res = &pgmap->res;

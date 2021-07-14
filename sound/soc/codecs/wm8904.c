@@ -1901,6 +1901,7 @@ static int wm8904_set_bias_level(struct snd_soc_codec *codec,
 		snd_soc_update_bits(codec, WM8904_BIAS_CONTROL_0,
 				    WM8904_BIAS_ENA, 0);
 
+		snd_soc_write(codec, WM8904_SW_RESET_AND_ID, 0);
 		regcache_cache_only(wm8904->regmap, true);
 		regcache_mark_dirty(wm8904->regmap);
 

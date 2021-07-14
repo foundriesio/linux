@@ -1189,6 +1189,10 @@ static int b53_arl_rw_op(struct b53_device *dev, unsigned int op)
 		reg |= ARLTBL_RW;
 	else
 		reg &= ~ARLTBL_RW;
+	if (dev->vlan_enabled)
+		reg &= ~ARLTBL_IVL_SVL_SELECT;
+	else
+		reg |= ARLTBL_IVL_SVL_SELECT;
 	b53_write8(dev, B53_ARLIO_PAGE, B53_ARLTBL_RW_CTRL, reg);
 
 	return b53_arl_op_wait(dev);
@@ -1224,6 +1228,9 @@ static int b53_arl_read(struct b53_device *dev, u64 mac,
 			continue;
 		}
 		if ((mac_vid & ARLTBL_MAC_MASK) != mac)
+			continue;
+		if (dev->vlan_enabled &&
+		    ((mac_vid >> ARLTBL_VID_S) & ARLTBL_VID_MASK) != vid)
 			continue;
 		*idx = i;
 		return 0;

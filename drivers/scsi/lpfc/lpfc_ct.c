@@ -1,7 +1,7 @@
 /*******************************************************************
  * This file is part of the Emulex Linux Device Driver for         *
  * Fibre Channel Host Bus Adapters.                                *
- * Copyright (C) 2017-2020 Broadcom. All Rights Reserved. The term *
+ * Copyright (C) 2017-2021 Broadcom. All Rights Reserved. The term *
  * “Broadcom” refers to Broadcom Inc. and/or its subsidiaries.     *
  * Copyright (C) 2004-2016 Emulex.  All rights reserved.           *
  * EMULEX and SLI are trademarks of Emulex.                        *
@@ -138,11 +138,11 @@ lpfc_ct_unsol_cmpl(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 }
 
 /**
- * lpfc_ct_reject_event : Issue reject for unhandled CT MIB commands
- * @ndlp : pointer to a node-list data structure.
- * ct_req : pointer to the CT request data structure.
- * rx_id : rx_id of the received UNSOL CT command
- * ox_id : ox_id of the UNSOL CT command
+ * lpfc_ct_reject_event - Issue reject for unhandled CT MIB commands
+ * @ndlp: pointer to a node-list data structure.
+ * @ct_req: pointer to the CT request data structure.
+ * @rx_id: rx_id of the received UNSOL CT command
+ * @ox_id: ox_id of the UNSOL CT command
  *
  * This routine is invoked by the lpfc_ct_handle_mibreq routine for sending
  * a reject response. Reject response is sent for the unhandled commands.
@@ -273,7 +273,7 @@ ct_exit:
 /**
  * lpfc_ct_handle_mibreq - Process an unsolicited CT MIB request data buffer
  * @phba: pointer to lpfc hba data structure.
- * @ctiocb: pointer to lpfc CT command iocb data structure.
+ * @ctiocbq: pointer to lpfc CT command iocb data structure.
  *
  * This routine is used for processing the IOCB associated with a unsolicited
  * CT MIB request. It first determines whether there is an existing ndlp that
@@ -588,7 +588,7 @@ lpfc_gen_req(struct lpfc_vport *vport, struct lpfc_dmabuf *bmp,
 	     struct lpfc_dmabuf *inp, struct lpfc_dmabuf *outp,
 	     void (*cmpl) (struct lpfc_hba *, struct lpfc_iocbq *,
 		     struct lpfc_iocbq *),
-	     struct lpfc_nodelist *ndlp, uint32_t usr_flg, uint32_t num_entry,
+	     struct lpfc_nodelist *ndlp, uint32_t event_tag, uint32_t num_entry,
 	     uint32_t tmo, uint8_t retry)
 {
 	struct lpfc_hba  *phba = vport->phba;
@@ -609,14 +609,13 @@ lpfc_gen_req(struct lpfc_vport *vport, struct lpfc_dmabuf *bmp,
 	icmd->un.genreq64.bdl.bdeFlags = BUFF_TYPE_BLP_64;
 	icmd->un.genreq64.bdl.bdeSize = (num_entry * sizeof(struct ulp_bde64));
 
-	if (usr_flg)
-		geniocb->context3 = NULL;
-	else
-		geniocb->context3 = (uint8_t *) bmp;
+	geniocb->context3 = (uint8_t *) bmp;
 
 	/* Save for completion so we can release these resources */
 	geniocb->context1 = (uint8_t *) inp;
 	geniocb->context2 = (uint8_t *) outp;
+
+	geniocb->event_tag = event_tag;
 
 	/* Fill in payload, bp points to frame payload */
 	icmd->ulpCommand = CMD_GEN_REQUEST64_CR;
@@ -708,8 +707,8 @@ lpfc_ct_cmd(struct lpfc_vport *vport, struct lpfc_dmabuf *inmp,
 	 * lpfc_alloc_ct_rsp.
 	 */
 	cnt += 1;
-	status = lpfc_gen_req(vport, bmp, inmp, outmp, cmpl, ndlp, 0,
-			      cnt, 0, retry);
+	status = lpfc_gen_req(vport, bmp, inmp, outmp, cmpl, ndlp,
+			phba->fc_eventTag, cnt, 0, retry);
 	if (status) {
 		lpfc_free_ct_rsp(phba, outmp);
 		return -ENOMEM;
@@ -778,7 +777,7 @@ lpfc_prep_node_fc4type(struct lpfc_vport *vport, uint32_t Did, uint8_t fc4_type)
 
 			lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
 					 "0239 Skip x%06x NameServer Rsp "
-					 "Data: x%x x%x %p\n",
+					 "Data: x%x x%x x%px\n",
 					 Did, vport->fc_flag,
 					 vport->fc_rscn_id_cnt, ndlp);
 		}
@@ -957,6 +956,13 @@ lpfc_cmpl_ct_cmd_gid_ft(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 	lpfc_debugfs_disc_trc(vport, LPFC_DISC_TRC_CT,
 		 "GID_FT cmpl:     status:x%x/x%x rtry:%d",
 		irsp->ulpStatus, irsp->un.ulpWord[4], vport->fc_ns_retry);
+
+	/* Ignore response if link flipped after this request was made */
+	if (cmdiocb->event_tag != phba->fc_eventTag) {
+		lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
+				 "9043 Event tag mismatch. Ignoring NS rsp\n");
+		goto out;
+	}
 
 	/* Don't bother processing response if vport is being torn down. */
 	if (vport->load_flag & FC_UNLOADING) {
@@ -1168,6 +1174,13 @@ lpfc_cmpl_ct_cmd_gid_pt(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 			      irsp->ulpStatus, irsp->un.ulpWord[4],
 			      vport->fc_ns_retry);
 
+	/* Ignore response if link flipped after this request was made */
+	if (cmdiocb->event_tag != phba->fc_eventTag) {
+		lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
+				 "9044 Event tag mismatch. Ignoring NS rsp\n");
+		goto out;
+	}
+
 	/* Don't bother processing response if vport is being torn down. */
 	if (vport->load_flag & FC_UNLOADING) {
 		if (vport->fc_flag & FC_RSCN_MODE)
@@ -1367,6 +1380,13 @@ lpfc_cmpl_ct_cmd_gff_id(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 		"GFF_ID cmpl:     status:x%x/x%x did:x%x",
 		irsp->ulpStatus, irsp->un.ulpWord[4], did);
 
+	/* Ignore response if link flipped after this request was made */
+	if (cmdiocb->event_tag != phba->fc_eventTag) {
+		lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
+				 "9045 Event tag mismatch. Ignoring NS rsp\n");
+		goto iocb_free;
+	}
+
 	if (irsp->ulpStatus == IOSTAT_SUCCESS) {
 		/* Good status, continue checking */
 		CTrsp = (struct lpfc_sli_ct_request *) outp->virt;
@@ -1480,6 +1500,7 @@ out:
 		lpfc_disc_start(vport);
 	}
 
+iocb_free:
 	free_ndlp = cmdiocb->context_un.ndlp;
 	lpfc_ct_free_iocb(phba, cmdiocb);
 	lpfc_nlp_put(free_ndlp);
@@ -1506,6 +1527,13 @@ lpfc_cmpl_ct_cmd_gft_id(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 	lpfc_debugfs_disc_trc(vport, LPFC_DISC_TRC_CT,
 			      "GFT_ID cmpl: status:x%x/x%x did:x%x",
 			      irsp->ulpStatus, irsp->un.ulpWord[4], did);
+
+	/* Ignore response if link flipped after this request was made */
+	if ((uint32_t) cmdiocb->event_tag != phba->fc_eventTag) {
+		lpfc_printf_vlog(vport, KERN_INFO, LOG_DISCOVERY,
+				 "9046 Event tag mismatch. Ignoring NS rsp\n");
+		goto out;
+	}
 
 	/* Preserve the nameserver node to release the reference. */
 	ns_ndlp = cmdiocb->context_un.ndlp;
@@ -1573,6 +1601,7 @@ lpfc_cmpl_ct_cmd_gft_id(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 		lpfc_printf_vlog(vport, KERN_ERR, LOG_TRACE_EVENT,
 				 "3065 GFT_ID failed x%08x\n", irsp->ulpStatus);
 
+out:
 	lpfc_ct_free_iocb(phba, cmdiocb);
 	lpfc_nlp_put(ns_ndlp);
 }
@@ -2254,12 +2283,12 @@ lpfc_cmpl_ct_disc_fdmi(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 			return;
 
 		case SLI_MGMT_RPA:
-			/* No retry on Vendor RPA */
+			/* No retry on Vendor, RPA only done on physical port */
 			if (phba->link_flag & LS_CT_VEN_RPA) {
-				lpfc_printf_vlog(vport, KERN_ERR,
-						 LOG_DISCOVERY | LOG_ELS,
-						 "6460 VEN FDMI RPA failure\n");
 				phba->link_flag &= ~LS_CT_VEN_RPA;
+				lpfc_printf_log(phba, KERN_ERR,
+						LOG_DISCOVERY | LOG_ELS,
+						"6460 VEN FDMI RPA failure\n");
 				return;
 			}
 			if (vport->fdmi_port_mask == LPFC_FDMI2_PORT_ATTR) {
@@ -2307,23 +2336,24 @@ lpfc_cmpl_ct_disc_fdmi(struct lpfc_hba *phba, struct lpfc_iocbq *cmdiocb,
 			if (phba->link_flag & LS_CT_VEN_RPA) {
 				lpfc_printf_vlog(vport, KERN_INFO,
 						 LOG_DISCOVERY | LOG_ELS,
-						 "6449 VEN RPA Success\n");
+						 "6449 VEN RPA FDMI Success\n");
+				phba->link_flag &= ~LS_CT_VEN_RPA;
 				break;
 			}
 
 			if (lpfc_fdmi_cmd(vport, ndlp, cmd,
 					  LPFC_FDMI_VENDOR_ATTR_mi) == 0)
 				phba->link_flag |= LS_CT_VEN_RPA;
-			lpfc_printf_vlog(vport, KERN_INFO,
+			lpfc_printf_log(phba, KERN_INFO,
 					LOG_DISCOVERY | LOG_ELS,
 					"6458 Send MI FDMI:%x Flag x%x\n",
 					phba->sli4_hba.pc_sli4_params.mi_value,
 					phba->link_flag);
 		} else {
-			lpfc_printf_vlog(vport, KERN_INFO,
-					 LOG_DISCOVERY | LOG_ELS,
-					 "6459 No FDMI VEN MI support - "
-					 "RPA Success\n");
+			lpfc_printf_log(phba, KERN_INFO,
+					LOG_DISCOVERY | LOG_ELS,
+					"6459 No FDMI VEN MI support - "
+					"RPA Success\n");
 		}
 		break;
 	}
@@ -2370,10 +2400,13 @@ lpfc_fdmi_change_check(struct lpfc_vport *vport)
 		 * DHBA -> DPRT -> RHBA -> RPA  (physical port)
 		 * DPRT -> RPRT (vports)
 		 */
-		if (vport->port_type == LPFC_PHYSICAL_PORT)
+		if (vport->port_type == LPFC_PHYSICAL_PORT) {
+			/* For extra Vendor RPA */
+			phba->link_flag &= ~LS_CT_VEN_RPA;
 			lpfc_fdmi_cmd(vport, ndlp, SLI_MGMT_DHBA, 0);
-		else
+		} else {
 			lpfc_fdmi_cmd(vport, ndlp, SLI_MGMT_DPRT, 0);
+		}
 
 		/* Since this code path registers all the port attributes
 		 * we can just return without further checking.

@@ -15,11 +15,13 @@ module_param(ecc_enable_override, int, 0644);
 
 static struct msr __percpu *msrs;
 
+static struct amd64_family_type *fam_type;
+
 /* Per-node stuff */
 static struct ecc_settings **ecc_stngs;
 
-/* Number of Unified Memory Controllers */
-static u8 num_umcs;
+/* Device for the PCI component */
+static struct device *pci_ctl_dev;
 
 /*
  * Valid scrub rates for the K8 hardware memory scrubber. We map the scrubbing
@@ -448,7 +450,7 @@ static void get_cs_base_and_mask(struct amd64_pvt *pvt, int csrow, u8 dct,
 	for (i = 0; i < pvt->csels[dct].m_cnt; i++)
 
 #define for_each_umc(i) \
-	for (i = 0; i < num_umcs; i++)
+	for (i = 0; i < fam_type->max_mcs; i++)
 
 /*
  * @input_addr is an InputAddr associated with the node given by mci. Return the
@@ -2218,6 +2220,7 @@ static struct amd64_family_type family_types[] = {
 		.ctl_name = "K8",
 		.f1_id = PCI_DEVICE_ID_AMD_K8_NB_ADDRMAP,
 		.f2_id = PCI_DEVICE_ID_AMD_K8_NB_MEMCTL,
+		.max_mcs = 2,
 		.ops = {
 			.early_channel_count	= k8_early_channel_count,
 			.map_sysaddr_to_csrow	= k8_map_sysaddr_to_csrow,
@@ -2228,6 +2231,7 @@ static struct amd64_family_type family_types[] = {
 		.ctl_name = "F10h",
 		.f1_id = PCI_DEVICE_ID_AMD_10H_NB_MAP,
 		.f2_id = PCI_DEVICE_ID_AMD_10H_NB_DRAM,
+		.max_mcs = 2,
 		.ops = {
 			.early_channel_count	= f1x_early_channel_count,
 			.map_sysaddr_to_csrow	= f1x_map_sysaddr_to_csrow,
@@ -2238,6 +2242,7 @@ static struct amd64_family_type family_types[] = {
 		.ctl_name = "F15h",
 		.f1_id = PCI_DEVICE_ID_AMD_15H_NB_F1,
 		.f2_id = PCI_DEVICE_ID_AMD_15H_NB_F2,
+		.max_mcs = 2,
 		.ops = {
 			.early_channel_count	= f1x_early_channel_count,
 			.map_sysaddr_to_csrow	= f1x_map_sysaddr_to_csrow,
@@ -2248,6 +2253,7 @@ static struct amd64_family_type family_types[] = {
 		.ctl_name = "F15h_M30h",
 		.f1_id = PCI_DEVICE_ID_AMD_15H_M30H_NB_F1,
 		.f2_id = PCI_DEVICE_ID_AMD_15H_M30H_NB_F2,
+		.max_mcs = 2,
 		.ops = {
 			.early_channel_count	= f1x_early_channel_count,
 			.map_sysaddr_to_csrow	= f1x_map_sysaddr_to_csrow,
@@ -2258,6 +2264,7 @@ static struct amd64_family_type family_types[] = {
 		.ctl_name = "F15h_M60h",
 		.f1_id = PCI_DEVICE_ID_AMD_15H_M60H_NB_F1,
 		.f2_id = PCI_DEVICE_ID_AMD_15H_M60H_NB_F2,
+		.max_mcs = 2,
 		.ops = {
 			.early_channel_count	= f1x_early_channel_count,
 			.map_sysaddr_to_csrow	= f1x_map_sysaddr_to_csrow,
@@ -2268,6 +2275,7 @@ static struct amd64_family_type family_types[] = {
 		.ctl_name = "F16h",
 		.f1_id = PCI_DEVICE_ID_AMD_16H_NB_F1,
 		.f2_id = PCI_DEVICE_ID_AMD_16H_NB_F2,
+		.max_mcs = 2,
 		.ops = {
 			.early_channel_count	= f1x_early_channel_count,
 			.map_sysaddr_to_csrow	= f1x_map_sysaddr_to_csrow,
@@ -2278,6 +2286,7 @@ static struct amd64_family_type family_types[] = {
 		.ctl_name = "F16h_M30h",
 		.f1_id = PCI_DEVICE_ID_AMD_16H_M30H_NB_F1,
 		.f2_id = PCI_DEVICE_ID_AMD_16H_M30H_NB_F2,
+		.max_mcs = 2,
 		.ops = {
 			.early_channel_count	= f1x_early_channel_count,
 			.map_sysaddr_to_csrow	= f1x_map_sysaddr_to_csrow,
@@ -2288,6 +2297,7 @@ static struct amd64_family_type family_types[] = {
 		.ctl_name = "F17h",
 		.f0_id = PCI_DEVICE_ID_AMD_17H_DF_F0,
 		.f6_id = PCI_DEVICE_ID_AMD_17H_DF_F6,
+		.max_mcs = 2,
 		.ops = {
 			.early_channel_count	= f17_early_channel_count,
 			.dbam_to_cs		= f17_addr_mask_to_cs_size,
@@ -2297,6 +2307,7 @@ static struct amd64_family_type family_types[] = {
 		.ctl_name = "F17h_M10h",
 		.f0_id = PCI_DEVICE_ID_AMD_17H_M10H_DF_F0,
 		.f6_id = PCI_DEVICE_ID_AMD_17H_M10H_DF_F6,
+		.max_mcs = 2,
 		.ops = {
 			.early_channel_count	= f17_early_channel_count,
 			.dbam_to_cs		= f17_addr_mask_to_cs_size,
@@ -2306,6 +2317,7 @@ static struct amd64_family_type family_types[] = {
 		.ctl_name = "F17h_M30h",
 		.f0_id = PCI_DEVICE_ID_AMD_17H_M30H_DF_F0,
 		.f6_id = PCI_DEVICE_ID_AMD_17H_M30H_DF_F6,
+		.max_mcs = 8,
 		.ops = {
 			.early_channel_count	= f17_early_channel_count,
 			.dbam_to_cs		= f17_addr_mask_to_cs_size,
@@ -2655,6 +2667,9 @@ reserve_mc_sibling_devs(struct amd64_pvt *pvt, u16 pci_id1, u16 pci_id2)
 			return -ENODEV;
 		}
 
+		if (!pci_ctl_dev)
+			pci_ctl_dev = &pvt->F0->dev;
+
 		edac_dbg(1, "F0: %s\n", pci_name(pvt->F0));
 		edac_dbg(1, "F3: %s\n", pci_name(pvt->F3));
 		edac_dbg(1, "F6: %s\n", pci_name(pvt->F6));
@@ -2678,6 +2693,9 @@ reserve_mc_sibling_devs(struct amd64_pvt *pvt, u16 pci_id1, u16 pci_id2)
 		amd64_err("F2 not found: device 0x%x (broken BIOS?)\n", pci_id2);
 		return -ENODEV;
 	}
+
+	if (!pci_ctl_dev)
+		pci_ctl_dev = &pvt->F2->dev;
 
 	edac_dbg(1, "F1: %s\n", pci_name(pvt->F1));
 	edac_dbg(1, "F2: %s\n", pci_name(pvt->F2));
@@ -3272,8 +3290,7 @@ f17h_determine_edac_ctl_cap(struct mem_ctl_info *mci, struct amd64_pvt *pvt)
 	}
 }
 
-static void setup_mci_misc_attrs(struct mem_ctl_info *mci,
-				 struct amd64_family_type *fam)
+static void setup_mci_misc_attrs(struct mem_ctl_info *mci)
 {
 	struct amd64_pvt *pvt = mci->pvt_info;
 
@@ -3293,7 +3310,7 @@ static void setup_mci_misc_attrs(struct mem_ctl_info *mci,
 	mci->edac_cap		= determine_edac_cap(pvt);
 	mci->mod_name		= EDAC_MOD_STR;
 	mci->mod_ver		= EDAC_AMD64_VERSION;
-	mci->ctl_name		= fam->ctl_name;
+	mci->ctl_name		= fam_type->ctl_name;
 	mci->dev_name		= pci_name(pvt->F3);
 	mci->ctl_page_to_phys	= NULL;
 
@@ -3307,8 +3324,6 @@ static void setup_mci_misc_attrs(struct mem_ctl_info *mci,
  */
 static struct amd64_family_type *per_family_init(struct amd64_pvt *pvt)
 {
-	struct amd64_family_type *fam_type = NULL;
-
 	pvt->ext_model  = boot_cpu_data.x86_model >> 4;
 	pvt->stepping	= boot_cpu_data.x86_mask;
 	pvt->model	= boot_cpu_data.x86_model;
@@ -3398,51 +3413,15 @@ static const struct attribute_group *amd64_edac_attr_groups[] = {
 	NULL
 };
 
-/* Set the number of Unified Memory Controllers in the system. */
-static void compute_num_umcs(void)
+static int hw_info_get(struct amd64_pvt *pvt)
 {
-	u8 model = boot_cpu_data.x86_model;
-
-	if (boot_cpu_data.x86 < 0x17)
-		return;
-
-	if (model >= 0x30 && model <= 0x3f)
-		num_umcs = 8;
-	else
-		num_umcs = 2;
-
-	edac_dbg(1, "Number of UMCs: %x", num_umcs);
-}
-
-static int init_one_instance(unsigned int nid)
-{
-	struct pci_dev *F3 = node_to_amd_nb(nid)->misc;
-	struct amd64_family_type *fam_type = NULL;
-	struct mem_ctl_info *mci = NULL;
-	struct edac_mc_layer layers[2];
-	struct amd64_pvt *pvt = NULL;
 	u16 pci_id1, pci_id2;
-	int err = 0, ret;
-
-	ret = -ENOMEM;
-	pvt = kzalloc(sizeof(struct amd64_pvt), GFP_KERNEL);
-	if (!pvt)
-		goto err_ret;
-
-	pvt->mc_node_id	= nid;
-	pvt->F3 = F3;
-
-	ret = -EINVAL;
-	fam_type = per_family_init(pvt);
-	if (!fam_type)
-		goto err_free;
+	int ret = -EINVAL;
 
 	if (pvt->fam >= 0x17) {
-		pvt->umc = kcalloc(num_umcs, sizeof(struct amd64_umc), GFP_KERNEL);
-		if (!pvt->umc) {
-			ret = -ENOMEM;
-			goto err_free;
-		}
+		pvt->umc = kcalloc(fam_type->max_mcs, sizeof(struct amd64_umc), GFP_KERNEL);
+		if (!pvt->umc)
+			return -ENOMEM;
 
 		pci_id1 = fam_type->f0_id;
 		pci_id2 = fam_type->f6_id;
@@ -3451,21 +3430,37 @@ static int init_one_instance(unsigned int nid)
 		pci_id2 = fam_type->f2_id;
 	}
 
-	err = reserve_mc_sibling_devs(pvt, pci_id1, pci_id2);
-	if (err)
-		goto err_post_init;
+	ret = reserve_mc_sibling_devs(pvt, pci_id1, pci_id2);
+	if (ret)
+		return ret;
 
 	read_mc_regs(pvt);
+
+	return 0;
+}
+
+static void hw_info_put(struct amd64_pvt *pvt)
+{
+	if (pvt->F0 || pvt->F1)
+		free_mc_sibling_devs(pvt);
+
+	kfree(pvt->umc);
+}
+
+static int init_one_instance(struct amd64_pvt *pvt)
+{
+	struct mem_ctl_info *mci = NULL;
+	struct edac_mc_layer layers[2];
+	int ret = -EINVAL;
 
 	/*
 	 * We need to determine how many memory channels there are. Then use
 	 * that information for calculating the size of the dynamic instance
 	 * tables in the 'mci' structure.
 	 */
-	ret = -EINVAL;
 	pvt->channel_count = pvt->ops->early_channel_count(pvt);
 	if (pvt->channel_count < 0)
-		goto err_siblings;
+		return ret;
 
 	ret = -ENOMEM;
 	layers[0].type = EDAC_MC_LAYER_CHIP_SELECT;
@@ -3477,24 +3472,18 @@ static int init_one_instance(unsigned int nid)
 	 * Always allocate two channels since we can have setups with DIMMs on
 	 * only one channel. Also, this simplifies handling later for the price
 	 * of a couple of KBs tops.
-	 *
-	 * On Fam17h+, the number of controllers may be greater than two. So set
-	 * the size equal to the maximum number of UMCs.
 	 */
-	if (pvt->fam >= 0x17)
-		layers[1].size = num_umcs;
-	else
-		layers[1].size = 2;
+	layers[1].size = fam_type->max_mcs;
 	layers[1].is_virt_csrow = false;
 
-	mci = edac_mc_alloc(nid, ARRAY_SIZE(layers), layers, 0);
+	mci = edac_mc_alloc(pvt->mc_node_id, ARRAY_SIZE(layers), layers, 0);
 	if (!mci)
-		goto err_siblings;
+		return ret;
 
 	mci->pvt_info = pvt;
 	mci->pdev = &pvt->F3->dev;
 
-	setup_mci_misc_attrs(mci, fam_type);
+	setup_mci_misc_attrs(mci);
 
 	if (init_csrows(mci))
 		mci->edac_cap = EDAC_FLAG_NONE;
@@ -3502,31 +3491,17 @@ static int init_one_instance(unsigned int nid)
 	ret = -ENODEV;
 	if (edac_mc_add_mc_with_groups(mci, amd64_edac_attr_groups)) {
 		edac_dbg(1, "failed edac_mc_add_mc()\n");
-		goto err_add_mc;
+		edac_mc_free(mci);
+		return ret;
 	}
 
 	return 0;
-
-err_add_mc:
-	edac_mc_free(mci);
-
-err_siblings:
-	free_mc_sibling_devs(pvt);
-
-err_post_init:
-	if (pvt->fam >= 0x17)
-		kfree(pvt->umc);
-
-err_free:
-	kfree(pvt);
-
-err_ret:
-	return ret;
 }
 
 static int probe_one_instance(unsigned int nid)
 {
 	struct pci_dev *F3 = node_to_amd_nb(nid)->misc;
+	struct amd64_pvt *pvt = NULL;
 	struct ecc_settings *s;
 	int ret;
 
@@ -3536,6 +3511,21 @@ static int probe_one_instance(unsigned int nid)
 		goto err_out;
 
 	ecc_stngs[nid] = s;
+
+	pvt = kzalloc(sizeof(struct amd64_pvt), GFP_KERNEL);
+	if (!pvt)
+		goto err_settings;
+
+	pvt->mc_node_id	= nid;
+	pvt->F3 = F3;
+
+	fam_type = per_family_init(pvt);
+	if (!fam_type)
+		goto err_enable;
+
+	ret = hw_info_get(pvt);
+	if (ret < 0)
+		goto err_enable;
 
 	if (!ecc_enabled(F3, nid)) {
 		ret = 0;
@@ -3553,7 +3543,7 @@ static int probe_one_instance(unsigned int nid)
 			goto err_enable;
 	}
 
-	ret = init_one_instance(nid);
+	ret = init_one_instance(pvt);
 	if (ret < 0) {
 		amd64_err("Error probing instance: %d\n", nid);
 
@@ -3566,6 +3556,10 @@ static int probe_one_instance(unsigned int nid)
 	return ret;
 
 err_enable:
+	hw_info_put(pvt);
+	kfree(pvt);
+
+err_settings:
 	kfree(s);
 	ecc_stngs[nid] = NULL;
 
@@ -3592,35 +3586,23 @@ static void remove_one_instance(unsigned int nid)
 
 	restore_ecc_error_reporting(s, nid, F3);
 
-	free_mc_sibling_devs(pvt);
-
 	kfree(ecc_stngs[nid]);
 	ecc_stngs[nid] = NULL;
 
 	/* Free the EDAC CORE resources */
 	mci->pvt_info = NULL;
 
+	hw_info_put(pvt);
 	kfree(pvt);
 	edac_mc_free(mci);
 }
 
 static void setup_pci_device(void)
 {
-	struct mem_ctl_info *mci;
-	struct amd64_pvt *pvt;
-
 	if (pci_ctl)
 		return;
 
-	mci = edac_mc_find(0);
-	if (!mci)
-		return;
-
-	pvt = mci->pvt_info;
-	if (pvt->umc)
-		pci_ctl = edac_pci_create_generic_ctl(&pvt->F0->dev, EDAC_MOD_STR);
-	else
-		pci_ctl = edac_pci_create_generic_ctl(&pvt->F2->dev, EDAC_MOD_STR);
+	pci_ctl = edac_pci_create_generic_ctl(pci_ctl_dev, EDAC_MOD_STR);
 	if (!pci_ctl) {
 		pr_warn("%s(): Unable to create PCI control\n", __func__);
 		pr_warn("%s(): PCI error report via EDAC not set\n", __func__);
@@ -3666,8 +3648,6 @@ static int __init amd64_edac_init(void)
 	if (!msrs)
 		goto err_free;
 
-	compute_num_umcs();
-
 	for (i = 0; i < amd_nb_num(); i++) {
 		err = probe_one_instance(i);
 		if (err) {
@@ -3704,6 +3684,8 @@ static int __init amd64_edac_init(void)
 	return 0;
 
 err_pci:
+	pci_ctl_dev = NULL;
+
 	msrs_free(msrs);
 	msrs = NULL;
 
@@ -3734,6 +3716,8 @@ static void __exit amd64_edac_exit(void)
 
 	kfree(ecc_stngs);
 	ecc_stngs = NULL;
+
+	pci_ctl_dev = NULL;
 
 	msrs_free(msrs);
 	msrs = NULL;

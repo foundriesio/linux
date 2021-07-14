@@ -9,6 +9,7 @@
  *
  */
 
+#include <linux/crash_dump.h>
 #include <linux/device.h>
 #include <linux/irq.h>
 #include <linux/msi.h>
@@ -144,7 +145,7 @@ static int check_req(struct pci_dev *pdev, int nvec, char *prop_name)
 
 	p = of_get_property(dn, prop_name, NULL);
 	if (!p) {
-		pr_debug("rtas_msi: No %s on %s\n", prop_name, dn->full_name);
+		pr_debug("rtas_msi: No %s on %pOF\n", prop_name, dn);
 		return -ENOENT;
 	}
 
@@ -182,8 +183,8 @@ static struct device_node *find_pe_total_msi(struct pci_dev *dev, int *total)
 	while (dn) {
 		p = of_get_property(dn, "ibm,pe-total-#msi", NULL);
 		if (p) {
-			pr_debug("rtas_msi: found prop on dn %s\n",
-				dn->full_name);
+			pr_debug("rtas_msi: found prop on dn %pOF\n",
+				dn);
 			*total = be32_to_cpup(p);
 			return dn;
 		}
@@ -222,7 +223,7 @@ static struct device_node *find_pe_dn(struct pci_dev *dev, int *total)
 
 	/* Hardcode of 8 for old firmwares */
 	*total = 8;
-	pr_debug("rtas_msi: using PE dn %s\n", dn->full_name);
+	pr_debug("rtas_msi: using PE dn %pOF\n", dn);
 
 	return dn;
 }
@@ -242,7 +243,7 @@ static void *count_non_bridge_devices(struct device_node *dn, void *data)
 	const __be32 *p;
 	u32 class;
 
-	pr_debug("rtas_msi: counting %s\n", dn->full_name);
+	pr_debug("rtas_msi: counting %pOF\n", dn);
 
 	p = of_get_property(dn, "class-code", NULL);
 	class = p ? be32_to_cpup(p) : 0;
@@ -300,7 +301,7 @@ static int msi_quota_for_device(struct pci_dev *dev, int request)
 		goto out;
 	}
 
-	pr_debug("rtas_msi: found PE %s\n", pe_dn->full_name);
+	pr_debug("rtas_msi: found PE %pOF\n", pe_dn);
 
 	memset(&counts, 0, sizeof(struct msi_counts));
 
@@ -469,8 +470,28 @@ again:
 			return hwirq;
 		}
 
-		virq = irq_create_mapping_affinity(NULL, hwirq,
-						   entry->affinity);
+		/*
+		 * Depending on the number of online CPUs in the original
+		 * kernel, it is likely for CPU #0 to be offline in a kdump
+		 * kernel. The associated IRQs in the affinity mappings
+		 * provided by irq_create_affinity_masks() are thus not
+		 * started by irq_startup(), as per-design for managed IRQs.
+		 * This can be a problem with multi-queue block devices driven
+		 * by blk-mq : such a non-started IRQ is very likely paired
+		 * with the single queue enforced by blk-mq during kdump (see
+		 * blk_mq_alloc_tag_set()). This causes the device to remain
+		 * silent and likely hangs the guest at some point.
+		 *
+		 * We don't really care for fine-grained affinity when doing
+		 * kdump actually : simply ignore the pre-computed affinity
+		 * masks in this case and let the default mask with all CPUs
+		 * be used when creating the IRQ mappings.
+		 */
+		if (is_kdump_kernel())
+			virq = irq_create_mapping(NULL, hwirq);
+		else
+			virq = irq_create_mapping_affinity(NULL, hwirq,
+							   entry->affinity);
 
 		if (!virq) {
 			pr_debug("rtas_msi: Failed mapping hwirq %d\n", hwirq);

@@ -16,6 +16,7 @@
 #include <linux/mii.h>
 #include <linux/if_vlan.h>
 #include <linux/phy.h>
+#include <linux/ethtool.h>
 
 /* total number of Buffer Descriptors, same for Rx/Tx */
 #define TOTAL_DESC				256
@@ -33,6 +34,7 @@
 #define DMA_MAX_BURST_LENGTH    0x10
 
 /* misc. configuration */
+#define MAX_NUM_OF_FS_RULES		16
 #define CLEAR_ALL_HFB			0xFF
 #define DMA_FC_THRESH_HI		(TOTAL_DESC >> 4)
 #define DMA_FC_THRESH_LO		5
@@ -593,6 +595,18 @@ struct bcmgenet_rx_ring {
 	struct bcmgenet_priv *priv;
 };
 
+enum bcmgenet_rxnfc_state {
+	BCMGENET_RXNFC_STATE_UNUSED = 0,
+	BCMGENET_RXNFC_STATE_DISABLED,
+	BCMGENET_RXNFC_STATE_ENABLED
+};
+
+struct bcmgenet_rxnfc_rule {
+	struct	list_head list;
+	struct ethtool_rx_flow_spec	fs;
+	enum bcmgenet_rxnfc_state state;
+};
+
 /* device context */
 struct bcmgenet_priv {
 	void __iomem *base;
@@ -611,6 +625,8 @@ struct bcmgenet_priv {
 	struct enet_cb *rx_cbs;
 	unsigned int num_rx_bds;
 	unsigned int rx_buf_len;
+	struct bcmgenet_rxnfc_rule rxnfc_rules[MAX_NUM_OF_FS_RULES];
+	struct list_head rxnfc_list;
 
 	struct bcmgenet_rx_ring rx_rings[DESC_INDEX + 1];
 
@@ -663,6 +679,8 @@ struct bcmgenet_priv {
 	/* WOL */
 	struct clk *clk_wol;
 	u32 wolopts;
+	u8 sopass[SOPASS_MAX];
+	u32 hfb_en[3];
 
 	struct bcmgenet_mib_counters mib;
 
@@ -673,12 +691,21 @@ struct bcmgenet_priv {
 static inline u32 bcmgenet_##name##_readl(struct bcmgenet_priv *priv,	\
 					u32 off)			\
 {									\
-	return __raw_readl(priv->base + offset + off);			\
+	/* MIPS chips strapped for BE will automagically configure the	\
+	 * peripheral registers for CPU-native byte order.		\
+	 */								\
+	if (IS_ENABLED(CONFIG_MIPS) && IS_ENABLED(CONFIG_CPU_BIG_ENDIAN)) \
+		return __raw_readl(priv->base + offset + off);		\
+	else								\
+		return readl_relaxed(priv->base + offset + off);	\
 }									\
 static inline void bcmgenet_##name##_writel(struct bcmgenet_priv *priv,	\
 					u32 val, u32 off)		\
 {									\
-	__raw_writel(val, priv->base + offset + off);			\
+	if (IS_ENABLED(CONFIG_MIPS) && IS_ENABLED(CONFIG_CPU_BIG_ENDIAN)) \
+		return __raw_writel(val, priv->base + offset + off);	\
+	else								\
+		writel_relaxed(val, priv->base + offset + off);		\
 }
 
 GENET_IO_MACRO(ext, GENET_EXT_OFF);

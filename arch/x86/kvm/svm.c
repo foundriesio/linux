@@ -361,7 +361,7 @@ static int sev = IS_ENABLED(CONFIG_AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT);
 module_param(sev, int, 0444);
 
 static void svm_set_cr0(struct kvm_vcpu *vcpu, unsigned long cr0);
-static void svm_flush_tlb(struct kvm_vcpu *vcpu);
+static void svm_flush_tlb(struct kvm_vcpu *vcpu, bool invalidate_gpa);
 static void svm_complete_interrupts(struct vcpu_svm *svm);
 
 static int nested_svm_exit_handled(struct vcpu_svm *svm);
@@ -1791,6 +1791,8 @@ static struct page **sev_pin_memory(struct kvm *kvm, unsigned long uaddr,
 	struct page **pages;
 	int first, last;
 
+	lockdep_assert_held(&kvm->lock);
+
 	/* Calculate number of pages. */
 	first = (uaddr & PAGE_MASK) >> PAGE_SHIFT;
 	last = ((uaddr + ulen - 1) & PAGE_MASK) >> PAGE_SHIFT;
@@ -1906,6 +1908,7 @@ static void sev_vm_destroy(struct kvm *kvm)
 		list_for_each_safe(pos, q, head) {
 			__unregister_enc_region_locked(kvm,
 				list_entry(pos, struct enc_region, list));
+			cond_resched();
 		}
 	}
 
@@ -2565,7 +2568,7 @@ static int svm_set_cr4(struct kvm_vcpu *vcpu, unsigned long cr4)
 		return 1;
 
 	if (npt_enabled && ((old_cr4 ^ cr4) & X86_CR4_PGE))
-		svm_flush_tlb(vcpu);
+		svm_flush_tlb(vcpu, true);
 
 	vcpu->arch.cr4 = cr4;
 	if (!npt_enabled)
@@ -2919,7 +2922,7 @@ static void nested_svm_set_tdp_cr3(struct kvm_vcpu *vcpu,
 
 	svm->vmcb->control.nested_cr3 = __sme_set(root);
 	mark_dirty(svm->vmcb, VMCB_NPT);
-	svm_flush_tlb(vcpu);
+	svm_flush_tlb(vcpu, true);
 }
 
 static void nested_svm_inject_npf_exit(struct kvm_vcpu *vcpu,
@@ -3524,7 +3527,7 @@ static void enter_svm_guest_mode(struct vcpu_svm *svm, u64 vmcb_gpa,
 	svm->nested.intercept_exceptions = nested_vmcb->control.intercept_exceptions;
 	svm->nested.intercept            = nested_vmcb->control.intercept;
 
-	svm_flush_tlb(&svm->vcpu);
+	svm_flush_tlb(&svm->vcpu, true);
 	svm->vmcb->control.int_ctl = nested_vmcb->control.int_ctl | V_INTR_MASKING_MASK;
 	if (nested_vmcb->control.int_ctl & V_INTR_MASKING_MASK)
 		svm->vcpu.arch.hflags |= HF_VINTR_MASK;
@@ -5106,7 +5109,7 @@ static void update_cr8_intercept(struct kvm_vcpu *vcpu, int tpr, int irr)
 		set_cr_intercept(svm, INTERCEPT_CR8_WRITE);
 }
 
-static void svm_set_virtual_x2apic_mode(struct kvm_vcpu *vcpu, bool set)
+static void svm_set_virtual_apic_mode(struct kvm_vcpu *vcpu)
 {
 	return;
 }
@@ -5328,6 +5331,7 @@ static int svm_update_pi_irte(struct kvm *kvm, unsigned int host_irq,
 			 * - Tell IOMMU to use legacy mode for this interrupt.
 			 * - Retrieve ga_tag of prior interrupt remapping data.
 			 */
+			pi.prev_ga_tag = 0;
 			pi.is_guest_mode = false;
 			ret = irq_set_vcpu_affinity(host_irq, &pi);
 
@@ -5467,7 +5471,7 @@ static int svm_set_tss_addr(struct kvm *kvm, unsigned int addr)
 	return 0;
 }
 
-static void svm_flush_tlb(struct kvm_vcpu *vcpu)
+static void svm_flush_tlb(struct kvm_vcpu *vcpu, bool invalidate_gpa)
 {
 	struct vcpu_svm *svm = to_svm(vcpu);
 
@@ -5811,7 +5815,7 @@ static void svm_set_cr3(struct kvm_vcpu *vcpu, unsigned long root)
 
 	svm->vmcb->save.cr3 = __sme_set(root);
 	mark_dirty(svm->vmcb, VMCB_CR);
-	svm_flush_tlb(vcpu);
+	svm_flush_tlb(vcpu, true);
 }
 
 static void set_tdp_cr3(struct kvm_vcpu *vcpu, unsigned long root)
@@ -5825,7 +5829,7 @@ static void set_tdp_cr3(struct kvm_vcpu *vcpu, unsigned long root)
 	svm->vmcb->save.cr3 = kvm_read_cr3(vcpu);
 	mark_dirty(svm->vmcb, VMCB_CR);
 
-	svm_flush_tlb(vcpu);
+	svm_flush_tlb(vcpu, true);
 }
 
 static int is_disabled(void)
@@ -7018,11 +7022,19 @@ static int svm_register_enc_region(struct kvm *kvm,
 	if (!region)
 		return -ENOMEM;
 
+	mutex_lock(&kvm->lock);
 	region->pages = sev_pin_memory(kvm, range->addr, range->size, &region->npages, 1);
 	if (!region->pages) {
 		ret = -ENOMEM;
+		mutex_unlock(&kvm->lock);
 		goto e_free;
 	}
+
+	region->uaddr = range->addr;
+	region->size = range->size;
+
+	list_add_tail(&region->list, &sev->regions_list);
+	mutex_unlock(&kvm->lock);
 
 	/*
 	 * The guest may change the memory encryption attribute from C=0 -> C=1
@@ -7031,13 +7043,6 @@ static int svm_register_enc_region(struct kvm *kvm,
 	 * correct C-bit.
 	 */
 	sev_clflush_pages(region->pages, region->npages);
-
-	region->uaddr = range->addr;
-	region->size = range->size;
-
-	mutex_lock(&kvm->lock);
-	list_add_tail(&region->list, &sev->regions_list);
-	mutex_unlock(&kvm->lock);
 
 	return ret;
 
@@ -7098,6 +7103,13 @@ static bool svm_need_emulation_on_page_fault(struct kvm_vcpu *vcpu)
 	bool smep = cr4 & X86_CR4_SMEP;
 	bool smap = cr4 & X86_CR4_SMAP;
 	bool is_user = svm_get_cpl(vcpu) == 3;
+
+	/*
+	 * If RIP is invalid, go ahead with emulation which will cause an
+	 * internal error exit.
+	 */
+	if (!kvm_vcpu_gfn_to_memslot(vcpu, kvm_rip_read(vcpu) >> PAGE_SHIFT))
+		return true;
 
 	/*
 	 * Detect and workaround Errata 1096 Fam_17h_00_0Fh.
@@ -7223,7 +7235,7 @@ static struct kvm_x86_ops svm_x86_ops __ro_after_init = {
 	.enable_nmi_window = enable_nmi_window,
 	.enable_irq_window = enable_irq_window,
 	.update_cr8_intercept = update_cr8_intercept,
-	.set_virtual_x2apic_mode = svm_set_virtual_x2apic_mode,
+	.set_virtual_apic_mode = svm_set_virtual_apic_mode,
 	.get_enable_apicv = svm_get_enable_apicv,
 	.refresh_apicv_exec_ctrl = svm_refresh_apicv_exec_ctrl,
 	.load_eoi_exitmap = svm_load_eoi_exitmap,

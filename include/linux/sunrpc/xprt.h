@@ -199,7 +199,16 @@ struct rpc_xprt {
 	unsigned int		min_reqs;	/* min number of slots */
 	unsigned int		num_reqs;	/* total slots */
 	unsigned long		state;		/* transport state */
-	unsigned char		resvport   : 1; /* use a reserved port */
+#ifndef __GENKSYMS__
+	unsigned char		resvport   : 1,	/* use a reserved port */
+				reuseport  : 1; /* reuse port on reconnect */
+#else
+/* For kabi checks, hide reuseport which will be placed in an unused bit,
+ * and #define it to resvport so that code can build.
+ */
+	unsigned char		resvport   : 1;	/* use a reserved port */
+#define reuseport resvport
+#endif
 	atomic_t		swapper;	/* we're swapping over this
 						   transport */
 	unsigned int		bind_index;	/* bind function index */
@@ -349,6 +358,8 @@ struct rpc_xprt *	xprt_alloc(struct net *net, size_t size,
 				unsigned int num_prealloc,
 				unsigned int max_req);
 void			xprt_free(struct rpc_xprt *);
+void			xprt_add_backlog(struct rpc_xprt *xprt, struct rpc_task *task);
+bool			xprt_wake_up_backlog(struct rpc_xprt *xprt, struct rpc_rqst *req);
 
 static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
 {

@@ -266,14 +266,26 @@ void extent_io_exit(void)
 		bioset_free(btrfs_bioset);
 }
 
+/*
+ * For the file_extent_tree, we want to hold the inode lock when we lookup and
+ * update the disk_i_size, but lockdep will complain because our io_tree we hold
+ * the tree lock and get the inode lock when setting delalloc.  These two things
+ * are unrelated, so make a class for the file_extent_tree so we don't get the
+ * two locking patterns mixed up.
+ */
+static struct lock_class_key file_extent_tree_class;
+
 void extent_io_tree_init(struct extent_io_tree *tree,
-			 struct address_space *mapping)
+			 struct address_space *mapping, unsigned int owner)
 {
 	tree->state = RB_ROOT;
 	tree->ops = NULL;
 	tree->dirty_bytes = 0;
 	spin_lock_init(&tree->lock);
 	tree->mapping = mapping;
+	tree->owner = owner;
+	if (owner == IO_TREE_INODE_FILE_EXTENT)
+		lockdep_set_class(&tree->lock, &file_extent_tree_class);
 }
 
 void extent_io_tree_release(struct extent_io_tree *tree)
@@ -1156,6 +1168,76 @@ int set_extent_bit(struct extent_io_tree *tree, u64 start, u64 end,
 }
 
 
+/* find the first state struct with 'bits' set after 'start', and
+ * return it.  tree->lock must be held.  NULL will returned if
+ * nothing was found after 'start'
+ */
+static struct extent_state *
+find_first_extent_bit_state(struct extent_io_tree *tree,
+			    u64 start, unsigned bits)
+{
+	struct rb_node *node;
+	struct extent_state *state;
+
+	/*
+	 * this search will find all the extents that end after
+	 * our range starts.
+	 */
+	node = tree_search(tree, start);
+	if (!node)
+		goto out;
+
+	while (1) {
+		state = rb_entry(node, struct extent_state, rb_node);
+		if (state->end >= start && (state->state & bits))
+			return state;
+
+		node = rb_next(node);
+		if (!node)
+			break;
+	}
+out:
+	return NULL;
+}
+
+
+/**
+ * find_contiguous_extent_bit: find a contiguous area of bits
+ * @tree - io tree to check
+ * @start - offset to start the search from
+ * @start_ret - the first offset we found with the bits set
+ * @end_ret - the final contiguous range of the bits that were set
+ * @bits - bits to look for
+ *
+ * set_extent_bit and clear_extent_bit can temporarily split contiguous ranges
+ * to set bits appropriately, and then merge them again.  During this time it
+ * will drop the tree->lock, so use this helper if you want to find the actual
+ * contiguous area for given bits.  We will search to the first bit we find, and
+ * then walk down the tree until we find a non-contiguous area.  The area
+ * returned will be the full contiguous area with the bits set.
+ */
+int find_contiguous_extent_bit(struct extent_io_tree *tree, u64 start,
+			       u64 *start_ret, u64 *end_ret, unsigned bits)
+{
+	struct extent_state *state;
+	int ret = 1;
+
+	spin_lock(&tree->lock);
+	state = find_first_extent_bit_state(tree, start, bits);
+	if (state) {
+		*start_ret = state->start;
+		*end_ret = state->end;
+		while ((state = next_state(state)) != NULL) {
+			if (state->start > (*end_ret + 1))
+				break;
+			*end_ret = state->end;
+		}
+		ret = 0;
+	}
+	spin_unlock(&tree->lock);
+	return ret;
+}
+
 /**
  * convert_extent_bit - convert all bits in a given range from one bit to
  * 			another
@@ -1498,37 +1580,6 @@ static void set_range_writeback(struct extent_io_tree *tree, u64 start, u64 end)
 	}
 }
 
-/* find the first state struct with 'bits' set after 'start', and
- * return it.  tree->lock must be held.  NULL will returned if
- * nothing was found after 'start'
- */
-static struct extent_state *
-find_first_extent_bit_state(struct extent_io_tree *tree,
-			    u64 start, unsigned bits)
-{
-	struct rb_node *node;
-	struct extent_state *state;
-
-	/*
-	 * this search will find all the extents that end after
-	 * our range starts.
-	 */
-	node = tree_search(tree, start);
-	if (!node)
-		goto out;
-
-	while (1) {
-		state = rb_entry(node, struct extent_state, rb_node);
-		if (state->end >= start && (state->state & bits))
-			return state;
-
-		node = rb_next(node);
-		if (!node)
-			break;
-	}
-out:
-	return NULL;
-}
 
 /*
  * find the first offset in the io tree with 'bits' set. zero is
@@ -4092,12 +4143,25 @@ static int extent_write_cache_pages(struct address_space *mapping,
 			range_whole = 1;
 		scanned = 1;
 	}
-	if (wbc->sync_mode == WB_SYNC_ALL)
+
+	/*
+	 * We do the tagged writepage as long as the snapshot flush bit is set
+	 * and we are the first one who do the filemap_flush() on this inode.
+	 *
+	 * The nr_to_write == LONG_MAX is needed to make sure other flushers do
+	 * not race in and drop the bit.
+	 */
+	if (range_whole && wbc->nr_to_write == LONG_MAX &&
+	    test_and_clear_bit(BTRFS_INODE_SNAPSHOT_FLUSH,
+			       &BTRFS_I(inode)->runtime_flags))
+		wbc->tagged_writepages = 1;
+
+	if (wbc->sync_mode == WB_SYNC_ALL || wbc->tagged_writepages)
 		tag = PAGECACHE_TAG_TOWRITE;
 	else
 		tag = PAGECACHE_TAG_DIRTY;
 retry:
-	if (wbc->sync_mode == WB_SYNC_ALL)
+	if (wbc->sync_mode == WB_SYNC_ALL || wbc->tagged_writepages)
 		tag_pages_for_writeback(mapping, index, end);
 	done_index = index;
 	while (!done && !nr_to_write_done && (index <= end) &&

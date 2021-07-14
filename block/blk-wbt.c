@@ -603,7 +603,8 @@ static void __wbt_wait(struct rq_wb *rwb, enum wbt_flags wb_acct,
 			atomic_inc_below(&rqw->inflight, get_limit(rwb, rw)))
 		return;
 
-	prepare_to_wait_exclusive(&rqw->wait, &data.wq, TASK_UNINTERRUPTIBLE);
+	has_sleeper = !prepare_to_wait_exclusive_first(&rqw->wait, &data.wq,
+						       TASK_UNINTERRUPTIBLE);
 	do {
 		set_current_state(TASK_UNINTERRUPTIBLE);
 		if (data.got_token)

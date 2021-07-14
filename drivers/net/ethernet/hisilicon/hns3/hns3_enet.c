@@ -21,6 +21,7 @@
 #include <net/pkt_cls.h>
 #include <net/tcp.h>
 #include <net/vxlan.h>
+#include <net/geneve.h>
 
 #include "hnae3.h"
 #include "hns3_enet.h"
@@ -522,8 +523,8 @@ static int hns3_nic_net_stop(struct net_device *netdev)
 	if (h->ae_algo->ops->set_timer_task)
 		h->ae_algo->ops->set_timer_task(priv->ae_handle, false);
 
-	netif_tx_stop_all_queues(netdev);
 	netif_carrier_off(netdev);
+	netif_tx_disable(netdev);
 
 	hns3_nic_net_down(netdev);
 
@@ -779,16 +780,20 @@ static int hns3_get_l4_protocol(struct sk_buff *skb, u8 *ol4_proto,
  * and it is udp packet, which has a dest port as the IANA assigned.
  * the hardware is expected to do the checksum offload, but the
  * hardware will not do the checksum offload when udp dest port is
- * 4789.
+ * 4789, 4790 or 6081.
  */
 static bool hns3_tunnel_csum_bug(struct sk_buff *skb)
 {
-#define IANA_VXLAN_PORT	4789
+#define IANA_VXLAN_UDP_PORT	4789
+#define GENEVE_UDP_PORT		6081
 	union l4_hdr_info l4;
 
 	l4.hdr = skb_transport_header(skb);
 
-	if (!(!skb->encapsulation && l4.udp->dest == htons(IANA_VXLAN_PORT)))
+	if (!(!skb->encapsulation &&
+	      (l4.udp->dest == htons(IANA_VXLAN_UDP_PORT) ||
+	      l4.udp->dest == htons(GENEVE_UDP_PORT) ||
+	      l4.udp->dest == htons(4790))))
 		return false;
 
 	skb_checksum_help(skb);
@@ -1114,7 +1119,7 @@ static int hns3_fill_desc(struct hns3_enet_ring *ring, void *priv,
 	}
 
 	frag_buf_num = hns3_tx_bd_count(size);
-	sizeoflast = size & HNS3_TX_LAST_SIZE_M;
+	sizeoflast = size % HNS3_MAX_BD_SIZE;
 	sizeoflast = sizeoflast ? sizeoflast : HNS3_MAX_BD_SIZE;
 
 	/* When frag size is bigger than hardware limit, split this frag */
@@ -1259,12 +1264,19 @@ static void hns3_clear_desc(struct hns3_enet_ring *ring, int next_to_use_orig)
 	unsigned int i;
 
 	for (i = 0; i < ring->desc_num; i++) {
+		struct hns3_desc *desc = &ring->desc[ring->next_to_use];
+
+		memset(desc, 0, sizeof(*desc));
+
 		/* check if this is where we started */
 		if (ring->next_to_use == next_to_use_orig)
 			break;
 
 		/* rollback one */
 		ring_ptr_move_bw(ring, next_to_use);
+
+		if (!ring->desc_cb[ring->next_to_use].dma)
+			continue;
 
 		/* unmap the descriptor dma address */
 		if (ring->desc_cb[ring->next_to_use].type == DESC_TYPE_SKB)
@@ -1280,6 +1292,7 @@ static void hns3_clear_desc(struct hns3_enet_ring *ring, int next_to_use_orig)
 
 		ring->desc_cb[ring->next_to_use].length = 0;
 		ring->desc_cb[ring->next_to_use].dma = 0;
+		ring->desc_cb[ring->next_to_use].type = DESC_TYPE_UNKNOWN;
 	}
 }
 
@@ -3261,7 +3274,6 @@ static void hns3_nic_set_cpumask(struct hns3_nic_priv *priv)
 
 static int hns3_nic_init_vector_data(struct hns3_nic_priv *priv)
 {
-	struct hnae3_ring_chain_node vector_ring_chain;
 	struct hnae3_handle *h = priv->ae_handle;
 	struct hns3_enet_tqp_vector *tqp_vector;
 	int ret = 0;
@@ -3293,6 +3305,8 @@ static int hns3_nic_init_vector_data(struct hns3_nic_priv *priv)
 	}
 
 	for (i = 0; i < priv->vector_num; i++) {
+		struct hnae3_ring_chain_node vector_ring_chain;
+
 		tqp_vector = &priv->tqp_vector[i];
 
 		tqp_vector->rx_group.total_bytes = 0;
@@ -3940,9 +3954,8 @@ static void hns3_client_uninit(struct hnae3_handle *handle, bool reset)
 
 	hns3_put_ring_config(priv);
 
-	hns3_dbg_uninit(handle);
-
 out_netdev_free:
+	hns3_dbg_uninit(handle);
 	free_netdev(netdev);
 }
 
@@ -3954,8 +3967,8 @@ static void hns3_link_status_change(struct hnae3_handle *handle, bool linkup)
 		return;
 
 	if (linkup) {
-		netif_carrier_on(netdev);
 		netif_tx_wake_all_queues(netdev);
+		netif_carrier_on(netdev);
 		if (netif_msg_link(handle))
 			netdev_info(netdev, "link up\n");
 	} else {
@@ -4216,6 +4229,11 @@ static int hns3_reset_notify_up_enet(struct hnae3_handle *handle)
 	struct hnae3_knic_private_info *kinfo = &handle->kinfo;
 	struct hns3_nic_priv *priv = netdev_priv(kinfo->netdev);
 	int ret = 0;
+
+	if (!test_bit(HNS3_NIC_STATE_INITED, &priv->state)) {
+		netdev_err(kinfo->netdev, "device is not initialized yet\n");
+		return -EFAULT;
+	}
 
 	clear_bit(HNS3_NIC_STATE_RESETTING, &priv->state);
 

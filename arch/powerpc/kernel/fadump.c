@@ -371,7 +371,7 @@ static unsigned long init_fadump_mem_struct(struct fadump_mem_struct *fdm,
  * that is required for a kernel to boot successfully.
  *
  */
-static inline unsigned long fadump_calculate_reserve_size(void)
+static __init unsigned long fadump_calculate_reserve_size(void)
 {
 	int ret;
 	unsigned long long base, size;

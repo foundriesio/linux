@@ -612,8 +612,10 @@ static struct notifier_block kdump_mem_nb = {
 static void reserve_memory_end(void)
 {
 #ifdef CONFIG_CRASH_DUMP
-	if (ipl_info.type == IPL_TYPE_FCP_DUMP &&
-	    !OLDMEM_BASE && sclp.hsa_size) {
+	if (OLDMEM_BASE) {
+		memory_end = min(memory_end ?: OLDMEM_SIZE, OLDMEM_SIZE);
+		memory_end_set = 1;
+	} else if (ipl_info.type == IPL_TYPE_FCP_DUMP && sclp.hsa_size) {
 		memory_end = sclp.hsa_size;
 		memory_end &= PAGE_MASK;
 		memory_end_set = 1;

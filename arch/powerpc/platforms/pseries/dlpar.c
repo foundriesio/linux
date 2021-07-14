@@ -137,7 +137,6 @@ void dlpar_free_cc_nodes(struct device_node *dn)
 #define NEXT_PROPERTY   3
 #define PREV_PARENT     4
 #define MORE_MEMORY     5
-#define CALL_AGAIN	-2
 #define ERR_CFG_USE     -9003
 
 struct device_node *dlpar_configure_connector(__be32 drc_index,
@@ -178,6 +177,9 @@ struct device_node *dlpar_configure_connector(__be32 drc_index,
 		memcpy(data_buf, rtas_data_buf, RTAS_DATA_BUF_SIZE);
 
 		spin_unlock(&rtas_data_buf_lock);
+
+		if (rtas_busy_delay(rc))
+			continue;
 
 		switch (rc) {
 		case COMPLETE:
@@ -231,9 +233,6 @@ struct device_node *dlpar_configure_connector(__be32 drc_index,
 			parent_path = last_dn->parent->full_name;
 			break;
 
-		case CALL_AGAIN:
-			break;
-
 		case MORE_MEMORY:
 		case ERR_CFG_USE:
 		default:
@@ -264,8 +263,7 @@ int dlpar_attach_node(struct device_node *dn, struct device_node *parent)
 
 	rc = of_attach_node(dn);
 	if (rc) {
-		printk(KERN_ERR "Failed to add device node %s\n",
-		       dn->full_name);
+		printk(KERN_ERR "Failed to add device node %pOF\n", dn);
 		return rc;
 	}
 

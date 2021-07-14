@@ -455,7 +455,7 @@ static void hclge_get_link_mode(struct hclge_vport *vport,
 	unsigned long advertising;
 	unsigned long supported;
 	unsigned long send_data;
-	u8 msg_data[10];
+	u8 msg_data[10] = {};
 	u8 dest_vfid;
 
 	advertising = hdev->hw.mac.advertising[0];
@@ -536,6 +536,17 @@ static int hclge_get_rss_key(struct hclge_vport *vport,
 	u8 index;
 
 	index = mbx_req->msg[2];
+
+	/* Check the query index of rss_hash_key from VF, make sure no
+	 * more than the size of rss_hash_key.
+	 */
+	if (((index + 1) * HCLGE_RSS_MBX_RESP_LEN) >
+	      sizeof(vport[0].rss_hash_key)) {
+		dev_warn(&hdev->pdev->dev,
+			 "failed to get the rss hash key, the index(%u) invalid !\n",
+			 index);
+		return 0;
+	}
 
 	memcpy(&resp_data[0],
 	       &hdev->vport[0].rss_hash_key[index * HCLGE_RSS_MBX_RESP_LEN],

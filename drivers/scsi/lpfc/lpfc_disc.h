@@ -1,7 +1,7 @@
 /*******************************************************************
  * This file is part of the Emulex Linux Device Driver for         *
  * Fibre Channel Host Bus Adapters.                                *
- * Copyright (C) 2017-2020 Broadcom. All Rights Reserved. The term *
+ * Copyright (C) 2017-2021 Broadcom. All Rights Reserved. The term *
  * “Broadcom” refers to Broadcom Inc. and/or its subsidiaries.     *
  * Copyright (C) 2004-2013 Emulex.  All rights reserved.           *
  * EMULEX and SLI are trademarks of Emulex.                        *
@@ -79,6 +79,7 @@ struct lpfc_node_rrqs {
 
 struct lpfc_nodelist {
 	struct list_head nlp_listp;
+	struct serv_parm fc_sparam;		/* buffer for service params */
 	struct lpfc_name nlp_portname;
 	struct lpfc_name nlp_nodename;
 
@@ -135,14 +136,17 @@ struct lpfc_nodelist {
 	struct lpfc_scsicmd_bkt *lat_data;	/* Latency data */
 	uint32_t fc4_prli_sent;
 	uint32_t fc4_xpt_flags;
+	uint32_t upcall_flags;
 #define NLP_WAIT_FOR_UNREG    0x1
 #define SCSI_XPT_REGD         0x2
 #define NVME_XPT_REGD         0x4
+#define NLP_WAIT_FOR_LOGO     0x2
 
 
 	uint32_t nvme_fb_size; /* NVME target's supported byte cnt */
 #define NVME_FB_BIT_SHIFT 9    /* PRLI Rsp first burst in 512B units. */
 	uint32_t nlp_defer_did;
+	wait_queue_head_t *logo_waitq;
 };
 
 struct lpfc_node_rrq {
@@ -152,7 +156,6 @@ struct lpfc_node_rrq {
 	uint16_t rxid;
 	uint32_t         nlp_DID;		/* FC D_ID of entry */
 	struct lpfc_vport *vport;
-	struct lpfc_nodelist *ndlp;
 	unsigned long rrq_stop_time;
 };
 

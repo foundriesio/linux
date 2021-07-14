@@ -98,6 +98,7 @@ bool nvme_failover_req(struct request *req)
 		}
 		break;
 	case NVME_SC_HOST_PATH_ERROR:
+	case NVME_SC_HOST_ABORTED_CMD:
 		/*
 		 * Temporary transport disruption in talking to the controller.
 		 * Try to send on a new path.
@@ -239,7 +240,7 @@ static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head,
 	}
 
 	for (ns = nvme_next_ns(head, old);
-	     ns != old;
+	     ns && ns != old;
 	     ns = nvme_next_ns(head, ns)) {
 		if (nvme_path_is_disabled(ns))
 			continue;
@@ -297,6 +298,10 @@ static bool nvme_available_path(struct nvme_ns_head *head)
 	struct nvme_ns *ns;
 
 	list_for_each_entry_rcu(ns, &head->list, siblings) {
+#ifndef __GENKSYMS__
+		if (test_bit(NVME_CTRL_FAILFAST_EXPIRED, &ns->ctrl->flags))
+			continue;
+#endif
 		switch (ns->ctrl->state) {
 		case NVME_CTRL_LIVE:
 		case NVME_CTRL_RESETTING:
@@ -727,6 +732,13 @@ int nvme_mpath_init(struct nvme_ctrl *ctrl, struct nvme_id_ctrl *id)
 	/* check if multipath is enabled and we have the capability */
 	if (!multipath || !ctrl->subsys || !(ctrl->subsys->cmic & (1 << 3)))
 		return 0;
+
+	if (!ctrl->max_namespaces ||
+	    ctrl->max_namespaces > le32_to_cpu(id->nn)) {
+		dev_err(ctrl->device,
+			"Invalid MNAN value %u\n", ctrl->max_namespaces);
+		return -EINVAL;
+	}
 
 	ctrl->anacap = id->anacap;
 	ctrl->anatt = id->anatt;

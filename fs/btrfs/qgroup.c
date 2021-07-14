@@ -2437,7 +2437,7 @@ int btrfs_qgroup_account_extents(struct btrfs_trans_handle *trans,
 				/* Search commit root to find old_roots */
 				ret = btrfs_find_all_roots(NULL, fs_info,
 						record->bytenr, 0,
-						&record->old_roots);
+						&record->old_roots, false);
 				if (ret < 0)
 					goto cleanup;
 			}
@@ -2453,7 +2453,7 @@ int btrfs_qgroup_account_extents(struct btrfs_trans_handle *trans,
 			 * root. It's safe inside commit_transaction().
 			 */
 			ret = btrfs_find_all_roots(trans, fs_info,
-					record->bytenr, SEQ_LAST, &new_roots);
+				record->bytenr, SEQ_LAST, &new_roots, false);
 			if (ret < 0)
 				goto cleanup;
 			if (qgroup_to_skip) {
@@ -3062,7 +3062,7 @@ qgroup_rescan_leaf(struct btrfs_fs_info *fs_info, struct btrfs_path *path,
 			num_bytes = found.offset;
 
 		ret = btrfs_find_all_roots(NULL, fs_info, found.objectid, 0,
-					   &roots);
+					   &roots, false);
 		if (ret < 0)
 			goto out;
 		/* For rescan, just pass old_roots as NULL */
@@ -3472,7 +3472,13 @@ static int try_flush_qgroup(struct btrfs_root *root)
 {
 	struct btrfs_trans_handle *trans;
 	int ret;
-	bool can_commit = true;
+
+	/* Can't hold an open transaction or we run the risk of deadlocking. */
+	ASSERT(current->journal_info == NULL ||
+	       current->journal_info == BTRFS_SEND_TRANS_STUB);
+	if (WARN_ON(current->journal_info &&
+		     current->journal_info != BTRFS_SEND_TRANS_STUB))
+		return 0;
 
 	/*
 	 * We don't want to run flush again and again, so if there is a running
@@ -3484,21 +3490,7 @@ static int try_flush_qgroup(struct btrfs_root *root)
 		return 0;
 	}
 
-	/*
-	 * If current process holds a transaction, we shouldn't flush, as we
-	 * assume all space reservation happens before a transaction handle is
-	 * held.
-	 *
-	 * But there are cases like btrfs_delayed_item_reserve_metadata() where
-	 * we try to reserve space with one transction handle already held.
-	 * In that case we can't commit transaction, but at least try to end it
-	 * and hope the started data writes can free some space.
-	 */
-	if (current->journal_info &&
-	    current->journal_info != BTRFS_SEND_TRANS_STUB)
-		can_commit = false;
-
-	ret = btrfs_start_delalloc_inodes(root, 1);
+	ret = btrfs_start_delalloc_snapshot(root);
 	if (ret < 0)
 		goto out;
 	btrfs_wait_ordered_extents(root, U64_MAX, 0, (u64)-1);
@@ -3509,10 +3501,7 @@ static int try_flush_qgroup(struct btrfs_root *root)
 		goto out;
 	}
 
-	if (can_commit)
-		ret = btrfs_commit_transaction(trans);
-	else
-		ret = btrfs_end_transaction(trans);
+	ret = btrfs_commit_transaction(trans);
 out:
 	clear_bit(BTRFS_ROOT_QGROUP_FLUSHING, &root->state);
 	wake_up(&root->qgroup_flush_wait);
@@ -3668,7 +3657,7 @@ static int __btrfs_qgroup_release_data(struct inode *inode,
 	if (free && reserved)
 		return qgroup_free_reserved_data(inode, reserved, start, len);
 	extent_changeset_init(&changeset);
-	ret = clear_record_extent_bits(&BTRFS_I(inode)->io_tree, start, 
+	ret = clear_record_extent_bits(&BTRFS_I(inode)->io_tree, start,
 			start + len -1, EXTENT_QGROUP_RESERVED, &changeset);
 	if (ret < 0)
 		goto out;
@@ -3765,8 +3754,8 @@ static int sub_root_meta_rsv(struct btrfs_root *root, int num_bytes,
 	return num_bytes;
 }
 
-static int qgroup_reserve_meta(struct btrfs_root *root, int num_bytes,
-				enum btrfs_qgroup_rsv_type type, bool enforce)
+int qgroup_reserve_meta(struct btrfs_root *root, int num_bytes,
+			enum btrfs_qgroup_rsv_type type, bool enforce)
 {
 	struct btrfs_fs_info *fs_info = root->fs_info;
 	int ret;

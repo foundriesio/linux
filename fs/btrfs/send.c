@@ -119,6 +119,7 @@ struct send_ctx {
 	u64 cur_inode_mode;
 	u64 cur_inode_rdev;
 	u64 cur_inode_last_extent;
+	u64 cur_inode_next_write_offset;
 	bool ignore_cur_inode;
 
 	u64 send_progress;
@@ -1276,12 +1277,21 @@ static int __iterate_backrefs(u64 ino, u64 offset, u64 root, void *ctx_)
 	 */
 	if (found->root == bctx->sctx->send_root) {
 		/*
-		 * TODO for the moment we don't accept clones from the inode
-		 * that is currently send. We may change this when
-		 * BTRFS_IOC_CLONE_RANGE supports cloning from and to the same
-		 * file.
+		 * If the source inode was not yet processed we can't issue a
+		 * clone operation, as the source extent does not exist yet at
+		 * the destination of the stream.
 		 */
-		if (ino >= bctx->cur_objectid)
+		if (ino > bctx->cur_objectid)
+			return 0;
+		/*
+		 * We clone from the inode currently being sent as long as the
+		 * source extent is already processed, otherwise we could try
+		 * to clone from an extent that does not exist yet at the
+		 * destination of the stream.
+		 */
+		if (ino == bctx->cur_objectid &&
+		    offset + bctx->extent_len >
+		    bctx->sctx->cur_inode_next_write_offset)
 			return 0;
 #if 0
 		if (ino > bctx->cur_objectid)
@@ -1456,7 +1466,7 @@ static int find_extent_clone(struct send_ctx *sctx,
 		extent_item_pos = 0;
 	ret = iterate_extent_inodes(fs_info, found_key.objectid,
 				    extent_item_pos, 1, __iterate_backrefs,
-				    backref_ctx);
+				    backref_ctx, false);
 
 	if (ret < 0)
 		goto out;
@@ -3833,6 +3843,72 @@ static int update_ref_path(struct send_ctx *sctx, struct recorded_ref *ref)
 }
 
 /*
+ * When processing the new references for an inode we may orphanize an existing
+ * directory inode because its old name conflicts with one of the new references
+ * of the current inode. Later, when processing another new reference of our
+ * inode, we might need to orphanize another inode, but the path we have in the
+ * reference reflects the pre-orphanization name of the directory we previously
+ * orphanized. For example:
+ *
+ * parent snapshot looks like:
+ *
+ * .                                     (ino 256)
+ * |----- f1                             (ino 257)
+ * |----- f2                             (ino 258)
+ * |----- d1/                            (ino 259)
+ *        |----- d2/                     (ino 260)
+ *
+ * send snapshot looks like:
+ *
+ * .                                     (ino 256)
+ * |----- d1                             (ino 258)
+ * |----- f2/                            (ino 259)
+ *        |----- f2_link/                (ino 260)
+ *        |       |----- f1              (ino 257)
+ *        |
+ *        |----- d2                      (ino 258)
+ *
+ * When processing inode 257 we compute the name for inode 259 as "d1", and we
+ * cache it in the name cache. Later when we start processing inode 258, when
+ * collecting all its new references we set a full path of "d1/d2" for its new
+ * reference with name "d2". When we start processing the new references we
+ * start by processing the new reference with name "d1", and this results in
+ * orphanizing inode 259, since its old reference causes a conflict. Then we
+ * move on the next new reference, with name "d2", and we find out we must
+ * orphanize inode 260, as its old reference conflicts with ours - but for the
+ * orphanization we use a source path corresponding to the path we stored in the
+ * new reference, which is "d1/d2" and not "o259-6-0/d2" - this makes the
+ * receiver fail since the path component "d1/" no longer exists, it was renamed
+ * to "o259-6-0/" when processing the previous new reference. So in this case we
+ * must recompute the path in the new reference and use it for the new
+ * orphanization operation.
+ */
+static int refresh_ref_path(struct send_ctx *sctx, struct recorded_ref *ref)
+{
+	char *name;
+	int ret;
+
+	name = kmemdup(ref->name, ref->name_len, GFP_KERNEL);
+	if (!name)
+		return -ENOMEM;
+
+	fs_path_reset(ref->full_path);
+	ret = get_cur_path(sctx, ref->dir, ref->dir_gen, ref->full_path);
+	if (ret < 0)
+		goto out;
+
+	ret = fs_path_add(ref->full_path, name, ref->name_len);
+	if (ret < 0)
+		goto out;
+
+	/* Update the reference's base name pointer. */
+	set_ref_path(ref, ref->full_path);
+out:
+	kfree(name);
+	return ret;
+}
+
+/*
  * This does all the move/link/unlink/rmdir magic.
  */
 static int process_recorded_refs(struct send_ctx *sctx, int *pending_move)
@@ -3900,52 +3976,56 @@ static int process_recorded_refs(struct send_ctx *sctx, int *pending_move)
 			goto out;
 	}
 
+	/*
+	 * Before doing any rename and link operations, do a first pass on the
+	 * new references to orphanize any unprocessed inodes that may have a
+	 * reference that conflicts with one of the new references of the current
+	 * inode. This needs to happen first because a new reference may conflict
+	 * with the old reference of a parent directory, so we must make sure
+	 * that the path used for link and rename commands don't use an
+	 * orphanized name when an ancestor was not yet orphanized.
+	 *
+	 * Example:
+	 *
+	 * Parent snapshot:
+	 *
+	 * .                                                      (ino 256)
+	 * |----- testdir/                                        (ino 259)
+	 * |          |----- a                                    (ino 257)
+	 * |
+	 * |----- b                                               (ino 258)
+	 *
+	 * Send snapshot:
+	 *
+	 * .                                                      (ino 256)
+	 * |----- testdir_2/                                      (ino 259)
+	 * |          |----- a                                    (ino 260)
+	 * |
+	 * |----- testdir                                         (ino 257)
+	 * |----- b                                               (ino 257)
+	 * |----- b2                                              (ino 258)
+	 *
+	 * Processing the new reference for inode 257 with name "b" may happen
+	 * before processing the new reference with name "testdir". If so, we
+	 * must make sure that by the time we send a link command to create the
+	 * hard link "b", inode 259 was already orphanized, since the generated
+	 * path in "valid_path" already contains the orphanized name for 259.
+	 * We are processing inode 257, so only later when processing 259 we do
+	 * the rename operation to change its temporary (orphanized) name to
+	 * "testdir_2".
+	 */
 	list_for_each_entry(cur, &sctx->new_refs, list) {
-		/*
-		 * We may have refs where the parent directory does not exist
-		 * yet. This happens if the parent directories inum is higher
-		 * the the current inum. To handle this case, we create the
-		 * parent directory out of order. But we need to check if this
-		 * did already happen before due to other refs in the same dir.
-		 */
 		ret = get_cur_inode_state(sctx, cur->dir, cur->dir_gen);
 		if (ret < 0)
 			goto out;
-		if (ret == inode_state_will_create) {
-			ret = 0;
-			/*
-			 * First check if any of the current inodes refs did
-			 * already create the dir.
-			 */
-			list_for_each_entry(cur2, &sctx->new_refs, list) {
-				if (cur == cur2)
-					break;
-				if (cur2->dir == cur->dir) {
-					ret = 1;
-					break;
-				}
-			}
-
-			/*
-			 * If that did not happen, check if a previous inode
-			 * did already create the dir.
-			 */
-			if (!ret)
-				ret = did_create_dir(sctx, cur->dir);
-			if (ret < 0)
-				goto out;
-			if (!ret) {
-				ret = send_create_inode(sctx, cur->dir);
-				if (ret < 0)
-					goto out;
-			}
-		}
+		if (ret == inode_state_will_create)
+			continue;
 
 		/*
-		 * Check if this new ref would overwrite the first ref of
-		 * another unprocessed inode. If yes, orphanize the
-		 * overwritten inode. If we find an overwritten ref that is
-		 * not the first ref, simply unlink it.
+		 * Check if this new ref would overwrite the first ref of another
+		 * unprocessed inode. If yes, orphanize the overwritten inode.
+		 * If we find an overwritten ref that is not the first ref,
+		 * simply unlink it.
 		 */
 		ret = will_overwrite_ref(sctx, cur->dir, cur->dir_gen,
 				cur->name, cur->name_len,
@@ -3961,6 +4041,12 @@ static int process_recorded_refs(struct send_ctx *sctx, int *pending_move)
 			if (ret) {
 				struct name_cache_entry *nce;
 				struct waiting_dir_move *wdm;
+
+				if (orphanized_dir) {
+					ret = refresh_ref_path(sctx, cur);
+					if (ret < 0)
+						goto out;
+				}
 
 				ret = orphanize_inode(sctx, ow_inode, ow_gen,
 						cur->full_path);
@@ -4019,6 +4105,49 @@ static int process_recorded_refs(struct send_ctx *sctx, int *pending_move)
 					goto out;
 			} else {
 				ret = send_unlink(sctx, cur->full_path);
+				if (ret < 0)
+					goto out;
+			}
+		}
+
+	}
+
+	list_for_each_entry(cur, &sctx->new_refs, list) {
+		/*
+		 * We may have refs where the parent directory does not exist
+		 * yet. This happens if the parent directories inum is higher
+		 * than the current inum. To handle this case, we create the
+		 * parent directory out of order. But we need to check if this
+		 * did already happen before due to other refs in the same dir.
+		 */
+		ret = get_cur_inode_state(sctx, cur->dir, cur->dir_gen);
+		if (ret < 0)
+			goto out;
+		if (ret == inode_state_will_create) {
+			ret = 0;
+			/*
+			 * First check if any of the current inodes refs did
+			 * already create the dir.
+			 */
+			list_for_each_entry(cur2, &sctx->new_refs, list) {
+				if (cur == cur2)
+					break;
+				if (cur2->dir == cur->dir) {
+					ret = 1;
+					break;
+				}
+			}
+
+			/*
+			 * If that did not happen, check if a previous inode
+			 * did already create the dir.
+			 */
+			if (!ret)
+				ret = did_create_dir(sctx, cur->dir);
+			if (ret < 0)
+				goto out;
+			if (!ret) {
+				ret = send_create_inode(sctx, cur->dir);
 				if (ret < 0)
 					goto out;
 			}
@@ -5047,6 +5176,21 @@ static int send_hole(struct send_ctx *sctx, u64 end)
 	u64 len;
 	int ret = 0;
 
+	/*
+	 * A hole that starts at EOF or beyond it. Since we do not yet support
+	 * fallocate (for extent preallocation and hole punching), sending a
+	 * write of zeroes starting at EOF or beyond would later require issuing
+	 * a truncate operation which would undo the write and achieve nothing.
+	 */
+	if (offset >= sctx->cur_inode_size)
+		return 0;
+	/*
+	 * Don't go beyond the inode's i_size due to prealloc extents that start
+	 * after the i_size.
+	 */
+	end = min_t(u64, end, sctx->cur_inode_size);
+
+
 	p = fs_path_alloc();
 	if (!p)
 		return -ENOMEM;
@@ -5068,6 +5212,7 @@ static int send_hole(struct send_ctx *sctx, u64 end)
 			break;
 		offset += len;
 	}
+	sctx->cur_inode_next_write_offset = offset;
 tlv_put_failure:
 	fs_path_free(p);
 	return ret;
@@ -5078,6 +5223,7 @@ static int send_extent_data(struct send_ctx *sctx,
 			    const u64 len)
 {
 	u64 sent = 0;
+
 
 	if (sctx->flags & BTRFS_SEND_FLAG_NO_FILE_DATA)
 		return send_update_extent(sctx, offset, len);
@@ -5243,6 +5389,21 @@ static int clone_range(struct send_ctx *sctx,
 			break;
 		offset += clone_len;
 		clone_root->offset += clone_len;
+
+		/*
+		 * If we are cloning from the file we are currently processing,
+		 * and using the send root as the clone root, we must stop once
+		 * the current clone offset reaches the current eof of the file
+		 * at the receiver, otherwise we would issue an invalid clone
+		 * operation (source range going beyond eof) and cause the
+		 * receiver to fail. So if we reach the current eof, bail out
+		 * and fallback to a regular write.
+		 */
+		if (clone_root->root == sctx->send_root &&
+		    clone_root->ino == sctx->cur_ino &&
+		    clone_root->offset >= sctx->cur_inode_next_write_offset)
+			break;
+
 		data_offset += clone_len;
 next:
 		path->slots[0]++;
@@ -5285,6 +5446,10 @@ static int send_write_or_clone(struct send_ctx *sctx,
 		len = btrfs_file_extent_num_bytes(path->nodes[0], ei);
 	}
 
+	if (offset >= sctx->cur_inode_size) {
+		ret = 0;
+		goto out;
+	}
 	if (offset + len > sctx->cur_inode_size)
 		len = sctx->cur_inode_size - offset;
 	if (len == 0) {
@@ -5303,6 +5468,7 @@ static int send_write_or_clone(struct send_ctx *sctx,
 	} else {
 		ret = send_extent_data(sctx, offset, len);
 	}
+	sctx->cur_inode_next_write_offset = offset + len;
 out:
 	return ret;
 }
@@ -5827,6 +5993,7 @@ static int finish_inode_if_needed(struct send_ctx *sctx, int at_end)
 	u64 right_gid;
 	int need_chmod = 0;
 	int need_chown = 0;
+	int need_truncate = 1;
 	int pending_move = 0;
 	int refs_processed = 0;
 
@@ -5867,9 +6034,13 @@ static int finish_inode_if_needed(struct send_ctx *sctx, int at_end)
 		need_chown = 1;
 		if (!S_ISLNK(sctx->cur_inode_mode))
 			need_chmod = 1;
+		if (sctx->cur_inode_next_write_offset == sctx->cur_inode_size)
+			need_truncate = 0;
 	} else {
+		u64 old_size;
+
 		ret = get_inode_info(sctx->parent_root, sctx->cur_ino,
-				NULL, NULL, &right_mode, &right_uid,
+				&old_size, NULL, &right_mode, &right_uid,
 				&right_gid, NULL);
 		if (ret < 0)
 			goto out;
@@ -5878,6 +6049,10 @@ static int finish_inode_if_needed(struct send_ctx *sctx, int at_end)
 			need_chown = 1;
 		if (!S_ISLNK(sctx->cur_inode_mode) && left_mode != right_mode)
 			need_chmod = 1;
+		if ((old_size == sctx->cur_inode_size) ||
+		    (sctx->cur_inode_size > old_size &&
+		     sctx->cur_inode_next_write_offset == sctx->cur_inode_size))
+			need_truncate = 0;
 	}
 
 	if (S_ISREG(sctx->cur_inode_mode)) {
@@ -5896,10 +6071,13 @@ static int finish_inode_if_needed(struct send_ctx *sctx, int at_end)
 					goto out;
 			}
 		}
-		ret = send_truncate(sctx, sctx->cur_ino, sctx->cur_inode_gen,
-				sctx->cur_inode_size);
-		if (ret < 0)
-			goto out;
+		if (need_truncate) {
+			ret = send_truncate(sctx, sctx->cur_ino,
+					    sctx->cur_inode_gen,
+					    sctx->cur_inode_size);
+			if (ret < 0)
+				goto out;
+		}
 	}
 
 	if (need_chown) {
@@ -6040,6 +6218,7 @@ static int changed_inode(struct send_ctx *sctx,
 	sctx->cur_ino = key->objectid;
 	sctx->cur_inode_new_gen = 0;
 	sctx->cur_inode_last_extent = (u64)-1;
+	sctx->cur_inode_next_write_offset = 0;
 	sctx->ignore_cur_inode = false;
 
 	/*
@@ -6565,7 +6744,7 @@ static int flush_delalloc_roots(struct send_ctx *sctx)
 	int i;
 
 	if (root) {
-		ret = btrfs_start_delalloc_inodes(root, 0);
+		ret = btrfs_start_delalloc_snapshot(root);
 		if (ret)
 			return ret;
 		btrfs_wait_ordered_extents(root, -1, 0, U64_MAX);
@@ -6573,7 +6752,7 @@ static int flush_delalloc_roots(struct send_ctx *sctx)
 
 	for (i = 0; i < sctx->clone_roots_cnt; i++) {
 		root = sctx->clone_roots[i].root;
-		ret = btrfs_start_delalloc_inodes(root, 0);
+		ret = btrfs_start_delalloc_snapshot(root);
 		if (ret)
 			return ret;
 		btrfs_wait_ordered_extents(root, -1, 0, U64_MAX);

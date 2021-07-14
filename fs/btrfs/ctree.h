@@ -103,6 +103,14 @@ static const int btrfs_csum_sizes[] = { 4 };
 
 #define BTRFS_DIRTY_METADATA_THRESH	SZ_32M
 
+/*
+ * Use large batch size to reduce overhead of metadata updates.  On the reader
+ * side, we only read it when we are close to ENOSPC and the read overhead is
+ * mostly related to the number of CPUs, so it is OK to use arbitrary large
+ * value here.
+ */
+#define BTRFS_TOTAL_BYTES_PINNED_BATCH	SZ_128M
+
 #define BTRFS_MAX_EXTENT_SIZE SZ_128M
 
 /*
@@ -357,6 +365,12 @@ struct btrfs_path {
 	unsigned int search_commit_root:1;
 	unsigned int need_commit_sem:1;
 	unsigned int skip_release_on_error:1;
+	/*
+	 * Indicate that new item (btrfs_search_slot) is extending already
+	 * existing item and ins_len contains only the data size and not item
+	 * header (ie. sizeof(struct btrfs_item) is not included).
+	 */
+	unsigned int search_for_extension:1;
 };
 #define BTRFS_MAX_EXTENT_ITEM_SIZE(r) ((BTRFS_LEAF_DATA_SIZE(r->fs_info) >> 4) - \
 					sizeof(struct btrfs_item))
@@ -487,7 +501,7 @@ struct btrfs_stripe_hash_table {
 
 #define BTRFS_STRIPE_HASH_TABLE_BITS 11
 
-void btrfs_init_async_reclaim_work(struct work_struct *work);
+void btrfs_init_async_reclaim_work(struct btrfs_fs_info *fs_info);
 
 /* fs_info */
 struct reloc_control;
@@ -718,9 +732,6 @@ struct btrfs_fs_info {
 	struct rb_root tree_mod_log;
 	struct list_head tree_mod_seq_list;
 
-	atomic_t nr_async_submits;
-	atomic_t async_submit_draining;
-	atomic_t nr_async_bios;
 	atomic_t async_delalloc_pages;
 	atomic_t open_ioctl_trans;
 
@@ -791,7 +802,7 @@ struct btrfs_fs_info {
 	/* used to keep from writing metadata until there is a nice batch */
 	struct percpu_counter dirty_metadata_bytes;
 	struct percpu_counter delalloc_bytes;
-	struct percpu_counter dio_bytes;
+	struct percpu_counter ordered_bytes;
 	s32 dirty_metadata_batch;
 	s32 delalloc_batch;
 
@@ -927,6 +938,7 @@ struct btrfs_fs_info {
 
 	/* Used to reclaim the metadata space in the background. */
 	struct work_struct async_reclaim_work;
+	struct work_struct async_data_reclaim_work;
 
 	spinlock_t unused_bgs_lock;
 	struct list_head unused_bgs;
@@ -1151,6 +1163,7 @@ struct btrfs_root {
 	int dedupe_in_progress;
 	struct btrfs_subvolume_writers *subv_writers;
 	atomic_t will_be_snapshoted;
+	atomic_t snapshot_force_cow;
 
 	/* For qgroup metadata reserved space */
 	spinlock_t qgroup_meta_rsv_lock;
@@ -1160,6 +1173,16 @@ struct btrfs_root {
 
 	/* Used only by log trees, when logging csum items */
 	struct extent_io_tree log_csum_range;
+};
+
+struct btrfs_clone_extent_info {
+	u64 disk_offset;
+	u64 disk_len;
+	u64 data_offset;
+	u64 data_len;
+	u64 file_offset;
+	char *extent_buf;
+	u32 item_size;
 };
 
 struct btrfs_file_private {
@@ -2587,6 +2610,8 @@ enum btrfs_reserve_flush_enum {
 	BTRFS_RESERVE_FLUSH_LIMIT,
 	BTRFS_RESERVE_FLUSH_EVICT,
 	BTRFS_RESERVE_FLUSH_ALL,
+	BTRFS_RESERVE_FLUSH_DATA,
+	BTRFS_RESERVE_FLUSH_FREE_SPACE_INODE,
 	BTRFS_RESERVE_FLUSH_ALL_STEAL,
 };
 
@@ -2963,6 +2988,11 @@ void btrfs_extent_item_to_extent_map(struct btrfs_inode *inode,
 				     struct btrfs_file_extent_item *fi,
 				     const bool new_inline,
 				     struct extent_map *em);
+int btrfs_inode_clear_file_extent_range(struct btrfs_inode *inode, u64 start,
+					u64 len);
+int btrfs_inode_set_file_extent_range(struct btrfs_inode *inode, u64 start,
+				      u64 len);
+void btrfs_inode_safe_disk_i_size_write(struct inode *inode, u64 new_i_size);
 
 /* inode.c */
 struct btrfs_delalloc_work {
@@ -3019,9 +3049,8 @@ int btrfs_truncate_inode_items(struct btrfs_trans_handle *trans,
 			       struct inode *inode, u64 new_size,
 			       u32 min_type);
 
-int btrfs_start_delalloc_inodes(struct btrfs_root *root, int delay_iput);
-int btrfs_start_delalloc_roots(struct btrfs_fs_info *fs_info, int delay_iput,
-			       int nr);
+int btrfs_start_delalloc_snapshot(struct btrfs_root *root);
+int btrfs_start_delalloc_roots(struct btrfs_fs_info *fs_info, u64 nr);
 int btrfs_set_extent_delalloc(struct inode *inode, u64 start, u64 end,
 			      unsigned int extra_bits,
 			      struct extent_state **cached_state, int dedupe);
@@ -3113,6 +3142,10 @@ int __btrfs_drop_extents(struct btrfs_trans_handle *trans,
 int btrfs_drop_extents(struct btrfs_trans_handle *trans,
 		       struct btrfs_root *root, struct inode *inode, u64 start,
 		       u64 end, int drop_cache);
+int btrfs_punch_hole_range(struct inode *inode, struct btrfs_path *path,
+			   const u64 start, const u64 end,
+			   struct btrfs_clone_extent_info *clone_info,
+			   struct btrfs_trans_handle **trans_out);
 int btrfs_mark_extent_written(struct btrfs_trans_handle *trans,
 			      struct btrfs_inode *inode, u64 start, u64 end);
 int btrfs_release_file(struct inode *inode, struct file *file);

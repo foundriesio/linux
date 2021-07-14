@@ -2043,6 +2043,9 @@ nvme_fc_ctrl_free(struct kref *ref)
 
 	blk_mq_unquiesce_queue(ctrl->ctrl.admin_q);
 	blk_cleanup_queue(ctrl->ctrl.admin_q);
+#ifndef __GENKSYMS__
+	blk_cleanup_queue(ctrl->ctrl.fabrics_q);
+#endif
 	blk_mq_free_tag_set(&ctrl->admin_tag_set);
 
 	kfree(ctrl->queues);
@@ -2675,8 +2678,6 @@ nvme_fc_create_association(struct nvme_fc_ctrl *ctrl)
 	if (ret)
 		goto out_delete_hw_queue;
 
-	blk_mq_unquiesce_queue(ctrl->ctrl.admin_q);
-
 	ret = nvmf_connect_admin_queue(&ctrl->ctrl);
 	if (ret)
 		goto out_disconnect_admin_queue;
@@ -2707,6 +2708,8 @@ nvme_fc_create_association(struct nvme_fc_ctrl *ctrl)
 	ctrl->ctrl.max_segments = ctrl->lport->ops->max_sgl_segments;
 	ctrl->ctrl.max_hw_sectors = ctrl->ctrl.max_segments <<
 						(ilog2(SZ_4K) - 9);
+
+	blk_mq_unquiesce_queue(ctrl->ctrl.admin_q);
 
 	ret = nvme_init_identify(&ctrl->ctrl);
 	if (ret)
@@ -2791,6 +2794,7 @@ static void
 nvme_fc_delete_association(struct nvme_fc_ctrl *ctrl)
 {
 	unsigned long flags;
+	int q;
 
 	if (!ctrl->assoc_active)
 		return;
@@ -2800,6 +2804,16 @@ nvme_fc_delete_association(struct nvme_fc_ctrl *ctrl)
 	ctrl->flags |= FCCTRL_TERMIO;
 	ctrl->iocnt = 0;
 	spin_unlock_irqrestore(&ctrl->lock, flags);
+
+	/*
+	 * if aborting io, the queues are no longer good, mark them
+	 * all as not live.
+	 */
+	if (ctrl->ctrl.queue_count > 1) {
+		for (q = 1; q < ctrl->ctrl.queue_count; q++)
+			clear_bit(NVME_FC_Q_LIVE, &ctrl->queues[q].flags);
+	}
+	clear_bit(NVME_FC_Q_LIVE, &ctrl->queues[0].flags);
 
 	/*
 	 * If io queues are present, stop them and terminate all outstanding
@@ -3154,10 +3168,18 @@ nvme_fc_init_ctrl(struct device *dev, struct nvmf_ctrl_options *opts,
 		goto out_free_queues;
 	ctrl->ctrl.admin_tagset = &ctrl->admin_tag_set;
 
+#ifndef __GENKSYMS__
+	ctrl->ctrl.fabrics_q = blk_mq_init_queue(&ctrl->admin_tag_set);
+	if (IS_ERR(ctrl->ctrl.fabrics_q)) {
+		ret = PTR_ERR(ctrl->ctrl.fabrics_q);
+		goto out_free_admin_tag_set;
+	}
+#endif
+
 	ctrl->ctrl.admin_q = blk_mq_init_queue(&ctrl->admin_tag_set);
 	if (IS_ERR(ctrl->ctrl.admin_q)) {
 		ret = PTR_ERR(ctrl->ctrl.admin_q);
-		goto out_free_admin_tag_set;
+		goto out_cleanup_fabrics_q;
 	}
 
 	/*
@@ -3227,6 +3249,10 @@ fail_ctrl:
 
 out_cleanup_admin_q:
 	blk_cleanup_queue(ctrl->ctrl.admin_q);
+out_cleanup_fabrics_q:
+#ifndef __GENKSYMS__
+	blk_cleanup_queue(ctrl->ctrl.fabrics_q);
+#endif
 out_free_admin_tag_set:
 	blk_mq_free_tag_set(&ctrl->admin_tag_set);
 out_free_queues:

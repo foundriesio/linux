@@ -264,6 +264,9 @@ struct hh_cache {
 #define LL_RESERVED_SPACE_EXTRA(dev,extra) \
 	((((dev)->hard_header_len+(dev)->needed_headroom+(extra))&~(HH_DATA_MOD - 1)) + HH_DATA_MOD)
 
+extern const struct header_ops eth_header_ops;
+__be16 eth_header_parse_protocol(const struct sk_buff *skb);
+
 struct header_ops {
 	int	(*create) (struct sk_buff *skb, struct net_device *dev,
 			   unsigned short type, const void *daddr,
@@ -1533,6 +1536,7 @@ enum netdev_priv_flags {
 #define IFF_L3MDEV_SLAVE		IFF_L3MDEV_SLAVE
 #define IFF_TEAM			IFF_TEAM
 #define IFF_RXFH_CONFIGURED		IFF_RXFH_CONFIGURED
+#define IFF_PHONY_HEADROOM		IFF_PHONY_HEADROOM
 #define IFF_MACSEC			IFF_MACSEC
 #define IFF_NO_RX_HANDLER		IFF_NO_RX_HANDLER
 #define IFF_FAILOVER			IFF_FAILOVER
@@ -2900,6 +2904,16 @@ static inline int dev_parse_header(const struct sk_buff *skb,
 	return dev->header_ops->parse(skb, haddr);
 }
 
+static inline __be16 dev_parse_header_protocol(const struct sk_buff *skb)
+{
+	const struct net_device *dev = skb->dev;
+
+	if (dev->header_ops == &eth_header_ops)
+		return eth_header_parse_protocol(skb);
+
+	return 0;
+}
+
 /* ll_header must have at least hard_header_len allocated */
 static inline bool dev_validate_header(const struct net_device *dev,
 				       char *ll_header, int len)
@@ -3611,7 +3625,6 @@ int dev_change_xdp_fd(struct net_device *dev, struct netlink_ext_ack *extack,
 		      int fd, u32 flags);
 u32 __dev_xdp_query(struct net_device *dev, bpf_op_t xdp_op,
 		    enum bpf_netdev_command cmd);
-int xdp_umem_query(struct net_device *dev, u16 queue_id);
 
 int __dev_forward_skb(struct net_device *dev, struct sk_buff *skb);
 int dev_forward_skb(struct net_device *dev, struct sk_buff *skb);
@@ -4141,6 +4154,7 @@ void __dev_set_rx_mode(struct net_device *dev);
 int dev_set_promiscuity(struct net_device *dev, int inc);
 int dev_set_allmulti(struct net_device *dev, int inc);
 void netdev_state_change(struct net_device *dev);
+void __netdev_notify_peers(struct net_device *dev);
 void netdev_notify_peers(struct net_device *dev);
 void netdev_features_change(struct net_device *dev);
 /* Load a device via the kmod */

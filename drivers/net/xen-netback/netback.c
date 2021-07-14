@@ -1177,15 +1177,24 @@ static int xenvif_tx_submit(struct xenvif_queue *queue)
 			continue;
 		}
 
-		skb_probe_transport_header(skb, 0);
+		skb_probe_transport_header(skb);
 
 		/* If the packet is GSO then we will have just set up the
 		 * transport header offset in checksum_setup so it's now
 		 * straightforward to calculate gso_segs.
 		 */
 		if (skb_is_gso(skb)) {
-			int mss = skb_shinfo(skb)->gso_size;
-			int hdrlen = skb_transport_header(skb) -
+			int mss, hdrlen;
+
+			/* GSO implies having the L4 header. */
+			WARN_ON_ONCE(!skb_transport_header_was_set(skb));
+			if (unlikely(!skb_transport_header_was_set(skb))) {
+				kfree_skb(skb);
+				continue;
+			}
+
+			mss = skb_shinfo(skb)->gso_size;
+			hdrlen = skb_transport_header(skb) -
 				skb_mac_header(skb) +
 				tcp_hdrlen(skb);
 
@@ -1333,7 +1342,15 @@ int xenvif_tx_action(struct xenvif_queue *queue, int budget)
 				      NULL,
 				      queue->pages_to_map,
 				      nr_mops);
-		BUG_ON(ret);
+		if (ret) {
+			unsigned int i;
+
+			netdev_err(queue->vif->dev, "Map fail: nr %u ret %d\n",
+				   nr_mops, ret);
+			for (i = 0; i < nr_mops; ++i)
+				WARN_ON_ONCE(queue->tx_map_ops[i].status ==
+				             GNTST_okay);
+		}
 	}
 
 	work_done = xenvif_tx_submit(queue);

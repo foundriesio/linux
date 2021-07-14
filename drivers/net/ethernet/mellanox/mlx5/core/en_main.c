@@ -535,7 +535,7 @@ static int mlx5e_alloc_rq(struct mlx5e_channel *c,
 		err = mlx5_wq_ll_create(mdev, &rqp->wq, rqc_wq, &rq->mpwqe.wq,
 					&rq->wq_ctrl);
 		if (err)
-			return err;
+			goto err_rq_wq_destroy;
 
 		rq->mpwqe.wq.db = &rq->mpwqe.wq.db[MLX5_RCV_DBR];
 
@@ -580,7 +580,7 @@ static int mlx5e_alloc_rq(struct mlx5e_channel *c,
 		err = mlx5_wq_cyc_create(mdev, &rqp->wq, rqc_wq, &rq->wqe.wq,
 					 &rq->wq_ctrl);
 		if (err)
-			return err;
+			goto err_rq_wq_destroy;
 
 		rq->wqe.wq.db = &rq->wqe.wq.db[MLX5_RCV_DBR];
 
@@ -3380,13 +3380,11 @@ static int mlx5e_setup_tc_mqprio(struct net_device *netdev,
 	}
 
 	err = mlx5e_open_channels(priv, &new_channels);
-	if (err)
-		goto out;
 
-	priv->max_opened_tc = max_t(u8, priv->max_opened_tc,
-				    new_channels.params.num_tc);
 	mlx5e_switch_priv_channels(priv, &new_channels, NULL);
 out:
+	priv->max_opened_tc = max_t(u8, priv->max_opened_tc,
+				    priv->channels.params.num_tc);
 	mutex_unlock(&priv->state_lock);
 	return err;
 }

@@ -714,6 +714,16 @@
 	cs89x0_media=	[HW,NET]
 			Format: { rj45 | aui | bnc }
 
+	csdlock_debug=	[KNL] Enable debug add-ons of cross-cpu function call
+			handling. When switched on additional debug data is
+			printed to the console in case a hanging cpu is
+			detected and that cpu is pinged again in order to try
+			to resolve the hang situation.
+			0: disable csdlock debugging (default)
+			1: enable basic csdlock debugging (minor impact)
+			ext: enable extended csdlock debugging (more impact,
+			     but more data)
+
 	dasd=		[HW,NET]
 			See header of drivers/s390/block/dasd_devmap.c.
 
@@ -1234,6 +1244,12 @@
 			Don't use this when you are not running on the
 			android emulator
 
+	gpio-mockup.gpio_mockup_ranges
+			[HW] Sets the ranges of gpiochip of for this device.
+			Format: <start1>,<end1>,<start2>,<end2>...
+	gpio-mockup.gpio_mockup_named_lines
+			[HW] Let the driver know GPIO lines should be named.
+
 	gpt		[EFI] Forces disk with valid GPT signature but
 			invalid Protective MBR to be treated as GPT. If the
 			primary GPT is corrupted, it enables the backup/alternate
@@ -1256,10 +1272,6 @@
 	grcan.rxsize=	[HW] Sets the size of the rx buffer.
 			Format: <unsigned int> such that (rxsize & ~0x1fffc0) == 0.
 			Default: 1024
-
-	gpio-mockup.gpio_mockup_ranges
-			[HW] Sets the ranges of gpiochip of for this device.
-			Format: <start1>,<end1>,<start2>,<end2>...
 
 	hardlockup_all_cpu_backtrace=
 			[KNL] Should the hard-lockup detector generate
@@ -4775,6 +4787,7 @@
 					device);
 				j = NO_REPORT_LUNS (don't use report luns
 					command, uas only);
+				k = NO_SAME (do not use WRITE_SAME, uas only)
 				l = NOT_LOCKABLE (don't try to lock and
 					unlock ejectable media, not on uas);
 				m = MAX_SECTORS_64 (don't transfer more

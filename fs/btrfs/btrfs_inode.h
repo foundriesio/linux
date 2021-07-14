@@ -42,6 +42,7 @@ enum {
 	BTRFS_INODE_IN_DELALLOC_LIST,
 	BTRFS_INODE_READDIO_NEED_LOCK,
 	BTRFS_INODE_HAS_PROPS,
+	BTRFS_INODE_SNAPSHOT_FLUSH,
 };
 
 /* in memory btrfs inode */
@@ -71,6 +72,12 @@ struct btrfs_inode {
 	 * tried when checksums fail for a given block
 	 */
 	struct extent_io_tree io_failure_tree;
+
+	/*
+	 * Keep track of where the inode has extent items mapped in order to
+	 * make sure the i_size adjustments are accurate
+	 */
+	struct extent_io_tree file_extent_tree;
 
 	/* held while logging the inode in tree-log.c */
 	struct mutex log_mutex;

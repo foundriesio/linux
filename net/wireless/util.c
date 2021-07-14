@@ -419,9 +419,9 @@ unsigned int ieee80211_get_mesh_hdrlen(struct ieee80211s_hdr *meshhdr)
 }
 EXPORT_SYMBOL(ieee80211_get_mesh_hdrlen);
 
-int ieee80211_data_to_8023_exthdr(struct sk_buff *skb, struct ethhdr *ehdr,
-				  const u8 *addr, enum nl80211_iftype iftype,
-				  u8 data_offset)
+int __ieee80211_data_to_8023_exthdr(struct sk_buff *skb, struct ethhdr *ehdr,
+				    const u8 *addr, enum nl80211_iftype iftype,
+				    u8 data_offset, bool is_amsdu)
 {
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *) skb->data;
 	struct {
@@ -509,7 +509,7 @@ int ieee80211_data_to_8023_exthdr(struct sk_buff *skb, struct ethhdr *ehdr,
 	skb_copy_bits(skb, hdrlen, &payload, sizeof(payload));
 	tmp.h_proto = payload.proto;
 
-	if (likely((ether_addr_equal(payload.hdr, rfc1042_header) &&
+	if (likely((!is_amsdu && ether_addr_equal(payload.hdr, rfc1042_header) &&
 		    tmp.h_proto != htons(ETH_P_AARP) &&
 		    tmp.h_proto != htons(ETH_P_IPX)) ||
 		   ether_addr_equal(payload.hdr, bridge_tunnel_header)))
@@ -526,6 +526,17 @@ int ieee80211_data_to_8023_exthdr(struct sk_buff *skb, struct ethhdr *ehdr,
 	memcpy(ehdr, &tmp, sizeof(tmp));
 
 	return 0;
+}
+EXPORT_SYMBOL(__ieee80211_data_to_8023_exthdr);
+
+// XXX for SLE kABI compatibility
+#undef ieee80211_data_to_8023_exthdr
+
+int ieee80211_data_to_8023_exthdr(struct sk_buff *skb, struct ethhdr *ehdr,
+				    const u8 *addr, enum nl80211_iftype iftype,
+				    u8 data_offset)
+{
+	return __ieee80211_data_to_8023_exthdr(skb, ehdr, addr, iftype, data_offset, false);
 }
 EXPORT_SYMBOL(ieee80211_data_to_8023_exthdr);
 
@@ -650,6 +661,9 @@ void ieee80211_amsdu_to_8023s(struct sk_buff *skb, struct sk_buff_head *list,
 		/* the last MSDU has no padding */
 		remaining = skb->len - offset;
 		if (subframe_len > remaining)
+			goto purge;
+		/* mitigate A-MSDU aggregation injection attacks */
+		if (ether_addr_equal(eth.h_dest, rfc1042_header))
 			goto purge;
 
 		offset += sizeof(struct ethhdr);
@@ -923,6 +937,9 @@ int cfg80211_change_iface(struct cfg80211_registered_device *rdev,
 			break;
 		case NL80211_IFTYPE_MESH_POINT:
 			/* mesh should be handled? */
+			break;
+		case NL80211_IFTYPE_OCB:
+			cfg80211_leave_ocb(rdev, dev);
 			break;
 		default:
 			break;

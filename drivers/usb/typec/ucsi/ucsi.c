@@ -577,6 +577,7 @@ out_unlock:
 	return ret;
 }
 
+/* Caller must call fwnode_handle_put() after use */
 static struct fwnode_handle *ucsi_find_fwnode(struct ucsi_connector *con)
 {
 	struct fwnode_handle *fwnode;
@@ -644,7 +645,7 @@ static int ucsi_register_port(struct ucsi *ucsi, int index)
 	ret = ucsi_run_command(ucsi, &ctrl, &con->status, sizeof(con->status));
 	if (ret < 0) {
 		dev_err(ucsi->dev, "con%d: failed to get status\n", con->num);
-		return 0;
+		goto out;
 	}
 
 	ucsi_pwr_opmode_change(con);
@@ -668,6 +669,9 @@ static int ucsi_register_port(struct ucsi *ucsi, int index)
 	trace_ucsi_register_port(con->num, &con->status);
 
 	return 0;
+out:
+	fwnode_handle_put(cap->fwnode);
+	return ret;
 }
 
 static void ucsi_init(struct work_struct *work)
@@ -738,6 +742,7 @@ err_unregister:
 	}
 
 err_reset:
+	memset(&ucsi->cap, 0, sizeof(ucsi->cap));
 	ucsi_reset_ppm(ucsi);
 err:
 	mutex_unlock(&ucsi->ppm_lock);

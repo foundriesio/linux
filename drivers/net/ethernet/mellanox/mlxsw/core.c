@@ -488,6 +488,9 @@ static void mlxsw_emad_transmit_retry(struct mlxsw_core *mlxsw_core,
 		err = mlxsw_emad_transmit(trans->core, trans);
 		if (err == 0)
 			return;
+
+		if (!atomic_dec_and_test(&trans->active))
+			return;
 	} else {
 		err = -EIO;
 	}
@@ -587,7 +590,7 @@ static int mlxsw_emad_init(struct mlxsw_core *mlxsw_core)
 	err = mlxsw_core_trap_register(mlxsw_core, &mlxsw_emad_rx_listener,
 				       mlxsw_core);
 	if (err)
-		return err;
+		goto err_trap_register;
 
 	err = mlxsw_core->driver->basic_trap_groups_set(mlxsw_core);
 	if (err)
@@ -599,6 +602,7 @@ static int mlxsw_emad_init(struct mlxsw_core *mlxsw_core)
 err_emad_trap_set:
 	mlxsw_core_trap_unregister(mlxsw_core, &mlxsw_emad_rx_listener,
 				   mlxsw_core);
+err_trap_register:
 	destroy_workqueue(mlxsw_core->emad_wq);
 	return err;
 }

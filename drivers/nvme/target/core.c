@@ -668,6 +668,10 @@ bool nvmet_req_init(struct nvmet_req *req, struct nvmet_cq *cq,
 	req->rsp->status = 0;
 	req->rsp->sq_head = 0;
 	req->ns = NULL;
+#ifndef __GENKSYMS__
+	req->error_loc = -1;
+	req->error_slba = 0;
+#endif
 
 	/* no support for fused commands yet */
 	if (unlikely(flags & (NVME_CMD_FUSE_FIRST | NVME_CMD_FUSE_SECOND))) {
@@ -690,7 +694,7 @@ bool nvmet_req_init(struct nvmet_req *req, struct nvmet_cq *cq,
 		status = nvmet_parse_connect_cmd(req);
 	else if (likely(req->sq->qid != 0))
 		status = nvmet_parse_io_cmd(req);
-	else if (req->cmd->common.opcode == nvme_fabrics_command)
+	else if (nvme_is_fabrics(req->cmd))
 		status = nvmet_parse_fabrics_cmd(req);
 	else if (req->sq->ctrl->subsys->type == NVME_NQN_DISC)
 		status = nvmet_parse_discovery_cmd(req);
@@ -995,6 +999,11 @@ u16 nvmet_alloc_ctrl(const char *subsysnqn, const char *hostnqn,
 
 	/* keep-alive timeout in seconds */
 	ctrl->kato = DIV_ROUND_UP(kato, 1000);
+
+#ifndef __GENKSYMS__
+	ctrl->err_counter = 0;
+	spin_lock_init(&ctrl->error_lock);
+#endif
 
 	nvmet_start_keep_alive_timer(ctrl);
 

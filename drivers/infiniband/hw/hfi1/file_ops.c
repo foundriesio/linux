@@ -1,5 +1,6 @@
 /*
- * Copyright(c) 2015-2017 Intel Corporation.
+ * Copyright(c) 2020 Cornelis Networks, Inc.
+ * Copyright(c) 2015-2020 Intel Corporation.
  *
  * This file is provided under a dual BSD/GPLv2 license.  When using or
  * redistributing this file, you may do so under either license.
@@ -206,8 +207,6 @@ static int hfi1_file_open(struct inode *inode, struct file *fp)
 	spin_lock_init(&fd->tid_lock);
 	spin_lock_init(&fd->invalid_lock);
 	fd->rec_cpu_num = -1; /* no cpu affinity by default */
-	fd->mm = current->mm;
-	mmgrab(fd->mm);
 	fd->dd = dd;
 	kobject_get(&fd->dd->kobj);
 	fp->private_data = fd;
@@ -712,7 +711,6 @@ static int hfi1_file_close(struct inode *inode, struct file *fp)
 
 	deallocate_ctxt(uctxt);
 done:
-	mmdrop(fdata->mm);
 	kobject_put(&dd->kobj);
 
 	if (atomic_dec_and_test(&dd->user_refcount))

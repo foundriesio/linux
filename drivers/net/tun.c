@@ -1451,7 +1451,7 @@ static struct sk_buff *tun_napi_alloc_frags(struct tun_file *tfile,
 	int i;
 
 	if (it->nr_segs > MAX_SKB_FRAGS + 1)
-		return ERR_PTR(-ENOMEM);
+		return ERR_PTR(-EMSGSIZE);
 
 	local_bh_disable();
 	skb = napi_get_frags(&tfile->napi);
@@ -1890,8 +1890,11 @@ drop:
 		skb->dev = tun->dev;
 		break;
 	case IFF_TAP:
-		if (!frags)
-			skb->protocol = eth_type_trans(skb, tun->dev);
+		if (frags && !pskb_may_pull(skb, ETH_HLEN)) {
+			err = -ENOMEM;
+			goto drop;
+		}
+		skb->protocol = eth_type_trans(skb, tun->dev);
 		break;
 	}
 
@@ -1906,7 +1909,7 @@ drop:
 	}
 
 	skb_reset_network_header(skb);
-	skb_probe_transport_header(skb, 0);
+	skb_probe_transport_header(skb);
 
 	if (skb_xdp) {
 		struct bpf_prog *xdp_prog;
@@ -1948,8 +1951,11 @@ drop:
 
 
 	if (frags) {
+		u32 headlen;
+
 		/* Exercise flow dissector code path. */
-		u32 headlen = eth_get_headlen(skb->data, skb_headlen(skb));
+		skb_push(skb, ETH_HLEN);
+		headlen = eth_get_headlen(skb->data, skb_headlen(skb));
 
 		if (unlikely(headlen > skb_headlen(skb))) {
 			this_cpu_inc(tun->pcpu_stats->rx_dropped);
@@ -2457,7 +2463,7 @@ build:
 
 	skb->protocol = eth_type_trans(skb, tun->dev);
 	skb_reset_network_header(skb);
-	skb_probe_transport_header(skb, 0);
+	skb_probe_transport_header(skb);
 
 	if (skb_xdp) {
 		err = do_xdp_generic(xdp_prog, skb);

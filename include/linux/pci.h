@@ -461,6 +461,10 @@ struct pci_dev {
 	char *driver_override; /* Driver name to force a match */
 
 	unsigned long priv_flags; /* Private flags for the pci driver */
+
+#ifndef __GENKSYMS__
+	unsigned int	no_command_memory:1;	/* No PCI_COMMAND_MEMORY */
+#endif
 };
 
 static inline struct pci_dev *pci_physfn(struct pci_dev *dev)

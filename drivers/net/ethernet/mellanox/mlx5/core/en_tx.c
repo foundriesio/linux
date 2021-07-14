@@ -148,12 +148,8 @@ static inline int mlx5e_skb_l2_header_offset(struct sk_buff *skb)
 
 static inline int mlx5e_skb_l3_header_offset(struct sk_buff *skb)
 {
-	struct flow_keys keys;
-
 	if (skb_transport_header_was_set(skb))
 		return skb_transport_offset(skb);
-	else if (skb_flow_dissect_flow_keys(skb, &keys, 0))
-		return keys.control.thoff;
 	else
 		return mlx5e_skb_l2_header_offset(skb);
 }
@@ -172,15 +168,8 @@ static inline u16 mlx5e_calc_min_inline(enum mlx5_inline_modes mode,
 			hlen += VLAN_HLEN;
 		break;
 	case MLX5_INLINE_MODE_IP:
-		/* When transport header is set to zero, it means no transport
-		 * header. When transport header is set to 0xff's, it means
-		 * transport header wasn't set.
-		 */
-		if (skb_transport_offset(skb)) {
-			hlen = mlx5e_skb_l3_header_offset(skb);
-			break;
-		}
-		/* fall through */
+		hlen = mlx5e_skb_l3_header_offset(skb);
+		break;
 	case MLX5_INLINE_MODE_L2:
 	default:
 		hlen = mlx5e_skb_l2_header_offset(skb);
@@ -462,7 +451,10 @@ netdev_tx_t mlx5e_xmit(struct sk_buff *skb, struct net_device *dev)
 static void mlx5e_dump_error_cqe(struct mlx5e_txqsq *sq,
 				 struct mlx5_err_cqe *err_cqe)
 {
-	u32 ci = mlx5_cqwq_get_ci(&sq->cq.wq);
+	struct mlx5_cqwq *wq = &sq->cq.wq;
+	u32 ci;
+
+	ci = mlx5_cqwq_ctr2ix(wq, wq->cc - 1);
 
 	netdev_err(sq->channel->netdev,
 		   "Error cqe on cqn 0x%x, ci 0x%x, sqn 0x%x, syndrome 0x%x, vendor syndrome 0x%x\n",

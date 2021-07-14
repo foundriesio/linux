@@ -243,11 +243,6 @@ static inline int is_imx53_esdhc(struct pltfm_imx_data *data)
 	return data->socdata == &esdhc_imx53_data;
 }
 
-static inline int is_imx6q_usdhc(struct pltfm_imx_data *data)
-{
-	return data->socdata == &usdhc_imx6q_data;
-}
-
 static inline int esdhc_is_usdhc(struct pltfm_imx_data *data)
 {
 	return !!(data->socdata->flags & ESDHC_FLAG_USDHC);
@@ -1329,9 +1324,10 @@ static int sdhci_esdhc_imx_remove(struct platform_device *pdev)
 	struct sdhci_host *host = platform_get_drvdata(pdev);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct pltfm_imx_data *imx_data = sdhci_pltfm_priv(pltfm_host);
-	int dead = (readl(host->ioaddr + SDHCI_INT_STATUS) == 0xffffffff);
+	int dead;
 
 	pm_runtime_get_sync(&pdev->dev);
+	dead = (readl(host->ioaddr + SDHCI_INT_STATUS) == 0xffffffff);
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_put_noidle(&pdev->dev);
 

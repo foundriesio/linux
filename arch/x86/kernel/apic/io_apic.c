@@ -1040,6 +1040,16 @@ static int mp_map_pin_to_irq(u32 gsi, int idx, int ioapic, int pin,
 	if (idx >= 0 && test_bit(mp_irqs[idx].srcbus, mp_bus_not_pci)) {
 		irq = mp_irqs[idx].srcbusirq;
 		legacy = mp_is_legacy_irq(irq);
+		/*
+		 * IRQ2 is unusable for historical reasons on systems which
+		 * have a legacy PIC. See the comment vs. IRQ2 further down.
+		 *
+		 * If this gets removed at some point then the related code
+		 * in lapic_assign_system_vectors() needs to be adjusted as
+		 * well.
+		 */
+		if (legacy && irq == PIC_CASCADE_IR)
+			return -EINVAL;
 	}
 
 	mutex_lock(&ioapic_mutex);
@@ -1268,10 +1278,10 @@ static void io_apic_print_entries(unsigned int apic, unsigned int nr_entries)
 			       buf, (ir_entry->index << 15) | ir_entry->index,
 			       ir_entry->zero);
 		else
-			printk(KERN_DEBUG "%s, %s, D(%02X), M(%1d)\n",
+			printk(KERN_DEBUG "%s, %s, D(%02X%02X), M(%1d)\n",
 			       buf,
 			       entry.dest_mode == IOAPIC_DEST_MODE_LOGICAL ?
-			       "logical " : "physical",
+			       "logical " : "physical", entry.ext_dest,
 			       entry.dest, entry.delivery_mode);
 	}
 }
@@ -1439,6 +1449,7 @@ void native_disable_io_apic(void)
 	 */
 	if (ioapic_i8259.pin != -1) {
 		struct IO_APIC_route_entry entry;
+		u32 apic_id = read_apic_id();
 
 		memset(&entry, 0, sizeof(entry));
 		entry.mask		= IOAPIC_UNMASKED;
@@ -1446,7 +1457,8 @@ void native_disable_io_apic(void)
 		entry.polarity		= IOAPIC_POL_HIGH;
 		entry.dest_mode		= IOAPIC_DEST_MODE_PHYSICAL;
 		entry.delivery_mode	= dest_ExtINT;
-		entry.dest		= read_apic_id();
+		entry.dest		= apic_id & 0xff;
+		entry.ext_dest		= apic_id >> 8;
 
 		/*
 		 * Add it to the IO-APIC irq-routing table:
@@ -1861,7 +1873,8 @@ static int ioapic_set_affinity(struct irq_data *irq_data,
 	raw_spin_lock_irqsave(&ioapic_lock, flags);
 	if (ret >= 0 && ret != IRQ_SET_MASK_OK_DONE) {
 		cfg = irqd_cfg(irq_data);
-		data->entry.dest = cfg->dest_apicid;
+		data->entry.dest = cfg->dest_apicid & 0xff;
+		data->entry.ext_dest = cfg->dest_apicid >> 8;
 		data->entry.vector = cfg->vector;
 		for_each_irq_pin(entry, data->irq_2_pin)
 			__ioapic_write_entry(entry->apic, entry->pin,
@@ -1969,6 +1982,7 @@ static inline void __init unlock_ExtINT_logic(void)
 	int apic, pin, i;
 	struct IO_APIC_route_entry entry0, entry1;
 	unsigned char save_control, save_freq_select;
+	u32 apic_id;
 
 	pin  = find_isa_irq_pin(8, mp_INT);
 	if (pin == -1) {
@@ -1984,11 +1998,13 @@ static inline void __init unlock_ExtINT_logic(void)
 	entry0 = ioapic_read_entry(apic, pin);
 	clear_IO_APIC_pin(apic, pin);
 
+	apic_id = hard_smp_processor_id();
 	memset(&entry1, 0, sizeof(entry1));
 
 	entry1.dest_mode = IOAPIC_DEST_MODE_PHYSICAL;
 	entry1.mask = IOAPIC_UNMASKED;
-	entry1.dest = hard_smp_processor_id();
+	entry1.dest = apic_id & 0xff;
+	entry1.ext_dest = apic_id >> 8;
 	entry1.delivery_mode = dest_ExtINT;
 	entry1.polarity = entry0.polarity;
 	entry1.trigger = IOAPIC_EDGE;
@@ -2896,7 +2912,8 @@ static void mp_setup_entry(struct irq_cfg *cfg, struct mp_chip_data *data,
 	memset(entry, 0, sizeof(*entry));
 	entry->delivery_mode = apic->irq_delivery_mode;
 	entry->dest_mode     = apic->irq_dest_mode;
-	entry->dest	     = cfg->dest_apicid;
+	entry->dest	     = cfg->dest_apicid & 0xff;
+	entry->ext_dest	     = cfg->dest_apicid >> 8;
 	entry->vector	     = cfg->vector;
 	entry->trigger	     = data->trigger;
 	entry->polarity	     = data->polarity;

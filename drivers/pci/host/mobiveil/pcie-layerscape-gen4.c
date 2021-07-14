@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * PCIe host controller driver for NXP Layerscape SoCs
+ * PCIe Gen4 host controller driver for NXP Layerscape SoCs
  *
- * Copyright 2018 NXP
+ * Copyright 2019-2020 NXP
  *
  * Author: Zhiqiang Hou <Zhiqiang.Hou@nxp.com>
  */
@@ -25,25 +25,24 @@
 #define REV_1_0				(0x10)
 
 /* LUT and PF control registers */
-#define PCIE_LUT_OFF			(0x80000)
-#define PCIE_LUT_GCR			(0x28)
-#define PCIE_LUT_GCR_RRE		(0)
+#define PCIE_LUT_OFF			0x80000
+#define PCIE_LUT_GCR			0x28
+#define PCIE_LUT_GCR_RRE		0
 
-#define PCIE_PF_OFF			(0xc0000)
-#define PCIE_PF_INT_STAT		(0x18)
-#define PF_INT_STAT_PABRST		(31)
+#define PCIE_PF_OFF			0xc0000
+#define PCIE_PF_INT_STAT		0x18
+#define PF_INT_STAT_PABRST		BIT(31)
 
-#define PCIE_PF_DBG			(0x7fc)
-#define PF_DBG_LTSSM_MASK		(0x3f)
-#define PF_DBG_WE			(31)
-#define PF_DBG_PABR			(27)
-
-#define LS_PCIE_G4_LTSSM_L0		0x2d /* L0 state */
+#define PCIE_PF_DBG			0x7fc
+#define PF_DBG_LTSSM_MASK		0x3f
+#define PF_DBG_LTSSM_L0			0x2d /* L0 state */
+#define PF_DBG_WE			BIT(31)
+#define PF_DBG_PABR			BIT(27)
 
 #define to_ls_pcie_g4(x)		platform_get_drvdata((x)->pdev)
 
 struct ls_pcie_g4 {
-	struct mobiveil_pcie *pci;
+	struct mobiveil_pcie pci;
 	struct delayed_work dwork;
 	int irq;
 	u8 rev;
@@ -51,54 +50,43 @@ struct ls_pcie_g4 {
 
 static inline u32 ls_pcie_g4_lut_readl(struct ls_pcie_g4 *pcie, u32 off)
 {
-	return ioread32(pcie->pci->csr_axi_slave_base + PCIE_LUT_OFF + off);
+	return ioread32(pcie->pci.csr_axi_slave_base + PCIE_LUT_OFF + off);
 }
 
 static inline void ls_pcie_g4_lut_writel(struct ls_pcie_g4 *pcie,
 					 u32 off, u32 val)
 {
-	iowrite32(val, pcie->pci->csr_axi_slave_base + PCIE_LUT_OFF + off);
+	iowrite32(val, pcie->pci.csr_axi_slave_base + PCIE_LUT_OFF + off);
 }
 
 static inline u32 ls_pcie_g4_pf_readl(struct ls_pcie_g4 *pcie, u32 off)
 {
-	return ioread32(pcie->pci->csr_axi_slave_base + PCIE_PF_OFF + off);
+	return ioread32(pcie->pci.csr_axi_slave_base + PCIE_PF_OFF + off);
 }
 
 static inline void ls_pcie_g4_pf_writel(struct ls_pcie_g4 *pcie,
 					u32 off, u32 val)
 {
-	iowrite32(val, pcie->pci->csr_axi_slave_base + PCIE_PF_OFF + off);
-}
-
-static bool ls_pcie_g4_is_bridge(struct ls_pcie_g4 *pcie)
-{
-	struct mobiveil_pcie *mv_pci = pcie->pci;
-	u32 header_type;
-
-	header_type = csr_readb(mv_pci, PCI_HEADER_TYPE);
-	header_type &= 0x7f;
-
-	return header_type == PCI_HEADER_TYPE_BRIDGE;
+	iowrite32(val, pcie->pci.csr_axi_slave_base + PCIE_PF_OFF + off);
 }
 
 static void workaround_A011451(struct ls_pcie_g4 *pcie)
 {
-	struct mobiveil_pcie *mv_pci = pcie->pci;
+	struct mobiveil_pcie *mv_pci = &pcie->pci;
 	u32 val;
 
 	/* Set ACK latency timeout */
-	val = csr_readl(mv_pci, GPEX_ACK_REPLAY_TO);
+	val = mobiveil_csr_readl(mv_pci, GPEX_ACK_REPLAY_TO);
 	val &= ~(ACK_LAT_TO_VAL_MASK << ACK_LAT_TO_VAL_SHIFT);
 	val |= (4 << ACK_LAT_TO_VAL_SHIFT);
-	csr_writel(mv_pci, val, GPEX_ACK_REPLAY_TO);
+	mobiveil_csr_writel(mv_pci, val, GPEX_ACK_REPLAY_TO);
 }
 
 static int ls_pcie_g4_host_init(struct mobiveil_pcie *pci)
 {
 	struct ls_pcie_g4 *pcie = to_ls_pcie_g4(pci);
 
-	pcie->rev = csr_readb(pci, PCI_REVISION_ID);
+	pcie->rev = mobiveil_csr_readb(pci, PCI_REVISION_ID);
 
 	if (pcie->rev == REV_1_0)
 		workaround_A011451(pcie);
@@ -114,15 +102,36 @@ static int ls_pcie_g4_link_up(struct mobiveil_pcie *pci)
 	state = ls_pcie_g4_pf_readl(pcie, PCIE_PF_DBG);
 	state =	state & PF_DBG_LTSSM_MASK;
 
-	if (state == LS_PCIE_G4_LTSSM_L0)
+	if (state == PF_DBG_LTSSM_L0)
 		return 1;
 
 	return 0;
 }
 
-static void ls_pcie_g4_reinit_hw(struct ls_pcie_g4 *pcie)
+static void ls_pcie_g4_disable_interrupt(struct ls_pcie_g4 *pcie)
 {
-	struct mobiveil_pcie *mv_pci = pcie->pci;
+	struct mobiveil_pcie *mv_pci = &pcie->pci;
+
+	mobiveil_csr_writel(mv_pci, 0, PAB_INTP_AMBA_MISC_ENB);
+}
+
+static void ls_pcie_g4_enable_interrupt(struct ls_pcie_g4 *pcie)
+{
+	struct mobiveil_pcie *mv_pci = &pcie->pci;
+	u32 val;
+
+	/* Clear the interrupt status */
+	mobiveil_csr_writel(mv_pci, 0xffffffff, PAB_INTP_AMBA_MISC_STAT);
+
+	val = PAB_INTP_INTX_MASK | PAB_INTP_MSI | PAB_INTP_RESET |
+	      PAB_INTP_PCIE_UE | PAB_INTP_IE_PMREDI | PAB_INTP_IE_EC;
+	mobiveil_csr_writel(mv_pci, val, PAB_INTP_AMBA_MISC_ENB);
+}
+
+static int ls_pcie_g4_reinit_hw(struct ls_pcie_g4 *pcie)
+{
+	struct mobiveil_pcie *mv_pci = &pcie->pci;
+	struct device *dev = &mv_pci->pdev->dev;
 	u32 val, act_stat;
 	int to = 100;
 
@@ -130,24 +139,24 @@ static void ls_pcie_g4_reinit_hw(struct ls_pcie_g4 *pcie)
 	do {
 		usleep_range(10, 15);
 		val = ls_pcie_g4_pf_readl(pcie, PCIE_PF_INT_STAT);
-		act_stat = csr_readl(mv_pci, PAB_ACTIVITY_STAT);
-	} while (((val & 1 << PF_INT_STAT_PABRST) == 0 || act_stat) && to--);
+		act_stat = mobiveil_csr_readl(mv_pci, PAB_ACTIVITY_STAT);
+	} while (((val & PF_INT_STAT_PABRST) == 0 || act_stat) && to--);
 	if (to < 0) {
-		dev_err(&mv_pci->pdev->dev, "poll PABRST&PABACT timeout\n");
-		return;
+		dev_err(dev, "Poll PABRST&PABACT timeout\n");
+		return -EIO;
 	}
 
 	/* clear PEX_RESET bit in PEX_PF0_DBG register */
 	val = ls_pcie_g4_pf_readl(pcie, PCIE_PF_DBG);
-	val |= 1 << PF_DBG_WE;
+	val |= PF_DBG_WE;
 	ls_pcie_g4_pf_writel(pcie, PCIE_PF_DBG, val);
 
 	val = ls_pcie_g4_pf_readl(pcie, PCIE_PF_DBG);
-	val |= 1 << PF_DBG_PABR;
+	val |= PF_DBG_PABR;
 	ls_pcie_g4_pf_writel(pcie, PCIE_PF_DBG, val);
 
 	val = ls_pcie_g4_pf_readl(pcie, PCIE_PF_DBG);
-	val &= ~(1 << PF_DBG_WE);
+	val &= ~PF_DBG_WE;
 	ls_pcie_g4_pf_writel(pcie, PCIE_PF_DBG, val);
 
 	mobiveil_host_init(mv_pci, true);
@@ -155,24 +164,30 @@ static void ls_pcie_g4_reinit_hw(struct ls_pcie_g4 *pcie)
 	to = 100;
 	while (!ls_pcie_g4_link_up(mv_pci) && to--)
 		usleep_range(200, 250);
-	if (to < 0)
-		dev_err(&mv_pci->pdev->dev, "PCIe link trainning timeout\n");
+	if (to < 0) {
+		dev_err(dev, "PCIe link training timeout\n");
+		return -EIO;
+	}
+
+	return 0;
 }
 
-static irqreturn_t ls_pcie_g4_handler(int irq, void *dev_id)
+static irqreturn_t ls_pcie_g4_isr(int irq, void *dev_id)
 {
 	struct ls_pcie_g4 *pcie = (struct ls_pcie_g4 *)dev_id;
-	struct mobiveil_pcie *mv_pci = pcie->pci;
+	struct mobiveil_pcie *mv_pci = &pcie->pci;
 	u32 val;
 
-	val = csr_readl(mv_pci, PAB_INTP_AMBA_MISC_STAT);
+	val = mobiveil_csr_readl(mv_pci, PAB_INTP_AMBA_MISC_STAT);
 	if (!val)
 		return IRQ_NONE;
 
-	if (val & PAB_INTP_RESET)
+	if (val & PAB_INTP_RESET) {
+		ls_pcie_g4_disable_interrupt(pcie);
 		schedule_delayed_work(&pcie->dwork, msecs_to_jiffies(1));
+	}
 
-	csr_writel(mv_pci, val, PAB_INTP_AMBA_MISC_STAT);
+	mobiveil_csr_writel(mv_pci, val, PAB_INTP_AMBA_MISC_STAT);
 
 	return IRQ_HANDLED;
 }
@@ -180,26 +195,21 @@ static irqreturn_t ls_pcie_g4_handler(int irq, void *dev_id)
 static int ls_pcie_g4_interrupt_init(struct mobiveil_pcie *mv_pci)
 {
 	struct ls_pcie_g4 *pcie = to_ls_pcie_g4(mv_pci);
-	u32 val;
+	struct platform_device *pdev = mv_pci->pdev;
+	struct device *dev = &pdev->dev;
 	int ret;
 
-	pcie->irq = platform_get_irq_byname(mv_pci->pdev, "intr");
+	pcie->irq = platform_get_irq_byname(pdev, "intr");
 	if (pcie->irq < 0) {
-		dev_err(&mv_pci->pdev->dev, "Can't get 'intr' irq.\n");
+		dev_err(dev, "Can't get 'intr' IRQ, errno = %d\n", pcie->irq);
 		return pcie->irq;
 	}
-	ret = devm_request_irq(&mv_pci->pdev->dev, pcie->irq,
-			       ls_pcie_g4_handler, IRQF_SHARED,
-			       mv_pci->pdev->name, pcie);
+	ret = devm_request_irq(dev, pcie->irq, ls_pcie_g4_isr,
+			       IRQF_SHARED, pdev->name, pcie);
 	if (ret) {
-		dev_err(&mv_pci->pdev->dev, "Can't register PCIe IRQ.\n");
+		dev_err(dev, "Can't register PCIe IRQ, errno = %d\n", ret);
 		return  ret;
 	}
-
-	/* Enable interrupts */
-	val = PAB_INTP_INTX_MASK | PAB_INTP_MSI | PAB_INTP_RESET |
-	      PAB_INTP_PCIE_UE | PAB_INTP_IE_PMREDI | PAB_INTP_IE_EC;
-	csr_writel(mv_pci, val, PAB_INTP_AMBA_MISC_ENB);
 
 	return 0;
 }
@@ -209,13 +219,17 @@ static void ls_pcie_g4_reset(struct work_struct *work)
 	struct delayed_work *dwork = container_of(work, struct delayed_work,
 						  work);
 	struct ls_pcie_g4 *pcie = container_of(dwork, struct ls_pcie_g4, dwork);
-	struct mobiveil_pcie *mv_pci = pcie->pci;
+	struct mobiveil_pcie *mv_pci = &pcie->pci;
 	u16 ctrl;
 
-	ctrl = csr_readw(mv_pci, PCI_BRIDGE_CONTROL);
+	ctrl = mobiveil_csr_readw(mv_pci, PCI_BRIDGE_CONTROL);
 	ctrl &= ~PCI_BRIDGE_CTL_BUS_RESET;
-	csr_writew(mv_pci, ctrl, PCI_BRIDGE_CONTROL);
-	ls_pcie_g4_reinit_hw(pcie);
+	mobiveil_csr_writew(mv_pci, ctrl, PCI_BRIDGE_CONTROL);
+
+	if (!ls_pcie_g4_reinit_hw(pcie))
+		return;
+
+	ls_pcie_g4_enable_interrupt(pcie);
 }
 
 static int ls_pcie_g4_read_other_conf(struct pci_bus *bus, unsigned int devfn,
@@ -225,13 +239,13 @@ static int ls_pcie_g4_read_other_conf(struct pci_bus *bus, unsigned int devfn,
 	struct ls_pcie_g4 *pcie = to_ls_pcie_g4(pci);
 	int ret;
 
-	if (pcie->rev == REV_1_0 && where == PCI_VENDOR_ID)
+	if (pcie->rev == REV_1_0)
 		ls_pcie_g4_lut_writel(pcie, PCIE_LUT_GCR,
 				      0 << PCIE_LUT_GCR_RRE);
 
 	ret = pci_generic_config_read(bus, devfn, where, size, val);
 
-	if (pcie->rev == REV_1_0 && where == PCI_VENDOR_ID)
+	if (pcie->rev == REV_1_0)
 		ls_pcie_g4_lut_writel(pcie, PCIE_LUT_GCR,
 				      1 << PCIE_LUT_GCR_RRE);
 
@@ -251,28 +265,28 @@ static const struct mobiveil_pab_ops ls_pcie_g4_pab_ops = {
 static int __init ls_pcie_g4_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct pci_host_bridge *bridge;
 	struct mobiveil_pcie *mv_pci;
 	struct ls_pcie_g4 *pcie;
 	struct device_node *np = dev->of_node;
 	int ret;
 
 	if (!of_parse_phandle(np, "msi-parent", 0)) {
-		dev_err(dev, "failed to find msi-parent\n");
+		dev_err(dev, "Failed to find msi-parent\n");
 		return -EINVAL;
 	}
 
-	pcie = devm_kzalloc(dev, sizeof(*pcie), GFP_KERNEL);
-	if (!pcie)
+	bridge = devm_pci_alloc_host_bridge(dev, sizeof(*pcie));
+	if (!bridge)
 		return -ENOMEM;
 
-	mv_pci = devm_kzalloc(dev, sizeof(*mv_pci), GFP_KERNEL);
-	if (!mv_pci)
-		return -ENOMEM;
+	pcie = pci_host_bridge_priv(bridge);
+	mv_pci = &pcie->pci;
 
 	mv_pci->pdev = pdev;
 	mv_pci->ops = &ls_pcie_g4_pab_ops;
 	mv_pci->rp.ops = &ls_pcie_g4_rp_ops;
-	pcie->pci = mv_pci;
+	mv_pci->rp.bridge = bridge;
 
 	platform_set_drvdata(pdev, pcie);
 
@@ -280,12 +294,11 @@ static int __init ls_pcie_g4_probe(struct platform_device *pdev)
 
 	ret = mobiveil_pcie_host_probe(mv_pci);
 	if (ret) {
-		dev_err(dev, "fail to probe!\n");
+		dev_err(dev, "Fail to probe\n");
 		return  ret;
 	}
 
-	if (!ls_pcie_g4_is_bridge(pcie))
-		return -ENODEV;
+	ls_pcie_g4_enable_interrupt(pcie);
 
 	return 0;
 }

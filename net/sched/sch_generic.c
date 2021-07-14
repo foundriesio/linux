@@ -806,7 +806,7 @@ struct Qdisc_ops pfifo_fast_ops __read_mostly = {
 	.dump		=	pfifo_fast_dump,
 	.change_tx_queue_len =  pfifo_fast_change_tx_queue_len,
 	.owner		=	THIS_MODULE,
-	.static_flags	=	TCQ_F_NOLOCK | TCQ_F_CPUSTATS,
+	.static_flags	=	TCQ_F_CPUSTATS,
 };
 EXPORT_SYMBOL(pfifo_fast_ops);
 
@@ -1008,6 +1008,9 @@ static void qdisc_destroy(struct Qdisc *qdisc)
 
 void qdisc_put(struct Qdisc *qdisc)
 {
+	if (!qdisc)
+		return;
+
 	if (qdisc->flags & TCQ_F_BUILTIN ||
 	    !refcount_dec_and_test(&qdisc->refcnt))
 		return;

@@ -41,6 +41,7 @@
 #include <asm/x86_init.h>
 #include <asm/pgalloc.h>
 #include <linux/atomic.h>
+#include <asm/barrier.h>
 #include <asm/mpspec.h>
 #include <asm/i8259.h>
 #include <asm/proto.h>
@@ -477,6 +478,9 @@ static int lapic_next_deadline(unsigned long delta,
 			       struct clock_event_device *evt)
 {
 	u64 tsc;
+
+	/* This MSR is special and need a special fence: */
+	weak_wrmsr_fence();
 
 	tsc = rdtsc();
 	wrmsrl(MSR_IA32_TSC_DEADLINE, tsc + (((u64) delta) * TSC_DIVISOR));
@@ -1576,26 +1580,41 @@ static __init void x2apic_enable(void)
 
 static __init void try_to_enable_x2apic(int remap_mode)
 {
+	u32 apic_limit = 255;
+
 	if (x2apic_state == X2APIC_DISABLED)
 		return;
 
+	/*
+	 * If the hypervisor supports extended destination ID in IOAPIC
+	 * and MSI, that increases the maximum APIC ID that can be used
+	 * for non-remapped IRQ domains.
+	 */
+	if (x86_init.hyper.msi_ext_dest_id()) {
+		msi_ext_dest_id = 1;
+		apic_limit = 32767;
+	}
+
 	if (remap_mode != IRQ_REMAP_X2APIC_MODE) {
-		/* IR is required if there is APIC ID > 255 even when running
-		 * under KVM
+		/*
+		 * Using X2APIC without IR is not architecturally supported
+		 * on bare metal but may be supported in guests.
 		 */
-		if (max_physical_apicid > 255 ||
-		    !x86_init.hyper.x2apic_available()) {
+		if (!x86_init.hyper.x2apic_available()) {
 			pr_info("x2apic: IRQ remapping doesn't support X2APIC mode\n");
 			x2apic_disable();
 			return;
 		}
 
 		/*
-		 * without IR all CPUs can be addressed by IOAPIC/MSI
-		 * only in physical mode
+		 * Without IR, all CPUs can be addressed by IOAPIC/MSI only
+		 * in physical mode, and CPUs with an APIC ID that cannnot
+		 * be addressed must not be brought online.
 		 */
+		x2apic_set_max_apicid(apic_limit);
 		x2apic_phys = 1;
 	}
+
 	x2apic_enable();
 }
 

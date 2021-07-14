@@ -38,6 +38,9 @@
     If it's non-zero, we mark only out of window RST segments as INVALID. */
 static int nf_ct_tcp_be_liberal __read_mostly = 0;
 
+/* If it's non-zero, we turn off RST sequence number check */
+static int nf_ct_tcp_ignore_invalid_rst __read_mostly = 0;
+
 /* If it is set to zero, we disable picking up already established
    connections. */
 static int nf_ct_tcp_loose __read_mostly = 1;
@@ -804,6 +807,28 @@ static unsigned int *tcp_get_timeouts(struct net *net)
 	return tcp_pernet(net)->timeouts;
 }
 
+static bool nf_conntrack_tcp_established(const struct nf_conn *ct)
+{
+	return ct->proto.tcp.state == TCP_CONNTRACK_ESTABLISHED &&
+	       test_bit(IPS_ASSURED_BIT, &ct->status);
+}
+
+static bool tcp_can_early_drop(const struct nf_conn *ct)
+{
+	switch (ct->proto.tcp.state) {
+	case TCP_CONNTRACK_FIN_WAIT:
+	case TCP_CONNTRACK_LAST_ACK:
+	case TCP_CONNTRACK_TIME_WAIT:
+	case TCP_CONNTRACK_CLOSE:
+	case TCP_CONNTRACK_CLOSE_WAIT:
+		return true;
+	default:
+		break;
+	}
+
+	return false;
+}
+
 /* Returns verdict for packet, or -1 for invalid. */
 static int tcp_packet(struct nf_conn *ct,
 		      const struct sk_buff *skb,
@@ -949,8 +974,9 @@ static int tcp_packet(struct nf_conn *ct,
 		spin_unlock_bh(&ct->lock);
 		if (LOG_INVALID(net, IPPROTO_TCP))
 			nf_log_packet(net, pf, 0, skb, NULL, NULL, NULL,
-				  "nf_ct_tcp: invalid packet ignored in "
-				  "state %s ", tcp_conntrack_names[old_state]);
+				  "nf_ct_tcp: packet (index %d) in dir %d ignored, "
+				  "state %s ", index, dir,
+				  tcp_conntrack_names[old_state]);
 		return NF_ACCEPT;
 	case TCP_CONNTRACK_MAX:
 		/* Special case for SYN proxy: when the SYN to the server or
@@ -996,18 +1022,60 @@ static int tcp_packet(struct nf_conn *ct,
 		}
 		break;
 	case TCP_CONNTRACK_CLOSE:
-		if (index == TCP_RST_SET
-		    && (ct->proto.tcp.seen[!dir].flags & IP_CT_TCP_FLAG_MAXACK_SET)
-		    && before(ntohl(th->seq), ct->proto.tcp.seen[!dir].td_maxack)) {
-			/* Invalid RST  */
-			spin_unlock_bh(&ct->lock);
-			if (LOG_INVALID(net, IPPROTO_TCP))
+		if (index != TCP_RST_SET)
+			break;
+
+		/* If we are closing, tuple might have been re-used already.
+		 * last_index, last_ack, and all other ct fields used for
+		 * sequence/window validation are outdated in that case.
+		 *
+		 * As the conntrack can already be expired by GC under pressure,
+		 * just skip validation checks.
+		 */
+		if (tcp_can_early_drop(ct))
+			goto in_window;
+
+		/* td_maxack might be outdated if we let a SYN through earlier */
+		if ((ct->proto.tcp.seen[!dir].flags & IP_CT_TCP_FLAG_MAXACK_SET) &&
+		     ct->proto.tcp.last_index != TCP_SYN_SET) {
+			u32 seq = ntohl(th->seq);
+
+			/* If we are not in established state and SEQ=0 this is most
+			 * likely an answer to a SYN we let go through above (last_index
+			 * can be updated due to out-of-order ACKs).
+			 */
+			if (seq == 0 && !nf_conntrack_tcp_established(ct))
+				break;
+
+			if (before(seq, ct->proto.tcp.seen[!dir].td_maxack) &&
+				   !tn->tcp_ignore_invalid_rst) {
+				/* Invalid RST  */
+				spin_unlock_bh(&ct->lock);
 				nf_log_packet(net, pf, 0, skb, NULL, NULL,
 					      NULL, "nf_ct_tcp: invalid RST ");
-			return -NF_ACCEPT;
-		}
-		if (index == TCP_RST_SET
-		    && ((test_bit(IPS_SEEN_REPLY_BIT, &ct->status)
+				return -NF_ACCEPT;
+			}
+
+			if (!nf_conntrack_tcp_established(ct) ||
+			    seq == ct->proto.tcp.seen[!dir].td_maxack)
+				break;
+
+			/* Check if rst is part of train, such as
+			 *   foo:80 > bar:4379: P, 235946583:235946602(19) ack 42
+			 *   foo:80 > bar:4379: R, 235946602:235946602(0)  ack 42
+			 */
+			if (ct->proto.tcp.last_index == TCP_ACK_SET &&
+			    ct->proto.tcp.last_dir == dir &&
+			    seq == ct->proto.tcp.last_end)
+				break;
+
+			/* ... RST sequence number doesn't match exactly, keep
+			 * established state to allow a possible challenge ACK.
+			 */
+			new_state = old_state;
+ 		}
+
+		if (((test_bit(IPS_SEEN_REPLY_BIT, &ct->status)
 			 && ct->proto.tcp.last_index == TCP_SYN_SET)
 			|| (!test_bit(IPS_ASSURED_BIT, &ct->status)
 			    && ct->proto.tcp.last_index == TCP_ACK_SET))
@@ -1023,7 +1091,7 @@ static int tcp_packet(struct nf_conn *ct,
 			 * segments we ignored. */
 			goto in_window;
 		}
-		/* Just fall through */
+		break;
 	default:
 		/* Keep compilers happy. */
 		break;
@@ -1054,6 +1122,8 @@ static int tcp_packet(struct nf_conn *ct,
 	if (ct->proto.tcp.retrans >= tn->tcp_max_retrans &&
 	    timeouts[new_state] > timeouts[TCP_CONNTRACK_RETRANS])
 		timeout = timeouts[TCP_CONNTRACK_RETRANS];
+	else if (unlikely(index == TCP_RST_SET))
+		timeout = timeouts[TCP_CONNTRACK_CLOSE];
 	else if ((ct->proto.tcp.seen[0].flags | ct->proto.tcp.seen[1].flags) &
 		 IP_CT_TCP_FLAG_DATA_UNACKNOWLEDGED &&
 		 timeouts[new_state] > timeouts[TCP_CONNTRACK_UNACK])
@@ -1169,22 +1239,6 @@ static bool tcp_new(struct nf_conn *ct, const struct sk_buff *skb,
 		 receiver->td_end, receiver->td_maxend, receiver->td_maxwin,
 		 receiver->td_scale);
 	return true;
-}
-
-static bool tcp_can_early_drop(const struct nf_conn *ct)
-{
-	switch (ct->proto.tcp.state) {
-	case TCP_CONNTRACK_FIN_WAIT:
-	case TCP_CONNTRACK_LAST_ACK:
-	case TCP_CONNTRACK_TIME_WAIT:
-	case TCP_CONNTRACK_CLOSE:
-	case TCP_CONNTRACK_CLOSE_WAIT:
-		return true;
-	default:
-		break;
-	}
-
-	return false;
 }
 
 #if IS_ENABLED(CONFIG_NF_CT_NETLINK)
@@ -1494,6 +1548,12 @@ static struct ctl_table tcp_sysctl_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
 	},
+	{
+		.procname       = "nf_conntrack_tcp_ignore_invalid_rst",
+		.maxlen         = sizeof(unsigned int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec,
+	},
 	{ }
 };
 #endif /* CONFIG_SYSCTL */
@@ -1524,6 +1584,7 @@ static int tcp_kmemdup_sysctl_table(struct nf_proto_net *pn,
 	pn->ctl_table[10].data = &tn->tcp_loose;
 	pn->ctl_table[11].data = &tn->tcp_be_liberal;
 	pn->ctl_table[12].data = &tn->tcp_max_retrans;
+	pn->ctl_table[13].data = &tn->tcp_ignore_invalid_rst;
 #endif
 	return 0;
 }
@@ -1542,6 +1603,7 @@ static int tcp_init_net(struct net *net, u_int16_t proto)
 		tn->tcp_loose = nf_ct_tcp_loose;
 		tn->tcp_be_liberal = nf_ct_tcp_be_liberal;
 		tn->tcp_max_retrans = nf_ct_tcp_max_retrans;
+		tn->tcp_ignore_invalid_rst = nf_ct_tcp_ignore_invalid_rst;
 	}
 
 	return tcp_kmemdup_sysctl_table(pn, tn);
