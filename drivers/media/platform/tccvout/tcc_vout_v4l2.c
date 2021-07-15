@@ -648,7 +648,7 @@ static int tcc_deintl_buffer_set(struct tcc_vout_device *vout)
 	#else
 	if (vout->id == VOUT_MAIN) {
 		#if defined(CONFIG_TCC_DUAL_DISPLAY)
-		if(vout->id == VOUT_MAIN) {
+		if (vout->id == VOUT_MAIN) {
 			width = DEINTL_WIDTH;
 			height = DEINTL_HEIGHT;
 		} else {
@@ -1210,7 +1210,7 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh,
 		vioc->rdma.y2rmd = 2;     // 2 = Studio Color
 
 	#if defined(CONFIG_TCC_DUAL_DISPLAY)
-		if(vout->id == VOUT_MAIN) {
+		if (vout->id == VOUT_MAIN) {
 			vioc->m2m_dual_rdma[M2M_DUAL_0].y2r = 0;
 			vioc->m2m_dual_rdma[M2M_DUAL_0].y2rmd = 2;
 			vioc->m2m_dual_wdma[M2M_DUAL_0].r2y = 1;
@@ -1252,20 +1252,24 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh,
 			vout_wmix_getsize(vout, &panel_width, &panel_height);
 
 		#if defined(CONFIG_TCC_DUAL_DISPLAY)
-			if(vout->id == VOUT_MAIN) {
+			if (vout->id == VOUT_MAIN) {
 				vout->deintl_buf_size =
 					PAGE_ALIGN(vout->disp_rect.width
-						* vout->disp_rect.height * 3 / 2);
+						* vout->disp_rect.height
+						* 3 / 2);
 				vout->m2m_dual_buf_size =
 					PAGE_ALIGN(vout->disp_rect.width
-						* vout->disp_rect.height * 3 / 2);
+						* vout->disp_rect.height
+						* 3 / 2);
 			} else {
 				vout->deintl_buf_size =
-					PAGE_ALIGN(panel_width * panel_height * 3 / 2);
+					PAGE_ALIGN(panel_width
+						* panel_height * 3 / 2);
 			}
 		#else
 			vout->deintl_buf_size =
-				PAGE_ALIGN(panel_width * panel_height * 3 / 2);
+				PAGE_ALIGN(panel_width
+					* panel_height * 3 / 2);
 		#endif
 			#endif
 			vioc->m2m_wdma.fmt = VIOC_IMG_FMT_YUV420IL0;
@@ -1345,7 +1349,7 @@ static int vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh,
 	memcpy(&vout->disp_rect, &f->fmt.win.w, sizeof(struct v4l2_rect));
 
 #if defined(CONFIG_TCC_DUAL_DISPLAY)
-	if(vout->id == VOUT_MAIN) {
+	if (vout->id == VOUT_MAIN) {
 		if (f->fmt.win.clipcount > 3) {
 			vout->disp_mode = 0;
 			/* prevent KCS warning */
@@ -1364,7 +1368,8 @@ static int vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh,
 			if (!vout->dual_disp_rect.width)
 				vout->dual_disp_rect.width = f->fmt.win.w.width;
 			if (!vout->dual_disp_rect.height)
-				vout->dual_disp_rect.height = f->fmt.win.w.height;
+				vout->dual_disp_rect.height =
+					f->fmt.win.w.height;
 	}
 #endif
 
@@ -1406,7 +1411,7 @@ static int vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh,
 	vout->disp_rect.height = ROUND_DOWN_2(vout->disp_rect.height);
 
 #if defined(CONFIG_TCC_DUAL_DISPLAY)
-	if(vout->id == VOUT_MAIN) {
+	if (vout->id == VOUT_MAIN) {
 		if (vout->dual_disp_rect.left < 0) {
 			vout->dual_disp_rect.width = vout->dual_disp_rect.width
 				+ vout->dual_disp_rect.left;
@@ -1423,7 +1428,8 @@ static int vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh,
 		}
 
 		if (vout->dual_disp_rect.top < 0) {
-			vout->dual_disp_rect.height = vout->dual_disp_rect.height
+			vout->dual_disp_rect.height =
+				vout->dual_disp_rect.height
 				+ vout->dual_disp_rect.top;
 			if (height < vout->dual_disp_rect.height) {
 				vout->dual_disp_rect.top = 0;
@@ -1451,7 +1457,7 @@ static int vidioc_s_fmt_vid_out_overlay(struct file *file, void *fh,
 #if defined(CONFIG_TCC_DUAL_DISPLAY)
 	else if (vout->dual_disp_rect.width <= 0 ||
 		vout->dual_disp_rect.height <= 0) {
-		if(vout->id == VOUT_MAIN) {
+		if (vout->id == VOUT_MAIN) {
 			vout->status = TCC_VOUT_STOP;
 			goto overlay_exit;
 		}
@@ -1646,7 +1652,7 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 		}
 
 	#if defined(CONFIG_TCC_DUAL_DISPLAY)
-		if(vout->id == VOUT_MAIN) {
+		if (vout->id == VOUT_MAIN) {
 			ret = tcc_m2m_dual_buffer_set(vout);
 			if (ret < 0) {
 				pr_err("[ERR][VOUT] tcc_m2m_dual_buffer_set(%d)\n",
@@ -1781,8 +1787,10 @@ static int vidioc_querybuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 	buf->length = qbuf->buf.length = vout->src_pix.sizeimage;
 
 	if (buf->memory == V4L2_MEMORY_MMAP) {
-		//qbuf->buf.m.planes[MPLANE_VID].m.mem_offset = qbuf->img_base0;
-		//qbuf->buf.m.planes[MPLANE_VID].length = vout->src_pix.sizeimage;
+		//qbuf->buf.m.planes[MPLANE_VID].m.mem_offset =
+		//	qbuf->img_base0;
+		//qbuf->buf.m.planes[MPLANE_VID].length =
+		//	vout->src_pix.sizeimage;
 
 		ret = copy_to_user(buf->m.planes, qbuf->buf.m.planes,
 			sizeof(struct v4l2_buffer) * MPLANE_NUM);
@@ -1936,7 +1944,7 @@ static int vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_type i)
 		vout_m2m_ctrl(vioc, 1);		// enable deintl_path
 
 		#if defined(CONFIG_TCC_DUAL_DISPLAY)
-		if(vout->id == VOUT_MAIN) {
+		if (vout->id == VOUT_MAIN) {
 			vout_m2m_dual_ctrl(vioc, 1, M2M_DUAL_1);
 			vout_m2m_dual_ctrl(vioc, 1, M2M_DUAL_0);
 		}
@@ -1944,8 +1952,8 @@ static int vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_type i)
 
 		#ifdef CONFIG_VOUT_USE_SUB_PLANE
 		if (vout->vout_mute == VOUT_MUTE_OFF) {
-			if(vout->id == VOUT_MAIN)
-				vout_subplane_ctrl(vout, 1); // enable subplane_path
+			if (vout->id == VOUT_MAIN)
+				vout_subplane_ctrl(vout, 1);
 		}
 		#endif
 	}
@@ -1976,19 +1984,18 @@ static int vidioc_streamoff(struct file *file, void *fh, enum v4l2_buf_type i)
 	vout_disp_ctrl(vout, 0);	// disable disp_path
 	if (!vout->onthefly_mode) {
 		#if defined(CONFIG_TCC_DUAL_DISPLAY)
-		if(vout->id == VOUT_MAIN) {
+		if (vout->id == VOUT_MAIN)
 			vout_m2m_dual_ctrl(vioc, 0, M2M_DUAL_0);
-		}
 		#endif
 		vout_m2m_ctrl(vioc, 0);		// disable deintl_path
 	}
 
 	#ifdef CONFIG_VOUT_USE_SUB_PLANE
-	if(vout->id == VOUT_MAIN)
+	if (vout->id == VOUT_MAIN)
 		vout_subplane_ctrl(vout, 0);
 	#endif
 
-	if(vout->id == VOUT_MAIN)
+	if (vout->id == VOUT_MAIN)
 		m2m_path_reset(vioc);
 
 	mutex_unlock(&vout->lock);
@@ -2112,7 +2119,7 @@ static int tcc_vout_open(struct file *file)
 	vout->qbufs = NULL;
 	vout->deintl_bufs = NULL;
 	#if defined(CONFIG_TCC_DUAL_DISPLAY)
-	if(vout->id == VOUT_MAIN)
+	if (vout->id == VOUT_MAIN)
 		vout->m2m_dual_bufs = NULL;
 	#endif
 
@@ -2137,7 +2144,7 @@ static int tcc_vout_open(struct file *file)
 	vioc->m2m_wdma.irq_enable = 0;
 
 #if defined(CONFIG_TCC_DUAL_DISPLAY)
-	if(vout->id == VOUT_MAIN) {
+	if (vout->id == VOUT_MAIN) {
 		vout->disp_mode = 0;
 		init_waitqueue_head(&vout->ext_frame_wait);
 		init_waitqueue_head(&vout->hdmi_frame_wait);
@@ -2165,14 +2172,14 @@ static int tcc_vout_release(struct file *file)
 		vout_otf_deinit(vout);
 	else {
 		#if defined(CONFIG_TCC_DUAL_DISPLAY)
-		if(vout->id == VOUT_MAIN)
+		if (vout->id == VOUT_MAIN)
 			vout_m2m_dual_deinit(vout);
 		#endif
 		vout_m2m_deinit(vout);		// deinit deintl_path
 	}
 
 	#ifdef CONFIG_VOUT_USE_SUB_PLANE
-	if(vout->id == VOUT_MAIN)
+	if (vout->id == VOUT_MAIN)
 		vout_subplane_deinit(vout);		// deinit subplane_path
 	#endif
 
@@ -2195,7 +2202,7 @@ static int tcc_vout_release(struct file *file)
 
 	kfree(vout->deintl_bufs);
 	#if defined(CONFIG_TCC_DUAL_DISPLAY)
-	if(vout->id == VOUT_MAIN)
+	if (vout->id == VOUT_MAIN)
 		kfree(vout->m2m_dual_bufs);
 	#endif
 	kfree(vioc->m2m_wdma.vioc_intr);

@@ -616,63 +616,82 @@ static ssize_t vout_mute_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct tcc_vout_device *vout = dev->platform_data;
-	unsigned int val;
-	val = simple_strtoul(buf, NULL, 10);
+	int val, ret;
 
+	ret = kstrtoul(buf, 10, (unsigned long *)&val);
+	void __iomem *rdma_addr = vout->vioc->rdma.addr;
+
+#if defined(CONFIG_TCC_DUAL_DISPLAY)
+	unsigned int m2m_dual_wdma_base0 =
+		vout->vioc->m2m_dual_wdma[M2M_DUAL_0].img.base0;
+	unsigned int m2m_dual_wdma_base1 =
+		vout->vioc->m2m_dual_wdma[M2M_DUAL_0].img.base1;
+	unsigned int m2m_dual_wdma_base2 =
+		vout->vioc->m2m_dual_wdma[M2M_DUAL_0].img.base2;
+	unsigned int m2m_dual_width =
+		vout->vioc->m2m_dual_wmix[M2M_DUAL_0].width;
+	unsigned int m2m_dual_height =
+		vout->vioc->m2m_dual_wmix[M2M_DUAL_0].height;
+#endif
 	dprintk("set vout_mute (%d) -> (%d)\n", vout->vout_mute, val);
 
 	#if defined(CONFIG_TCC_DUAL_DISPLAY)
-	if((vout->id == VOUT_MAIN) && (vout->disp_mode == 2 || vout->disp_mode == 3))
+	if ((vout->id == VOUT_MAIN) &&
+		(vout->disp_mode == 2 || vout->disp_mode == 3))
 		return count;
 	#endif
 
 	mutex_lock(&vout->lock);
 	vout->vout_mute = val;
 
-	if((vout->vioc != NULL) &&
+	if ((vout->vioc != NULL) &&
 		(vout->status == TCC_VOUT_RUNNING) &&
 		(VIOC_DISP_Get_TurnOnOff(vout->vioc->disp.addr))) {
 		if (vout->vout_mute == VOUT_MUTE_ON) {
-			VIOC_RDMA_SetImageDisable(vout->vioc->rdma.addr);
-		}
-		else if((vout->vout_mute == VOUT_MUTE_OFF) && (vout->is_streaming == 1)) {
+			VIOC_RDMA_SetImageDisable(rdma_addr);
+		} else if ((vout->vout_mute == VOUT_MUTE_OFF)
+			&& (vout->is_streaming == 1)) {
 			VIOC_WMIX_SetPosition(vout->vioc->wmix.addr,
 				vout->vioc->wmix.pos,
 				vout->vioc->wmix.left, vout->vioc->wmix.top);
 			VIOC_WMIX_SetUpdate(vout->vioc->wmix.addr);
-			if(vout->id == VOUT_MAIN) {
+			if (vout->id == VOUT_MAIN) {
 				#if defined(CONFIG_TCC_DUAL_DISPLAY)
-				VIOC_RDMA_SetImageBase(vout->vioc->rdma.addr,
-					vout->vioc->m2m_dual_wdma[M2M_DUAL_0].img.base0,
-					vout->vioc->m2m_dual_wdma[M2M_DUAL_0].img.base1,
-					vout->vioc->m2m_dual_wdma[M2M_DUAL_0].img.base2);
-				VIOC_RDMA_SetImageSize(vout->vioc->rdma.addr,
-					vout->vioc->m2m_dual_wmix[M2M_DUAL_0].width,
-					vout->vioc->m2m_dual_wmix[M2M_DUAL_0].height);
-				VIOC_RDMA_SetImageOffset(vout->vioc->rdma.addr,
+				VIOC_RDMA_SetImageBase(rdma_addr,
+					m2m_dual_wdma_base0,
+					m2m_dual_wdma_base1,
+					m2m_dual_wdma_base2);
+				VIOC_RDMA_SetImageSize(rdma_addr,
+					m2m_dual_width,
+					m2m_dual_height);
+				VIOC_RDMA_SetImageOffset(rdma_addr,
 					vout->vioc->m2m_wdma.fmt,
-					vout->vioc->m2m_dual_wmix[M2M_DUAL_0].width);
+					m2m_dual_width);
 				#else
-				VIOC_RDMA_SetImageBase(vout->vioc->rdma.addr,
+				VIOC_RDMA_SetImageBase(rdma_addr,
 					vout->vioc->m2m_wdma.img.base0,
 					vout->vioc->m2m_wdma.img.base1,
 					vout->vioc->m2m_wdma.img.base2);
-				VIOC_RDMA_SetImageSize(vout->vioc->rdma.addr,
-					vout->vioc->rdma.width, vout->vioc->rdma.height);
-				VIOC_RDMA_SetImageOffset(vout->vioc->rdma.addr,
-					vout->vioc->rdma.fmt, vout->vioc->rdma.width);
+				VIOC_RDMA_SetImageSize(rdma_addr,
+					vout->vioc->rdma.width,
+					vout->vioc->rdma.height);
+				VIOC_RDMA_SetImageOffset(rdma_addr,
+					vout->vioc->rdma.fmt,
+					vout->vioc->rdma.width);
 				#endif
 			} else {
-				VIOC_RDMA_SetImageBase(vout->vioc->rdma.addr,
+				VIOC_RDMA_SetImageBase(rdma_addr,
 					vout->vioc->m2m_wdma.img.base0,
 					vout->vioc->m2m_wdma.img.base1,
 					vout->vioc->m2m_wdma.img.base2);
-				VIOC_RDMA_SetImageSize(vout->vioc->rdma.addr,
-					vout->vioc->rdma.width, vout->vioc->rdma.height);
-				VIOC_RDMA_SetImageOffset(vout->vioc->rdma.addr,
-					vout->vioc->rdma.fmt, vout->vioc->rdma.width);
+				VIOC_RDMA_SetImageSize(rdma_addr,
+					vout->vioc->rdma.width,
+					vout->vioc->rdma.height);
+				VIOC_RDMA_SetImageOffset(rdma_addr,
+					vout->vioc->rdma.fmt,
+					vout->vioc->rdma.width);
 			}
-			VIOC_RDMA_SetImageEnable(vout->vioc->rdma.addr);
+			VIOC_RDMA_SetImageEnable(rdma_addr);
 		}
 	}
 
@@ -680,7 +699,7 @@ static ssize_t vout_mute_store(struct device *dev,
 
 	return count;
 }
-DEVICE_ATTR(vout_mute, S_IRUGO | S_IWUSR, vout_mute_show, vout_mute_store);
+DEVICE_ATTR(vout_mute, 0644, vout_mute_show, vout_mute_store);
 
 /**
  * Create the device files
