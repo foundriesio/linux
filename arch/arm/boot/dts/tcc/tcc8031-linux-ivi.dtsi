@@ -1067,40 +1067,49 @@
 
 	//This is for SDR solution.
 	pinctrl {
-		m1dai1_bclk: m1dai1_bclk {
+		m1dai1_bclk {
 			 telechips,schmitt-input;
 		};
-		m1dai1_lrck: m1dai1_lrck {
+		m1dai1_lrck {
 			 telechips,schmitt-input;
 		};
-		m1dai1_dai0: m1dai1_dai0 {
+		m1dai1_dai0 {
 			 telechips,schmitt-input;
 		};
-		m1dai1_dai1: m1dai1_dai1 {
+		m1dai1_dai1 {
 			 telechips,schmitt-input;
 		};
-		m1dai1_dai2: m1dai1_dai2 {
+		m1dai1_dai2 {
 			 telechips,schmitt-input;
 		};
-		m1dai1_dai3: m1dai1_dai3 {
+		m1dai1_dai3 {
 			 telechips,schmitt-input;
 		};
-		m1dai0_bclk: m1dai0_bclk {
+		m1dai0_bclk {
 			 telechips,schmitt-input;
 		};
-		m1dai0_lrck: m1dai0_lrck {
+		m1dai0_lrck {
 			 telechips,schmitt-input;
 		};
-		m1dai0_dai0: m1dai0_dai0 {
+		m1dai0_dai0 {
 			 telechips,schmitt-input;
 		};
-		m1dai0_dai1: m1dai0_dai1 {
+		m1dai0_dai1 {
 			 telechips,schmitt-input;
 		};
-		m1dai0_dai2: m1dai0_dai2 {
+		m1dai0_dai2 {
 			 telechips,schmitt-input;
 		};
-		m1dai0_dai3: m1dai0_dai3 {
+		m1dai0_dai3 {
+			 telechips,schmitt-input;
+		};
+		m0dai1_bclk {
+			 telechips,schmitt-input;
+		};
+		m0dai1_lrck {
+			 telechips,schmitt-input;
+		};
+		m0dai1_dai0 {
 			 telechips,schmitt-input;
 		};
 	};

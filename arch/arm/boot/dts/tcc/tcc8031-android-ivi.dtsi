@@ -1113,6 +1113,54 @@
 	pinctrl-1 = <&gpsb16_bus_tsif>;
 };
 
+//This is for SDR solution.
+&pinctrl {
+	m1dai1_bclk {
+		telechips,schmitt-input;
+	};
+	m1dai1_lrck {
+		telechips,schmitt-input;
+	};
+	m1dai1_dai0 {
+		telechips,schmitt-input;
+	};
+	m1dai1_dai1 {
+		telechips,schmitt-input;
+	};
+	m1dai1_dai2 {
+		telechips,schmitt-input;
+	};
+	m1dai1_dai3 {
+		telechips,schmitt-input;
+	};
+	m1dai0_bclk {
+		telechips,schmitt-input;
+	};
+	m1dai0_lrck {
+		telechips,schmitt-input;
+	};
+	m1dai0_dai0 {
+		telechips,schmitt-input;
+	};
+	m1dai0_dai1 {
+		telechips,schmitt-input;
+	};
+	m1dai0_dai2 {
+		telechips,schmitt-input;
+	};
+	m1dai0_dai3 {
+		telechips,schmitt-input;
+	};
+	m0dai1_bclk {
+		telechips,schmitt-input;
+	};
+	m0dai1_lrck {
+		telechips,schmitt-input;
+	};
+	m0dai1_dai0 {
+		telechips,schmitt-input;
+	};
+};
 /* sdr */
 
 &i2s2 {
@@ -1120,9 +1168,11 @@
 	dev-name = "tcc-iq01";
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&m1dai1_bclk &m1dai1_lrck
-		     &m1dai1_dai0 &m1dai1_dai1 &m1dai1_dai2 &m1dai1_dai3>;
-	pinctrl-1 = <&m1dai1_bclk_idle &m1dai1_lrck_idle &m1dai1_dai0_idle
-		     &m1dai1_dai1_idle &m1dai1_dai2_idle &m1dai1_dai3_idle>;
+		     	&m1dai1_dai0 &m1dai1_dai1
+			 	&m1dai1_dai2 &m1dai1_dai3>;
+	pinctrl-1 = <&m1dai1_bclk_idle &m1dai1_lrck_idle
+				&m1dai1_dai0_idle &m1dai1_dai1_idle
+				&m1dai1_dai2_idle &m1dai1_dai3_idle>;
 	status = "okay";
 };
 
@@ -1130,9 +1180,10 @@
 	compatible = "telechips,sdr";
 	dev-name = "tcc-iq23";
 	pinctrl-names = "default", "idle";
-	pinctrl-0 = <&m1dai0_bclk &m1dai0_lrck &m1dai0_dai0 &m1dai0_dai1>;
+	pinctrl-0 = <&m1dai0_bclk &m1dai0_lrck
+				&m1dai0_dai0 &m1dai0_dai1>;
 	pinctrl-1 = <&m1dai0_bclk_idle &m1dai0_lrck_idle
-		     &m1dai0_dai0_idle &m1dai0_dai1_idle>;
+		     	&m1dai0_dai0_idle &m1dai0_dai1_idle>;
 	status = "disabled";
 };
 
@@ -1177,18 +1228,20 @@
 &i2s0 {
 	pinctrl-names = "default", "idle";
 	pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck
-		     &m1dai3_dao0 &m1dai3_dai0 &m1dai3_dao1 &m1dai3_dai1>;
+		     	&m1dai3_dao0 &m1dai3_dai0
+				&m1dai3_dao1 &m1dai3_dai1>;
 	pinctrl-1 = <&m1dai3_mclk_idle &m1dai3_bclk_idle &m1dai3_lrck_idle
-		     &m1dai3_dao0_idle &m1dai3_dai0_idle
-			 &m1dai3_dao1_idle &m1dai3_dai1_idle>;
+		     	&m1dai3_dao0_idle &m1dai3_dai0_idle
+			 	&m1dai3_dao1_idle &m1dai3_dai1_idle>;
 	status = "okay";
 };
 
 &i2s3 {
 	pinctrl-names = "default", "idle";
-	pinctrl-0 = <&m0dai0_bclk &m0dai0_lrck &m0dai0_dao0 &m0dai0_dai0>;
+	pinctrl-0 = <&m0dai0_bclk &m0dai0_lrck
+				&m0dai0_dao0 &m0dai0_dai0>;
 	pinctrl-1 = <&m0dai0_bclk_idle &m0dai0_lrck_idle
-		     &m0dai0_dao0_idle &m0dai0_dai0_idle>;
+		     	&m0dai0_dao0_idle &m0dai0_dai0_idle>;
 	status = "okay";
 };
 
