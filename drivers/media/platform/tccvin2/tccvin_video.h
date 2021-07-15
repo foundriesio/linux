@@ -101,6 +101,10 @@ struct tccvin_cif {
 	struct clk			*vioc_clk;
 	struct vioc_path		vioc_path;
 
+	unsigned int			vin_irq_reg;
+	unsigned int			vin_irq_num;
+	struct vioc_intr_type		vin_intr;
+
 	unsigned int			vioc_irq_reg;
 	unsigned int			vioc_irq_num;
 	struct vioc_intr_type		vioc_intr;
@@ -274,6 +278,13 @@ struct tccvin_streaming {
 
 	int					preview_method;
 	int					is_handover_needed;
+
+	/* A flag to skip handling buffers in wdma isr. We cannot guarantee that
+	* VIN isr is always invoked before WDMA isr since during the handover
+	* from early camera to rear camera, VIOC path wouuld be already running.
+	* To synchronize two ISR routines, we need to use extra flag so that we
+	* can avoid unexpected buffer handling with uninitialized buffers. */
+	int					skip_isr;
 
 	atomic_t				timestamp;
 	struct timespec				ts_prev;
