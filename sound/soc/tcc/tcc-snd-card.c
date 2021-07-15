@@ -125,8 +125,14 @@ static int tcc_snd_card_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct tcc_card_info_t *card_info = snd_soc_card_get_drvdata(rtd->card);
 	struct tcc_dai_info_t *dai_info;
+	int32_t ret = 0;
 
 	dai_info = tcc_snd_card_get_dai_info(card_info, cpu_dai);
+	if(dai_info == NULL){
+		snd_card_err("%s : fail to get dai information\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
 
 	if (dai_info->is_updated) {
 		(void)snd_soc_dai_set_tdm_slot(
@@ -151,7 +157,8 @@ static int tcc_snd_card_startup(struct snd_pcm_substream *substream)
 		dai_info->is_updated = FALSE;
 	}
 
-	return 0;
+err:
+	return ret;
 }
 
 static void tcc_snd_card_shutdown(struct snd_pcm_substream *substream)
@@ -768,7 +775,7 @@ static int parse_tcc_snd_card_dt(struct platform_device *pdev,
 				 struct snd_soc_card *card)
 {
 	struct device_node *node = pdev->dev.of_node;
-	struct tcc_card_info_t *card_info;
+	struct tcc_card_info_t *card_info = NULL;
 	int i, not_failed_name_count;
 	struct device_node *dai_link;
 	ssize_t alloc_size;
@@ -788,12 +795,13 @@ static int parse_tcc_snd_card_dt(struct platform_device *pdev,
 
 	alloc_size =
 	    (ssize_t) sizeof(struct snd_soc_dai_link) * card_info->num_links;
-
 	card_info->dai_link = kzalloc((size_t) alloc_size, GFP_KERNEL);
 	if (card_info->dai_link == NULL) {
 		ret = -ENOMEM;
 		goto error_2;
 	}
+
+	memset(card_info->dai_link, 0, (size_t)alloc_size);
 
 	alloc_size =
 	    (ssize_t) sizeof(struct tcc_dai_info_t) * card_info->num_links;
@@ -802,6 +810,8 @@ static int parse_tcc_snd_card_dt(struct platform_device *pdev,
 		ret = -ENOMEM;
 		goto error_3;
 	}
+
+	memset(card_info->dai_info, 0, (size_t)alloc_size);
 
 	alloc_size =
 	    (ssize_t) sizeof(struct snd_soc_codec_conf) * card_info->num_links;
@@ -972,11 +982,13 @@ static int tcc_snd_card_late_probe(struct snd_soc_card *card)
 	struct tcc_card_info_t *card_info = snd_soc_card_get_drvdata(card);
 	struct snd_soc_pcm_runtime *rtd;
 	unsigned int mclk = 0;
-	int ret = 0;
+	int32_t ret = 0;
+	int32_t i;
 
 	snd_card_dbg("%s\n", __func__);
 
-	list_for_each_entry(rtd, &card->rtd_list, list) {
+	for(i = 0; i < card->num_rtd; i++){
+		rtd = snd_soc_get_pcm_runtime(card, card->dai_link[i].name);
 		struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 		struct tcc_dai_info_t *dai_info
 			= tcc_snd_card_get_dai_info(card_info, cpu_dai);
@@ -997,7 +1009,7 @@ static int tcc_snd_card_late_probe(struct snd_soc_card *card)
 	}
 
 err:
-	return 0;
+	return ret;
 }
 
 static int tcc_snd_card_platform_probe(struct platform_device *pdev)

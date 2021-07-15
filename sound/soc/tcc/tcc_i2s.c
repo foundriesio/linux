@@ -707,7 +707,6 @@ static int tcc_i2s_set_sysclk(struct snd_soc_dai *dai,
 		break;
 	}
 
-err:
 	return ret;
 }
 
@@ -1258,6 +1257,7 @@ static int tcc_i2s_bespoke_trigger
 	return ret;
 }
 
+#if 0
 static snd_pcm_sframes_t tcc_i2s_delay
 	(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *dai)
@@ -1268,6 +1268,7 @@ static snd_pcm_sframes_t tcc_i2s_delay
 
 	return ret;
 }
+#endif
 
 static struct snd_soc_dai_ops tcc_i2s_ops = {
 	.set_clkdiv     = tcc_i2s_set_clkdiv,
@@ -2087,9 +2088,8 @@ static int parse_i2s_dt(struct platform_device *pdev, struct tcc_i2s_t *i2s)
 		&sample_rate);
 	if (ret == 0) {
 		i2s->sample_rate = sample_rate;
-		int32_t rate =
-			(int32_t)sample_rate * i2s->mclk_div * i2s->bclk_ratio;
-		i2s->clk_rate = (uint32_t)rate;
+		i2s->clk_rate =
+			(uint32_t)(sample_rate * i2s->mclk_div * i2s->bclk_ratio);
 		i2s_dai_dbg("[%d] clk_rate=%u\n", i2s->blk_no, i2s->clk_rate);
 	}
 
