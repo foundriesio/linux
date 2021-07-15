@@ -48,6 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "imgpixfmts.h"
 #include "pvrmodule.h" /* for MODULE_LICENSE() */
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
+#include "di_server.h"
 #include <video/tcc/vioc_pvric_fbdc.h>
 #endif
 #if !defined(CONFIG_FB)
@@ -66,6 +67,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define FALLBACK_REFRESH_RATE		60
 #define FALLBACK_DPI				160
+
+#if defined(CONFIG_VIOC_PVRIC_FBDC)
+IMG_UINT32 gPVRPreEnableFBDC;
+IMG_UINT32 gPVREnableFBDC;
+module_param(gPVREnableFBDC, uint, 0644);
+MODULE_PARM_DESC(gPVREnableFBDC, "Sets enableFBDC");
+
+static DI_ENTRY *gpsEnableFBDCEntry;
+#endif
 
 typedef struct
 {
@@ -97,6 +107,100 @@ typedef struct
 DC_FBDEV_BUFFER;
 
 static DC_FBDEV_DEVICE *gpsDeviceData[FB_MAX];
+
+#if defined(CONFIG_VIOC_PVRIC_FBDC)
+static void *EnableFBDCStart(OSDI_IMPL_ENTRY *psEntry, IMG_UINT64 *pui64Pos)
+{
+	if (*pui64Pos == 0)
+		return DIGetPrivData(psEntry);
+
+	return NULL;
+}
+
+static void EnableFBDCStop(OSDI_IMPL_ENTRY *psEntry, void *pvData)
+{
+	PVR_UNREFERENCED_PARAMETER(psEntry);
+	PVR_UNREFERENCED_PARAMETER(pvData);
+}
+
+static void *EnableFBDCNext(OSDI_IMPL_ENTRY *psEntry,
+					void *pvData,
+					IMG_UINT64 *pui64Pos)
+{
+	PVR_UNREFERENCED_PARAMETER(psEntry);
+	PVR_UNREFERENCED_PARAMETER(pvData);
+	PVR_UNREFERENCED_PARAMETER(pui64Pos);
+
+	return NULL;
+}
+
+static int EnableFBDCShow(OSDI_IMPL_ENTRY *psEntry, void *pvData)
+{
+	if (pvData != NULL) {
+		IMG_UINT32 uiEnableFBDC = *((IMG_UINT32 *)pvData);
+
+		DIPrintf(psEntry, "%u\n", uiEnableFBDC);
+
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static IMG_INT64 EnableFBDCSet(const IMG_CHAR *pcBuffer, IMG_UINT64 ui64Count,
+				IMG_UINT64 *pui64Pos, void *pvData)
+{
+	IMG_UINT32 *uiEnableFBDC = pvData;
+
+	const IMG_UINT uiMaxBufferSize = 6;
+
+	if (pcBuffer == NULL)
+		return -EIO;
+	if (pui64Pos == NULL)
+		return -EIO;
+
+	if (sscanf(pcBuffer, "%u", &gPVREnableFBDC) == 0)
+		return -EINVAL;
+
+	/* As this is Linux the next line uses a GCC builtin function */
+	(*uiEnableFBDC) &= (1 << __builtin_ffsl(0x100UL)) - 1;
+
+	*pui64Pos += ui64Count;
+	return ui64Count;
+}
+
+void PVRTestRemoveDIEntries(void)
+{
+	if (gpsEnableFBDCEntry != NULL)
+		DIDestroyEntry(gpsEnableFBDCEntry);
+}
+
+int PVRTestCreateDIEntries(void)
+{
+	PVRSRV_ERROR eError;
+
+	DI_ITERATOR_CB sIterator = {
+		.pfnStart = EnableFBDCStart,
+		.pfnStop = EnableFBDCStop,
+		.pfnNext = EnableFBDCNext,
+		.pfnShow = EnableFBDCShow,
+		.pfnWrite = EnableFBDCSet
+	};
+
+	eError = DICreateEntry("enable_FBDC", NULL, &sIterator, &gPVREnableFBDC,
+				DI_ENTRY_TYPE_GENERIC, &gpsEnableFBDCEntry);
+
+	if (eError != PVRSRV_OK) {
+		pr_err("%s DICreateEntry error\n", __func__);
+		PVRTestRemoveDIEntries();
+		return -EFAULT;
+	}
+
+	return 0;
+}
+#endif
+
+
 
 #if defined(DC_FBDEV_FORCE_CONTEXT_CLEAN)
 static
@@ -239,13 +343,15 @@ PVRSRV_ERROR DC_FBDEV_PanelQuery(IMG_HANDLE hDeviceData,
 	psPanelInfo[0].sSurfaceInfo.sFormat.eMemLayout = PVRSRV_SURFACE_MEMLAYOUT_STRIDED;
 #if defined(CONFIG_VIOC_PVRIC_FBDC)
 	psVar->reserved[3] = 1;
+	gPVRPreEnableFBDC = 1;
+	gPVREnableFBDC = 1;
 	psPanelInfo[0].sSurfaceInfo.sFormat.eMemLayout
 		 = PVRSRV_SURFACE_MEMLAYOUT_FBC;
-	if( psVar->xres <= VIOC_PVRICSIZE_MAX_WIDTH_8X8 )
+	if ( psVar->xres <= VIOC_PVRICSIZE_MAX_WIDTH_8X8 )
 		psPanelInfo[0].sSurfaceInfo.sFormat.u.sFBCLayout.eFBCompressionMode = IMG_FB_COMPRESSION_DIRECT_8x8;
-	else if( psVar->xres <= VIOC_PVRICSIZE_MAX_WIDTH_16X4 )
+	else if ( psVar->xres <= VIOC_PVRICSIZE_MAX_WIDTH_16X4 )
 		psPanelInfo[0].sSurfaceInfo.sFormat.u.sFBCLayout.eFBCompressionMode = IMG_FB_COMPRESSION_DIRECT_16x4;
-	else if( psVar->xres <= VIOC_PVRICSIZE_MAX_WIDTH_32X2 )
+	else if ( psVar->xres <= VIOC_PVRICSIZE_MAX_WIDTH_32X2 )
 		psPanelInfo[0].sSurfaceInfo.sFormat.u.sFBCLayout.eFBCompressionMode = IMG_FB_COMPRESSION_DIRECT_32x2;
 	else {
 		psVar->reserved[3]=0;
@@ -465,6 +571,13 @@ void DC_FBDEV_ContextConfigure(IMG_HANDLE hDisplayContext,
 			sVar.yoffset = sVar.yres * psBuffer->ui32BufferID;
 		}
 	}
+#if defined(CONFIG_PVRIC_FBDC)
+	if (gPVREnableFBDC != gPVRPreEnableFBDC) {
+		sVar.reserved[3]=gPVREnableFBDC;
+		gPVRPreEnableFBDC = gPVREnableFBDC;
+		pr_info("%s set enableFBDC to %d\n", __func__, gPVREnableFBDC);
+	}
+#endif
 
 #if defined(DC_FBDEV_FORCE_CONTEXT_CLEAN)
 	DC_FBDEV_Clean(hDisplayContext, ahBuffers);
@@ -962,6 +1075,11 @@ static int __init DC_FBDEV_init(void)
 	unlock_fb_info(psLINFBInfo);
 	}
 	err = 0;
+#if defined(CONFIG_VIOC_PVRIC_FBDC)
+	err = PVRTestCreateDIEntries();
+	if (err != 0)
+		pr_err("%s PVRTestCreateDIEntries fail\n", __func__);
+#endif
 err_unlock:
 	console_unlock();
 	unlock_fb_info(psLINFBInfo);
@@ -980,7 +1098,9 @@ static void __exit DC_FBDEV_exit(void)
 	DC_FBDEV_DEVICE *psDeviceData;
 	struct fb_info *psLINFBInfo;
 	IMG_UINT32 ui32fb_devminor;
-
+#if defined(CONFIG_VIOC_PVRIC_FBDC)
+	PVRTestRemoveDIEntries();
+#endif
 	for (ui32fb_devminor = 0; ui32fb_devminor < num_registered_fb;
 							 ui32fb_devminor++) {
 		psDeviceData = gpsDeviceData[ui32fb_devminor];
