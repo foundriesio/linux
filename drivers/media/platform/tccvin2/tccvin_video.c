@@ -1318,6 +1318,8 @@ static irqreturn_t tccvin_vin_isr(int irq, void *data)
 		spin_lock_irqsave(&queue->irqlock, flags);
 
 		stream->skip_isr = 0;
+		stream->prev_buf = NULL;
+		stream->next_buf = NULL;
 
 		if (stream->skip_frame_cnt > 0) {
 			logd(dev_ptr, "skip frame count: 0x%08x\n",
@@ -1341,6 +1343,7 @@ static irqreturn_t tccvin_vin_isr(int irq, void *data)
 			stream->prev_buf->error;
 		if (ret != 0) {
 			loge(dev_ptr, "The buffer is corrupted\n");
+			stream->prev_buf = NULL;
 			stream->skip_isr = 1;
 			goto wdma_update;
 		}
@@ -1349,12 +1352,20 @@ static irqreturn_t tccvin_vin_isr(int irq, void *data)
 		// if (list_is_last(&stream->prev_buf->queue, &queue->irqqueue)) {
 		if (list_is_singular(&queue->irqqueue)) {
 			logw(dev_ptr, "driver has only one buffer\n");
+			stream->prev_buf = NULL;
 			stream->skip_isr = 1;
 			goto wdma_update;
 		}
 
 		stream->next_buf = list_next_entry(stream->prev_buf, queue);
 		stream->next_buf->state = TCCVIN_BUF_STATE_READY;
+
+		if ((stream->prev_buf == NULL) || (stream->next_buf == NULL)) {
+			loge(dev_ptr, "prev(0x%px) or next(0x%px) is wrong\n",
+				stream->prev_buf, stream->next_buf);
+			stream->skip_isr = 1;
+			goto wdma_update;
+		}
 
 		logd(dev_ptr, "buffer index: %d -> %d\n",
 			stream->prev_buf->buf.vb2_buf.index,
@@ -1403,10 +1414,6 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 	void __iomem			*wdma		= NULL;
 	unsigned long			flags;
 	uint32_t			status		= 0;
-	uint32_t			buf_index;
-	unsigned long			addr0		= 0;
-	unsigned long			addr1		= 0;
-	unsigned long			addr2		= 0;
 	bool				ret		= 0;
 
 	WARN_ON(IS_ERR_OR_NULL(data));
@@ -1459,13 +1466,6 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 			goto end;
 		}
 
-		stream->prev_buf = list_first_entry(&queue->irqqueue,
-			struct tccvin_buffer, queue);
-		if (stream->prev_buf != NULL) {
-			stream->next_buf = stream->next_buf =
-				list_next_entry(stream->prev_buf, queue);
-		}
-
 		if ((stream->prev_buf == NULL) || (stream->next_buf == NULL)) {
 			logd(dev_ptr, "skip to switch buffer\n");
 			goto end;
@@ -1488,6 +1488,9 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 		/* queue the prev_buf to the outgoing buffer list */
 		vb2_buffer_done(&stream->prev_buf->buf.vb2_buf,
 			VB2_BUF_STATE_DONE);
+
+		stream->prev_buf = NULL;
+		stream->next_buf = NULL;
 
 end:
 		spin_unlock_irqrestore(&queue->irqlock, flags);
