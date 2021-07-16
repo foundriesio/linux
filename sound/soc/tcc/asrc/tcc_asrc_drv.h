@@ -48,7 +48,7 @@
 	(0) // 0dB
 
 #if defined(CONFIG_ARCH_TCC805X) || defined(CONFIG_ARCH_TCC806X)
-#define ASRC_M2M_INTERRUPT_MODE
+//#define ASRC_M2M_INTERRUPT_MODE
 #endif
 
 enum tcc_asrc_drv_path_t {
