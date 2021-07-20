@@ -245,8 +245,7 @@ static s32 tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 	}
 
 	prop_ret = of_find_property(np, "telechips,pin-function", NULL);
-	if ((prop_ret != NULL)
-		&& ((UINT_MAX) > nmaps)) {
+	if (prop_ret != NULL) {
 		++nmaps;
 	}
 
@@ -269,10 +268,6 @@ static s32 tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 		return -EINVAL;
 	}
 	temp_32 = sizeof(struct pinctrl_map);
-	if (((UINT_MAX) / temp_32)
-			< nmaps) {
-		return -EINVAL;
-	}
 	temp_32 *= nmaps;
 	*map = kzalloc(temp_32, GFP_KERNEL);
 	if ((*map) == NULL) {
@@ -298,8 +293,7 @@ static s32 tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 	group = kstrdup(np->name, GFP_KERNEL);
 
 	prop_ret = of_find_property(np, "telechips,pin-function", NULL);
-	if ((prop_ret != NULL)
-		&& ((UINT_MAX) > (*num_maps))) {
+	if (prop_ret != NULL) {
 		function = kstrdup(np->name, GFP_KERNEL);
 
 		(*map)[*num_maps].data.mux.group = group;
@@ -722,10 +716,6 @@ static s32 tcc_pinctrl_parse_dt(struct platform_device *pdev,
 
 	pctl->ngroups = ngroups;
 	temp_32 = sizeof(struct tcc_pin_group);
-	if (((UINT_MAX) / temp_32)
-			< ngroups) {
-		return -EINVAL;
-	}
 	temp_32 *= ngroups;
 	pctl->groups = devm_kzalloc(&pdev->dev,
 			temp_32,
@@ -739,10 +729,6 @@ static s32 tcc_pinctrl_parse_dt(struct platform_device *pdev,
 
 
 	temp_32 = sizeof(struct tcc_pinmux_function);
-	if (((UINT_MAX) / temp_32)
-			< ngroups) {
-		return -EINVAL;
-	}
 	temp_32 *= ngroups;
 	pctl->functions = devm_kzalloc(&pdev->dev,
 			temp_32,
@@ -783,10 +769,6 @@ static s32 tcc_pinctrl_parse_dt(struct platform_device *pdev,
 			func->name = kstrdup(child->name, GFP_KERNEL);
 
 			temp_32 = (u32)strnlen(func->name, 100);
-			if (((UINT_MAX) - 5U) < temp_32) {
-				return -EINVAL;
-			/* comment for kernel coding style */
-			}
 			temp_32 += 5U;
 			temp_32 = ((temp_32) / 4U) << 2U;
 			func->groups = devm_kzalloc(
