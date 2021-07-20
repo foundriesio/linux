@@ -129,7 +129,11 @@ const struct reg_sequence max96701_reg_defaults_raw12[] = {
 	{0x2a, 0x01, 0},
 	{0x2b, 0x00, 0},
 #else
-	{0x04, 0x47, 50*1000},
+	{0x04, 0x47, 0},
+	{0x0f, 0xbe, 300*1000}, // GPO output low to reset sensor
+	{0x0f, 0xbf, 100*1000}, // GPO output hight to reset release of sensor
+	{0x0D, 0xB7, 0}, // disable i2c timeout
+	{0x99, 0x0F, 0}, // disable i2c timeout
 	{0x07, 0xA4, 0},
 #endif
 };
