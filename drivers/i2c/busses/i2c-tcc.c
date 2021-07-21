@@ -1168,7 +1168,10 @@ static int32_t tcc_i2c_resume(struct device *dev)
 	}
 	return ret;
 }
-static SIMPLE_DEV_PM_OPS(tcc_i2c_pm, tcc_i2c_suspend, tcc_i2c_resume);
+
+static const struct dev_pm_ops tcc_i2c_pm = {
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(tcc_i2c_suspend, tcc_i2c_resume)
+};
 #define TCC_I2C_PM (&tcc_i2c_pm)
 #else
 #define TCC_I2C_PM NULL
