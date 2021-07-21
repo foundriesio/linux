@@ -2461,6 +2461,8 @@ int32_t tccvin_video_streamoff(struct tccvin_streaming *stream)
 
 	WARN_ON(IS_ERR_OR_NULL(stream));
 
+	stream->skip_isr = 1;
+
 	dev_ptr = tccvin_streaming_to_devptr(stream);
 	switch (stream->is_handover_needed) {
 	case V4L2_CAP_CTRL_SKIP_NONE:
