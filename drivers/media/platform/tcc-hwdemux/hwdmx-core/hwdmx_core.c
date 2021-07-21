@@ -27,12 +27,15 @@
 #include <linux/dma-mapping.h>
 #include <linux/uaccess.h>
 #include <linux/io.h>
+#include <linux/poll.h>
 #include <linux/delay.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/platform_data/media/hwdmx_ioctl.h>
 #include "tcc_hwdemux_tsif_rx.h"
 #include "HWDemux_bin.h"
+
+
 #if defined(CONFIG_ARCH_TCC805X)
 #include <linux/clk.h>
 
@@ -48,6 +51,26 @@ static int majornum;
 static struct class *class;
 static void *dma_vaddr;
 static dma_addr_t dma_paddr;
+
+static int hwdmx_open(struct inode *inode, struct file *filp);
+static ssize_t hwdmx_write(struct file *filp, const char __user *buf,
+			   size_t count, loff_t *f_pos);
+static ssize_t hwdmx_read(struct file *filp, char *buf, size_t len, loff_t *f_pos);
+unsigned int hwdmx_poll(struct file *filp, struct poll_table_struct *wait);
+static long hwdmx_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+static int hwdmx_release(struct inode *inode, struct file *filp);
+
+
+static const struct file_operations fops = {
+	.owner = THIS_MODULE,
+	.open = hwdmx_open,
+	.write = hwdmx_write,
+	.read = hwdmx_read,
+	.poll = hwdmx_poll,
+	.release = hwdmx_release,
+	.unlocked_ioctl = hwdmx_ioctl,
+	.compat_ioctl = hwdmx_ioctl,
+};
 
 int hwdmx_start(struct tcc_demux_handle *dmx, unsigned int devid)
 {
@@ -196,9 +219,23 @@ static int hwdmx_open(struct inode *inode, struct file *filp)
 {
 	int devid = MINOR(inode->i_rdev);
 
+#if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	pr_info("[INFO][HWDMX] %s:TCC803x / TCC805x(devid=%d)\n", __func__, devid);
+
+	if (filp) {
+		filp->f_op = &fops;
+		filp->private_data = (void *)devid;
+	} else {
+		pr_err("[ERR][HWDMX] %s(filp is null)\n", __func__);
+	}
+	
+#else	// #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
+	pr_info("[INFO][HWDMX] %s:TCC899x(devid=%d)\n", __func__, devid);
+
 	filp->private_data = (void *)devid;
 
 	hwdmx_set_interface_cmd(devid, HWDMX_INTERNAL);
+#endif	// #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X)
 
 	return 0;
 }
@@ -219,6 +256,150 @@ int hwdmx_input_stream(uintptr_t mmap_buf, int size)
 }
 EXPORT_SYMBOL(hwdmx_input_stream);
 
+static int hwdmx_calculate_valid_cnt(struct tcc_hwdmx_tsif_rx_handle *demux)
+{
+	int dma_recv_size = 0;
+	unsigned int read_buff_offset, write_buff_offset, end_buff_offset;
+	int ret = 0;
+	
+	if (demux) {
+        read_buff_offset = demux->read_buff_offset;
+        write_buff_offset = demux->write_buff_offset;
+		end_buff_offset = demux->end_buff_offset;
+
+		if (write_buff_offset >= read_buff_offset) {
+		    dma_recv_size = write_buff_offset - read_buff_offset;
+	    } else { 
+		    dma_recv_size =
+				(end_buff_offset - read_buff_offset) + write_buff_offset;
+	    }
+
+		if (dma_recv_size > 0) {
+			ret = dma_recv_size / TSIF_PACKET_SIZE;
+		}
+
+		return ret;
+	}
+
+    return 0;
+}
+
+static int hwdmx_get_valid_cnt(struct tcc_hwdmx_tsif_rx_handle *demux)
+{
+    int valid_cnt = 0;
+
+    if (demux) {
+        valid_cnt = hwdmx_calculate_valid_cnt(demux);
+    }
+
+	//pr_info("[INFO][HWDMX] %s (valid_cnt=%d)\n", __func__, valid_cnt);
+
+    return valid_cnt;
+}
+
+static ssize_t hwdmx_read(struct file *filp, char *buf, size_t len,
+							loff_t *f_pos)
+{
+	ssize_t ret = 0;
+	int devid, valid_cnt;
+	struct tcc_hwdmx_tsif_rx_handle *demux;
+	char *packet_data = NULL;
+	char *pBuffer = NULL;
+	
+	devid = (int)filp->private_data;
+	demux = tcc_hwdmx_tsif_rx_get_demux_from_devid(devid);
+	pBuffer = demux->tsif_ex_handle.dma_buffer->v_addr;
+	valid_cnt = hwdmx_get_valid_cnt(demux);
+
+	//pr_info("[INFO][HWDMX] %s(devid=%d, valid_cnt=%d)\n", 
+	//					__func__, devid, valid_cnt);
+
+	if (valid_cnt > 0) {
+		int request_cnt = len / TSIF_PACKET_SIZE;
+		int copy_byte = request_cnt * TSIF_PACKET_SIZE;
+
+		if (request_cnt <= valid_cnt) {
+			unsigned int read_buff_offset = demux->read_buff_offset;
+			unsigned int end_buff_offset = demux->end_buff_offset;
+
+			if ((read_buff_offset + copy_byte) < end_buff_offset) {
+				packet_data = (char *)(pBuffer + read_buff_offset);
+
+				if (packet_data != NULL) {
+					if (copy_to_user(buf, packet_data, copy_byte)) {
+						return -EFAULT;
+					}
+					ret = copy_byte;
+					demux->read_buff_offset += ret;
+				}
+			} else {
+				int p1_size, p2_size;
+				p1_size = end_buff_offset - read_buff_offset;
+				packet_data = (char *)(pBuffer + read_buff_offset);
+
+				if (packet_data != NULL) {
+					if (copy_to_user(buf, packet_data, p1_size)) {
+						return -EFAULT;
+					}
+				}
+
+				p2_size = copy_byte - p1_size;
+				packet_data = (char *)(pBuffer);
+
+				if ((packet_data != NULL) && (p2_size > 0)) {
+					if (copy_to_user(buf + p1_size, packet_data, p2_size)) {
+						return -EFAULT;
+					}
+
+					ret = p1_size + p2_size;
+				} else {
+					ret = p1_size;
+				}
+
+				demux->read_buff_offset = p2_size;
+			}
+		}
+	}
+	
+	return ret;
+}
+
+unsigned int hwdmx_poll(struct file *filp, struct poll_table_struct *wait)
+{
+    struct tcc_hwdmx_tsif_rx_handle *demux;
+	int devid;
+
+	devid = (int)filp->private_data;
+	demux = tcc_hwdmx_tsif_rx_get_demux_from_devid(devid);
+
+	//pr_info("[INFO][HWDMX] %s(devid=%d, demux=0x%08x\n", __func__, devid, demux);	
+
+    if (hwdmx_get_valid_cnt(demux) > 0) {
+        return  (POLLIN | POLLRDNORM);
+    }
+
+    poll_wait(filp, &(demux->wait_q), wait);
+
+    if (hwdmx_get_valid_cnt(demux) > 0) {
+        return  (POLLIN | POLLRDNORM);
+    }
+    return 0;
+}
+
+static int hwdmx_release(struct inode *inode, struct file *filp)
+{
+	int devid;
+
+	devid = (int)filp->private_data;
+
+	pr_info("[INFO][HWDMX] %s (devid=%d)\n", __func__, devid);
+
+	filp->f_op = NULL;
+	filp->private_data = NULL;
+
+	return 0;
+}
+
 static ssize_t hwdmx_write(struct file *filp, const char __user *buf,
 			   size_t count, loff_t *f_pos)
 {
@@ -226,6 +407,7 @@ static ssize_t hwdmx_write(struct file *filp, const char __user *buf,
 	static DEFINE_MUTEX(hwdmx_buf_mutex);
 
 	devid = (int)filp->private_data;
+
 	if (dma_vaddr == NULL)
 		return -EFAULT;
 
@@ -237,6 +419,7 @@ static ssize_t hwdmx_write(struct file *filp, const char __user *buf,
 		result = -EFAULT;
 		goto out;
 	}
+
 	// dmx_id should be 1 at internal mode
 	result = hwdmx_input_stream_cmd(devid, dma_paddr, count);
 	if (result != 0) {
@@ -272,7 +455,16 @@ static int hwdmx_set_smp_ioctl(struct file *filp, struct tsmp_info __user *arg)
 
 static long hwdmx_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	int devid = (int)filp->private_data;
+	int devid;
+	struct tcc_hwdmx_tsif_rx_handle *demux = NULL;
+	struct tcc_demux_handle dmx;
+
+	devid = (int)filp->private_data;
+	//pr_info("[INFO][HWDMX] %s(devid=%d, cmd=%d, arg=%u)\n",
+	//							__func__, devid, cmd, arg);
+	
+	demux = tcc_hwdmx_tsif_rx_get_demux_from_devid(devid);
+	dmx.handle = (void*)demux;
 
 	switch (cmd) {
 	case IOCTL_HWDMX_SET_INTERFACE:
@@ -286,20 +478,20 @@ static long hwdmx_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case IOCTL_HWDMX_SET_SMP:
 		return hwdmx_set_smp_ioctl(filp, (struct tsmp_info *)arg);
 
+	case IOCTL_HWDMX_DMA_START:
+		hwdmx_start(&dmx, (unsigned int)devid);
+		break;
+		
+	case IOCTL_HWDMX_DMA_STOP:
+		hwdmx_stop(&dmx, (unsigned int)devid);
+		break;
+
 	default:
 		return -1;
 	}
 
 	return 0;
 }
-
-static const struct file_operations fops = {
-	.owner = THIS_MODULE,
-	.open = hwdmx_open,
-	.write = hwdmx_write,
-	.unlocked_ioctl = hwdmx_ioctl,
-	.compat_ioctl = hwdmx_ioctl,
-};
 
 #if defined(USE_HW_FW)
 static void hwdmx_unload_fw(void)
@@ -392,6 +584,7 @@ static int hwdmx_probe(struct platform_device *pdev)
 #endif
 
 	pr_info("[INFO][HWDMX] %s : In\n", __func__);
+
 	tcc_hwdmx_tsif_rx_init(&pdev->dev);
 
 	retval = register_chrdev(0, HWDMX_DEV_NAME, &fops);

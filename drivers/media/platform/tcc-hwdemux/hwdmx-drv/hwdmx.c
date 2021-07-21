@@ -122,6 +122,8 @@ static int hwdmx_drv_probe(struct platform_device *pdev)
 	struct tcc_hwdmx_inst_t *inst;
 	int result = 0;
 
+	pr_info("[INFO][HWDMX] %s : In\n", __func__);
+
 	inst = kzalloc(sizeof(struct tcc_hwdmx_inst_t), GFP_KERNEL);
 	if (inst == NULL)
 		return -ENOMEM;

@@ -150,7 +150,6 @@ static int hwdmx_evt_handler(int cmd, void *rdata, int size)
 						       filter_id, value1,
 						       value2, err_crc);
 			}
-
 			break;
 		}
 
@@ -212,6 +211,8 @@ void hwdmx_set_interface_cmd(int iDMXID, int mode)
 {
 	int mbox_data[3];
 	int i, tsif;
+
+	pr_info("[INFO][HWDMX] %s(dmxid=%d, mode=%d)\n", __func__, iDMXID, mode);
 
 	if (mode == HWDMX_INTERNAL) {
 		tsif = INTERNAL;
@@ -334,6 +335,8 @@ int hwdmx_stop_cmd(struct tcc_tsif_handle *h)
 {
 	int result, rsize;
 	int mbox_data, mbox_result;
+
+	pr_info("[INFO][HWDMX] %s(dmx_id=%d)\n", __func__, (int)h->dmx_id);
 
 	if (h == NULL)
 		return 0;
@@ -536,6 +539,9 @@ int hwdmx_input_stream_cmd(unsigned int dmx_id, unsigned int phy_addr,
 	int result = 0, rsize;
 	int mbox_data[3], mbox_result;
 	static DEFINE_MUTEX(input_stream_mutex);
+
+	//pr_info("[INFO][HWDMX] %s(dmx_id=%d, addr=0x%08x, size=%d)\n",
+	//			__func__, dmx_id, phy_addr, size);
 
 	if (session_cnt == 0) {
 		// pr_err("[ERROR][HWDMX] session count is zero\n");

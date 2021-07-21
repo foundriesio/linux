@@ -526,6 +526,60 @@ void rx_unset_smpcb(int devid)
 }
 EXPORT_SYMBOL(rx_unset_smpcb);
 
+struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_get_demux_from_devid(int devid)
+{
+	struct tcc_hwdmx_tsif_rx_handle *demux = &tsif_ex_pri.demux[devid];
+	
+//	pr_info("[INFO][HWDMX] %s(devid=%d), demux@0x%08x\n",
+//			__func__, devid, demux);
+
+	return demux;
+}
+
+static int tcc_hwdmx_tsif_rx_push_buffer(
+			struct tcc_hwdmx_tsif_rx_handle *demux, 
+			char *pBuffer, int updated_buff_offset, int end_buff_offset)
+{
+	char *p1 = NULL, *p2 = NULL;
+	int p1_size = 0, p2_size = 0;
+	int ret = 0;
+
+	demux->loop_count++;
+
+	//pr_info("[INFO][HWDMX] %s(loop_count=%d)\n", __func__, demux->loop_count);
+
+	if (demux->loop_count) {
+		demux->loop_count = 0;
+
+		if (updated_buff_offset >= end_buff_offset) {
+			updated_buff_offset = 0;
+		}
+
+		demux->end_buff_offset = end_buff_offset;
+
+		if (updated_buff_offset >= demux->write_buff_offset) {
+			p1 = (char *)(pBuffer + demux->write_buff_offset);
+			p1_size = updated_buff_offset - demux->write_buff_offset;
+		} else {
+			p1 = (char *)(pBuffer + demux->write_buff_offset);
+			p1_size = end_buff_offset - demux->write_buff_offset;
+
+			p2 = (char *)pBuffer;
+			p2_size = updated_buff_offset;
+		}
+
+		rx_update_stc(demux, p1, p1_size, p2, p2_size);
+		demux->write_buff_offset = updated_buff_offset;
+
+		wake_up(&(demux->wait_q));
+	}
+
+	//pr_info("[INFO][HWDMX] %s(p1_size=%d, p2_size=%d)\n",
+	//				__func__, p1_size, p2_size);
+
+	return ret;
+}
+
 static int rx_parse_packet(struct tcc_hwdmx_tsif_rx_handle *demux,
 			   char *pBuffer, int updated_buff_offset,
 			   int end_buff_offset)
@@ -534,6 +588,8 @@ static int rx_parse_packet(struct tcc_hwdmx_tsif_rx_handle *demux,
 	char *p1 = NULL, *p2 = NULL;
 	int p1_size = 0, p2_size = 0;
 	int packet_th = 0;
+
+	//pr_info("[INFO][HWDMX] %s\n", __func__);
 
 	packet_th = demux->ts_demux_feed_handle.call_decoder_index;
 
@@ -640,6 +696,9 @@ static int rx_updated_callback(unsigned int dmxid, unsigned int ftype,
 	unsigned int uiSTC;
 	int ret = 0;
 
+	//pr_info("[INFO][HWDMX] %s(dmxid=%d, ftype=%d, is_active=%d)\n", 
+	//	__func__, dmxid, ftype, demux->ts_demux_feed_handle.is_active);
+
 	switch (ftype) {
 	case FILTER_TYPE_SECTION: {
 #if defined(DEMUX_SYSFS)
@@ -676,7 +735,11 @@ static int rx_updated_callback(unsigned int dmxid, unsigned int ftype,
 			value1, value2);
 			break;
 		}
-		}
+	} else {
+		tcc_hwdmx_tsif_rx_push_buffer(demux, 
+			demux->tsif_ex_handle.dma_buffer->v_addr,
+			value1, value2);
+	}
 		break;
 	}
 	case 2:		// HW_DEMUX_PES
@@ -808,6 +871,7 @@ struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_start(unsigned int devid)
 	"[INFO][HWDMX] [TSIF-%d] dma sec buffer alloc @0x%X(Phy=0x%X), size:%d\n",
 	devid, (unsigned int)dma_buffer->v_sec_addr,
 	(unsigned int)dma_buffer->dma_sec_addr, dma_buffer->buf_sec_size);
+	
 	demux->tsif_ex_handle.dma_buffer = dma_buffer;
 	demux->tsif_ex_handle.dma_mode = 1;	// mpeg2ts mode
 	demux->tsif_ex_handle.working_mode = 1;
@@ -827,7 +891,7 @@ struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_start(unsigned int devid)
 	pr_info(
 	"[INFO][HWDMX] %s-id[%d]:port[%d]pinctrl[0x%p]\n",
 	__func__, demux->tsif_ex_handle.dmx_id,
-		demux->tsif_ex_handle.port_cfg.tsif_port, pinctrl);
+	demux->tsif_ex_handle.port_cfg.tsif_port, pinctrl);
 
 	if (hwdmx_start_cmd(&demux->tsif_ex_handle)) {
 		pr_err("[ERROR][HWDMX] %s: hwdmx_init error !!!!!\n", __func__);

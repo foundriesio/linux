@@ -22,6 +22,8 @@
 
 #define MAX_PCR_CNT 2
 
+#define TSIF_PACKET_SIZE	188
+
 struct ts_demux_feed_struct {
 	int is_active;
 	int index;
@@ -71,11 +73,11 @@ int tcc_hwdmx_tsif_rx_set_external_tsdemux(struct tcc_hwdmx_tsif_rx_handle
 								   int p2_size,
 								   int devid));
 int tcc_hwdmx_tsif_rx_add_pid(struct tcc_hwdmx_tsif_rx_handle *demux,
-			      struct tcc_hwdmx_tsif_rx_filter_param *param);
+				struct tcc_hwdmx_tsif_rx_filter_param *param);
 int tcc_hwdmx_tsif_rx_remove_pid(struct tcc_hwdmx_tsif_rx_handle *demux,
-				 struct tcc_hwdmx_tsif_rx_filter_param *param);
+				struct tcc_hwdmx_tsif_rx_filter_param *param);
 int tcc_hwdmx_tsif_rx_set_pcr_pid(struct tcc_hwdmx_tsif_rx_handle *demux,
-				  unsigned int index, unsigned int pcr_pid);
+				unsigned int index, unsigned int pcr_pid);
 int tcc_hwdmx_tsif_rx_get_stc(struct tcc_hwdmx_tsif_rx_handle *demux,
 			      unsigned int index, u64 *stc);
 int tcc_hwdmx_tsif_rx_set_cipher_dec_pid(struct tcc_hwdmx_tsif_rx_handle *demux,
@@ -91,3 +93,5 @@ void tcc_hwdmx_tsif_rx_set_debug_mode(int chk_time);
 int tcc_hwdmx_tsif_rx_get_debug_mode(void);
 void rx_set_smpcb(int devid, rx_smpcb cb);
 void rx_unset_smpcb(int devid);
+struct tcc_hwdmx_tsif_rx_handle *tcc_hwdmx_tsif_rx_get_demux_from_devid(int devid);
+
