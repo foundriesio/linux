@@ -183,7 +183,7 @@ struct stats {
 
 struct gve_stats_report {
 	__be64 written_count;
-	struct stats stats[0];
+	struct stats stats[];
 };
 
 
