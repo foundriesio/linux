@@ -184,9 +184,11 @@ void pvr_counting_fence_timeline_force_complete(
 
 	spin_lock_irqsave(&timeline->active_fences_lock, flags);
 
+#if 0
 	/* This is just a safety measurement. Normally we should never see any
 	 * unsignaled sw fences when we come here. Warn if we still do! */
 	WARN_ON(!list_empty(&timeline->active_fences));
+#endif
 
 	list_for_each_safe(entry, tmp, &timeline->active_fences) {
 		struct pvr_counting_fence *fence =
