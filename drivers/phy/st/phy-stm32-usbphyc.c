@@ -138,6 +138,7 @@ struct stm32_usbphyc_phy {
 	struct regulator *vbus;
 	u32 index;
 	bool active;
+	u32 tune;
 };
 
 struct stm32_usbphyc {
@@ -460,9 +461,10 @@ static int stm32_usbphyc_clk48_register(struct stm32_usbphyc *usbphyc)
 static void stm32_usbphyc_phy_tuning(struct stm32_usbphyc *usbphyc,
 				     struct device_node *np, u32 index)
 {
+	struct stm32_usbphyc_phy *usbphyc_phy = usbphyc->phys[index];
 	struct device_node *tune_np;
 	u32 reg = STM32_USBPHYC_TUNE(index);
-	u32 otpcomp, val, tune = 0;
+	u32 otpcomp, val;
 	int ret;
 
 	tune_np = of_parse_phandle(np, "st,phy-tuning", 0);
@@ -475,25 +477,25 @@ static void stm32_usbphyc_phy_tuning(struct stm32_usbphyc *usbphyc,
 	ret = of_property_read_u32(tune_np, "st,current-boost", &val);
 	if (!ret && val < BOOST_MAX) {
 		val = (val == BOOST_2_MA) ? 1 : 0;
-		tune |= INCURREN | FIELD_PREP(INCURRINT, val);
+		usbphyc_phy->tune |= INCURREN | FIELD_PREP(INCURRINT, val);
 	} else if (ret != -EINVAL) {
 		dev_warn(usbphyc->dev,
 			 "phy%d: invalid st,current-boost value\n", index);
 	}
 
 	if (!of_property_read_bool(tune_np, "st,no-lsfs-fb-cap"))
-		tune |= LFSCAPEN;
+		usbphyc_phy->tune |= LFSCAPEN;
 
 	if (of_property_read_bool(tune_np, "st,hs-slew-ctrl"))
-		tune |= HSDRVSLEW;
+		usbphyc_phy->tune |= HSDRVSLEW;
 
 	ret = of_property_read_u32(tune_np, "st,hs-dc-level", &val);
 	if (!ret && val < DC_MAX) {
 		if (val == DC_MINUS_5_TO_7_MV) {
-			tune |= HSDRVDCCUR;
+			usbphyc_phy->tune |= HSDRVDCCUR;
 		} else {
 			val = (val == DC_PLUS_10_TO_14_MV) ? 1 : 0;
-			tune |= HSDRVCURINCR | FIELD_PREP(HSDRVDCLEV, val);
+			usbphyc_phy->tune |= HSDRVCURINCR | FIELD_PREP(HSDRVDCLEV, val);
 		}
 	} else if (ret != -EINVAL) {
 		dev_warn(usbphyc->dev,
@@ -501,57 +503,57 @@ static void stm32_usbphyc_phy_tuning(struct stm32_usbphyc *usbphyc,
 	}
 
 	if (of_property_read_bool(tune_np, "st,fs-rftime-tuning"))
-		tune |= FSDRVRFADJ;
+		usbphyc_phy->tune |= FSDRVRFADJ;
 
 	if (of_property_read_bool(tune_np, "st,hs-rftime-reduction"))
-		tune |= HSDRVRFRED;
+		usbphyc_phy->tune |= HSDRVRFRED;
 
 	ret = of_property_read_u32(tune_np, "st,hs-current-trim", &val);
 	if (!ret && val < CUR_MAX)
-		tune |= FIELD_PREP(HSDRVCHKITRM, val);
+		usbphyc_phy->tune |= FIELD_PREP(HSDRVCHKITRM, val);
 	else if (ret != -EINVAL)
 		dev_warn(usbphyc->dev,
 			 "phy%d: invalid st,hs-current-trim value\n", index);
 
 	ret = of_property_read_u32(tune_np, "st,hs-impedance-trim", &val);
 	if (!ret && val < IMP_MAX)
-		tune |= FIELD_PREP(HSDRVCHKZTRM, val);
+		usbphyc_phy->tune |= FIELD_PREP(HSDRVCHKZTRM, val);
 	else if (ret != -EINVAL)
 		dev_warn(usbphyc->dev,
 			 "phy%d: invalid hs-impedance-trim value\n", index);
 
 	ret = of_property_read_u32(tune_np, "st,squelch-level", &val);
 	if (!ret && val < SQLCH_MAX)
-		tune |= FIELD_PREP(SQLCHCTL, val);
+		usbphyc_phy->tune |= FIELD_PREP(SQLCHCTL, val);
 	else if (ret != -EINVAL)
 		dev_warn(usbphyc->dev,
 			 "phy%d: invalid st,squelch-level value\n", index);
 
 	if (of_property_read_bool(tune_np, "st,hs-rx-gain-eq"))
-		tune |= HDRXGNEQEN;
+		usbphyc_phy->tune |= HDRXGNEQEN;
 
 	ret = of_property_read_u32(tune_np, "st,hs-rx-offset", &val);
 	if (!ret && val < RX_OFFSET_MAX)
-		tune |= FIELD_PREP(HSRXOFF, val);
+		usbphyc_phy->tune |= FIELD_PREP(HSRXOFF, val);
 	else if (ret != -EINVAL)
 		dev_warn(usbphyc->dev,
 			 "phy%d: invalid st,hs-rx-offset value\n", index);
 
 	if (of_property_read_bool(tune_np, "st,no-hs-ftime-ctrl"))
-		tune |= HSFALLPREEM;
+		usbphyc_phy->tune |= HSFALLPREEM;
 
 	if (!of_property_read_bool(tune_np, "st,no-lsfs-sc"))
-		tune |= SHTCCTCTLPROT;
+		usbphyc_phy->tune |= SHTCCTCTLPROT;
 
 	if (of_property_read_bool(tune_np, "st,hs-tx-staggering"))
-		tune |= STAGSEL;
+		usbphyc_phy->tune |= STAGSEL;
 
 	of_node_put(tune_np);
 
 	/* Restore OTP compensation code */
-	tune |= FIELD_PREP(OTPCOMP, otpcomp);
+	usbphyc_phy->tune |= FIELD_PREP(OTPCOMP, otpcomp);
 
-	writel_relaxed(tune, usbphyc->base + reg);
+	writel_relaxed(usbphyc_phy->tune, usbphyc->base + reg);
 }
 
 static void stm32_usbphyc_switch_setup(struct stm32_usbphyc *usbphyc,
@@ -714,9 +716,6 @@ static int stm32_usbphyc_probe(struct platform_device *pdev)
 			goto put_child;
 		}
 
-		/* Configure phy tuning */
-		stm32_usbphyc_phy_tuning(usbphyc, child, index);
-
 		usbphyc->phys[port] = usbphyc_phy;
 		phy_set_bus_width(phy, 8);
 		phy_set_drvdata(phy, usbphyc_phy);
@@ -733,6 +732,9 @@ static int stm32_usbphyc_probe(struct platform_device *pdev)
 				goto put_child;
 			usbphyc->phys[port]->vbus = NULL;
 		}
+
+		/* Configure phy tuning */
+		stm32_usbphyc_phy_tuning(usbphyc, child, index);
 
 		port++;
 	}
@@ -787,9 +789,17 @@ static int stm32_usbphyc_remove(struct platform_device *pdev)
 static int stm32_usbphyc_resume(struct device *dev)
 {
 	struct stm32_usbphyc *usbphyc = dev_get_drvdata(dev);
+	struct stm32_usbphyc_phy *usbphyc_phy;
+	int port;
 
 	if (usbphyc->switch_setup >= 0)
 		stm32_usbphyc_switch_setup(usbphyc, usbphyc->switch_setup);
+
+	for (port = 0; port < usbphyc->nphys; port++) {
+		usbphyc_phy = usbphyc->phys[port];
+		if (usbphyc_phy->tune)
+			writel_relaxed(usbphyc_phy->tune, usbphyc->base + STM32_USBPHYC_TUNE(port));
+	}
 
 	return 0;
 }
