@@ -353,7 +353,7 @@
 			alignment = <0x1000>;
 			no-map;
 		};
-
+/*
 		pmap_tsif: tsif {
 			compatible = "telechips,pmap";
 			telechips,pmap-name = "tsif";
@@ -361,6 +361,7 @@
 			size = <PMAP_SIZE_TSIF>;
 			no-map;
 		};
+*/
 	};
 
 	clocks {
