@@ -72,7 +72,7 @@
 #define FBDC_ALIGNED(w, mul) (((unsigned int)w + (mul - 1)) & ~(mul - 1))
 #endif
 
-#define FB_VERSION "1.0.8"
+#define FB_VERSION "1.1.0"
 #define FB_BUF_MAX_NUM (3)
 #define BYTE_TO_PAGES(range) (((range) + (PAGE_SIZE - 1)) >> PAGE_SHIFT)
 
@@ -1762,7 +1762,7 @@ static int fb_dt_parse_data(struct fb_info *info)
 				"[INFO][TSVFB] %s: therer is no telechips,scaler\n",
 				__func__);
 
-		np = of_find_node_by_name(info->dev->of_node, "fbx_region");
+		np = of_get_child_by_name(info->dev->of_node, "fbx_region");
 		if (!np)
 			pr_info(
 				"[INFO][TSVFB] %s: there is no fbx_region\n",
