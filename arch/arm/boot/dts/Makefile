@@ -1182,7 +1182,9 @@ dtbo-y += \
 	tcc/overlay-tcc9010-android-mini-tcm3840-lpd4321-v0.1.dtbo
 
 dtb-y += \
-	tcc/tcc8050-soc.dtb
+	tcc/tcc8050-soc.dtb \
+	tcc/tcc8053-soc.dtb \
+	tcc/tcc8059-soc.dtb
 
 dtbo-y += \
 	tcc/overlay-tcc8050-android-lpd4x322_sv0.1.dtbo \

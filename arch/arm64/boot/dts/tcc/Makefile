@@ -74,6 +74,7 @@ dtbo-y += \
 
 dtb-y += \
 	tcc8050-soc.dtb \
+	tcc8053-soc.dtb \
 	tcc8059-soc.dtb
 
 dtbo-y += \

@@ -5,9 +5,9 @@
 
 /dts-v1/;
 
-#include "tcc-pmap-803x-android-customized.dtsi"
+#include "tcc-pmap-805x-android-customized.dtsi"
 
-#include "tcc8031.dtsi"
+#include "tcc8053.dtsi"
 
 / {
 };
