@@ -630,7 +630,6 @@ struct hdmi_scdc_error_data {
 	volatile unsigned long ch2;
 };
 
-
 /*
  * SOC_FEATURE_DV_TO_DISP
  * @short Display device can using dolby-vision output as its input source
