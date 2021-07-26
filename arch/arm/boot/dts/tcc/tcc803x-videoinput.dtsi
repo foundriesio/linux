@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
+&aliases {
+	mipi-csi2-0 = &mipi_csi2_0;
+	videoinput0 = &videoinput0;
+	videoinput1 = &videoinput1;
+	videoinput2 = &videoinput2;
+	videoinput3 = &videoinput3;
+	videoinput4 = &videoinput4;
+	videoinput5 = &videoinput5;
+	videoinput6 = &videoinput6;
+};
+
+/ {
+	mipi_csi2_0:mipi_csi@123c0000{
+		compatible = "telechips,tcc803x-mipi-csi2";
+		status = "disabled";
+		reg =	<0x123c0000 0x120>,
+			<0x123c0200 0x5c>;
+		reg-names = "csi", "gdb";
+		clocks = <&clk_peri PERI_MIPI_CSI>;
+		clock-frequency = <300000000>;
+
+		interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "csi", "gdb";
+	 };
+
+	videoinput0: videoinput0 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA16>;
+		vin		= <&vioc_vin		VIOC_VIN00>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
+		wdma		= <&vioc_wdma		VIOC_WDMA05>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "disabled";
+	};
+
+	videoinput1: videoinput1 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA17>;
+		vin		= <&vioc_vin		VIOC_VIN10>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX6>;
+		wdma		= <&vioc_wdma		VIOC_WDMA07>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "disabled";
+	};
+
+	videoinput2: videoinput2 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA13>;
+		vin		= <&vioc_vin		VIOC_VIN20>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX3>;
+		wdma		= <&vioc_wdma		VIOC_WDMA03>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "disabled";
+	};
+
+	videoinput3: videoinput3 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		rdma		= <&vioc_rdma		VIOC_RDMA15>;
+		vin		= <&vioc_vin		VIOC_VIN30>;
+		viqe		= <&vioc_viqe		VIOC_VIQE1>;
+		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
+		scaler		= <&vioc_scaler		VIOC_SCALER2>;
+		wmixer		= <&vioc_wmix		VIOC_WMIX4>;
+		wdma		= <&vioc_wdma		VIOC_WDMA04>;
+		fifo		= <&vioc_fifo		VIOC_FIFO0>;
+		status		= "disabled";
+	};
+
+	videoinput4: videoinput4 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		vin		= <&vioc_vin		VIOC_VIN40>;
+		wdma		= <&vioc_wdma		VIOC_WDMA09>;
+		status		= "disabled";
+	};
+
+	videoinput5: videoinput5 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		vin		= <&vioc_vin		VIOC_VIN50>;
+		wdma		= <&vioc_wdma		VIOC_WDMA10>;
+		status		= "disabled";
+	};
+
+	videoinput6: videoinput6 {
+		compatible	= "telechips,video-input";
+		clocks		= <&clk_ddi DDIBUS_VIOC>;
+		vin		= <&vioc_vin		VIOC_VIN60>;
+		wdma		= <&vioc_wdma		VIOC_WDMA11>;
+		status		= "disabled";
+	};
+};

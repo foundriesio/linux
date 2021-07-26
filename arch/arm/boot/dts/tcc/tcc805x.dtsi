@@ -94,20 +94,6 @@
 		vout-drv0 = &vout_drv0;
 		vout-drv1 = &vout_drv1;
 		wdma-drv0 = &wdma_drv0;
-		mipi-csi2-0 = &mipi_csi2_0;
-		mipi-csi2-1 = &mipi_csi2_1;
-		isp0 = &isp0;
-		isp1 = &isp1;
-		isp2 = &isp2;
-		isp3 = &isp3;
-		videoinput0 = &videoinput0;
-		videoinput1 = &videoinput1;
-		videoinput2 = &videoinput2;
-		videoinput3 = &videoinput3;
-		videoinput4 = &videoinput4;
-		videoinput5 = &videoinput5;
-		videoinput6 = &videoinput6;
-		videoinput7 = &videoinput7;
 		fb0 = &fb0;
 		fb1 = &fb1;
 		fb2 = &fb2;
@@ -2753,81 +2739,6 @@
 		status = "okay";
 	};
 
-	/* MIPI 0 */
-	mipi_csi2_0:mipi_csi2_0@1bc00800 {
-		compatible = "telechips,tcc805x-mipi-csi2";
-		status = "disabled";
-		reg =	<0x0 0x1bc00800 0x0 0x120>,	/* csi0_base */
-			<0x0 0x1bc00a00 0x0 0x05c>,	/* gdb0_base */
-			<0x0 0x1bc00000 0x0 0x014>,	/* ckc_base */
-			<0x0 0x1bc00400 0x0 0x120>;	/* cfg_base */
-		reg-names = "csi", "gdb", "ckc", "cfg";
-
-		clock-frequency = <600000000>;
-
-		interrupts =	<GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,// MIPI0 CSIS
-				<GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;// MIPI0 Generic
-	};
-
-	/* MIPI 1 */
-	mipi_csi2_1:mipi_csi2_1@1bc00c00 {
-		compatible = "telechips,tcc805x-mipi-csi2";
-		status = "disabled";
-		reg =	<0x0 0x1bc00c00 0x0 0x120>,	/* csi0_base */
-			<0x0 0x1bc00e00 0x0 0x05c>,	/* gdb0_base */
-			<0x0 0x1bc00000 0x0 0x014>,	/* ckc_base */
-			<0x0 0x1bc00400 0x0 0x120>;	/* cfg_base */
-		reg-names = "csi", "gdb", "ckc", "cfg";
-
-		clock-frequency = <600000000>;
-
-		interrupts =	<GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,// MIPI1 CSIS
-				<GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;// MIPI1 Generic
-	};
-
-	/* only for TCC805X ES(TCS CV8050C-618) */
-	isp_iommu: isp_iommu {
-		compatible = "telechips,tcc-isp-iommu";
-		iommus = <&smmu_dbus 0x90 0x7f00>;
-		status = "okay";
-	};
-
-	isp0: isp0@1bc80000 {
-		compatible = "telechips,tcc805x-isp";
-		status = "disabled";
-		reg = 	<0x0 0x1bc80000 0x0 0x10000>,	/* ISP base */
-			<0x0 0x1bc90000 0x0 0x10000>,	/* ISP memory */
-			<0x0 0x1bc00400 0x0 0x120>;	/* MIPI WRAP cfg_base */
-		reg-names = "isp_base", "mem_base", "cfg_base";
-	};
-
-	isp1: isp1@1bca0000 {
-		compatible = "telechips,tcc805x-isp";
-		status = "disabled";
-		reg = 	<0x0 0x1bca0000 0x0 0x10000>,	/* ISP base */
-			<0x0 0x1bcb0000 0x0 0x10000>,	/* ISP memory */
-			<0x0 0x1bc00400 0x0 0x120>;	/* MIPI WRAP cfg_base */
-		reg-names = "isp_base", "mem_base", "cfg_base";
-	};
-
-	isp2: isp2@1bcc0000 {
-		compatible = "telechips,tcc805x-isp";
-		status = "disabled";
-		reg = 	<0x0 0x1bcc0000 0x0 0x10000>,	/* ISP base */
-			<0x0 0x1bcd0000 0x0 0x10000>,	/* ISP memory */
-			<0x0 0x1bc00400 0x0 0x120>;	/* MIPI WRAP cfg_base */
-		reg-names = "isp_base", "mem_base", "cfg_base";
-	};
-
-	isp3: isp3@1bce0000 {
-		compatible = "telechips,tcc805x-isp";
-		status = "disabled";
-		reg = 	<0x0 0x1bce0000 0x0 0x10000>,	/* ISP base */
-			<0x0 0x1bcf0000 0x0 0x10000>,	/* ISP memory */
-			<0x0 0x1bc00400 0x0 0x120>;	/* MIPI WRAP cfg_base */
-		reg-names = "isp_base", "mem_base", "cfg_base";
-	};
-
 	fbdisplay: fbdisplay@12000000 {
 		compatible = "telechips,vioc-fb";
 		reg = <0x0 0x12000000 0x0 0x10000>;
@@ -3158,106 +3069,6 @@
 		clocks = <&clk_fbus FBUS_CMBUS>;
 		tcc_cm_bus = <&cm_bus>;
 		status = "disabled";
-	};
-
-	videoinput0: videoinput0 {
-		compatible	= "telechips,video-input";
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		0>;
-		rdma		= <&vioc_rdma		VIOC_RDMA16>;
-		vin		= <&vioc_vin		VIOC_VIN00>;
-		viqe		= <&vioc_viqe		VIOC_VIQE1>;
-		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
-		scaler		= <&vioc_scaler		VIOC_SCALER2>;
-		wmixer		= <&vioc_wmix		VIOC_WMIX5>;
-		wdma		= <&vioc_wdma		VIOC_WDMA05>;
-		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
-	};
-
-	videoinput1: videoinput1 {
-		compatible	= "telechips,video-input";
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		1>;
-		rdma		= <&vioc_rdma		VIOC_RDMA17>;
-		vin		= <&vioc_vin		VIOC_VIN10>;
-		viqe		= <&vioc_viqe		VIOC_VIQE1>;
-		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
-		scaler		= <&vioc_scaler		VIOC_SCALER4>;
-		wmixer		= <&vioc_wmix		VIOC_WMIX6>;
-		wdma		= <&vioc_wdma		VIOC_WDMA07>;
-		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
-	};
-
-	videoinput2: videoinput2 {
-		compatible	= "telechips,video-input";
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		2>;
-		rdma		= <&vioc_rdma		VIOC_RDMA13>;
-		vin		= <&vioc_vin		VIOC_VIN20>;
-		viqe		= <&vioc_viqe		VIOC_VIQE1>;
-		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
-		scaler		= <&vioc_scaler		VIOC_SCALER5>;
-		wmixer		= <&vioc_wmix		VIOC_WMIX3>;
-		wdma		= <&vioc_wdma		VIOC_WDMA03>;
-		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
-	};
-
-	videoinput3: videoinput3 {
-		compatible	= "telechips,video-input";
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		3>;
-		rdma		= <&vioc_rdma		VIOC_RDMA15>;
-		vin		= <&vioc_vin		VIOC_VIN30>;
-		viqe		= <&vioc_viqe		VIOC_VIQE1>;
-		deintls		= <&vioc_deintls	VIOC_DEINTLS0>;
-		scaler		= <&vioc_scaler		VIOC_SCALER6>;
-		wmixer		= <&vioc_wmix		VIOC_WMIX4>;
-		wdma		= <&vioc_wdma		VIOC_WDMA04>;
-		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
-	};
-
-	videoinput4: videoinput4 {
-		compatible	= "telechips,video-input";
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		5>;
-		vin		= <&vioc_vin		VIOC_VIN40>;
-		wdma		= <&vioc_wdma		VIOC_WDMA09>;
-		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
-	};
-
-	videoinput5: videoinput5 {
-		compatible	= "telechips,video-input";
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		6>;
-		vin		= <&vioc_vin		VIOC_VIN50>;
-		wdma		= <&vioc_wdma		VIOC_WDMA10>;
-		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
-	};
-
-	videoinput6: videoinput6 {
-		compatible	= "telechips,video-input";
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		7>;
-		vin		= <&vioc_vin		VIOC_VIN60>;
-		wdma		= <&vioc_wdma		VIOC_WDMA11>;
-		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
-	};
-
-	videoinput7: videoinput7 {
-		compatible	= "telechips,video-input";
-		clocks		= <&clk_ddi DDIBUS_VIOC>;
-		cifport		= <&cifport		8>;
-		vin		= <&vioc_vin		VIOC_VIN70>;
-		wdma		= <&vioc_wdma		VIOC_WDMA12>;
-		fifo		= <&vioc_fifo		VIOC_FIFO0>;
-		status		= "disabled";
 	};
 
 	/*

@@ -519,3 +519,6 @@
 &gmac {
 	phyrst-gpio = <&gpc 15 0>; /* Marvell phy 88Q212x phy reset gpio */
 };
+
+#include "tcc8050_53-videoinput-sv1.0.dtsi"
+#include "tcc805x-videoinput-mipi0-hd.dtsi"

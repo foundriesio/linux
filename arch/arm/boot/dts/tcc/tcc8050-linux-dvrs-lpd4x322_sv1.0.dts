@@ -579,3 +579,5 @@
 
 };
 
+#include "tcc8050_53-videoinput-sv1.0.dtsi"
+#include "tcc805x-videoinput-mipi0-hd.dtsi"

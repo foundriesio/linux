@@ -105,13 +105,14 @@ struct tcc_isp_state {
 	const struct isp_tune *tune;
 
 	int mem_share;
+	int isp_bypass;
 
 	int irq;
 
 	struct clk *clock;
 	u32 clk_frequency;
 
-	unsigned int mdelay_to_output;
+	unsigned int mdelay_to_out;
 };
 
 #endif

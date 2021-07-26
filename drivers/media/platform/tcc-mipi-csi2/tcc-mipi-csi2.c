@@ -146,7 +146,11 @@ struct v4l2_mbus_config mipi_csi2_mbus_config = {
 	/* de: high, vs: high, hs: high, pclk: high */
 	.flags			=
 		V4L2_MBUS_DATA_ACTIVE_HIGH	|
+#if defined(CONFIG_ARCH_TCC803X)
 		V4L2_MBUS_VSYNC_ACTIVE_HIGH	|
+#else
+		V4L2_MBUS_VSYNC_ACTIVE_LOW	|
+#endif
 		V4L2_MBUS_HSYNC_ACTIVE_HIGH	|
 		V4L2_MBUS_PCLK_SAMPLE_RISING	|
 		V4L2_MBUS_MASTER,
@@ -679,31 +683,6 @@ static void MIPI_WRAP_Set_ISP_BYPASS(struct tcc_mipi_csi2_state *state,
 	__raw_writel(val, reg);
 
 }
-
-static void MIPI_WRAP_Set_MIPI_Output_RAW12(struct tcc_mipi_csi2_state *state,
-	unsigned int ch, unsigned int fmt)
-{
-	unsigned int val;
-	void __iomem *reg = 0;
-
-	reg = state->cfg_base + ISP_FMT_CFG;
-
-	val = (__raw_readl(reg) & ~(ISP_FMT_CFG_ISP0_FMT_MASK << (ch * 4)));
-	val |= (fmt << (ISP_FMT_CFG_ISP0_FMT_SHIFT + (ch * 4)));
-	__raw_writel(val, reg);
-
-}
-
-static void MIPI_WRAP_Set_ISP_APBADDR(struct tcc_mipi_csi2_state *state)
-{
-	void __iomem *reg = 0;
-
-	/* TCS: CV8050C-658 */
-	reg = state->cfg_base + ISP_APBADDR_CFG0;
-	__raw_writel(0x16371637, reg);
-	reg = state->cfg_base + ISP_APBADDR_CFG1;
-	__raw_writel(0x16371637, reg);
-}
 #endif
 
 static int tcc_mipi_csi2_set_interface(struct tcc_mipi_csi2_state *state,
@@ -732,7 +711,6 @@ static int tcc_mipi_csi2_set_interface(struct tcc_mipi_csi2_state *state,
 			MIPI_WRAP_Set_ISP_BYPASS(state,
 				idx, state->isp_bypass[idx]);
 		}
-		MIPI_WRAP_Set_ISP_APBADDR(state);
 #endif
 		// S/W reset CSI2
 		MIPI_CSIS_Set_CSIS_Reset(state, ON);
@@ -779,14 +757,7 @@ static int tcc_mipi_csi2_set_interface(struct tcc_mipi_csi2_state *state,
 				info->fmt.width,
 				info->fmt.height);
 #ifdef CONFIG_ARCH_TCC805X
-			if ((info->data_format >= DATA_FORMAT_RAW10) &&
-			    (info->data_format <= DATA_FORMAT_RAW12)) {
-				MIPI_WRAP_Set_VSync_Polarity(state, idx, 1);
-				MIPI_WRAP_Set_MIPI_Output_RAW12(state, idx, 3);
-			}
-
-			if ((info->data_format) == DATA_FORMAT_RAW8)
-				MIPI_WRAP_Set_MIPI_Output_RAW12(state, idx, 1);
+			MIPI_WRAP_Set_VSync_Polarity(state, idx, 1);
 #endif
 		}
 
@@ -967,6 +938,7 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 		struct tcc_mipi_csi2_state *state)
 {
 	struct device_node *node = pdev->dev.of_node;
+	struct device_node *p_node = NULL;
 	struct device_node *ep_node = NULL;
 	struct v4l2_fwnode_endpoint endpoint;
 #if defined(CONFIG_ARCH_TCC803X)
@@ -1012,10 +984,15 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 	/*
 	 * Get mipi_chmux_X selection
 	 */
+	p_node = of_get_parent(node);
+	if (IS_ERR((const void *)p_node)) {
+		loge(&(state->pdev->dev), "can not find mipi_wrap node\n");
+		return PTR_ERR((const void *)p_node);
+	}
 	for (index = 0; index < CSI_CFG_MIPI_CHMUX_MAX; index++) {
 		sprintf(prop_name, "mipi-chmux-%d", index);
 
-		of_property_read_u32_index(node,
+		of_property_read_u32_index(p_node,
 			prop_name, 0, &(state->mipi_chmux[index]));
 	}
 
@@ -1025,14 +1002,14 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 	for (index = 0; index < CSI_CFG_ISP_BYPASS_MAX; index++) {
 		sprintf(prop_name, "isp%d-bypass", index);
 
-		of_property_read_u32_index(node,
+		of_property_read_u32_index(p_node,
 			prop_name, 0, &(state->isp_bypass[index]));
 	}
 #endif
 	/*
 	 * get interrupt number
 	 */
-	state->irq = platform_get_irq(pdev, 0);
+	state->irq = platform_get_irq_byname(pdev, "csi");
 	if (state->irq < 0) {
 		loge(&(state->pdev->dev), "fail - get irq\n");
 		ret = -ENODEV;

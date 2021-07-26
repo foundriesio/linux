@@ -1,0 +1,265 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
+&i2c7 {
+	status = "okay";
+};
+
+&arxxxx {
+	status		= "okay";
+	port {
+		arxxxx_out: endpoint {
+			remote-endpoint = <&max96701_in>;
+			io-direction	= "output";
+		};
+	};
+};
+
+&max96701 {
+	/* serializer */
+	status		= "okay";
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			max96701_in: endpoint {
+				remote-endpoint = <&arxxxx_out>;
+				io-direction	= "input";
+			};
+		};
+		port@1 {
+			reg = <1>;
+			max96701_out: endpoint {
+				remote-endpoint = <&max9286_in0>;
+				io-direction	= "output";
+			};
+		};
+	};
+};
+
+&max9286 {
+	/* deserializer */
+	status		= "okay";
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		/*
+		 * 0 ~ 3
+		 * input ports. The number is matched with VC
+		 *
+		 * 4
+		 * output port.
+		 */
+		port@0 {
+			reg = <0>;
+			max9286_in0: endpoint {
+				remote-endpoint = <&max96701_out>;
+				io-direction	= "input";
+				channel		= <0>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			max9286_in1: endpoint {
+				remote-endpoint = <&max96701_out>;
+				io-direction	= "input";
+				channel		= <1>;
+			};
+		};
+		port@2 {
+			reg = <2>;
+			max9286_in2: endpoint {
+				remote-endpoint = <&max96701_out>;
+				io-direction	= "input";
+				channel		= <2>;
+			};
+		};
+		port@3 {
+			reg = <3>;
+			max9286_in3: endpoint {
+				remote-endpoint = <&max96701_out>;
+				io-direction	= "input";
+				channel		= <3>;
+			};
+		};
+		port@4 {
+			reg = <4>;
+			max9286_out: endpoint {
+				remote-endpoint = <&mipi_csi2_0_in>;
+				io-direction	= "output";
+			};
+		};
+	};
+};
+
+&mipi_wrap {
+	/*
+	 * If MIPI0 ,1 are used in main & sub core,
+	 * properties below must be same
+	 */
+
+	/*
+	 * 0: select output of MIPI0
+	 * 1: select output of MIPI1
+	 */
+	mipi-chmux-0 = <0>;
+	mipi-chmux-1 = <0>;
+	mipi-chmux-2 = <0>;
+	mipi-chmux-3 = <0>;
+
+	/*
+	 * 0: select output of MIPI1
+	 * 1: select output of MIPI0
+	 */
+	mipi-chmux-4 = <0>;
+	mipi-chmux-5 = <0>;
+	mipi-chmux-6 = <0>;
+	mipi-chmux-7 = <0>;
+
+	/*
+	 * 1: bypass isp
+	 * 0: use isp
+	 */
+	isp0-bypass = <1>;
+	isp1-bypass = <1>;
+	isp2-bypass = <1>;
+	isp3-bypass = <1>;
+};
+
+&mipi_csi2_0 {
+	status = "okay";
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		/*
+		 * 0
+		 * input port.
+		 *
+		 * 1 ~ 4
+		 * output ports. (1: VC0 ~ 4: VC3)
+		 */
+		port@0 {
+			reg = <0>;
+			mipi_csi2_0_in: endpoint {
+				remote-endpoint	= <&max9286_out>;
+				io-direction	= "input";
+				num-channel = <4>;
+
+				/*
+				 * 0: CH0 only, no data interleave
+				 * 1: DT only
+				 * 2: VC only
+				 * 3: VC and DT
+				 */
+				interleave-mode = <3>;
+				hs-settle = <17>; // for HD 4ch
+				data-lanes = <1 2 3 4>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			mipi_csi2_0_out0: endpoint {
+				remote-endpoint	= <&videoinput4_in>;
+				io-direction	= "output";
+				channel		= <0>;
+				/*
+				 * 0: Single pixel mode
+				 * 1: Dual pixel mode (RAW8/10/12, YUV422)
+				 * 2: Quad pixel mode (RAW8/10/12)
+				 * 3: Invalid
+				 */
+				pixel-mode = <1>;
+			};
+		};
+		port@2 {
+			reg = <2>;
+			mipi_csi2_0_out1: endpoint {
+				remote-endpoint	= <&videoinput5_in>;
+				io-direction	= "output";
+				channel		= <1>;
+				pixel-mode = <1>;
+			};
+		};
+		port@3 {
+			reg = <3>;
+			mipi_csi2_0_out2: endpoint {
+				remote-endpoint	= <&videoinput6_in>;
+				io-direction	= "output";
+				channel		= <2>;
+				pixel-mode = <1>;
+			};
+		};
+		port@4 {
+			reg = <4>;
+			mipi_csi2_0_out3: endpoint {
+				remote-endpoint	= <&videoinput7_in>;
+				io-direction	= "output";
+				channel		= <3>;
+				pixel-mode = <1>;
+			};
+		};
+	};
+};
+
+&videoinput4 {
+	status		= "okay";
+	cifport		= <&cifport		5>;
+	memory-region	= <0 0 &pmap_rearcamera4>;
+	port {
+		videoinput4_in: endpoint {
+			remote-endpoint	= <&mipi_csi2_0_out0>;
+			io-direction	= "input";
+			bus-type	= <0>;
+			stream-enable	= <1>;	// VIN_CTRL.SE
+			flush-vsync	= <1>;	// VIN_MISC.FVS
+		};
+	};
+};
+
+&videoinput5 {
+	status		= "okay";
+	cifport		= <&cifport		6>;
+	memory-region	= <0 0 &pmap_rearcamera5>;
+	port {
+		videoinput5_in: endpoint {
+			remote-endpoint	= <&mipi_csi2_0_out1>;
+			io-direction	= "input";
+			bus-type	= <0>;
+			stream-enable	= <1>;	// VIN_CTRL.SE
+			flush-vsync	= <1>;	// VIN_MISC.FVS
+		};
+	};
+};
+
+&videoinput6 {
+	status		= "okay";
+	cifport		= <&cifport		7>;
+	memory-region	= <0 0 &pmap_rearcamera6>;
+	port {
+		videoinput6_in: endpoint {
+			remote-endpoint	= <&mipi_csi2_0_out2>;
+			io-direction	= "input";
+			bus-type	= <0>;
+			stream-enable	= <1>;	// VIN_CTRL.SE
+			flush-vsync	= <1>;	// VIN_MISC.FVS
+		};
+	};
+};
+
+&videoinput7 {
+	status		= "okay";
+	cifport		= <&cifport		8>;
+	memory-region	= <0 0 &pmap_rearcamera7>;
+	port {
+		videoinput7_in: endpoint {
+			remote-endpoint	= <&mipi_csi2_0_out3>;
+			io-direction	= "input";
+			bus-type	= <0>;
+			stream-enable	= <1>;	// VIN_CTRL.SE
+			flush-vsync	= <1>;	// VIN_MISC.FVS
+		};
+	};
+};

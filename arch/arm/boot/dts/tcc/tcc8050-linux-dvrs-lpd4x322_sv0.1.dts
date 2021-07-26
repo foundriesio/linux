@@ -595,3 +595,5 @@ dp_deserializer3:max96878@68 {
 	pinctrl-1 = <&serdes_lock>;
 };
 
+#include "tcc8050_53-videoinput-sv0.1.dtsi"
+#include "tcc805x-videoinput-mipi0-hd.dtsi"

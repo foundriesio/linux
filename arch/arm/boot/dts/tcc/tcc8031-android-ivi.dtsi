@@ -811,24 +811,6 @@
 	product_description = "TCC8031_ivi";
 };
 
-&videoinput0 {
-	status	= "okay";
-	cifport	= <&cifport 0>;
-	port {
-		videoinput0_in: endpoint {
-			remote-endpoint	= <&isl79988_out>;
-			io-direction	= "input";
-			bus-type	= <0>;
-			stream-enable	= <0>;	// VIN_CTRL.SE
-			flush-vsync	= <0>;	// VIN_MISC.FVS
-		};
-	};
-};
-
-&videoinput1 {
-	status = "disabled";
-};
-
 &i2c0 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -939,42 +921,6 @@
 			};
 		};
 	}; /* pmic da9063 */
-
-#if 0
-	videosource0: videodecoder_isl79988@44 {
-		compatible	= "intersil,isl79988";
-		pinctrl-names	= "idle", "active";
-		cifport		= <0>;
-		pinctrl-0	= <&cam0_8bit_idle>;
-		pinctrl-1	= <&cam0_clk &cam0_data_8bit>;
-		rst-gpios	= <&gpb 14 1>;
-		reg		= <0x44>;	// 0x88 >> 1
-	};
-#else
-	isl79988: isl79988@44 {
-		status		= "okay";
-		compatible	= "intersil,isl79988";
-		pinctrl-names	= "default";
-		pinctrl-0	= <&cam0_clk &cam0_data_8bit>;
-		rst-gpios	= <&gpb 14 0>;
-		reg		= <0x44>;	// 0x88 >> 1
-		port {
-			isl79988_out: endpoint {
-				remote-endpoint = <&videoinput0_in>;
-				io-direction	= "output";
-				bus-width	= <8>;
-			};
-		};
-	};
-#endif
-	videosource1: deserializer_max9286@48 {
-		compatible	= "maxim,max9286";
-		cifport		= <5>;
-		pwd-gpios	= <&gpg 5 1>;
-		intb-gpios	= <&gph 11 1>;
-		reg		= <0x48>;	// 0x90 >> 1
-		mipi-csi2-idx   = <0>;
-	};
 };
 
 &i2c1 {

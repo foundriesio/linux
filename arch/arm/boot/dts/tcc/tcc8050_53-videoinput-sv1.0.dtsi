@@ -1,0 +1,113 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
+/*
+ * Copyright (C) Telechips Inc.
+ */
+
+#include "tcc805x-videoinput.dtsi"
+
+&i2c6 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "disabled";
+	port-mux = <35>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c35_bus>;
+};
+
+&i2c7 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "disabled";
+	port-mux = <12>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c12_bus>;
+
+	/*
+	 * parallel interface(cif)
+	 */
+
+	/* video decoder */
+	adv7182: adv7182@21 {
+		/* video decoder */
+		status		= "disabled";
+		compatible	= "adi,adv7182";
+		pinctrl-names	= "default";
+		pinctrl-0	= <&cam0_clk &cam0_data_8bit>;
+		rst-gpios	= <&gpb 14 0>;
+		reg		= <0x21>;	// 0x42 >> 1
+	};
+
+
+	/*
+	 * MIPI CSI2 interface
+	 *
+	 * With ISP
+	 * HD module: MAX96701 - MAX9286
+	 * FHD module: CXD5700 - MAX9275 - MAX96712
+	 *
+	 * Without ISP
+	 * HD module: AR0147 - MAX96701, MAX96712
+	 * QHD module: MAX9295 - MAX96712
+	 */
+	/* sensor */
+	arxxxx: arxxxx@50 {
+		status		= "disabled";
+		compatible	= "onnn,arxxxx";
+		reg		= <0x50>;
+	};
+
+	ar0147: ar0147@10 {
+		status		= "disabled";
+		compatible	= "onnn,ar0147";
+		reg		= <0x10>;
+	};
+
+	ar0820: ar0820@10 {
+		status		= "disabled";
+		compatible	= "onnn,ar0820";
+		reg		= <0x10>;
+	};
+
+	/* external ISP */
+	cxd5700: cxd5700@18 {
+		status		= "disabled";
+		compatible	= "sony,cxd5700";
+		reg		= <0x18>;
+	};
+
+	/* serializer */
+	max96701: max96701@40 {
+		status		= "disabled";
+		compatible	= "maxim,max96701";
+		reg		= <0x40>;
+	};
+
+	max9275: max9275@40 {
+		status		= "disabled";
+		compatible	= "maxim,max9275";
+		reg		= <0x40>;
+	};
+
+	max9295: max9295@62 {
+		status		= "disabled";
+		compatible	= "maxim,max9295";
+		reg		= <0x62>;
+	};
+
+	/* deserializer */
+	max9286: max9286@48 {
+		status		= "disabled";
+		compatible	= "maxim,max9286";
+		pwd-gpios	= <&gpg 5 1>;
+		//rst-gpios	= <&gpb 15 1>;  /* mcnex module sensor */
+		reg		= <0x48>;	// 0x90 >> 1
+	};
+
+	max96712: max96712@2a {
+		status		= "disabled";
+		compatible	= "maxim,max96712";
+		pwd-gpios	= <&gpg 5 1>;
+		reg		= <0x2A>;
+	};
+};
+

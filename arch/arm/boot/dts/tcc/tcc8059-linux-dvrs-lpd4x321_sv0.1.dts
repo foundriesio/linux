@@ -281,3 +281,6 @@
 	linux,axis = <0>;
 	rotary-encoder,relative-axis;
 };
+
+#include "tcc8059-videoinput.dtsi"
+#include "tcc805x-videoinput-mipi0-hd.dtsi"
