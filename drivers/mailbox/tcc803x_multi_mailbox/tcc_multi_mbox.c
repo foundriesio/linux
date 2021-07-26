@@ -128,8 +128,7 @@ struct tcc_mbox_device {
 	struct mbox_controller mbox;
 	void __iomem *base;
 	int32_t irq;
-	struct mutex lock;
-	struct mutex reglock;
+	spinlock_t reg_lock;
 	int32_t ch_enable[TCC_MBOX_CH_LIMIT];
 };
 
@@ -301,6 +300,7 @@ static int32_t tcc_multich_mbox_send(struct mbox_chan *chan, void *mbox_msg)
 	struct tcc_mbox_device *mdev = NULL;
 	struct tcc_mbox_data *msg = NULL;
 	struct tcc_channel *chan_info = NULL;
+	unsigned long flags;
 
 	if ((chan != NULL) && (mbox_msg != NULL)) {
 		mdev = dev_get_drvdata(chan->mbox->dev);
@@ -339,7 +339,7 @@ static int32_t tcc_multich_mbox_send(struct mbox_chan *chan, void *mbox_msg)
 		} else {
 			int32_t timeOutCnt = 30;  //30*100us = 3000us
 
-			mutex_lock(&mdev->reglock);
+			spin_lock_irqsave(&mdev->reg_lock, flags);
 
 			/* check fifo */
 			while (((readl_relaxed(mdev->base + MBOXSTR)
@@ -409,7 +409,7 @@ static int32_t tcc_multich_mbox_send(struct mbox_chan *chan, void *mbox_msg)
 					"mbox is not empty. timeout\n");
 			}
 
-			mutex_unlock(&mdev->reglock);
+			spin_unlock_irqrestore(&mdev->reg_lock, flags);
 		}
 	} else {
 		(void)pr_err("[ERROR][%s]%s: Parameter Error",
@@ -433,8 +433,6 @@ static int32_t tcc_multich_mbox_startup(struct mbox_chan *chan)
 			(cl != NULL))	{
 
 			iprintk(mdev->mbox.dev, "In\n");
-			/* enable channel*/
-			mutex_lock(&mdev->lock);
 
 			mdev->ch_enable[chan_info->channel] =
 				TCC_MBOX_CH_ENALBE;
@@ -460,8 +458,6 @@ static int32_t tcc_multich_mbox_startup(struct mbox_chan *chan)
 					NULL,
 					cl->dev->kobj.name);
 			}
-
-			mutex_unlock(&mdev->lock);
 		}
 	} else {
 		ret = -EINVAL;
@@ -478,15 +474,13 @@ static void tcc_multich_mbox_shutdown(struct mbox_chan *chan)
 
 		if ((mdev != NULL) && (chan_info != NULL)) {
 			dprintk(mdev->mbox.dev, "In\n");
-			/* enable channel*/
-			mutex_lock(&mdev->lock);
+
 			mdev->ch_enable[chan_info->channel] =
 				TCC_MBOX_CH_DISALBE;
 			(void)deregister_receive_queue(chan_info->receiveQueue);
 			kfree(chan_info->receiveQueue);
 			chan_info->receiveQueue = NULL;
 
-			mutex_unlock(&mdev->lock);
 			dprintk(mdev->mbox.dev, "out\n");
 
 			chan->con_priv = NULL;
@@ -505,8 +499,6 @@ static bool tcc_multich_mbox_tx_done(struct mbox_chan *chan)
 		if (mdev != NULL) {
 			dprintk(mdev->mbox.dev, "In\n");
 
-			mutex_lock(&mdev->reglock);
-
 			/* check transmmit cmd fifo */
 			if ((readl_relaxed(
 				mdev->base + MBOXSTR)
@@ -516,8 +508,6 @@ static bool tcc_multich_mbox_tx_done(struct mbox_chan *chan)
 			} else {
 				ret = (bool)true;
 			}
-
-			mutex_unlock(&mdev->reglock);
 		} else {
 			ret = (bool)false;
 		}
@@ -796,8 +786,7 @@ static int32_t tcc_multich_mbox_probe(struct platform_device *pdev)
 
 			if (ret == 0) {
 
-				mutex_init(&mdev->lock);
-				mutex_init(&mdev->reglock);
+				spin_lock_init(&mdev->reg_lock);
 
 				mdev->irq = platform_get_irq(pdev, 0);
 				if (mdev->irq < 0) {
