@@ -776,44 +776,41 @@ static s32 tcc_rtc_probe(struct platform_device *pdev)
 		goto err_get_hclk;
 	}
 
-	/* When rtc protection enable bit set, no need to rtc initialize. */
-	if ((rtc_reg(INTCON) & (u32)0x8000) != (u32)0x00008000) {
-		BITSET(rtc_reg(RTCCON), Hw1);	/* RTC Write Enable */
-		BITSET(rtc_reg(INTCON), Hw0);	/* Interrupt Write Enable */
+	BITSET(rtc_reg(RTCCON), Hw1);	/* RTC Write Enable */
+	BITSET(rtc_reg(INTCON), Hw0);	/* Interrupt Write Enable */
 
-		BITSET(rtc_reg(RTCCON), Hw0);	/* RTC Start bit - Halt */
-		BITCLR(rtc_reg(INTCON), Hw15);	/* Disable Protection */
+	BITSET(rtc_reg(RTCCON), Hw0);	/* RTC Start bit - Halt */
+	BITCLR(rtc_reg(INTCON), Hw15);	/* Disable Protection */
 
-		/* 32.768kHz XTAL 1.8V - XTAL I/O Driver Strength Select */
-		BITCLR(rtc_reg(INTCON), Hw13 | Hw12);
-		/* 32.768kHz XTAL - Divider Output Select - FSEL */
-		BITCLR(rtc_reg(INTCON), Hw10 | Hw9 | Hw8);
+	/* 32.768kHz XTAL 1.8V - XTAL I/O Driver Strength Select */
+	BITCLR(rtc_reg(INTCON), Hw13 | Hw12);
+	/* 32.768kHz XTAL - Divider Output Select - FSEL */
+	BITCLR(rtc_reg(INTCON), Hw10 | Hw9 | Hw8);
 
-		BITSET(rtc_reg(INTCON), Hw15);	/* Enable Protection */
+	BITSET(rtc_reg(INTCON), Hw15);	/* Enable Protection */
 
-		/*
-		 * Start : Disable the RTC Alarm - 120125, hjbae
-		 * Disable Wake Up Interrupt Output(Hw7) and
-		 * Alarm Interrupt Output(Hw6)
-		 */
-		/* Disable RTC Wake-Up, Alarm Interrupt */
-		BITCLR(rtc_reg(RTCCON), Hw7 | Hw6);
+	/*
+	 * Start : Disable the RTC Alarm - 120125, hjbae
+	 * Disable Wake Up Interrupt Output(Hw7) and
+	 * Alarm Interrupt Output(Hw6)
+	 */
+	/* Disable RTC Wake-Up, Alarm Interrupt */
+	BITCLR(rtc_reg(RTCCON), Hw7 | Hw6);
 
-		/* Disable - Alarm Control */
-		/* Clear RTCALM reg - Disable Alarm */
-		BITCLR(rtc_reg(RTCALM), 0xFFFFFFFFU);
+	/* Disable - Alarm Control */
+	/* Clear RTCALM reg - Disable Alarm */
+	BITCLR(rtc_reg(RTCALM), 0xFFFFFFFFU);
 
-		/* Power down mode, Active HIGH, Disable alarm interrupt */
-		/* ActiveHigh */
-		BITSET(rtc_reg(RTCIM), Hw2);
-		/* PowerDown Mode, Disable Interrupt */
-		BITCLR(rtc_reg(RTCIM), Hw3 | Hw1 | Hw0);
+	/* Power down mode, Active HIGH, Disable alarm interrupt */
+	/* ActiveHigh */
+	BITSET(rtc_reg(RTCIM), Hw2);
+	/* PowerDown Mode, Disable Interrupt */
+	BITCLR(rtc_reg(RTCIM), Hw3 | Hw1 | Hw0);
 
-		BITCLR(rtc_reg(RTCCON), Hw0);	/* RTC Start bit - Run */
+	BITCLR(rtc_reg(RTCCON), Hw0);	/* RTC Start bit - Run */
 
-		BITCLR(rtc_reg(RTCCON), Hw1);	/* RTC Write Disable */
-		BITCLR(rtc_reg(INTCON), Hw0);	/* Interrupt Write Disable */
-	}
+	BITCLR(rtc_reg(RTCCON), Hw1);	/* RTC Write Disable */
+	BITCLR(rtc_reg(INTCON), Hw0);	/* Interrupt Write Disable */
 
 	ret = of_property_read_u32(pdev->dev.of_node, "rtc_clock", &rtc_clock);
 	if (ret == 0) {
