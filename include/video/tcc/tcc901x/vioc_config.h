@@ -1595,7 +1595,6 @@ extern int VIOC_CONFIG_FBCDECPath(unsigned int AFBCDecPath,
 	unsigned int rdmaPath, unsigned int on);
 #endif
 extern void VIOC_CONFIG_SWReset(unsigned int component, unsigned int mode);
-extern void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode);
 extern int VIOC_CONFIG_CheckPlugInOut(unsigned int nDevice);
 extern int VIOC_CONFIG_Device_PlugState(unsigned int component,
 	struct VIOC_PlugInOutCheck *VIOC_PlugIn);

@@ -675,7 +675,7 @@ static int32_t tccvin_reset_vioc_path(struct tccvin_streaming *vdev)
 	/* reset */
 	for (idxVioc = nVioc - 1; idxVioc >= 0; idxVioc--) {
 		if (viocs[idxVioc] != -1) {
-			VIOC_CONFIG_SWReset_RAW(
+			VIOC_CONFIG_SWReset(
 				(unsigned int)viocs[idxVioc],
 				VIOC_CONFIG_RESET);
 		}
@@ -684,7 +684,7 @@ static int32_t tccvin_reset_vioc_path(struct tccvin_streaming *vdev)
 	/* reset clear */
 	for (idxVioc = 0; idxVioc < nVioc; idxVioc++) {
 		if (viocs[idxVioc] != -1) {
-			VIOC_CONFIG_SWReset_RAW(
+			VIOC_CONFIG_SWReset(
 				(unsigned int)viocs[idxVioc],
 				VIOC_CONFIG_CLEAR);
 		}

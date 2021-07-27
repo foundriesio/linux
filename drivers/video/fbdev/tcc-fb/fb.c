@@ -2508,9 +2508,9 @@ static void fbX_prepare_vin_path_rdma(struct fbX_par *par)
 		rdma_enable ? "enable" : "disable",
 		status ? "working" : "not working");
 	#endif
-	VIOC_CONFIG_SWReset_RAW(
+	VIOC_CONFIG_SWReset(
 		par->pdata.rdma_info.blk_num, VIOC_CONFIG_RESET);
-	VIOC_CONFIG_SWReset_RAW(
+	VIOC_CONFIG_SWReset(
 		par->pdata.rdma_info.blk_num, VIOC_CONFIG_CLEAR);
 	pr_info("[INFO][TSVFB] rdma[%d] SWReset.\n",
 		par->pdata.rdma_info.blk_num - VIOC_RDMA);

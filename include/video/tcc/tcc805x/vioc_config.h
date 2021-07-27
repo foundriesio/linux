@@ -1355,9 +1355,6 @@ extern void VIOC_CONFIG_WMIXPathReset(
 extern void VIOC_CONFIG_SWReset(
 	unsigned int component,
 	unsigned int mode);
-extern void VIOC_CONFIG_SWReset_RAW(
-	unsigned int component,
-	unsigned int mode);
 extern int VIOC_CONFIG_CheckPlugInOut(unsigned int nDevice);
 extern int VIOC_CONFIG_Device_PlugState(
 	unsigned int component,

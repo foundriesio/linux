@@ -34,13 +34,6 @@
 #include <video/tcc/vioc_v_dv.h>
 #endif
 
-#ifdef CONFIG_VIOC_MGR
-#include <video/tcc/vioc_mgr.h>
-extern int vioc_mgr_queue_work(
-	unsigned int command, unsigned int blk, unsigned int data0,
-	unsigned int data1, unsigned int data2);
-#endif
-
 static int debug;
 #define dprintk(msg...)						\
 	do {							\
@@ -1461,16 +1454,6 @@ error:
 #endif
 
 void VIOC_CONFIG_SWReset(unsigned int component, unsigned int mode)
-{
-#ifdef CONFIG_VIOC_MGR
-	if (vioc_mgr_queue_work(VIOC_CMD_RESET, component, mode, 0, 0) < 0)
-#endif
-	{
-		VIOC_CONFIG_SWReset_RAW(component, mode);
-	}
-}
-
-void VIOC_CONFIG_SWReset_RAW(unsigned int component, unsigned int mode)
 {
 	unsigned long value;
 	void __iomem *reg = pIREQ_reg;

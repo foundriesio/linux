@@ -138,7 +138,7 @@ static void vioc_mgr_set_reset(struct tcc_mbox_data *msg)
 {
 	if (msg != NULL) {
 		/* msg is available */
-		VIOC_CONFIG_SWReset_RAW(msg->data[0], msg->data[1]);
+		VIOC_CONFIG_SWReset(msg->data[0], msg->data[1]);
 	} else {
 		/* msg is unavailable */
 		loge("tcc_mbox_data struct is NULL\n");

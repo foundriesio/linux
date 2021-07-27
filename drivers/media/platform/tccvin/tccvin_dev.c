@@ -556,13 +556,13 @@ err_viocmg:
 	// reset
 	for(idxComponent=nComponent - 1; 0 <= idxComponent; idxComponent--) {
 		if(vioc_component[idxComponent] != -1)
-			VIOC_CONFIG_SWReset_RAW((unsigned int)vioc_component[idxComponent], VIOC_CONFIG_RESET);
+			VIOC_CONFIG_SWReset((unsigned int)vioc_component[idxComponent], VIOC_CONFIG_RESET);
 	}
 
 	// reset clear
 	for(idxComponent=0; idxComponent<nComponent; idxComponent++) {
 		if(vioc_component[idxComponent] != -1)
-			VIOC_CONFIG_SWReset_RAW((unsigned int)vioc_component[idxComponent], VIOC_CONFIG_CLEAR);
+			VIOC_CONFIG_SWReset((unsigned int)vioc_component[idxComponent], VIOC_CONFIG_CLEAR);
 	}
 
 #if 0//defined(CONFIG_TCC803X_CA7S) && defined(CONFIG_VIOC_MGR)

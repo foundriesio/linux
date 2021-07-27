@@ -118,7 +118,7 @@ static void cam_ipc_mgr_set_pos(struct tcc_mbox_data *mssg)
  */
 static void cam_ipc_mgr_set_reset(struct tcc_mbox_data *mssg)
 {
-        VIOC_CONFIG_SWReset_RAW(mssg->data[0], mssg->data[1]);
+        VIOC_CONFIG_SWReset(mssg->data[0], mssg->data[1]);
 }
 
 int cam_ipc_mgr_queue_work(unsigned int command, unsigned int blk, unsigned int data0, unsigned int data1, unsigned int data2)
