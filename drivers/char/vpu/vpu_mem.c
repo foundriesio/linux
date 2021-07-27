@@ -397,6 +397,7 @@ static int tcc_mem_create_dma_buf(stVpuPhysInfo *pmap_info)
 		export_info.ops = &vpu_dma_buf_ops;
 		export_info.size = dma_buf_priv->size;
 		export_info.flags = O_CLOEXEC | O_RDWR;
+		export_info.resv = NULL;
 		export_info.priv = dma_buf_priv;
 
 		dma_buf_priv->buf = dma_buf_export(&export_info);
