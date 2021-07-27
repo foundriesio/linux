@@ -6,4 +6,8 @@ config TCC_DP_DRIVER_V1_4
 	bool "Support DisplayPort V1.4 drivers"
 	depends on ARCH_TCC805X
 	default y
-
+	help
+		It supports DisplayPort Tx V1.4.
+		It will make kernel compile DisplayPort V1.4 drivers.
+		It's for DP Tx functionalities.
+		It's based on Vesa V1.4.
