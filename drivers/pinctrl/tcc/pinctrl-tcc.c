@@ -24,7 +24,6 @@ static const struct tcc_sc_fw_handle *sc_fw_handle_for_gpio;
 static ulong base_offset_sc;
 #endif
 
-
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 static int32_t request_gpio_to_sc(
 		ulong address, ulong bit_number, ulong width, ulong value)
@@ -1004,6 +1003,87 @@ static int tcc_pin_conf_get(void __iomem *base, u32 offset, int param)
 	return ret;
 }
 
+#define TCC_ECLKSEL		(0x2B0U)
+int tcc_gpio_set_eclk_sel(void __iomem *base, u32 offset, s32 value, struct tcc_pinctrl *pctl)
+{
+	void __iomem *reg = pctl->base + TCC_ECLKSEL;
+	struct tcc_pin_bank *bank;
+	ulong port = (ulong)(base - pctl->base);
+	u32 idx = 0U;
+	u32 i;
+	u32 j;
+	u32 pin_valid = 0U;
+#if !defined(CONFIG_PINCTRL_TCC_SCFW)
+	u32 data;
+#endif
+
+	if (pctl == NULL) {
+		return -EINVAL;
+		/* comment for QAC, codesonar, kernel coding style */
+	}
+	bank = pctl->pin_banks;
+
+	if (value > 3) {
+		return -EINVAL;
+		/* comment for QAC, codesonar, kernel coding style */
+	}
+	for (i = 0; i < pctl->nbanks ; i++) {
+		if (bank->reg_base == port) {
+			if (bank->source_num == 0xffU) {
+						(void)pr_err("[ERROR][ECLK] %s: %s is not supported for external interrupt\n", __func__, bank->name);
+				return -EINVAL;
+			}
+			for (j = 0; j < bank->source_num; j++) {
+				if (((UINT_MAX) - bank->source_offset_base[j])
+						< bank->source_range[j]) {
+					continue;
+				}
+				if ((offset >= bank->source_offset_base[j])
+					&& (offset <
+						(bank->source_offset_base[j]
+						+ bank->source_range[j]))) {
+
+					idx = offset
+						- bank->source_offset_base[j];
+					if (((UINT_MAX) - idx)
+						>= bank->source_base[j]) {
+
+						idx += bank->source_base[j];
+						pin_valid = 1U;
+						//true
+					} else {
+						pin_valid = 0U;
+						//false
+					}
+					break;
+				}
+
+				pin_valid = 0U; //false
+			}
+		}
+		bank++;
+	}
+
+	if (pin_valid == 0U) {
+		(void)pr_err(
+				"[ERROR][ECLK] %s: %d(%d) is out of range of pin number of %s group\n"
+				, __func__, offset, idx, bank->name);
+		return -EINVAL;
+	}
+
+#if defined(CONFIG_PINCTRL_TCC_SCFW)
+	reg = reg - base_offset_sc;
+	return request_gpio_to_sc((ulong)reg, (ulong)value << 3U, 8U, (ulong)idx);
+#else
+	data = readl(reg);
+	data &= ~((u32)0xFFU << ((u32)value * 8U));
+	data |= (((u32)0xFFU & idx) << ((u32)value * 8U));
+	writel(data, reg);
+
+	return 0;
+#endif
+}
+
 int tcc_pin_conf_set(void __iomem *base, u32 offset, int param,
 			int config, struct tcc_pinctrl *pctl)
 {
@@ -1058,6 +1138,10 @@ int tcc_pin_conf_set(void __iomem *base, u32 offset, int param,
 
 	case TCC_PINCONF_PARAM_FUNC:
 		tcc_gpio_set_function(base, offset, config);
+		break;
+
+	case TCC_PINCONF_PARAM_ECLK_SEL:
+		(void)tcc_gpio_set_eclk_sel(base, offset, config, pctl);
 		break;
 	}
 	return 0;
@@ -1171,10 +1255,58 @@ static int tcc_pinctrl_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-
 	bank = pctl->pin_banks;
+
 	for_each_child_of_node(gpio_np, np) {
 
+		ret = of_property_read_u32_index(np, "source-num", 0,
+			&bank->source_num);
+
+		if (ret > 0) {
+			dev_err(&(pdev->dev),
+		"[ERROR][PINCTRL] failed to get source section\n"
+			);
+			return -EINVAL;
+		}
+		if (bank->source_num != 0xffU) {
+			bank->source_offset_base = devm_kzalloc(&pdev->dev, sizeof(u32), GFP_KERNEL);
+			bank->source_base = devm_kzalloc(&pdev->dev, sizeof(u32), GFP_KERNEL);
+			bank->source_range = devm_kzalloc(&pdev->dev, sizeof(u32), GFP_KERNEL);
+			for (i = 0U; i < bank->source_num; i++) {
+				ret = of_property_read_u32_index(np,
+					"source-num", ((i * 3) + 1),
+					&bank->source_offset_base[i]);
+				if (ret > 0) {
+
+					dev_err(&(pdev->dev),
+				"[ERROR][PINCTRL] failed to get source offset base\n"
+					);
+					return -EINVAL;
+				}
+
+				ret = of_property_read_u32_index(np,
+					"source-num", ((i * 3) + 2),
+					&bank->source_base[i]);
+
+				if (ret > 0) {
+					dev_err(&(pdev->dev),
+				"[ERROR][PINCTRL] failed to get source base\n"
+					);
+					return -EINVAL;
+				}
+
+				ret = of_property_read_u32_index(np,
+					"source-num", ((i * 3) + 3),
+					&bank->source_range[i]);
+
+				if (ret > 0) {
+					dev_err(&(pdev->dev),
+				"[ERROR][PINCTRL] failed to get source range\n"
+					);
+					return -EINVAL;
+				}
+			}
+		}
 		ret = of_property_read_u32_index(np, "pin-info", 0,
 				&bank->reg_base);
 		if (ret < 0) {

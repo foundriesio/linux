@@ -113,6 +113,7 @@ struct tcc_pin_bank {
 
 	u32 reg_base;
 	u32 source_section;
+	u32 source_num;
 	u32 *source_offset_base;
 	u32 *source_base;
 	u32 *source_range;
