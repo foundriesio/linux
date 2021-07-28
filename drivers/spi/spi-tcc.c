@@ -1423,8 +1423,6 @@ static int32_t tcc_spi_transfer_one(struct spi_master *master,
 		status = tcc_spi_clear_fifo(tccspi);
 		if (status != 0)
 			goto exit;
-		tcc_spi_clear_packet_cnt(tccspi);
-		tcc_spi_set_packet_size(tccspi, len);
 
 		/* Set TXBASE and RXBASE registers */
 		tcc_spi_set_dma_addr(tccspi,
@@ -1433,6 +1431,9 @@ static int32_t tcc_spi_transfer_one(struct spi_master *master,
 
 		/* Copy client txbuf to spi txbuf */
 		tcc_spi_txbuf_copy_client_to_spi(tccspi, xfer, len);
+		tcc_spi_clear_packet_cnt(tccspi);
+		tcc_spi_set_packet_size(tccspi, len);
+
 
 		/* Setup GDMA, if use */
 		if (gdma_enable != 0) {
