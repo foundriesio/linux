@@ -22,12 +22,12 @@
 
 / {
 	mipi_wrap: mipi_wrap {
+		#address-cells = <1>;
+		#size-cells = <1>;
 		compatible = "simple-bus";
 		ranges;
 
 		mipi_csi2_0: mipi_csi2_0@1bc00800 {
-			#address-cells = <1>;
-			#size-cells = <1>;
 			compatible = "telechips,tcc805x-mipi-csi2";
 			status = "disabled";
 
@@ -45,8 +45,6 @@
 		};
 
 		mipi_csi2_1: mipi_csi2_1@1bc00c00 {
-			#address-cells = <1>;
-			#size-cells = <1>;
 			compatible = "telechips,tcc805x-mipi-csi2";
 			status = "disabled";
 
