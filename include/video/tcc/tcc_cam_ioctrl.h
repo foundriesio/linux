@@ -63,7 +63,10 @@
 		_IOWR('V', BASE_VIDIOC_PRIVATE+18, videosource_format_t)
 #define VIDIOC_S_HANDOVER			\
 		_IOWR('V', BASE_VIDIOC_PRIVATE+19, int)
-
+#define VIDIOC_G_LASTFRAME_ADDRS		\
+		_IOWR('V', BASE_VIDIOC_PRIVATE+20, int)
+#define VIDIOC_CREATE_LASTFRAME			\
+		_IOWR('V', BASE_VIDIOC_PRIVATE+21, int)
 #define DIRECT_DISPLAY_IF_INITIALIZE	\
 		_IOWR('V', BASE_VIDIOC_PRIVATE+50, int)
 #define DIRECT_DISPLAY_IF_START		\
@@ -90,4 +93,3 @@ enum v4l2_cap_dev_type {
 #define V4L2_CAP_PATH_WORKING		1
 
 #endif//__TCC_CAMERA_IOCTL_H__
-

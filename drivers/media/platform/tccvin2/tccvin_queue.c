@@ -202,11 +202,12 @@ static void tccvin_stop_streaming(struct vb2_queue *vq)
 	struct tccvin_streaming *stream = tccvin_queue_to_stream(queue);
 	unsigned long flags;
 
+	tccvin_video_streamoff(stream);
+
 	spin_lock_irqsave(&queue->irqlock, flags);
 	tccvin_queue_return_buffers(queue, TCCVIN_BUF_STATE_ERROR);
 	spin_unlock_irqrestore(&queue->irqlock, flags);
 
-	tccvin_video_streamoff(stream);
 }
 
 static const struct vb2_ops tccvin_queue_qops = {

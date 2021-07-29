@@ -348,6 +348,13 @@
 			no-map;
 		};
 
+		pmap_vin_lastframe: pmap_vin_lastframe {
+			compatible = "shared-dma-pool";
+			reg = <CAMERA_LASTFRAME_BASE PMAP_SIZE_CAMERA_LASTFRAME>;
+			alignment = <0x1000>;
+			no-map;
+		};
+
 		/*-----------------------------------------------------------
 		 * Default Reserved Memory
 		 *-----------------------------------------------------------
@@ -1512,4 +1519,3 @@
 &sd1_bus4 {
 		telechips,no-pull;
 };
-

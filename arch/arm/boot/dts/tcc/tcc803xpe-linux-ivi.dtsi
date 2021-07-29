@@ -347,6 +347,13 @@
 			no-map;
 		};
 
+		pmap_vin_lastframe: pmap_vin_lastframe {
+			compatible = "shared-dma-pool";
+			reg = <CAMERA_LASTFRAME_BASE PMAP_SIZE_CAMERA_LASTFRAME>;
+			alignment = <0x1000>;
+			no-map;
+		};
+
 		/*-----------------------------------------------------------
 		 * Default Reserved Memory
 		 *-----------------------------------------------------------
@@ -669,8 +676,8 @@
 	};
 
 	dwc3_platform {
-		status = "okay"; 
-	}; 
+		status = "okay";
+	};
 
 	/* USB 2.0 OTG */
 	ehci_phy@11DA0010 {
@@ -1029,7 +1036,7 @@
 		pinctrl-0 = <&m1dai1_bclk &m1dai1_lrck &m1dai1_dai0 &m1dai1_dai1 &m1dai1_dai2 &m1dai1_dai3>;
 		pinctrl-1 = <&m1dai1_bclk_idle &m1dai1_lrck_idle &m1dai1_dai0_idle &m1dai1_dai1_idle &m1dai1_dai2_idle &m1dai1_dai3_idle>;
 		status = "okay";
-	};	
+	};
 
 	i2s@16701000 {
 		compatible = "telechips,sdr";
@@ -1068,7 +1075,7 @@
 	adma@16800000 {
 		status = "disabled";
 	};
-	
+
 	adma@16200000 {
 		status = "okay";
 	};
@@ -1076,12 +1083,12 @@
 	adma@16A00000 {
 		status = "disabled";
 	};
-	
+
 	i2s@16101000 {
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m1dai3_mclk &m1dai3_bclk &m1dai3_lrck &m1dai3_dao0 &m1dai3_dai0>;
 		pinctrl-1 = <&m1dai3_mclk_idle &m1dai3_bclk_idle &m1dai3_lrck_idle &m1dai3_dao0_idle &m1dai3_dai0_idle>;
-		status = "okay";		
+		status = "okay";
 
 	};
 
@@ -1089,11 +1096,11 @@
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&m0dai0_bclk &m0dai0_lrck &m0dai0_dao0 &m0dai0_dai0>;
 		pinctrl-1 = <&m0dai0_bclk_idle &m0dai0_lrck_idle &m0dai0_dao0_idle &m0dai0_dai0_idle>;
-		status = "okay";		
+		status = "okay";
 
 	};
 
-	
+
 	spdif@16102000 {
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&spdif4_tx>;
@@ -1165,7 +1172,7 @@
 			dai = <&spdif0>;
 			playback-only;
 		};
-		
+
 		telechips,dai-link@2 {
 			stream-name="SPDIF_1_RX";
 			pcm = <&adma3>;
@@ -1329,7 +1336,7 @@
 		 compatible = "telechips,hwdemux";
 		 status = "okay";
 	};
-	
+
 	tcc_hwdmx_tsif@0 {
 		compatible = "telechips,tcc89xx-hwdmx-tsif";
 		tsif-id = <0>;
@@ -1455,4 +1462,3 @@
 &sd1_bus4 {
 		telechips,no-pull;
 };
-

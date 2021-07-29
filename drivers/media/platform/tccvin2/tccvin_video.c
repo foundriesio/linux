@@ -630,6 +630,27 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 	}
 	of_node_put(pmap_node);
 
+	/* lastframe */
+	pmap_node = of_parse_phandle(main_node, "memory-region", 3);
+	if (pmap_node != NULL) {
+		ret = of_address_to_resource(pmap_node, 0,
+			&vdev->cif.pmap_lframe);
+		if (ret == 0) {
+			logi(dev_ptr,
+				"%20s: 0x%08llx ~ 0x%08llx (0x%08llx)\n",
+				"last frame",
+				vdev->cif.pmap_lframe.start,
+				vdev->cif.pmap_lframe.start +
+				resource_size(&vdev->cif.pmap_lframe),
+				resource_size(&vdev->cif.pmap_lframe));
+		}
+	} else {
+		loge(dev_ptr,
+			"\"pmap_lframe\" node is not found.\n");
+		return -ENODEV;
+	}
+	of_node_put(pmap_node);
+
 	return 0;
 }
 
@@ -2558,6 +2579,69 @@ void tccvin_check_path_status(struct tccvin_streaming *stream, int *status)
 				idxCheck, prev_addr, curr_addr);
 		}
 	}
+}
+
+int32_t tccvin_get_lastframe_addrs(struct tccvin_streaming *stream,
+	int32_t *addrs)
+{
+	struct device			*dev_ptr	= NULL;
+	int				ret		= 0;
+
+	dev_ptr = tccvin_streaming_to_devptr(stream);
+
+#if defined(CONFIG_ARM64)
+	logi(dev_ptr, "lastframe: 0x%08llx\n",
+#else
+	logi(dev_ptr, "lastframe: 0x%08x\n",
+#endif//defined(CONFIG_ARM64)
+		stream->cif.pmap_lframe.start);
+
+	*addrs = stream->cif.pmap_lframe.start;
+	if (*addrs == 0) {
+		loge(dev_ptr, "addrs of lastframe is wrong\n");
+		return -1;
+	}
+
+	return ret;
+}
+
+int tccvin_create_lastframe(struct tccvin_streaming *stream,
+	int *addrs)
+{
+	struct device			*dev_ptr	= NULL;
+	void __iomem			*wdma		= NULL;
+	int				ret		= 0;
+
+	wdma	= VIOC_WDMA_GetAddress(stream->cif.vioc_path.wdma);
+	dev_ptr = tccvin_streaming_to_devptr(stream);
+
+#if defined(CONFIG_ARM64)
+	logi(dev_ptr, "lastframe: 0x%08llx\n",
+#else
+	logi(dev_ptr, "lastframe: 0x%08x\n",
+#endif//defined(CONFIG_ARM64)
+		stream->cif.pmap_lframe.start);
+
+	if (stream->cif.pmap_lframe.start == 0) {
+		loge(dev_ptr, "addrs of lastframe is wrong\n");
+		return -1;
+	}
+
+	/* switch to write to lastframe buffer */
+	VIOC_WDMA_SetImageBase(wdma, stream->cif.pmap_lframe.start, 0, 0);
+	VIOC_WDMA_SetImageUpdate(wdma);
+
+	/* wait until writing is done */
+	msleep(30);
+
+	/* switch to write to preview buffer */
+	VIOC_WDMA_SetImageBase(wdma, stream->cif.pmap_prev.start, 0, 0);
+	VIOC_WDMA_SetImageUpdate(wdma);
+
+	/* return address of lastframe */
+	*addrs = stream->cif.pmap_lframe.start;
+
+	return ret;
 }
 
 int32_t tccvin_s_handover(struct tccvin_streaming *stream,

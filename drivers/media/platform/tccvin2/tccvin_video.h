@@ -116,6 +116,7 @@ struct tccvin_cif {
 	struct resource			pmap_pgl;
 	struct resource			pmap_viqe;
 	struct resource			pmap_prev;
+	struct resource			pmap_lframe;
 
 	/* framebuffer */
 	struct buf_addr			preview_buf_addr[VB2_MAX_FRAME];
@@ -437,6 +438,10 @@ extern int tccvin_video_streamon(struct tccvin_streaming *stream);
 extern int tccvin_video_streamoff(struct tccvin_streaming *stream);
 extern void tccvin_check_path_status(struct tccvin_streaming *stream,
 	int *status);
+int tccvin_create_lastframe(struct tccvin_streaming *stream,
+	int *addrs);
+int32_t tccvin_get_lastframe_addrs(struct tccvin_streaming *stream,
+	int32_t *addrs);
 extern int32_t tccvin_s_handover(struct tccvin_streaming *stream,
 	int32_t *is_handover_needed);
 #endif

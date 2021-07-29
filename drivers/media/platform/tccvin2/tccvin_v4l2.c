@@ -1239,6 +1239,14 @@ static long tccvin_ioctl_default(struct file *file, void *fh, bool valid_prio,
 		tccvin_check_path_status(stream, (int *)arg);
 		break;
 
+	case VIDIOC_G_LASTFRAME_ADDRS:
+		ret = tccvin_get_lastframe_addrs(stream, (int *)arg);
+		break;
+
+	case VIDIOC_CREATE_LASTFRAME:
+		ret = tccvin_create_lastframe(stream, (int *)arg);
+		break;
+
 	case VIDIOC_S_HANDOVER:
 		ret = tccvin_s_handover(stream, (int *)arg);
 		break;
