@@ -493,8 +493,6 @@ _GLOBAL(ret_from_kernel_thread)
 1:	nop;			\
 	patch_site 1b, patch__call_flush_branch_caches
 
-#define BCCTR_FLUSH	.long 0x4c400420
-
 .macro nops number
 	.rept \number
 	nop
@@ -525,7 +523,7 @@ flush_branch_caches:
 	li	r9,0x7fff
 	mtctr	r9
 
-	BCCTR_FLUSH
+	PPC_BCCTR_FLUSH
 
 2:	nop
 	patch_site 2b patch__flush_count_cache_return
@@ -534,7 +532,7 @@ flush_branch_caches:
 
 	.rept 278
 	.balign 32
-	BCCTR_FLUSH
+	PPC_BCCTR_FLUSH
 	nops	7
 	.endr
 
