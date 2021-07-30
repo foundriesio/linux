@@ -95,40 +95,6 @@
 	};
 };
 
-&mipi_wrap {
-	/*
-	 * If MIPI0 ,1 are used in main & sub core,
-	 * properties below must be same
-	 */
-
-	/*
-	 * 0: select output of MIPI0
-	 * 1: select output of MIPI1
-	 */
-	mipi-chmux-0 = <0>;
-	mipi-chmux-1 = <0>;
-	mipi-chmux-2 = <0>;
-	mipi-chmux-3 = <0>;
-
-	/*
-	 * 0: select output of MIPI1
-	 * 1: select output of MIPI0
-	 */
-	mipi-chmux-4 = <0>;
-	mipi-chmux-5 = <0>;
-	mipi-chmux-6 = <0>;
-	mipi-chmux-7 = <0>;
-
-	/*
-	 * 1: bypass isp
-	 * 0: use isp
-	 */
-	isp0-bypass = <1>;
-	isp1-bypass = <1>;
-	isp2-bypass = <1>;
-	isp3-bypass = <1>;
-};
-
 &mipi_csi2_0 {
 	status = "okay";
 	ports {
