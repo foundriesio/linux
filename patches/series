@@ -185,6 +185,7 @@ rtmutex__Prevent_lockdep_false_positive_with_PI_futexes.patch
 preempt__Adjust_PREEMPT_LOCK_OFFSET_for_RT.patch
 locking_rtmutex__Implement_equal_priority_lock_stealing.patch
 locking_rtmutex__Add_adaptive_spinwait_mechanism.patch
+locking_rtmutex__Use_adaptive_spinwait_for_all_rtmutex_based_locks.patch
 
 ###########################################################################
 # Locking: RT bits. Need review
