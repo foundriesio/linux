@@ -2161,7 +2161,7 @@ void xfrm_state_delete_tunnel(struct xfrm_state *x)
 }
 EXPORT_SYMBOL(xfrm_state_delete_tunnel);
 
-int xfrm_state_mtu(struct xfrm_state *x, int mtu)
+static int __xfrm_state_mtu(struct xfrm_state *x, int mtu)
 {
 	const struct xfrm_type *type = READ_ONCE(x->type);
 
@@ -2170,6 +2170,16 @@ int xfrm_state_mtu(struct xfrm_state *x, int mtu)
 		return type->get_mtu(x, mtu);
 
 	return mtu - x->props.header_len;
+}
+
+int xfrm_state_mtu(struct xfrm_state *x, int mtu)
+{
+       mtu = __xfrm_state_mtu(x, mtu);
+
+       if (x->props.family == AF_INET6 && mtu < IPV6_MIN_MTU)
+               return IPV6_MIN_MTU;
+
+       return mtu;
 }
 
 int __xfrm_init_state(struct xfrm_state *x, bool init_replay, bool offload)
