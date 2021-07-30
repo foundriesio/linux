@@ -14,15 +14,14 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
+
 ---
- kernel/debug/kdb/kdb_io.c | 18 ++++++------------
+ kernel/debug/kdb/kdb_io.c |   18 ++++++------------
  1 file changed, 6 insertions(+), 12 deletions(-)
 ---
-diff --git a/kernel/debug/kdb/kdb_io.c b/kernel/debug/kdb/kdb_io.c
-index 6735ac36b718..539a2f0dc89d 100644
 --- a/kernel/debug/kdb/kdb_io.c
 +++ b/kernel/debug/kdb/kdb_io.c
-@@ -559,23 +559,17 @@ static void kdb_msg_write(const char *msg, int msg_len)
+@@ -559,23 +559,17 @@ static void kdb_msg_write(const char *ms
  		cp++;
  	}
  

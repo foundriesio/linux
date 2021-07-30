@@ -9,14 +9,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- kernel/locking/spinlock_rt.c | 1 +
+ kernel/locking/spinlock_rt.c |    1 +
  1 file changed, 1 insertion(+)
 ---
-diff --git a/kernel/locking/spinlock_rt.c b/kernel/locking/spinlock_rt.c
-index 19a5e3baa1f0..85b19e41e26d 100644
 --- a/kernel/locking/spinlock_rt.c
 +++ b/kernel/locking/spinlock_rt.c
-@@ -32,6 +32,7 @@ static __always_inline void rtlock_lock(struct rt_mutex *rtm)
+@@ -32,6 +32,7 @@ static __always_inline void rtlock_lock(
  
  static __always_inline void __rt_spin_lock(spinlock_t *lock)
  {

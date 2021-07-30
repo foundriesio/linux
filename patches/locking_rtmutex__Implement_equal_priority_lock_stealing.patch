@@ -24,18 +24,13 @@ RT kernel.
 
 Signed-off-by: Gregory Haskins <ghaskins@novell.com>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- kernel/locking/rtmutex.c | 52 ++++++++++++++++++++++++++++++++-----------------
+ kernel/locking/rtmutex.c |   52 +++++++++++++++++++++++++++++++----------------
  1 file changed, 35 insertions(+), 17 deletions(-)
 ---
-diff --git a/kernel/locking/rtmutex.c b/kernel/locking/rtmutex.c
-index 993ab1047fda..59c36438428a 100644
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -286,6 +286,26 @@ static __always_inline int rt_mutex_waiter_equal(struct rt_mutex_waiter *left,
+@@ -321,6 +321,26 @@ static __always_inline int rt_mutex_wait
  	return 1;
  }
  
@@ -62,7 +57,7 @@ index 993ab1047fda..59c36438428a 100644
  #define __node_2_waiter(node) \
  	rb_entry((node), struct rt_mutex_waiter, tree_entry)
  
-@@ -858,19 +878,21 @@ try_to_take_rt_mutex(struct rt_mutex *lock, struct task_struct *task,
+@@ -906,19 +926,21 @@ try_to_take_rt_mutex(struct rt_mutex_bas
  	 * trylock attempt.
  	 */
  	if (waiter) {
@@ -94,7 +89,7 @@ index 993ab1047fda..59c36438428a 100644
  	} else {
  		/*
  		 * If the lock has waiters already we check whether @task is
-@@ -881,13 +903,9 @@ try_to_take_rt_mutex(struct rt_mutex *lock, struct task_struct *task,
+@@ -929,13 +951,9 @@ try_to_take_rt_mutex(struct rt_mutex_bas
  		 * not need to be dequeued.
  		 */
  		if (rt_mutex_has_waiters(lock)) {

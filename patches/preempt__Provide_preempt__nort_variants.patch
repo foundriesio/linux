@@ -12,11 +12,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/preempt.h | 18 +++++++++++++++++-
+ include/linux/preempt.h |   18 +++++++++++++++++-
  1 file changed, 17 insertions(+), 1 deletion(-)
 ---
-diff --git a/include/linux/preempt.h b/include/linux/preempt.h
-index 4d244e295e85..5ceac863e729 100644
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
 @@ -188,7 +188,11 @@ do { \

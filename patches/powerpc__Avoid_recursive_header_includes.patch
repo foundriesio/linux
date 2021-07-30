@@ -16,12 +16,10 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- arch/powerpc/include/asm/cmpxchg.h               | 2 +-
- arch/powerpc/include/asm/simple_spinlock_types.h | 2 +-
+ arch/powerpc/include/asm/cmpxchg.h               |    2 +-
+ arch/powerpc/include/asm/simple_spinlock_types.h |    2 +-
  2 files changed, 2 insertions(+), 2 deletions(-)
 ---
-diff --git a/arch/powerpc/include/asm/cmpxchg.h b/arch/powerpc/include/asm/cmpxchg.h
-index cf091c4c22e5..7371f7e23c35 100644
 --- a/arch/powerpc/include/asm/cmpxchg.h
 +++ b/arch/powerpc/include/asm/cmpxchg.h
 @@ -5,7 +5,7 @@
@@ -33,8 +31,6 @@ index cf091c4c22e5..7371f7e23c35 100644
  
  #ifdef __BIG_ENDIAN
  #define BITOFF_CAL(size, off)	((sizeof(u32) - size - off) * BITS_PER_BYTE)
-diff --git a/arch/powerpc/include/asm/simple_spinlock_types.h b/arch/powerpc/include/asm/simple_spinlock_types.h
-index 0f3cdd8faa95..d45561e9e6ba 100644
 --- a/arch/powerpc/include/asm/simple_spinlock_types.h
 +++ b/arch/powerpc/include/asm/simple_spinlock_types.h
 @@ -2,7 +2,7 @@

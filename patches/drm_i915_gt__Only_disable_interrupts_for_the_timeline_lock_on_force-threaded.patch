@@ -19,14 +19,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- drivers/gpu/drm/i915/gt/intel_engine_pm.c | 8 +++++---
+ drivers/gpu/drm/i915/gt/intel_engine_pm.c |    8 +++++---
  1 file changed, 5 insertions(+), 3 deletions(-)
 ---
-diff --git a/drivers/gpu/drm/i915/gt/intel_engine_pm.c b/drivers/gpu/drm/i915/gt/intel_engine_pm.c
-index 7c9af86fdb1e..4008080ebd9a 100644
 --- a/drivers/gpu/drm/i915/gt/intel_engine_pm.c
 +++ b/drivers/gpu/drm/i915/gt/intel_engine_pm.c
-@@ -84,9 +84,10 @@ static int __engine_unpark(struct intel_wakeref *wf)
+@@ -84,9 +84,10 @@ static int __engine_unpark(struct intel_
  
  static unsigned long __timeline_mark_lock(struct intel_context *ce)
  {
@@ -39,7 +37,7 @@ index 7c9af86fdb1e..4008080ebd9a 100644
  	mutex_acquire(&ce->timeline->mutex.dep_map, 2, 0, _THIS_IP_);
  
  	return flags;
-@@ -96,7 +97,8 @@ static void __timeline_mark_unlock(struct intel_context *ce,
+@@ -96,7 +97,8 @@ static void __timeline_mark_unlock(struc
  				   unsigned long flags)
  {
  	mutex_release(&ce->timeline->mutex.dep_map, _THIS_IP_);

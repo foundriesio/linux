@@ -11,14 +11,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- arch/powerpc/kernel/traps.c | 7 ++++++-
+ arch/powerpc/kernel/traps.c |    7 ++++++-
  1 file changed, 6 insertions(+), 1 deletion(-)
 ---
-diff --git a/arch/powerpc/kernel/traps.c b/arch/powerpc/kernel/traps.c
-index 2522800217d1..f1a2d6e72251 100644
 --- a/arch/powerpc/kernel/traps.c
 +++ b/arch/powerpc/kernel/traps.c
-@@ -259,12 +259,17 @@ static char *get_mmu_str(void)
+@@ -260,12 +260,17 @@ static char *get_mmu_str(void)
  
  static int __die(const char *str, struct pt_regs *regs, long err)
  {

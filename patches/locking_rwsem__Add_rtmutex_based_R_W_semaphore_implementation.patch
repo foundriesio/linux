@@ -41,16 +41,13 @@ there are unexpected workloads on RT systems triggering it, the problem
 has to be revisited.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/rwsem.h  |  58 +++++++++++++++++++++++++++-
- kernel/locking/rwsem.c | 108 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+V2: Fix indent fail (Peter Z)
+---
+ include/linux/rwsem.h  |   58 ++++++++++++++++++++++++++
+ kernel/locking/rwsem.c |  108 +++++++++++++++++++++++++++++++++++++++++++++++++
  2 files changed, 166 insertions(+)
 ---
-diff --git a/include/linux/rwsem.h b/include/linux/rwsem.h
-index a66038d88878..67a3face07b1 100644
 --- a/include/linux/rwsem.h
 +++ b/include/linux/rwsem.h
 @@ -16,6 +16,9 @@
@@ -63,7 +60,7 @@ index a66038d88878..67a3face07b1 100644
  #ifdef CONFIG_RWSEM_SPIN_ON_OWNER
  #include <linux/osq_lock.h>
  #endif
-@@ -119,6 +122,61 @@ static inline int rwsem_is_contended(struct rw_semaphore *sem)
+@@ -119,6 +122,61 @@ static inline int rwsem_is_contended(str
  	return !list_empty(&sem->wait_list);
  }
  
@@ -82,7 +79,7 @@ index a66038d88878..67a3face07b1 100644
 +	{							\
 +		.rwbase = __RWBASE_INITIALIZER(name),		\
 +		RW_DEP_MAP_INIT(name)				\
-+}
++	}
 +
 +#define DECLARE_RWSEM(lockname) \
 +	struct rw_semaphore lockname = __RWSEM_INITIALIZER(lockname)
@@ -125,8 +122,6 @@ index a66038d88878..67a3face07b1 100644
  /*
   * lock for reading
   */
-diff --git a/kernel/locking/rwsem.c b/kernel/locking/rwsem.c
-index 809b0016d344..5870cddddb62 100644
 --- a/kernel/locking/rwsem.c
 +++ b/kernel/locking/rwsem.c
 @@ -28,6 +28,7 @@
@@ -137,13 +132,13 @@ index 809b0016d344..5870cddddb62 100644
  #include "lock_events.h"
  
  /*
-@@ -1344,6 +1345,113 @@ static inline void __downgrade_write(struct rw_semaphore *sem)
+@@ -1344,6 +1345,113 @@ static inline void __downgrade_write(str
  		rwsem_downgrade_wake(sem);
  }
  
 +#else /* !CONFIG_PREEMPT_RT */
 +
-+#include "rtmutex_common.h"
++#include "rtmutex.c"
 +
 +#define rwbase_set_and_save_current_state(state)	\
 +	set_current_state(state)
@@ -152,16 +147,16 @@ index 809b0016d344..5870cddddb62 100644
 +	__set_current_state(TASK_RUNNING)
 +
 +#define rwbase_rtmutex_lock_state(rtm, state)		\
-+	rwsem_rt_mutex_lock_state(rtm, state)
++	__rt_mutex_lock(rtm, state)
 +
 +#define rwbase_rtmutex_slowlock_locked(rtm, state)	\
-+	rwsem_rt_mutex_slowlock_locked(rtm, state)
++	__rt_mutex_slowlock_locked(rtm, state)
 +
 +#define rwbase_rtmutex_unlock(rtm)			\
-+	rwsem_rt_mutex_unlock(rtm)
++	__rt_mutex_unlock(rtm)
 +
 +#define rwbase_rtmutex_trylock(rtm)			\
-+	rwsem_rt_mutex_trylock(rtm)
++	__rt_mutex_trylock(rtm)
 +
 +#define rwbase_signal_pending_state(state, current)	\
 +	signal_pending_state(state, current)

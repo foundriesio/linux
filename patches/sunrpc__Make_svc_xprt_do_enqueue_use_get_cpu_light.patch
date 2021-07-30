@@ -33,14 +33,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- net/sunrpc/svc_xprt.c | 4 ++--
+ net/sunrpc/svc_xprt.c |    4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 ---
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index d66a8e44a1ae..0274818d6855 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -441,7 +441,7 @@ void svc_xprt_do_enqueue(struct svc_xprt *xprt)
+@@ -441,7 +441,7 @@ void svc_xprt_do_enqueue(struct svc_xprt
  	if (test_and_set_bit(XPT_BUSY, &xprt->xpt_flags))
  		return;
  
@@ -49,7 +47,7 @@ index d66a8e44a1ae..0274818d6855 100644
  	pool = svc_pool_for_cpu(xprt->xpt_server, cpu);
  
  	atomic_long_inc(&pool->sp_stats.packets);
-@@ -465,7 +465,7 @@ void svc_xprt_do_enqueue(struct svc_xprt *xprt)
+@@ -465,7 +465,7 @@ void svc_xprt_do_enqueue(struct svc_xprt
  	rqstp = NULL;
  out_unlock:
  	rcu_read_unlock();

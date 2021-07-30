@@ -11,14 +11,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- mm/vmalloc.c | 13 ++++++++-----
+ mm/vmalloc.c |   13 ++++++++-----
  1 file changed, 8 insertions(+), 5 deletions(-)
 ---
-diff --git a/mm/vmalloc.c b/mm/vmalloc.c
-index d0a7d89be091..62f73c4ada41 100644
 --- a/mm/vmalloc.c
 +++ b/mm/vmalloc.c
-@@ -1829,7 +1829,7 @@ static void *new_vmap_block(unsigned int order, gfp_t gfp_mask)
+@@ -1847,7 +1847,7 @@ static void *new_vmap_block(unsigned int
  	struct vmap_block *vb;
  	struct vmap_area *va;
  	unsigned long vb_idx;
@@ -27,7 +25,7 @@ index d0a7d89be091..62f73c4ada41 100644
  	void *vaddr;
  
  	node = numa_node_id();
-@@ -1866,11 +1866,12 @@ static void *new_vmap_block(unsigned int order, gfp_t gfp_mask)
+@@ -1884,11 +1884,12 @@ static void *new_vmap_block(unsigned int
  		return ERR_PTR(err);
  	}
  
@@ -42,7 +40,7 @@ index d0a7d89be091..62f73c4ada41 100644
  
  	return vaddr;
  }
-@@ -1935,6 +1936,7 @@ static void *vb_alloc(unsigned long size, gfp_t gfp_mask)
+@@ -1953,6 +1954,7 @@ static void *vb_alloc(unsigned long size
  	struct vmap_block *vb;
  	void *vaddr = NULL;
  	unsigned int order;
@@ -50,7 +48,7 @@ index d0a7d89be091..62f73c4ada41 100644
  
  	BUG_ON(offset_in_page(size));
  	BUG_ON(size > PAGE_SIZE*VMAP_MAX_ALLOC);
-@@ -1949,7 +1951,8 @@ static void *vb_alloc(unsigned long size, gfp_t gfp_mask)
+@@ -1967,7 +1969,8 @@ static void *vb_alloc(unsigned long size
  	order = get_order(size);
  
  	rcu_read_lock();
@@ -60,7 +58,7 @@ index d0a7d89be091..62f73c4ada41 100644
  	list_for_each_entry_rcu(vb, &vbq->free, free_list) {
  		unsigned long pages_off;
  
-@@ -1972,7 +1975,7 @@ static void *vb_alloc(unsigned long size, gfp_t gfp_mask)
+@@ -1990,7 +1993,7 @@ static void *vb_alloc(unsigned long size
  		break;
  	}
  

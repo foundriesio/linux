@@ -20,14 +20,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- net/core/dev.c | 4 ++++
+ net/core/dev.c |    4 ++++
  1 file changed, 4 insertions(+)
 ---
-diff --git a/net/core/dev.c b/net/core/dev.c
-index 2acf31204552..31b5fe7498cb 100644
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -3869,7 +3869,11 @@ static inline int __dev_xmit_skb(struct sk_buff *skb, struct Qdisc *q,
+@@ -3908,7 +3908,11 @@ static inline int __dev_xmit_skb(struct
  	 * This permits qdisc->running owner to get the lock more
  	 * often and dequeue packets faster.
  	 */

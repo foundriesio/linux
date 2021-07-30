@@ -15,15 +15,10 @@ spin/rwlock implementations.
 Originally-by: Gregory Haskins <ghaskins@novell.com>
 Signed-off-by: Steven Rostedt <rostedt@goodmis.org>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- kernel/locking/rtmutex.c | 50 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ kernel/locking/rtmutex.c |   50 ++++++++++++++++++++++++++++++++++++++++++++++-
  1 file changed, 49 insertions(+), 1 deletion(-)
 ---
-diff --git a/kernel/locking/rtmutex.c b/kernel/locking/rtmutex.c
-index 59c36438428a..82f0a8209a41 100644
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
 @@ -8,6 +8,11 @@
@@ -38,7 +33,7 @@ index 59c36438428a..82f0a8209a41 100644
   *
   *  See Documentation/locking/rt-mutex-design.rst for details.
   */
-@@ -1433,6 +1438,43 @@ static __always_inline int __rt_mutex_lock(struct rt_mutex *lock,
+@@ -1529,6 +1534,43 @@ static __always_inline int __rt_mutex_lo
   * Functions required for spin/rw_lock substitution on RT kernels
   */
  
@@ -47,7 +42,7 @@ index 59c36438428a..82f0a8209a41 100644
 + * Note that owner is a speculative pointer and dereferencing relies
 + * on rcu_read_lock() and the check against the lock owner.
 + */
-+static bool rtlock_adaptive_spinwait(struct rt_mutex *lock,
++static bool rtlock_adaptive_spinwait(struct rt_mutex_base *lock,
 +				     struct task_struct *owner)
 +{
 +	bool res = true;
@@ -72,7 +67,7 @@ index 59c36438428a..82f0a8209a41 100644
 +	return res;
 +}
 +#else
-+static bool rtlock_adaptive_spinwait(struct rt_mutex *lock,
++static bool rtlock_adaptive_spinwait(struct rt_mutex_base *lock,
 +				     struct task_struct *owner)
 +{
 +	return false;
@@ -82,15 +77,15 @@ index 59c36438428a..82f0a8209a41 100644
  /**
   * rtlock_slowlock_locked - Slow path lock acquisition for RT locks
   * @lock:	The underlying rt mutex
-@@ -1440,6 +1482,7 @@ static __always_inline int __rt_mutex_lock(struct rt_mutex *lock,
- static void __sched rtlock_slowlock_locked(struct rt_mutex *lock)
+@@ -1536,6 +1578,7 @@ static __always_inline int __rt_mutex_lo
+ static void __sched rtlock_slowlock_locked(struct rt_mutex_base *lock)
  {
  	struct rt_mutex_waiter waiter;
 +	struct task_struct *owner;
  
  	lockdep_assert_held(&lock->wait_lock);
  
-@@ -1458,9 +1501,14 @@ static void __sched rtlock_slowlock_locked(struct rt_mutex *lock)
+@@ -1554,9 +1597,14 @@ static void __sched rtlock_slowlock_lock
  		if (try_to_take_rt_mutex(lock, current, &waiter))
  			break;
  

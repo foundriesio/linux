@@ -14,14 +14,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- lib/Kconfig.debug | 2 +-
+ lib/Kconfig.debug |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 ---
-diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
-index 678c13967580..f110ade61c72 100644
 --- a/lib/Kconfig.debug
 +++ b/lib/Kconfig.debug
-@@ -1441,7 +1441,7 @@ config DEBUG_ATOMIC_SLEEP
+@@ -1452,7 +1452,7 @@ config DEBUG_ATOMIC_SLEEP
  
  config DEBUG_LOCKING_API_SELFTESTS
  	bool "Locking API boot-time self-tests"

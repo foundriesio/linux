@@ -13,14 +13,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- block/blk-mq.c | 6 +++---
+ block/blk-mq.c |    6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 ---
-diff --git a/block/blk-mq.c b/block/blk-mq.c
-index c86c01bfecdb..109540ffbf10 100644
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
-@@ -1571,14 +1571,14 @@ static void __blk_mq_delay_run_hw_queue(struct blk_mq_hw_ctx *hctx, bool async,
+@@ -1572,14 +1572,14 @@ static void __blk_mq_delay_run_hw_queue(
  		return;
  
  	if (!async && !(hctx->flags & BLK_MQ_F_BLOCKING)) {

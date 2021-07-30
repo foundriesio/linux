@@ -14,14 +14,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- arch/powerpc/include/asm/stackprotector.h | 4 ++++
+ arch/powerpc/include/asm/stackprotector.h |    4 ++++
  1 file changed, 4 insertions(+)
 ---
-diff --git a/arch/powerpc/include/asm/stackprotector.h b/arch/powerpc/include/asm/stackprotector.h
-index 1c8460e23583..b1653c160bab 100644
 --- a/arch/powerpc/include/asm/stackprotector.h
 +++ b/arch/powerpc/include/asm/stackprotector.h
-@@ -24,7 +24,11 @@ static __always_inline void boot_init_stack_canary(void)
+@@ -24,7 +24,11 @@ static __always_inline void boot_init_st
  	unsigned long canary;
  
  	/* Try to get a semi random initial value. */

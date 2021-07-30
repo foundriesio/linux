@@ -60,12 +60,10 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/hrtimer.h |  8 ++++++++
- kernel/time/hrtimer.c   | 31 ++++++++++++++++++++++++++++++-
+ include/linux/hrtimer.h |    8 ++++++++
+ kernel/time/hrtimer.c   |   31 ++++++++++++++++++++++++++++++-
  2 files changed, 38 insertions(+), 1 deletion(-)
 ---
-diff --git a/include/linux/hrtimer.h b/include/linux/hrtimer.h
-index bb5e7b0a4274..7d4768c1ae3d 100644
 --- a/include/linux/hrtimer.h
 +++ b/include/linux/hrtimer.h
 @@ -42,6 +42,7 @@ enum hrtimer_mode {
@@ -95,11 +93,9 @@ index bb5e7b0a4274..7d4768c1ae3d 100644
 +#endif
 +
  #endif
-diff --git a/kernel/time/hrtimer.c b/kernel/time/hrtimer.c
-index 4a66725b1d4a..b0ad29f80711 100644
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1422,6 +1422,7 @@ static void __hrtimer_init(struct hrtimer *timer, clockid_t clock_id,
+@@ -1422,6 +1422,7 @@ static void __hrtimer_init(struct hrtime
  	base += hrtimer_clockid_to_base(clock_id);
  	timer->is_soft = softtimer;
  	timer->is_hard = !!(mode & HRTIMER_MODE_HARD);
@@ -107,7 +103,7 @@ index 4a66725b1d4a..b0ad29f80711 100644
  	timer->base = &cpu_base->clock_base[base];
  	timerqueue_init(&timer->node);
  }
-@@ -1788,7 +1789,7 @@ static enum hrtimer_restart hrtimer_wakeup(struct hrtimer *timer)
+@@ -1788,7 +1789,7 @@ static enum hrtimer_restart hrtimer_wake
  
  	t->task = NULL;
  	if (task)
@@ -116,7 +112,7 @@ index 4a66725b1d4a..b0ad29f80711 100644
  
  	return HRTIMER_NORESTART;
  }
-@@ -2006,6 +2007,34 @@ SYSCALL_DEFINE2(nanosleep_time32, struct old_timespec32 __user *, rqtp,
+@@ -2006,6 +2007,34 @@ SYSCALL_DEFINE2(nanosleep_time32, struct
  }
  #endif
  

@@ -22,12 +22,10 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/net/net_seq_lock.h |  9 ---------
- include/net/sch_generic.h  | 10 +++++++++-
- 2 files changed, 9 insertions(+), 10 deletions(-)
+ include/net/net_seq_lock.h |    9 ---------
+ include/net/sch_generic.h  |   13 ++++++++++++-
+ 2 files changed, 12 insertions(+), 10 deletions(-)
 ---
-diff --git a/include/net/net_seq_lock.h b/include/net/net_seq_lock.h
-index 95a497a72e51..67710bace741 100644
 --- a/include/net/net_seq_lock.h
 +++ b/include/net/net_seq_lock.h
 @@ -6,15 +6,6 @@
@@ -46,25 +44,25 @@ index 95a497a72e51..67710bace741 100644
  #else
  # define net_seqlock_t			seqcount_t
  # define net_seq_begin(__r)		read_seqcount_begin(__r)
-diff --git a/include/net/sch_generic.h b/include/net/sch_generic.h
-index 28344504adaf..d0b917d7c9a1 100644
 --- a/include/net/sch_generic.h
 +++ b/include/net/sch_generic.h
-@@ -197,8 +197,16 @@ static inline bool qdisc_run_begin(struct Qdisc *qdisc)
- 		return false;
+@@ -216,7 +216,18 @@ static inline bool qdisc_run_begin(struc
  	}
+ 
  #ifdef CONFIG_PREEMPT_RT
--	if (try_write_seqlock(&qdisc->running))
+-	return try_write_seqlock(&qdisc->running);
 +	if (spin_trylock(&qdisc->running.lock)) {
 +		seqcount_t *s = &qdisc->running.seqcount.seqcount;
++
 +		/*
-+		 * Variant of write_seqcount_t_begin() telling lockdep that a
-+		 * trylock was attempted.
++		 * Variant of write_seqcount_t_begin() telling lockdep that
++		 * a trylock was attempted.
 +		 */
 +		do_raw_write_seqcount_begin(s);
 +		seqcount_acquire(&s->dep_map, 0, 1, _RET_IP_);
- 		return true;
++		return true;
 +	}
- 	return false;
++	return false;
  #else
  	/* Variant of write_seqcount_begin() telling lockdep a trylock
+ 	 * was attempted.

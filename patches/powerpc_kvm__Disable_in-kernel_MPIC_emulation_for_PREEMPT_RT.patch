@@ -27,11 +27,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- arch/powerpc/kvm/Kconfig | 1 +
+ arch/powerpc/kvm/Kconfig |    1 +
  1 file changed, 1 insertion(+)
 ---
-diff --git a/arch/powerpc/kvm/Kconfig b/arch/powerpc/kvm/Kconfig
-index e45644657d49..b826174ce983 100644
 --- a/arch/powerpc/kvm/Kconfig
 +++ b/arch/powerpc/kvm/Kconfig
 @@ -179,6 +179,7 @@ config KVM_E500MC

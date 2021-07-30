@@ -15,14 +15,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- lib/locking-selftest.c | 23 +++++++++++++++++++++++
+ lib/locking-selftest.c |   23 +++++++++++++++++++++++
  1 file changed, 23 insertions(+)
 ---
-diff --git a/lib/locking-selftest.c b/lib/locking-selftest.c
-index 2d85abac1744..5ff07ae1cc67 100644
 --- a/lib/locking-selftest.c
 +++ b/lib/locking-selftest.c
-@@ -2841,6 +2841,7 @@ void locking_selftest(void)
+@@ -2886,6 +2886,7 @@ void locking_selftest(void)
  
  	printk("  --------------------------------------------------------------------------\n");
  
@@ -30,7 +28,7 @@ index 2d85abac1744..5ff07ae1cc67 100644
  	/*
  	 * irq-context testcases:
  	 */
-@@ -2855,6 +2856,28 @@ void locking_selftest(void)
+@@ -2900,6 +2901,28 @@ void locking_selftest(void)
  	DO_TESTCASE_6x2x2RW("irq read-recursion #2", irq_read_recursion2);
  	DO_TESTCASE_6x2x2RW("irq read-recursion #3", irq_read_recursion3);
  

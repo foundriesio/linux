@@ -10,34 +10,32 @@ and switch the rtmutex code over to the rtmutex specific wrapper.
 No functional change.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- kernel/futex.c                  |  6 +++---
- kernel/locking/rtmutex.c        | 12 ++++++------
- kernel/locking/rtmutex_api.c    | 19 ++++++++-----------
- kernel/locking/rtmutex_common.h |  4 ++--
- 4 files changed, 19 insertions(+), 22 deletions(-)
+V2: Adopt to rename
 ---
-diff --git a/kernel/futex.c b/kernel/futex.c
-index 408cad5e8968..e60bcddec287 100644
+ kernel/futex.c                  |    8 ++++----
+ kernel/locking/rtmutex.c        |   12 ++++++------
+ kernel/locking/rtmutex_api.c    |   19 ++++++++-----------
+ kernel/locking/rtmutex_common.h |    4 ++--
+ 4 files changed, 20 insertions(+), 23 deletions(-)
+---
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -1493,11 +1493,11 @@ static void mark_wake_futex(struct wake_q_head *wake_q, struct futex_q *q)
+@@ -1493,11 +1493,11 @@ static void mark_wake_futex(struct wake_
   */
  static int wake_futex_pi(u32 __user *uaddr, u32 uval, struct futex_pi_state *pi_state)
  {
-+	DEFINE_RT_MUTEX_WAKE_Q_HEAD(wqh);
- 	u32 curval, newval;
+-	u32 curval, newval;
  	struct rt_mutex_waiter *top_waiter;
  	struct task_struct *new_owner;
  	bool postunlock = false;
 -	DEFINE_WAKE_Q(wake_q);
++	DEFINE_RT_WAKE_Q(wqh);
++	u32 curval, newval;
  	int ret = 0;
  
  	top_waiter = rt_mutex_top_waiter(&pi_state->pi_mutex);
-@@ -1549,14 +1549,14 @@ static int wake_futex_pi(u32 __user *uaddr, u32 uval, struct futex_pi_state *pi_
+@@ -1549,14 +1549,14 @@ static int wake_futex_pi(u32 __user *uad
  		 * not fail.
  		 */
  		pi_state_update_owner(pi_state, new_owner);
@@ -54,20 +52,18 @@ index 408cad5e8968..e60bcddec287 100644
  
  	return ret;
  }
-diff --git a/kernel/locking/rtmutex.c b/kernel/locking/rtmutex.c
-index db3103e2733b..11b2e7d29641 100644
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1017,7 +1017,7 @@ static int __sched task_blocks_on_rt_mutex(struct rt_mutex *lock,
+@@ -1017,7 +1017,7 @@ static int __sched task_blocks_on_rt_mut
   *
   * Called with lock->wait_lock held and interrupts disabled.
   */
 -static void __sched mark_wakeup_next_waiter(struct wake_q_head *wake_q,
-+static void __sched mark_wakeup_next_waiter(struct rt_mutex_wake_q_head *wqh,
- 					    struct rt_mutex *lock)
++static void __sched mark_wakeup_next_waiter(struct rt_wake_q_head *wqh,
+ 					    struct rt_mutex_base *lock)
  {
  	struct rt_mutex_waiter *waiter;
-@@ -1054,10 +1054,10 @@ static void __sched mark_wakeup_next_waiter(struct wake_q_head *wake_q,
+@@ -1054,10 +1054,10 @@ static void __sched mark_wakeup_next_wai
  	 * deboost but before waking our donor task, hence the preempt_disable()
  	 * before unlock.
  	 *
@@ -80,16 +76,16 @@ index db3103e2733b..11b2e7d29641 100644
  	raw_spin_unlock(&current->pi_lock);
  }
  
-@@ -1323,7 +1323,7 @@ static __always_inline int __rt_mutex_trylock(struct rt_mutex *lock)
+@@ -1328,7 +1328,7 @@ static __always_inline int __rt_mutex_tr
   */
- static void __sched rt_mutex_slowunlock(struct rt_mutex *lock)
+ static void __sched rt_mutex_slowunlock(struct rt_mutex_base *lock)
  {
 -	DEFINE_WAKE_Q(wake_q);
-+	DEFINE_RT_MUTEX_WAKE_Q_HEAD(wqh);
++	DEFINE_RT_WAKE_Q(wqh);
  	unsigned long flags;
  
  	/* irqsave required to support early boot calls */
-@@ -1376,10 +1376,10 @@ static void __sched rt_mutex_slowunlock(struct rt_mutex *lock)
+@@ -1381,10 +1381,10 @@ static void __sched rt_mutex_slowunlock(
  	 *
  	 * Queue the next waiter for wakeup once we release the wait_lock.
  	 */
@@ -101,25 +97,23 @@ index db3103e2733b..11b2e7d29641 100644
 +	rt_mutex_wake_up_q(&wqh);
  }
  
- static __always_inline void __rt_mutex_unlock(struct rt_mutex *lock)
-diff --git a/kernel/locking/rtmutex_api.c b/kernel/locking/rtmutex_api.c
-index 976ad96477eb..174af1375068 100644
+ static __always_inline void __rt_mutex_unlock(struct rt_mutex_base *lock)
 --- a/kernel/locking/rtmutex_api.c
 +++ b/kernel/locking/rtmutex_api.c
-@@ -131,10 +131,10 @@ int __sched __rt_mutex_futex_trylock(struct rt_mutex *lock)
+@@ -137,10 +137,10 @@ int __sched __rt_mutex_futex_trylock(str
   * do not use the fast-path, can be simple and will not need to retry.
   *
   * @lock:	The rt_mutex to be unlocked
 - * @wake_q:	The wake queue head from which to get the next lock waiter
 + * @wqh:	The wake queue head from which to get the next lock waiter
   */
- bool __sched __rt_mutex_futex_unlock(struct rt_mutex *lock,
+ bool __sched __rt_mutex_futex_unlock(struct rt_mutex_base *lock,
 -				     struct wake_q_head *wake_q)
-+				     struct rt_mutex_wake_q_head *wqh)
++				     struct rt_wake_q_head *wqh)
  {
  	lockdep_assert_held(&lock->wait_lock);
  
-@@ -151,23 +151,23 @@ bool __sched __rt_mutex_futex_unlock(struct rt_mutex *lock,
+@@ -157,23 +157,23 @@ bool __sched __rt_mutex_futex_unlock(str
  	 * avoid inversion prior to the wakeup.  preempt_disable()
  	 * therein pairs with rt_mutex_postunlock().
  	 */
@@ -129,10 +123,10 @@ index 976ad96477eb..174af1375068 100644
  	return true; /* call postunlock() */
  }
  
- void __sched rt_mutex_futex_unlock(struct rt_mutex *lock)
+ void __sched rt_mutex_futex_unlock(struct rt_mutex_base *lock)
  {
 -	DEFINE_WAKE_Q(wake_q);
-+	DEFINE_RT_MUTEX_WAKE_Q_HEAD(wqh);
++	DEFINE_RT_WAKE_Q(wqh);
  	unsigned long flags;
  	bool postunlock;
  
@@ -147,12 +141,12 @@ index 976ad96477eb..174af1375068 100644
  }
  
  /**
-@@ -436,12 +436,9 @@ void __sched rt_mutex_adjust_pi(struct task_struct *task)
+@@ -441,12 +441,9 @@ void __sched rt_mutex_adjust_pi(struct t
  /*
   * Performs the wakeup of the top-waiter and re-enables preemption.
   */
 -void __sched rt_mutex_postunlock(struct wake_q_head *wake_q)
-+void __sched rt_mutex_postunlock(struct rt_mutex_wake_q_head *wqh)
++void __sched rt_mutex_postunlock(struct rt_wake_q_head *wqh)
  {
 -	wake_up_q(wake_q);
 -
@@ -162,19 +156,17 @@ index 976ad96477eb..174af1375068 100644
  }
  
  #ifdef CONFIG_DEBUG_RT_MUTEXES
-diff --git a/kernel/locking/rtmutex_common.h b/kernel/locking/rtmutex_common.h
-index b1ea7fe88546..f6a453c4ad69 100644
 --- a/kernel/locking/rtmutex_common.h
 +++ b/kernel/locking/rtmutex_common.h
-@@ -76,9 +76,9 @@ extern int __rt_mutex_futex_trylock(struct rt_mutex *l);
+@@ -76,9 +76,9 @@ extern int __rt_mutex_futex_trylock(stru
  
- extern void rt_mutex_futex_unlock(struct rt_mutex *lock);
- extern bool __rt_mutex_futex_unlock(struct rt_mutex *lock,
+ extern void rt_mutex_futex_unlock(struct rt_mutex_base *lock);
+ extern bool __rt_mutex_futex_unlock(struct rt_mutex_base *lock,
 -				struct wake_q_head *wake_q);
-+				struct rt_mutex_wake_q_head *wqh);
++				struct rt_wake_q_head *wqh);
  
 -extern void rt_mutex_postunlock(struct wake_q_head *wake_q);
-+extern void rt_mutex_postunlock(struct rt_mutex_wake_q_head *wqh);
++extern void rt_mutex_postunlock(struct rt_wake_q_head *wqh);
  
- /* Special interfaces for RT lock substitutions */
- int rwsem_rt_mutex_slowlock_locked(struct rt_mutex *lock, unsigned int state);
+ /*
+  * Must be guarded because this header is included from rcu/tree_plugin.h

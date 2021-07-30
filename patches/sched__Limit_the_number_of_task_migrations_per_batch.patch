@@ -11,14 +11,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- kernel/sched/core.c | 4 ++++
+ kernel/sched/core.c |    4 ++++
  1 file changed, 4 insertions(+)
 ---
-diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 25276f76935e..a1fdf9466d7b 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -74,7 +74,11 @@ __read_mostly int sysctl_resched_latency_warn_once = 1;
+@@ -74,7 +74,11 @@ const_debug unsigned int sysctl_sched_fe
   * Number of tasks to iterate in a single balance run.
   * Limited because this is done with IRQs disabled.
   */

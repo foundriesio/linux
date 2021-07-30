@@ -8,19 +8,14 @@ Prepare for reusing the inner functions of rtmutex for RT lock
 substitutions.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- kernel/locking/Makefile         |   2 +-
- kernel/locking/rtmutex.c        | 479 +----------------------------------------
- kernel/locking/rtmutex_api.c    | 453 +++++++++++++++++++++++++++++++++++++++-
- kernel/locking/rtmutex_common.h |  78 +++----
+ kernel/locking/Makefile         |    2 
+ kernel/locking/rtmutex.c        |  479 +---------------------------------------
+ kernel/locking/rtmutex_api.c    |  453 +++++++++++++++++++++++++++++++++++++
+ kernel/locking/rtmutex_common.h |   78 +++---
  4 files changed, 514 insertions(+), 498 deletions(-)
  create mode 100644 kernel/locking/rtmutex_api.c
 ---
-diff --git a/kernel/locking/Makefile b/kernel/locking/Makefile
-index 3572808223e4..269f55e1e431 100644
 --- a/kernel/locking/Makefile
 +++ b/kernel/locking/Makefile
 @@ -24,7 +24,7 @@ obj-$(CONFIG_SMP) += spinlock.o
@@ -32,8 +27,6 @@ index 3572808223e4..269f55e1e431 100644
  obj-$(CONFIG_DEBUG_SPINLOCK) += spinlock.o
  obj-$(CONFIG_DEBUG_SPINLOCK) += spinlock_debug.o
  obj-$(CONFIG_QUEUED_RWLOCKS) += qrwlock.o
-diff --git a/kernel/locking/rtmutex.c b/kernel/locking/rtmutex.c
-index f422140e6b51..1fc2b1839039 100644
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
 @@ -11,14 +11,12 @@
@@ -54,7 +47,7 @@ index f422140e6b51..1fc2b1839039 100644
  
  #include "rtmutex_common.h"
  
-@@ -371,11 +369,6 @@ rt_mutex_cond_detect_deadlock(struct rt_mutex_waiter *waiter,
+@@ -371,11 +369,6 @@ rt_mutex_cond_detect_deadlock(struct rt_
  	return chwalk == RT_MUTEX_FULL_CHAINWALK;
  }
  
@@ -66,7 +59,7 @@ index f422140e6b51..1fc2b1839039 100644
  static __always_inline struct rt_mutex *task_blocked_on_lock(struct task_struct *p)
  {
  	return p->pi_blocked_on ? p->pi_blocked_on->lock : NULL;
-@@ -1112,42 +1105,6 @@ static void __sched remove_waiter(struct rt_mutex *lock,
+@@ -1112,42 +1105,6 @@ static void __sched remove_waiter(struct
  	raw_spin_lock_irq(&lock->wait_lock);
  }
  
@@ -109,7 +102,7 @@ index f422140e6b51..1fc2b1839039 100644
  /**
   * __rt_mutex_slowlock() - Perform the wait-wake-try-to-take loop
   * @lock:		 the rt_mutex to take
-@@ -1274,6 +1231,15 @@ static int __sched rt_mutex_slowlock(struct rt_mutex *lock, int state,
+@@ -1274,6 +1231,15 @@ static int __sched rt_mutex_slowlock(str
  	return ret;
  }
  
@@ -125,7 +118,7 @@ index f422140e6b51..1fc2b1839039 100644
  static int __sched __rt_mutex_slowtrylock(struct rt_mutex *lock)
  {
  	int ret = try_to_take_rt_mutex(lock, current, NULL);
-@@ -1316,21 +1282,16 @@ static int __sched rt_mutex_slowtrylock(struct rt_mutex *lock)
+@@ -1316,21 +1282,16 @@ static int __sched rt_mutex_slowtrylock(
  	return ret;
  }
  
@@ -151,7 +144,7 @@ index f422140e6b51..1fc2b1839039 100644
   */
  static void __sched rt_mutex_slowunlock(struct rt_mutex *lock)
  {
-@@ -1393,416 +1354,10 @@ static void __sched rt_mutex_slowunlock(struct rt_mutex *lock)
+@@ -1393,416 +1354,10 @@ static void __sched rt_mutex_slowunlock(
  	rt_mutex_postunlock(&wake_q);
  }
  
@@ -569,9 +562,6 @@ index f422140e6b51..1fc2b1839039 100644
 -	DEBUG_LOCKS_WARN_ON(task->pi_blocked_on);
 -}
 -#endif
-diff --git a/kernel/locking/rtmutex_api.c b/kernel/locking/rtmutex_api.c
-new file mode 100644
-index 000000000000..c19de2a1246e
 --- /dev/null
 +++ b/kernel/locking/rtmutex_api.c
 @@ -0,0 +1,453 @@
@@ -1028,8 +1018,6 @@ index 000000000000..c19de2a1246e
 +	DEBUG_LOCKS_WARN_ON(task->pi_blocked_on);
 +}
 +#endif
-diff --git a/kernel/locking/rtmutex_common.h b/kernel/locking/rtmutex_common.h
-index a90c22abdbca..0f314a21d6ca 100644
 --- a/kernel/locking/rtmutex_common.h
 +++ b/kernel/locking/rtmutex_common.h
 @@ -38,6 +38,33 @@ struct rt_mutex_waiter {
@@ -1066,7 +1054,7 @@ index a90c22abdbca..0f314a21d6ca 100644
   * Must be guarded because this header is included from rcu/tree_plugin.h
   * unconditionally.
   */
-@@ -78,13 +105,6 @@ static inline struct task_struct *rt_mutex_owner(struct rt_mutex *lock)
+@@ -78,13 +105,6 @@ static inline struct task_struct *rt_mut
  
  	return (struct task_struct *) (owner & ~RT_MUTEX_HAS_WAITERS);
  }
@@ -1080,7 +1068,7 @@ index a90c22abdbca..0f314a21d6ca 100644
  
  /*
   * Constants for rt mutex functions which have a selectable deadlock
-@@ -108,34 +128,6 @@ static inline void __rt_mutex_basic_init(struct rt_mutex *lock)
+@@ -108,34 +128,6 @@ static inline void __rt_mutex_basic_init
  	lock->waiters = RB_ROOT_CACHED;
  }
  
@@ -1115,7 +1103,7 @@ index a90c22abdbca..0f314a21d6ca 100644
  /* Debug functions */
  static inline void debug_rt_mutex_unlock(struct rt_mutex *lock)
  {
-@@ -161,4 +153,20 @@ static inline void debug_rt_mutex_free_waiter(struct rt_mutex_waiter *waiter)
+@@ -161,4 +153,20 @@ static inline void debug_rt_mutex_free_w
  		memset(waiter, 0x22, sizeof(*waiter));
  }
  

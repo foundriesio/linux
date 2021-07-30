@@ -11,28 +11,30 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- init/main.c        |  7 +++++++
- kernel/rcu/tasks.h |  9 ++-------
- 2 files changed, 9 insertions(+), 7 deletions(-)
+ include/linux/rcupdate.h |    7 +++++++
+ init/main.c              |    1 +
+ kernel/rcu/tasks.h       |    9 ++-------
+ 3 files changed, 10 insertions(+), 7 deletions(-)
 ---
-diff --git a/init/main.c b/init/main.c
-index e9c42a183e33..7dfb7731c160 100644
---- a/init/main.c
-+++ b/init/main.c
-@@ -1522,6 +1522,12 @@ void __init console_on_rootfs(void)
- 	fput(file);
- }
+--- a/include/linux/rcupdate.h
++++ b/include/linux/rcupdate.h
+@@ -101,6 +101,13 @@ void rcu_init_tasks_generic(void);
+ static inline void rcu_init_tasks_generic(void) { }
+ #endif
  
-+#ifdef CONFIG_PROVE_RCU
++#if defined(CONFIG_PROVE_RCU) && defined(CONFIG_TASKS_RCU_GENERIC)
 +void rcu_tasks_initiate_self_tests(void);
 +#else
 +static inline void rcu_tasks_initiate_self_tests(void) {}
 +#endif
 +
- static noinline void __init kernel_init_freeable(void)
- {
- 	/*
-@@ -1547,6 +1553,7 @@ static noinline void __init kernel_init_freeable(void)
++
+ #ifdef CONFIG_RCU_STALL_COMMON
+ void rcu_sysrq_start(void);
+ void rcu_sysrq_end(void);
+--- a/init/main.c
++++ b/init/main.c
+@@ -1580,6 +1580,7 @@ static noinline void __init kernel_init_
  
  	rcu_init_tasks_generic();
  	do_pre_smp_initcalls();
@@ -40,11 +42,9 @@ index e9c42a183e33..7dfb7731c160 100644
  	lockup_detector_init();
  
  	smp_init();
-diff --git a/kernel/rcu/tasks.h b/kernel/rcu/tasks.h
-index 350ebf5051f9..51ca46e4ec55 100644
 --- a/kernel/rcu/tasks.h
 +++ b/kernel/rcu/tasks.h
-@@ -1295,7 +1295,7 @@ static void test_rcu_tasks_callback(struct rcu_head *rhp)
+@@ -1338,7 +1338,7 @@ static void test_rcu_tasks_callback(stru
  	rttd->notrun = true;
  }
  
@@ -53,7 +53,7 @@ index 350ebf5051f9..51ca46e4ec55 100644
  {
  	pr_info("Running RCU-tasks wait API self tests\n");
  #ifdef CONFIG_TASKS_RCU
-@@ -1332,9 +1332,7 @@ static int rcu_tasks_verify_self_tests(void)
+@@ -1375,9 +1375,7 @@ static int rcu_tasks_verify_self_tests(v
  	return ret;
  }
  late_initcall(rcu_tasks_verify_self_tests);
@@ -64,7 +64,7 @@ index 350ebf5051f9..51ca46e4ec55 100644
  
  void __init rcu_init_tasks_generic(void)
  {
-@@ -1349,9 +1347,6 @@ void __init rcu_init_tasks_generic(void)
+@@ -1392,9 +1390,6 @@ void __init rcu_init_tasks_generic(void)
  #ifdef CONFIG_TASKS_TRACE_RCU
  	rcu_spawn_tasks_trace_kthread();
  #endif

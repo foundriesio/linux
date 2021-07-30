@@ -17,14 +17,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- mm/page_alloc.c | 4 ++--
+ mm/page_alloc.c |    4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 ---
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 93e0d2d10135..d4e4b1051fe2 100644
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -3105,9 +3105,9 @@ static void drain_local_pages_wq(struct work_struct *work)
+@@ -3164,9 +3164,9 @@ static void drain_local_pages_wq(struct
  	 * cpu which is alright but we also have to make sure to not move to
  	 * a different one.
  	 */

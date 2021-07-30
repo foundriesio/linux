@@ -18,14 +18,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- crypto/cryptd.c | 19 +++++++++----------
+ crypto/cryptd.c |   19 +++++++++----------
  1 file changed, 9 insertions(+), 10 deletions(-)
 ---
-diff --git a/crypto/cryptd.c b/crypto/cryptd.c
-index a1bea0f4baa8..5f8ca8c1f59c 100644
 --- a/crypto/cryptd.c
 +++ b/crypto/cryptd.c
-@@ -36,6 +36,7 @@ static struct workqueue_struct *cryptd_wq;
+@@ -36,6 +36,7 @@ static struct workqueue_struct *cryptd_w
  struct cryptd_cpu_queue {
  	struct crypto_queue queue;
  	struct work_struct work;
@@ -33,7 +31,7 @@ index a1bea0f4baa8..5f8ca8c1f59c 100644
  };
  
  struct cryptd_queue {
-@@ -105,6 +106,7 @@ static int cryptd_init_queue(struct cryptd_queue *queue,
+@@ -105,6 +106,7 @@ static int cryptd_init_queue(struct cryp
  		cpu_queue = per_cpu_ptr(queue->cpu_queue, cpu);
  		crypto_init_queue(&cpu_queue->queue, max_cpu_qlen);
  		INIT_WORK(&cpu_queue->work, cryptd_queue_worker);
@@ -41,7 +39,7 @@ index a1bea0f4baa8..5f8ca8c1f59c 100644
  	}
  	pr_info("cryptd: max_cpu_qlen set to %d\n", max_cpu_qlen);
  	return 0;
-@@ -129,8 +131,10 @@ static int cryptd_enqueue_request(struct cryptd_queue *queue,
+@@ -129,8 +131,10 @@ static int cryptd_enqueue_request(struct
  	struct cryptd_cpu_queue *cpu_queue;
  	refcount_t *refcnt;
  
@@ -54,7 +52,7 @@ index a1bea0f4baa8..5f8ca8c1f59c 100644
  	err = crypto_enqueue_request(&cpu_queue->queue, request);
  
  	refcnt = crypto_tfm_ctx(request->tfm);
-@@ -146,7 +150,7 @@ static int cryptd_enqueue_request(struct cryptd_queue *queue,
+@@ -146,7 +150,7 @@ static int cryptd_enqueue_request(struct
  	refcount_inc(refcnt);
  
  out_put_cpu:
@@ -63,7 +61,7 @@ index a1bea0f4baa8..5f8ca8c1f59c 100644
  
  	return err;
  }
-@@ -162,16 +166,11 @@ static void cryptd_queue_worker(struct work_struct *work)
+@@ -162,16 +166,11 @@ static void cryptd_queue_worker(struct w
  	cpu_queue = container_of(work, struct cryptd_cpu_queue, work);
  	/*
  	 * Only handle one request at a time to avoid hogging crypto workqueue.

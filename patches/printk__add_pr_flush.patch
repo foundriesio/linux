@@ -13,35 +13,41 @@ pr_flush() is only used in the most common error paths:
 panic(), print_oops_end_marker(), report_bug(), kmsg_dump().
 
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
-
 ---
- include/linux/printk.h |  2 +-
- kernel/panic.c         | 28 ++++++++++--------
- kernel/printk/printk.c | 79 +++++++++++++++++++++++++++++++++++++++++++++++++++-
- lib/bug.c              |  1 +-
- 4 files changed, 99 insertions(+), 11 deletions(-)
+ include/linux/printk.h |    7 ++++
+ kernel/panic.c         |   28 ++++++++++------
+ kernel/printk/printk.c |   81 +++++++++++++++++++++++++++++++++++++++++++++++++
+ lib/bug.c              |    1 
+ 4 files changed, 106 insertions(+), 11 deletions(-)
 ---
-diff --git a/include/linux/printk.h b/include/linux/printk.h
-index 0bad68442410..0cdd25b49fcc 100644
 --- a/include/linux/printk.h
 +++ b/include/linux/printk.h
-@@ -481,6 +481,8 @@ extern int kptr_restrict;
- 	no_printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__)
- #endif
+@@ -170,6 +170,8 @@ int vprintk(const char *fmt, va_list arg
+ asmlinkage __printf(1, 2) __cold
+ int printk(const char *fmt, ...);
  
 +bool pr_flush(int timeout_ms, bool reset_on_progress);
 +
  /*
-  * ratelimited messages with local ratelimit_state,
-  * no local ratelimit_state used in the !PRINTK case
-diff --git a/kernel/panic.c b/kernel/panic.c
-index 1f0df42f8d0c..0efdac3cf94e 100644
+  * Please don't use printk_ratelimit(), because it shares ratelimiting state
+  * with all other unrelated printk_ratelimit() callsites.  Instead use
+@@ -210,6 +212,11 @@ int printk(const char *s, ...)
+ 	return 0;
+ }
+ 
++static inline bool pr_flush(int timeout_ms, bool reset_on_progress)
++{
++	return true;
++}
++
+ static inline int printk_ratelimit(void)
+ {
+ 	return 0;
 --- a/kernel/panic.c
 +++ b/kernel/panic.c
-@@ -177,12 +177,28 @@ static void panic_print_sys_info(void)
+@@ -178,12 +178,28 @@ static void panic_print_sys_info(void)
  void panic(const char *fmt, ...)
  {
  	static char buf[1024];
@@ -70,7 +76,7 @@ index 1f0df42f8d0c..0efdac3cf94e 100644
  	/*
  	 * Disable local interrupts. This will prevent panic_smp_self_stop
  	 * from deadlocking the first cpu that invokes the panic, since
-@@ -213,24 +229,13 @@ void panic(const char *fmt, ...)
+@@ -214,24 +230,13 @@ void panic(const char *fmt, ...)
  	if (old_cpu != PANIC_CPU_INVALID && old_cpu != this_cpu)
  		panic_smp_self_stop();
  
@@ -95,7 +101,7 @@ index 1f0df42f8d0c..0efdac3cf94e 100644
  	/*
  	 * If kgdb is enabled, give it a chance to run before we stop all
  	 * the other CPUs or else we won't be able to debug processes left
-@@ -552,6 +557,7 @@ static void print_oops_end_marker(void)
+@@ -553,6 +558,7 @@ static void print_oops_end_marker(void)
  {
  	init_oops_id();
  	pr_warn("---[ end trace %016llx ]---\n", (unsigned long long)oops_id);
@@ -103,11 +109,9 @@ index 1f0df42f8d0c..0efdac3cf94e 100644
  }
  
  /*
-diff --git a/kernel/printk/printk.c b/kernel/printk/printk.c
-index b57b16bc5bbf..209d2392f0d8 100644
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -3276,6 +3276,12 @@ void kmsg_dump(enum kmsg_dump_reason reason)
+@@ -3297,6 +3297,12 @@ void kmsg_dump(enum kmsg_dump_reason rea
  			sync_mode = true;
  			pr_info("enabled sync mode\n");
  		}
@@ -120,11 +124,12 @@ index b57b16bc5bbf..209d2392f0d8 100644
  	}
  
  	rcu_read_lock();
-@@ -3578,3 +3584,76 @@ bool console_atomic_kgdb_cpu_delay(unsigned int cpu)
- 	return true;
+@@ -3618,3 +3624,78 @@ bool kgdb_roundup_delay(unsigned int cpu
  }
- EXPORT_SYMBOL(console_atomic_kgdb_cpu_delay);
+ EXPORT_SYMBOL(kgdb_roundup_delay);
+ #endif /* CONFIG_SMP */
 +
++#ifdef CONFIG_PRINTK
 +static void pr_msleep(bool may_sleep, int ms)
 +{
 +	if (may_sleep) {
@@ -197,11 +202,10 @@ index b57b16bc5bbf..209d2392f0d8 100644
 +	return (diff == 0);
 +}
 +EXPORT_SYMBOL(pr_flush);
-diff --git a/lib/bug.c b/lib/bug.c
-index 45a0584f6541..03a87df69ed2 100644
++#endif /* CONFIG_PRINTK */
 --- a/lib/bug.c
 +++ b/lib/bug.c
-@@ -206,6 +206,7 @@ enum bug_trap_type report_bug(unsigned long bugaddr, struct pt_regs *regs)
+@@ -206,6 +206,7 @@ enum bug_trap_type report_bug(unsigned l
  	else
  		pr_crit("Kernel BUG at %pB [verbose debug info unavailable]\n",
  			(void *)bugaddr);

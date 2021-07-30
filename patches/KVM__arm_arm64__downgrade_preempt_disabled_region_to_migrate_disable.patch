@@ -22,14 +22,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- arch/arm64/kvm/arm.c | 6 +++---
+ arch/arm64/kvm/arm.c |    6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 ---
-diff --git a/arch/arm64/kvm/arm.c b/arch/arm64/kvm/arm.c
-index e720148232a0..25ffbce21265 100644
 --- a/arch/arm64/kvm/arm.c
 +++ b/arch/arm64/kvm/arm.c
-@@ -746,7 +746,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu)
+@@ -768,7 +768,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
  		 * involves poking the GIC, which must be done in a
  		 * non-preemptible context.
  		 */
@@ -38,7 +36,7 @@ index e720148232a0..25ffbce21265 100644
  
  		kvm_pmu_flush_hwstate(vcpu);
  
-@@ -795,7 +795,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu)
+@@ -817,7 +817,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
  				kvm_timer_sync_user(vcpu);
  			kvm_vgic_sync_hwstate(vcpu);
  			local_irq_enable();
@@ -47,7 +45,7 @@ index e720148232a0..25ffbce21265 100644
  			continue;
  		}
  
-@@ -867,7 +867,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu)
+@@ -889,7 +889,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_v
  		/* Exit types that need handling before we can be preempted */
  		handle_exit_early(vcpu, ret);
  

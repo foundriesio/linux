@@ -29,29 +29,27 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/sched.h | 79 +++++++++++++++++++++++++++++++++++++++++++++++++---
- kernel/ptrace.c       | 36 ++++++++++++++++++------
- kernel/sched/core.c   |  4 +--
- 3 files changed, 105 insertions(+), 14 deletions(-)
+ include/linux/sched.h |   79 +++++++++++++++++++++++++++++++++++++++++++++++---
+ kernel/ptrace.c       |   38 +++++++++++++++++++-----
+ kernel/sched/core.c   |    4 +-
+ 3 files changed, 108 insertions(+), 13 deletions(-)
 ---
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index c54fd6f793e3..682669c124da 100644
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -115,12 +115,8 @@ struct task_group;
- 					 __TASK_TRACED | EXIT_DEAD | EXIT_ZOMBIE | \
- 					 TASK_PARKED)
+@@ -117,12 +117,8 @@ struct task_group;
  
--#define task_is_traced(task)		((task->state & __TASK_TRACED) != 0)
+ #define task_is_running(task)		(READ_ONCE((task)->__state) == TASK_RUNNING)
+ 
+-#define task_is_traced(task)		((READ_ONCE(task->__state) & __TASK_TRACED) != 0)
 -
- #define task_is_stopped(task)		((task->state & __TASK_STOPPED) != 0)
+ #define task_is_stopped(task)		((READ_ONCE(task->__state) & __TASK_STOPPED) != 0)
  
--#define task_is_stopped_or_traced(task)	((task->state & (__TASK_STOPPED | __TASK_TRACED)) != 0)
+-#define task_is_stopped_or_traced(task)	((READ_ONCE(task->__state) & (__TASK_STOPPED | __TASK_TRACED)) != 0)
 -
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  
  /*
-@@ -1966,6 +1962,81 @@ static inline int test_tsk_need_resched(struct task_struct *tsk)
+@@ -1986,6 +1982,81 @@ static inline int test_tsk_need_resched(
  	return unlikely(test_tsk_thread_flag(tsk,TIF_NEED_RESCHED));
  }
  
@@ -67,7 +65,7 @@ index c54fd6f793e3..682669c124da 100644
 +
 +	/* in case the task is sleeping on tasklist_lock */
 +	raw_spin_lock_irq(&task->pi_lock);
-+	if (task->state & __TASK_TRACED)
++	if (READ_ONCE(task->__state) & __TASK_TRACED)
 +		traced = true;
 +	else if (task->saved_state & __TASK_TRACED)
 +		traced = true;
@@ -82,7 +80,7 @@ index c54fd6f793e3..682669c124da 100644
 +
 +	raw_spin_lock_irqsave(&task->pi_lock, flags);
 +
-+	if (task->state & (__TASK_STOPPED | __TASK_TRACED))
++	if (READ_ONCE(task->__state) & (__TASK_STOPPED | __TASK_TRACED))
 +		traced_stopped = true;
 +	else if (task->saved_state & (__TASK_STOPPED | __TASK_TRACED))
 +		traced_stopped = true;
@@ -100,19 +98,19 @@ index c54fd6f793e3..682669c124da 100644
 +
 +static inline bool task_is_traced(struct task_struct *task)
 +{
-+	return task->state & __TASK_TRACED;
++	return READ_ONCE(task->__state) & __TASK_TRACED;
 +}
 +
 +static inline bool task_is_stopped_or_traced(struct task_struct *task)
 +{
-+	return task->state & (__TASK_STOPPED | __TASK_TRACED);
++	return READ_ONCE(task->__state) & (__TASK_STOPPED | __TASK_TRACED);
 +}
 +#endif
 +
 +static inline bool task_match_state_or_saved(struct task_struct *p,
 +					     long match_state)
 +{
-+	if (p->state == match_state)
++	if (READ_ONCE(p->__state) == match_state)
 +		return true;
 +
 +	return task_match_saved_state(p, match_state);
@@ -133,11 +131,9 @@ index c54fd6f793e3..682669c124da 100644
  /*
   * cond_resched() and cond_resched_lock(): latency reduction via
   * explicit rescheduling in places that are safe. The return
-diff --git a/kernel/ptrace.c b/kernel/ptrace.c
-index 2997ca600d18..3ed6598357ce 100644
 --- a/kernel/ptrace.c
 +++ b/kernel/ptrace.c
-@@ -197,7 +197,18 @@ static bool ptrace_freeze_traced(struct task_struct *task)
+@@ -197,7 +197,18 @@ static bool ptrace_freeze_traced(struct
  	spin_lock_irq(&task->sighand->siglock);
  	if (task_is_traced(task) && !looks_like_a_spurious_pid(task) &&
  	    !__fatal_signal_pending(task)) {
@@ -145,42 +141,44 @@ index 2997ca600d18..3ed6598357ce 100644
 +		unsigned long flags;
 +
 +		raw_spin_lock_irqsave(&task->pi_lock, flags);
-+		if (task->state & __TASK_TRACED)
-+			task->state = __TASK_TRACED;
++		if (READ_ONCE(task->__state) & __TASK_TRACED)
++			WRITE_ONCE(task->__state, __TASK_TRACED);
 +		else
 +			task->saved_state = __TASK_TRACED;
 +		raw_spin_unlock_irqrestore(&task->pi_lock, flags);
 +#else
- 		task->state = __TASK_TRACED;
+ 		WRITE_ONCE(task->__state, __TASK_TRACED);
 +#endif
  		ret = true;
  	}
  	spin_unlock_irq(&task->sighand->siglock);
-@@ -207,8 +218,8 @@ static bool ptrace_freeze_traced(struct task_struct *task)
+@@ -207,7 +218,11 @@ static bool ptrace_freeze_traced(struct
  
  static void ptrace_unfreeze_traced(struct task_struct *task)
  {
--	if (task->state != __TASK_TRACED)
--		return;
+-	if (READ_ONCE(task->__state) != __TASK_TRACED)
 +	unsigned long flags;
 +	bool frozen = true;
++
++	if (!IS_ENABLED(CONFIG_PREEMPT_RT) &&
++	    READ_ONCE(task->__state) != __TASK_TRACED)
+ 		return;
  
  	WARN_ON(!task->ptrace || task->parent != current);
- 
-@@ -217,12 +228,21 @@ static void ptrace_unfreeze_traced(struct task_struct *task)
+@@ -217,12 +232,21 @@ static void ptrace_unfreeze_traced(struc
  	 * Recheck state under the lock to close this race.
  	 */
  	spin_lock_irq(&task->sighand->siglock);
--	if (task->state == __TASK_TRACED) {
+-	if (READ_ONCE(task->__state) == __TASK_TRACED) {
 -		if (__fatal_signal_pending(task))
 -			wake_up_state(task, __TASK_TRACED);
 -		else
--			task->state = TASK_TRACED;
+-			WRITE_ONCE(task->__state, TASK_TRACED);
 -	}
-+
 +	raw_spin_lock_irqsave(&task->pi_lock, flags);
-+	if (task->state == __TASK_TRACED)
-+		task->state = TASK_TRACED;
++	if (READ_ONCE(task->__state) == __TASK_TRACED)
++		WRITE_ONCE(task->__state, TASK_TRACED);
++
 +#ifdef CONFIG_PREEMPT_RT
 +	else if (task->saved_state == __TASK_TRACED)
 +		task->saved_state = TASK_TRACED;
@@ -195,24 +193,22 @@ index 2997ca600d18..3ed6598357ce 100644
  	spin_unlock_irq(&task->sighand->siglock);
  }
  
-diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 60dce992f0b3..2d3388d77e61 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -2636,7 +2636,7 @@ unsigned long wait_task_inactive(struct task_struct *p, long match_state)
+@@ -2990,7 +2990,7 @@ unsigned long wait_task_inactive(struct
  		 * is actually now running somewhere else!
  		 */
  		while (task_running(rq, p)) {
--			if (match_state && unlikely(p->state != match_state))
+-			if (match_state && unlikely(READ_ONCE(p->__state) != match_state))
 +			if (match_state && !task_match_state_lock(p, match_state))
  				return 0;
  			cpu_relax();
  		}
-@@ -2651,7 +2651,7 @@ unsigned long wait_task_inactive(struct task_struct *p, long match_state)
+@@ -3005,7 +3005,7 @@ unsigned long wait_task_inactive(struct
  		running = task_running(rq, p);
  		queued = task_on_rq_queued(p);
  		ncsw = 0;
--		if (!match_state || p->state == match_state)
+-		if (!match_state || READ_ONCE(p->__state) == match_state)
 +		if (!match_state || task_match_state_or_saved(p, match_state))
  			ncsw = p->nvcsw | LONG_MIN; /* sets MSB */
  		task_rq_unlock(rq, p, &rf);

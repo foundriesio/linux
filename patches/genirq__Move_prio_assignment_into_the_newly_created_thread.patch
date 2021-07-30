@@ -34,14 +34,12 @@ Link: https://lkml.kernel.org/r/a23a826af7c108ea5651e73b8fbae5e653f16e86.camel@g
 
 
 ---
- kernel/irq/manage.c | 4 ++--
+ kernel/irq/manage.c |    4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 ---
-diff --git a/kernel/irq/manage.c b/kernel/irq/manage.c
-index 4c14356543d9..b01b4059865c 100644
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -1229,6 +1229,8 @@ static int irq_thread(void *data)
+@@ -1260,6 +1260,8 @@ static int irq_thread(void *data)
  	irqreturn_t (*handler_fn)(struct irq_desc *desc,
  			struct irqaction *action);
  
@@ -50,7 +48,7 @@ index 4c14356543d9..b01b4059865c 100644
  	if (force_irqthreads && test_bit(IRQTF_FORCED_THREAD,
  					&action->thread_flags))
  		handler_fn = irq_forced_thread_fn;
-@@ -1394,8 +1396,6 @@ setup_irq_thread(struct irqaction *new, unsigned int irq, bool secondary)
+@@ -1425,8 +1427,6 @@ setup_irq_thread(struct irqaction *new,
  	if (IS_ERR(t))
  		return PTR_ERR(t);
  

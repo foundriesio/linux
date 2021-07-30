@@ -63,14 +63,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- arch/arm/mm/fault.c | 6 ++++++
+ arch/arm/mm/fault.c |    6 ++++++
  1 file changed, 6 insertions(+)
 ---
-diff --git a/arch/arm/mm/fault.c b/arch/arm/mm/fault.c
-index efa402025031..59487ee9fd61 100644
 --- a/arch/arm/mm/fault.c
 +++ b/arch/arm/mm/fault.c
-@@ -400,6 +400,9 @@ do_translation_fault(unsigned long addr, unsigned int fsr,
+@@ -400,6 +400,9 @@ do_translation_fault(unsigned long addr,
  	if (addr < TASK_SIZE)
  		return do_page_fault(addr, fsr, regs);
  
@@ -80,7 +78,7 @@ index efa402025031..59487ee9fd61 100644
  	if (user_mode(regs))
  		goto bad_area;
  
-@@ -470,6 +473,9 @@ do_translation_fault(unsigned long addr, unsigned int fsr,
+@@ -470,6 +473,9 @@ do_translation_fault(unsigned long addr,
  static int
  do_sect_fault(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
  {

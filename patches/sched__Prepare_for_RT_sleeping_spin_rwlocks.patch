@@ -39,20 +39,15 @@ is supposed to work.
 For non-RT kernels there is no functional change.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/sched.h | 70 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
- kernel/sched/core.c   | 32 ++++++++++++++++++++++++-
- 2 files changed, 102 insertions(+)
+ include/linux/sched.h |   70 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ kernel/sched/core.c   |   33 +++++++++++++++++++++++
+ 2 files changed, 103 insertions(+)
 ---
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index 372dd72cf604..9d1242f48891 100644
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -153,6 +153,27 @@ struct task_group;
- 		current->state = (state_value);				\
+@@ -155,6 +155,27 @@ struct task_group;
+ 		WRITE_ONCE(current->__state, (state_value));		\
  		raw_spin_unlock_irqrestore(&current->pi_lock, flags);	\
  	} while (0)
 +
@@ -60,10 +55,10 @@ index 372dd72cf604..9d1242f48891 100644
 +#define current_save_and_set_rtlock_wait_state()			\
 +	do {								\
 +		raw_spin_lock(&current->pi_lock);			\
-+		current->saved_state = current->state;			\
++		current->saved_state = current->__state;		\
 +		current->saved_state_change = current->task_state_change;\
 +		current->task_state_change = _THIS_IP_;			\
-+		current->state = TASK_RTLOCK_WAIT;			\
++		WRITE_ONCE(current->__state, TASK_RTLOCK_WAIT);		\
 +		raw_spin_unlock(&current->pi_lock);			\
 +	} while (0);
 +
@@ -71,7 +66,7 @@ index 372dd72cf604..9d1242f48891 100644
 +	do {								\
 +		raw_spin_lock(&current->pi_lock);			\
 +		current->task_state_change = current->saved_state_change;\
-+		current->state = current->saved_state;			\
++		WRITE_ONCE(current->__state, current->saved_state);	\
 +		current->saved_state = TASK_RUNNING;			\
 +		raw_spin_unlock(&current->pi_lock);			\
 +	} while (0);
@@ -79,7 +74,7 @@ index 372dd72cf604..9d1242f48891 100644
  #else
  /*
   * set_current_state() includes a barrier so that the write of current->state
-@@ -211,6 +232,47 @@ struct task_group;
+@@ -213,6 +234,47 @@ struct task_group;
  		raw_spin_unlock_irqrestore(&current->pi_lock, flags);	\
  	} while (0)
  
@@ -101,9 +96,9 @@ index 372dd72cf604..9d1242f48891 100644
 + *	for (;;) {
 + *		if (try_lock())
 + *			break;
-+ *              raw_spin_unlock_irq(&lock->wait_lock);
++ *		raw_spin_unlock_irq(&lock->wait_lock);
 + *		schedule_rtlock();
-+ *              raw_spin_lock_irq(&lock->wait_lock);
++ *		raw_spin_lock_irq(&lock->wait_lock);
 + *		set_current_state(TASK_RTLOCK_WAIT);
 + *	}
 + *	current_restore_rtlock_saved_state();
@@ -111,35 +106,35 @@ index 372dd72cf604..9d1242f48891 100644
 +#define current_save_and_set_rtlock_wait_state()			\
 +	do {								\
 +		raw_spin_lock(&current->pi_lock);			\
-+		current->saved_state = current->state;			\
-+		current->state = TASK_RTLOCK_WAIT;			\
++		current->saved_state = current->__state;		\
++		WRITE_ONCE(current->__state, TASK_RTLOCK_WAIT);		\
 +		raw_spin_unlock(&current->pi_lock);			\
 +	} while (0);
 +
 +#define current_restore_rtlock_saved_state()				\
 +	do {								\
 +		raw_spin_lock(&current->pi_lock);			\
-+		current->state = current->saved_state;			\
++		WRITE_ONCE(current->__state, current->saved_state);	\
 +		current->saved_state = TASK_RUNNING;			\
 +		raw_spin_unlock(&current->pi_lock);			\
 +	} while (0);
 +
  #endif
  
- /* Task command name length: */
-@@ -667,6 +729,11 @@ struct task_struct {
- 	/* -1 unrunnable, 0 runnable, >0 stopped: */
- 	volatile long			state;
+ #define get_current_state()	READ_ONCE(current->__state)
+@@ -670,6 +732,11 @@ struct task_struct {
+ #endif
+ 	unsigned int			__state;
  
 +#ifdef CONFIG_PREEMPT_RT
 +	/* saved state for "spinlock sleepers" */
-+	long				saved_state;
++	unsigned int			saved_state;
 +#endif
 +
  	/*
  	 * This begins the randomizable portion of task_struct. Only
  	 * scheduling-critical items should be added above here.
-@@ -1349,6 +1416,9 @@ struct task_struct {
+@@ -1363,6 +1430,9 @@ struct task_struct {
  	struct kmap_ctrl		kmap_ctrl;
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  	unsigned long			task_state_change;
@@ -149,11 +144,9 @@ index 372dd72cf604..9d1242f48891 100644
  #endif
  	int				pagefault_disabled;
  #ifdef CONFIG_MMU
-diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index f7008a248eca..5cb7ff0f52b6 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3211,14 +3211,46 @@ static void ttwu_queue(struct task_struct *p, int cpu, int wake_flags)
+@@ -3568,14 +3568,47 @@ static void ttwu_queue(struct task_struc
   *
   * The caller holds p::pi_lock if p != current or has preemption
   * disabled when p == current.
@@ -169,11 +162,12 @@ index f7008a248eca..5cb7ff0f52b6 100644
  static __always_inline
  bool ttwu_state_match(struct task_struct *p, unsigned int state, int *success)
  {
-+	if (IS_ENABLED(CONFIG_DEBUG_PREEMPT))
++	if (IS_ENABLED(CONFIG_DEBUG_PREEMPT)) {
 +		WARN_ON_ONCE((state & TASK_RTLOCK_WAIT) &&
-+			     (state & TASK_RTLOCK_WAIT) != TASK_RTLOCK_WAIT);
++			     state != TASK_RTLOCK_WAIT);
++	}
 +
- 	if (p->state & state) {
+ 	if (READ_ONCE(p->__state) & state) {
  		*success = 1;
  		return true;
  	}

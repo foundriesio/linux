@@ -14,24 +14,19 @@ lock recursion.
 Give the futex/rtmutex wait_lock a seperate key.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- kernel/locking/rtmutex_api.c | 12 ++++++++++++
+ kernel/locking/rtmutex_api.c |   12 ++++++++++++
  1 file changed, 12 insertions(+)
 ---
-diff --git a/kernel/locking/rtmutex_api.c b/kernel/locking/rtmutex_api.c
-index 1091a53eb99f..e4eed067873c 100644
 --- a/kernel/locking/rtmutex_api.c
 +++ b/kernel/locking/rtmutex_api.c
-@@ -209,7 +209,19 @@ EXPORT_SYMBOL_GPL(__rt_mutex_init);
- void __sched rt_mutex_init_proxy_locked(struct rt_mutex *lock,
+@@ -214,7 +214,19 @@ EXPORT_SYMBOL_GPL(__rt_mutex_init);
+ void __sched rt_mutex_init_proxy_locked(struct rt_mutex_base *lock,
  					struct task_struct *proxy_owner)
  {
 +	static struct lock_class_key pi_futex_key;
 +
- 	__rt_mutex_basic_init(lock);
+ 	__rt_mutex_base_init(lock);
 +	/*
 +	 * On PREEMPT_RT the futex hashbucket spinlock becomes 'sleeping'
 +	 * and rtmutex based. That causes a lockdep false positive because

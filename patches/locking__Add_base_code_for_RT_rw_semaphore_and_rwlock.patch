@@ -12,7 +12,7 @@ to writer starvation.
 
 The inner workings of rw_semaphores and rwlocks on RT are almost indentical
 except for the task state and signal handling. rw_semaphores are not state
-preserving over a contention, they are expect to enter and leave with state
+preserving over a contention, they are expected to enter and leave with state
 == TASK_RUNNING. rwlocks have a mechanism to preserve the state of the task
 at entry and restore it after unblocking taking potential non-lock related
 wakeups into account. rw_semaphores can also be subject to signal handling
@@ -24,22 +24,16 @@ into the relevant rw_semaphore/rwlock base code and compiled for each use
 case seperately.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/rwbase_rt.h  |  37 ++++++-
- kernel/locking/rwbase_rt.c | 266 ++++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 303 insertions(+)
+ include/linux/rwbase_rt.h  |   38 ++++++
+ kernel/locking/rwbase_rt.c |  263 +++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 301 insertions(+)
  create mode 100644 include/linux/rwbase_rt.h
  create mode 100644 kernel/locking/rwbase_rt.c
 ---
-diff --git a/include/linux/rwbase_rt.h b/include/linux/rwbase_rt.h
-new file mode 100644
-index 000000000000..78b62a01e301
 --- /dev/null
 +++ b/include/linux/rwbase_rt.h
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,38 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +#ifndef _LINUX_RW_BASE_RT_H
 +#define _LINUX_RW_BASE_RT_H
@@ -52,20 +46,21 @@ index 000000000000..78b62a01e301
 +
 +struct rwbase_rt {
 +	atomic_t		readers;
-+	struct rt_mutex		rtmutex;
++	struct rt_mutex_base	rtmutex;
 +};
 +
 +#define __RWBASE_INITIALIZER(name)				\
 +{								\
 +	.readers = ATOMIC_INIT(READER_BIAS),			\
-+	.rtmutex = __RT_MUTEX_INITIALIZER(name.rtmutex),	\
++	.rtmutex = __RT_MUTEX_BASE_INITIALIZER(name.rtmutex),	\
 +}
 +
 +#define init_rwbase_rt(rwbase)					\
 +	do {							\
-+	rt_mutex_init(&(rwbase)->rtmutex);			\
-+	atomic_set(&(rwbase)->readers, READER_BIAS);		\
-+} while (0)
++		rt_mutex_base_init(&(rwbase)->rtmutex);		\
++		atomic_set(&(rwbase)->readers, READER_BIAS);	\
++	} while (0)
++
 +
 +static __always_inline bool rw_base_is_locked(struct rwbase_rt *rwb)
 +{
@@ -77,12 +72,9 @@ index 000000000000..78b62a01e301
 +	return atomic_read(&rwb->readers) > 0;
 +}
 +#endif
-diff --git a/kernel/locking/rwbase_rt.c b/kernel/locking/rwbase_rt.c
-new file mode 100644
-index 000000000000..c8d5c77954c4
 --- /dev/null
 +++ b/kernel/locking/rwbase_rt.c
-@@ -0,0 +1,266 @@
+@@ -0,0 +1,263 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +
 +/*
@@ -131,17 +123,15 @@ index 000000000000..c8d5c77954c4
 +
 +static __always_inline int rwbase_read_trylock(struct rwbase_rt *rwb)
 +{
-+	int r, old;
++	int r;
 +
 +	/*
 +	 * Increment reader count, if sem->readers < 0, i.e. READER_BIAS is
 +	 * set.
 +	 */
 +	for (r = atomic_read(&rwb->readers); r < 0;) {
-+		old = atomic_cmpxchg(&rwb->readers, r, r + 1);
-+		if (likely(old == r))
++		if (likely(atomic_try_cmpxchg(&rwb->readers, &r, r + 1)))
 +			return 1;
-+		r = old;
 +	}
 +	return 0;
 +}
@@ -149,7 +139,7 @@ index 000000000000..c8d5c77954c4
 +static int __sched __rwbase_read_lock(struct rwbase_rt *rwb,
 +				      unsigned int state)
 +{
-+	struct rt_mutex *rtm = &rwb->rtmutex;
++	struct rt_mutex_base *rtm = &rwb->rtmutex;
 +	int ret;
 +
 +	raw_spin_lock_irq(&rtm->wait_lock);
@@ -226,7 +216,7 @@ index 000000000000..c8d5c77954c4
 +static void __sched __rwbase_read_unlock(struct rwbase_rt *rwb,
 +					 unsigned int state)
 +{
-+	struct rt_mutex *rtm = &rwb->rtmutex;
++	struct rt_mutex_base *rtm = &rwb->rtmutex;
 +	struct task_struct *owner;
 +
 +	raw_spin_lock_irq(&rtm->wait_lock);
@@ -257,7 +247,7 @@ index 000000000000..c8d5c77954c4
 +static inline void __rwbase_write_unlock(struct rwbase_rt *rwb, int bias,
 +					 unsigned long flags)
 +{
-+	struct rt_mutex *rtm = &rwb->rtmutex;
++	struct rt_mutex_base *rtm = &rwb->rtmutex;
 +
 +	atomic_add(READER_BIAS - bias, &rwb->readers);
 +	raw_spin_unlock_irqrestore(&rtm->wait_lock, flags);
@@ -266,7 +256,7 @@ index 000000000000..c8d5c77954c4
 +
 +static inline void rwbase_write_unlock(struct rwbase_rt *rwb)
 +{
-+	struct rt_mutex *rtm = &rwb->rtmutex;
++	struct rt_mutex_base *rtm = &rwb->rtmutex;
 +	unsigned long flags;
 +
 +	raw_spin_lock_irqsave(&rtm->wait_lock, flags);
@@ -275,19 +265,18 @@ index 000000000000..c8d5c77954c4
 +
 +static inline void rwbase_write_downgrade(struct rwbase_rt *rwb)
 +{
-+	struct rt_mutex *rtm = &rwb->rtmutex;
++	struct rt_mutex_base *rtm = &rwb->rtmutex;
 +	unsigned long flags;
 +
 +	raw_spin_lock_irqsave(&rtm->wait_lock, flags);
 +	/* Release it and account current as reader */
 +	__rwbase_write_unlock(rwb, WRITER_BIAS - 1, flags);
-+
 +}
 +
 +static int __sched rwbase_write_lock(struct rwbase_rt *rwb,
 +				     unsigned int state)
 +{
-+	struct rt_mutex *rtm = &rwb->rtmutex;
++	struct rt_mutex_base *rtm = &rwb->rtmutex;
 +	unsigned long flags;
 +
 +	/* Take the rtmutex as a first step */
@@ -332,7 +321,7 @@ index 000000000000..c8d5c77954c4
 +
 +static inline int rwbase_write_trylock(struct rwbase_rt *rwb)
 +{
-+	struct rt_mutex *rtm = &rwb->rtmutex;
++	struct rt_mutex_base *rtm = &rwb->rtmutex;
 +	unsigned long flags;
 +
 +	if (!rwbase_rtmutex_trylock(rtm))

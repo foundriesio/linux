@@ -17,14 +17,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- kernel/smp.c | 15 +++++++++++++--
+ kernel/smp.c |   15 +++++++++++++--
  1 file changed, 13 insertions(+), 2 deletions(-)
 ---
-diff --git a/kernel/smp.c b/kernel/smp.c
-index 52bf159ec400..86955bacbae6 100644
 --- a/kernel/smp.c
 +++ b/kernel/smp.c
-@@ -690,10 +690,21 @@ void flush_smp_call_function_from_idle(void)
+@@ -690,10 +690,21 @@ void flush_smp_call_function_from_idle(v
  
  	cfd_seq_store(this_cpu_ptr(&cfd_seq_local)->idle, CFD_SEQ_NOCPU,
  		      smp_processor_id(), CFD_SEQ_IDLE);
@@ -41,7 +39,7 @@ index 52bf159ec400..86955bacbae6 100644
 +		} else {
 +			struct task_struct *ksoftirqd = this_cpu_ksoftirqd();
 +
-+			if (ksoftirqd && ksoftirqd->state != TASK_RUNNING)
++			if (ksoftirqd && task_is_running(ksoftirqd))
 +				wake_up_process(ksoftirqd);
 +		}
 +	}

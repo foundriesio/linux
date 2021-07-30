@@ -12,15 +12,10 @@ what debug_locks.h requires.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/debug_locks.h | 3 +--
+ include/linux/debug_locks.h |    3 +--
  1 file changed, 1 insertion(+), 2 deletions(-)
 ---
-diff --git a/include/linux/debug_locks.h b/include/linux/debug_locks.h
-index edb5c186b0b7..3f49e65169c6 100644
 --- a/include/linux/debug_locks.h
 +++ b/include/linux/debug_locks.h
 @@ -3,8 +3,7 @@

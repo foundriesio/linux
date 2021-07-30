@@ -24,11 +24,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- drivers/leds/trigger/Kconfig | 1 +
+ drivers/leds/trigger/Kconfig |    1 +
  1 file changed, 1 insertion(+)
 ---
-diff --git a/drivers/leds/trigger/Kconfig b/drivers/leds/trigger/Kconfig
-index b77a01bd27f4..aa74e2a05798 100644
 --- a/drivers/leds/trigger/Kconfig
 +++ b/drivers/leds/trigger/Kconfig
 @@ -64,6 +64,7 @@ config LEDS_TRIGGER_BACKLIGHT

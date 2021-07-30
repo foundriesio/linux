@@ -11,23 +11,17 @@ priority inheritance. Like RT spinlocks RT rwlocks are state preserving
 accross the slow lock operations (contended case).
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/rwlock_rt.h       | 140 +++++++++++++++++++++++++++++++++++++++++-
- include/linux/rwlock_types.h    |  35 +++++++++-
- include/linux/spinlock_rt.h     |   2 +-
- kernel/Kconfig.locks            |   2 +-
- kernel/locking/spinlock.c       |   7 ++-
- kernel/locking/spinlock_debug.c |   5 +-
- kernel/locking/spinlock_rt.c    | 129 ++++++++++++++++++++++++++++++++++++++-
+ include/linux/rwlock_rt.h       |  140 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/rwlock_types.h    |   35 +++++++++-
+ include/linux/spinlock_rt.h     |    2 
+ kernel/Kconfig.locks            |    2 
+ kernel/locking/spinlock.c       |    7 ++
+ kernel/locking/spinlock_debug.c |    5 +
+ kernel/locking/spinlock_rt.c    |  129 ++++++++++++++++++++++++++++++++++++
  7 files changed, 317 insertions(+), 3 deletions(-)
  create mode 100644 include/linux/rwlock_rt.h
 ---
-diff --git a/include/linux/rwlock_rt.h b/include/linux/rwlock_rt.h
-new file mode 100644
-index 000000000000..38048bf7d063
 --- /dev/null
 +++ b/include/linux/rwlock_rt.h
 @@ -0,0 +1,140 @@
@@ -171,8 +165,6 @@ index 000000000000..38048bf7d063
 +#define rwlock_is_contended(lock)		(((void)(lock), 0))
 +
 +#endif
-diff --git a/include/linux/rwlock_types.h b/include/linux/rwlock_types.h
-index 0ad226b5d8fd..243339e3e27c 100644
 --- a/include/linux/rwlock_types.h
 +++ b/include/linux/rwlock_types.h
 @@ -5,9 +5,9 @@
@@ -223,19 +215,15 @@ index 0ad226b5d8fd..243339e3e27c 100644
 +#endif /* CONFIG_PREEMPT_RT */
 +
  #endif /* __LINUX_RWLOCK_TYPES_H */
-diff --git a/include/linux/spinlock_rt.h b/include/linux/spinlock_rt.h
-index 035b434555df..8ce04c07e944 100644
 --- a/include/linux/spinlock_rt.h
 +++ b/include/linux/spinlock_rt.h
-@@ -146,4 +146,6 @@ static inline int spin_is_locked(spinlock_t *lock)
+@@ -146,4 +146,6 @@ static inline int spin_is_locked(spinloc
  
  #define assert_spin_locked(lock) BUG_ON(!spin_is_locked(lock))
  
 +#include <linux/rwlock_rt.h>
 +
  #endif
-diff --git a/kernel/Kconfig.locks b/kernel/Kconfig.locks
-index 3de8fd11873b..4198f0273ecd 100644
 --- a/kernel/Kconfig.locks
 +++ b/kernel/Kconfig.locks
 @@ -251,7 +251,7 @@ config ARCH_USE_QUEUED_RWLOCKS
@@ -247,11 +235,9 @@ index 3de8fd11873b..4198f0273ecd 100644
  
  config ARCH_HAS_MMIOWB
  	bool
-diff --git a/kernel/locking/spinlock.c b/kernel/locking/spinlock.c
-index c8d7ad9fb9b2..c5830cfa379a 100644
 --- a/kernel/locking/spinlock.c
 +++ b/kernel/locking/spinlock.c
-@@ -124,8 +124,11 @@ void __lockfunc __raw_##op##_lock_bh(locktype##_t *lock)		\
+@@ -124,8 +124,11 @@ void __lockfunc __raw_##op##_lock_bh(loc
   *         __[spin|read|write]_lock_bh()
   */
  BUILD_LOCK_OPS(spin, raw_spinlock);
@@ -263,7 +249,7 @@ index c8d7ad9fb9b2..c5830cfa379a 100644
  
  #endif
  
-@@ -209,6 +212,8 @@ void __lockfunc _raw_spin_unlock_bh(raw_spinlock_t *lock)
+@@ -209,6 +212,8 @@ void __lockfunc _raw_spin_unlock_bh(raw_
  EXPORT_SYMBOL(_raw_spin_unlock_bh);
  #endif
  
@@ -272,7 +258,7 @@ index c8d7ad9fb9b2..c5830cfa379a 100644
  #ifndef CONFIG_INLINE_READ_TRYLOCK
  int __lockfunc _raw_read_trylock(rwlock_t *lock)
  {
-@@ -353,6 +358,8 @@ void __lockfunc _raw_write_unlock_bh(rwlock_t *lock)
+@@ -353,6 +358,8 @@ void __lockfunc _raw_write_unlock_bh(rwl
  EXPORT_SYMBOL(_raw_write_unlock_bh);
  #endif
  
@@ -281,11 +267,9 @@ index c8d7ad9fb9b2..c5830cfa379a 100644
  #ifdef CONFIG_DEBUG_LOCK_ALLOC
  
  void __lockfunc _raw_spin_lock_nested(raw_spinlock_t *lock, int subclass)
-diff --git a/kernel/locking/spinlock_debug.c b/kernel/locking/spinlock_debug.c
-index b9d93087ee66..14235671a1a7 100644
 --- a/kernel/locking/spinlock_debug.c
 +++ b/kernel/locking/spinlock_debug.c
-@@ -31,6 +31,7 @@ void __raw_spin_lock_init(raw_spinlock_t *lock, const char *name,
+@@ -31,6 +31,7 @@ void __raw_spin_lock_init(raw_spinlock_t
  
  EXPORT_SYMBOL(__raw_spin_lock_init);
  
@@ -293,7 +277,7 @@ index b9d93087ee66..14235671a1a7 100644
  void __rwlock_init(rwlock_t *lock, const char *name,
  		   struct lock_class_key *key)
  {
-@@ -48,6 +49,7 @@ void __rwlock_init(rwlock_t *lock, const char *name,
+@@ -48,6 +49,7 @@ void __rwlock_init(rwlock_t *lock, const
  }
  
  EXPORT_SYMBOL(__rwlock_init);
@@ -301,7 +285,7 @@ index b9d93087ee66..14235671a1a7 100644
  
  static void spin_dump(raw_spinlock_t *lock, const char *msg)
  {
-@@ -139,6 +141,7 @@ void do_raw_spin_unlock(raw_spinlock_t *lock)
+@@ -139,6 +141,7 @@ void do_raw_spin_unlock(raw_spinlock_t *
  	arch_spin_unlock(&lock->raw_lock);
  }
  
@@ -315,11 +299,9 @@ index b9d93087ee66..14235671a1a7 100644
  }
 +
 +#endif /* !CONFIG_PREEMPT_RT */
-diff --git a/kernel/locking/spinlock_rt.c b/kernel/locking/spinlock_rt.c
-index 0abc06d6092f..19a5e3baa1f0 100644
 --- a/kernel/locking/spinlock_rt.c
 +++ b/kernel/locking/spinlock_rt.c
-@@ -126,3 +126,132 @@ void __rt_spin_lock_init(spinlock_t *lock, const char *name,
+@@ -126,3 +126,132 @@ void __rt_spin_lock_init(spinlock_t *loc
  }
  EXPORT_SYMBOL(__rt_spin_lock_init);
  #endif
@@ -333,22 +315,22 @@ index 0abc06d6092f..19a5e3baa1f0 100644
 +#define rwbase_restore_current_state()			\
 +	current_restore_rtlock_saved_state()
 +
-+static __always_inline int rwbase_rtmutex_lock_state(struct rt_mutex *rtm,
-+						     unsigned int state)
++static __always_inline int
++rwbase_rtmutex_lock_state(struct rt_mutex_base *rtm, unsigned int state)
 +{
 +	if (unlikely(!rt_mutex_cmpxchg_acquire(rtm, NULL, current)))
 +		rtlock_slowlock(rtm);
 +	return 0;
 +}
 +
-+static __always_inline int rwbase_rtmutex_slowlock_locked(struct rt_mutex *rtm,
-+							  unsigned int state)
++static __always_inline int
++rwbase_rtmutex_slowlock_locked(struct rt_mutex_base *rtm, unsigned int state)
 +{
 +	rtlock_slowlock_locked(rtm);
 +	return 0;
 +}
 +
-+static __always_inline void rwbase_rtmutex_unlock(struct rt_mutex *rtm)
++static __always_inline void rwbase_rtmutex_unlock(struct rt_mutex_base *rtm)
 +{
 +	if (likely(rt_mutex_cmpxchg_acquire(rtm, current, NULL)))
 +		return;
@@ -356,7 +338,7 @@ index 0abc06d6092f..19a5e3baa1f0 100644
 +	rt_mutex_slowunlock(rtm);
 +}
 +
-+static __always_inline int  rwbase_rtmutex_trylock(struct rt_mutex *rtm)
++static __always_inline int  rwbase_rtmutex_trylock(struct rt_mutex_base *rtm)
 +{
 +	if (likely(rt_mutex_cmpxchg_acquire(rtm, NULL, current)))
 +		return 1;

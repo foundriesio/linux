@@ -17,11 +17,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/u64_stats_sync.h | 42 ++++++++++++++++++++++++++++--------------
+ include/linux/u64_stats_sync.h |   42 +++++++++++++++++++++++++++--------------
  1 file changed, 28 insertions(+), 14 deletions(-)
 ---
-diff --git a/include/linux/u64_stats_sync.h b/include/linux/u64_stats_sync.h
-index e81856c0ba13..66eb968a09d4 100644
 --- a/include/linux/u64_stats_sync.h
 +++ b/include/linux/u64_stats_sync.h
 @@ -66,7 +66,7 @@
@@ -33,7 +31,7 @@ index e81856c0ba13..66eb968a09d4 100644
  	seqcount_t	seq;
  #endif
  };
-@@ -115,7 +115,7 @@ static inline void u64_stats_inc(u64_stats_t *p)
+@@ -115,7 +115,7 @@ static inline void u64_stats_inc(u64_sta
  }
  #endif
  
@@ -42,7 +40,7 @@ index e81856c0ba13..66eb968a09d4 100644
  #define u64_stats_init(syncp)	seqcount_init(&(syncp)->seq)
  #else
  static inline void u64_stats_init(struct u64_stats_sync *syncp)
-@@ -125,15 +125,19 @@ static inline void u64_stats_init(struct u64_stats_sync *syncp)
+@@ -125,15 +125,19 @@ static inline void u64_stats_init(struct
  
  static inline void u64_stats_update_begin(struct u64_stats_sync *syncp)
  {
@@ -64,7 +62,7 @@ index e81856c0ba13..66eb968a09d4 100644
  #endif
  }
  
-@@ -142,8 +146,11 @@ u64_stats_update_begin_irqsave(struct u64_stats_sync *syncp)
+@@ -142,8 +146,11 @@ u64_stats_update_begin_irqsave(struct u6
  {
  	unsigned long flags = 0;
  
@@ -100,7 +98,7 @@ index e81856c0ba13..66eb968a09d4 100644
  	return read_seqcount_begin(&syncp->seq);
  #else
  	return 0;
-@@ -170,7 +180,7 @@ static inline unsigned int __u64_stats_fetch_begin(const struct u64_stats_sync *
+@@ -170,7 +180,7 @@ static inline unsigned int __u64_stats_f
  
  static inline unsigned int u64_stats_fetch_begin(const struct u64_stats_sync *syncp)
  {
@@ -109,7 +107,7 @@ index e81856c0ba13..66eb968a09d4 100644
  	preempt_disable();
  #endif
  	return __u64_stats_fetch_begin(syncp);
-@@ -179,7 +189,7 @@ static inline unsigned int u64_stats_fetch_begin(const struct u64_stats_sync *sy
+@@ -179,7 +189,7 @@ static inline unsigned int u64_stats_fet
  static inline bool __u64_stats_fetch_retry(const struct u64_stats_sync *syncp,
  					 unsigned int start)
  {
@@ -118,7 +116,7 @@ index e81856c0ba13..66eb968a09d4 100644
  	return read_seqcount_retry(&syncp->seq, start);
  #else
  	return false;
-@@ -189,7 +199,7 @@ static inline bool __u64_stats_fetch_retry(const struct u64_stats_sync *syncp,
+@@ -189,7 +199,7 @@ static inline bool __u64_stats_fetch_ret
  static inline bool u64_stats_fetch_retry(const struct u64_stats_sync *syncp,
  					 unsigned int start)
  {
@@ -127,7 +125,7 @@ index e81856c0ba13..66eb968a09d4 100644
  	preempt_enable();
  #endif
  	return __u64_stats_fetch_retry(syncp, start);
-@@ -203,7 +213,9 @@ static inline bool u64_stats_fetch_retry(const struct u64_stats_sync *syncp,
+@@ -203,7 +213,9 @@ static inline bool u64_stats_fetch_retry
   */
  static inline unsigned int u64_stats_fetch_begin_irq(const struct u64_stats_sync *syncp)
  {
@@ -138,7 +136,7 @@ index e81856c0ba13..66eb968a09d4 100644
  	local_irq_disable();
  #endif
  	return __u64_stats_fetch_begin(syncp);
-@@ -212,7 +224,9 @@ static inline unsigned int u64_stats_fetch_begin_irq(const struct u64_stats_sync
+@@ -212,7 +224,9 @@ static inline unsigned int u64_stats_fet
  static inline bool u64_stats_fetch_retry_irq(const struct u64_stats_sync *syncp,
  					     unsigned int start)
  {

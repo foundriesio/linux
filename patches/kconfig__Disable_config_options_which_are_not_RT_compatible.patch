@@ -10,14 +10,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- mm/Kconfig | 2 +-
+ mm/Kconfig |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 ---
-diff --git a/mm/Kconfig b/mm/Kconfig
-index 02d44e3420f5..453ce5f4811f 100644
 --- a/mm/Kconfig
 +++ b/mm/Kconfig
-@@ -403,7 +403,7 @@ config NOMMU_INITIAL_TRIM_EXCESS
+@@ -374,7 +374,7 @@ config NOMMU_INITIAL_TRIM_EXCESS
  
  config TRANSPARENT_HUGEPAGE
  	bool "Transparent Hugepage Support"

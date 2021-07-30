@@ -14,21 +14,19 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- arch/x86/kernel/cpu/mshyperv.c |  3 ++-
- drivers/char/random.c          | 11 +++++------
- drivers/hv/hyperv_vmbus.h      |  1 +
- drivers/hv/vmbus_drv.c         |  5 ++++-
- include/linux/irqdesc.h        |  1 +
- include/linux/random.h         |  2 +-
- kernel/irq/handle.c            |  8 +++++++-
- kernel/irq/manage.c            |  6 ++++++
- 8 files changed, 27 insertions(+), 10 deletions(-)
+ arch/x86/kernel/cpu/mshyperv.c |    3 ++-
+ drivers/char/random.c          |   11 +++++------
+ drivers/hv/hyperv_vmbus.h      |    1 +
+ drivers/hv/vmbus_drv.c         |    5 ++++-
+ include/linux/irqdesc.h        |    1 +
+ include/linux/random.h         |    2 +-
+ kernel/irq/handle.c            |   10 ++++++++--
+ kernel/irq/manage.c            |    6 ++++++
+ 8 files changed, 28 insertions(+), 11 deletions(-)
 ---
-diff --git a/arch/x86/kernel/cpu/mshyperv.c b/arch/x86/kernel/cpu/mshyperv.c
-index 22f13343b5da..1bafda98ec56 100644
 --- a/arch/x86/kernel/cpu/mshyperv.c
 +++ b/arch/x86/kernel/cpu/mshyperv.c
-@@ -80,11 +80,12 @@ EXPORT_SYMBOL_GPL(hv_remove_vmbus_handler);
+@@ -81,11 +81,12 @@ EXPORT_SYMBOL_GPL(hv_remove_vmbus_handle
  DEFINE_IDTENTRY_SYSVEC(sysvec_hyperv_stimer0)
  {
  	struct pt_regs *old_regs = set_irq_regs(regs);
@@ -42,11 +40,9 @@ index 22f13343b5da..1bafda98ec56 100644
  	ack_APIC_irq();
  
  	set_irq_regs(old_regs);
-diff --git a/drivers/char/random.c b/drivers/char/random.c
-index 605969ed0f96..9bcaa6c99f69 100644
 --- a/drivers/char/random.c
 +++ b/drivers/char/random.c
-@@ -1242,26 +1242,25 @@ static __u32 get_reg(struct fast_pool *f, struct pt_regs *regs)
+@@ -1242,26 +1242,25 @@ static __u32 get_reg(struct fast_pool *f
  	return *ptr;
  }
  
@@ -78,8 +74,6 @@ index 605969ed0f96..9bcaa6c99f69 100644
  
  	fast_mix(fast_pool);
  	add_interrupt_bench(cycles);
-diff --git a/drivers/hv/hyperv_vmbus.h b/drivers/hv/hyperv_vmbus.h
-index 9416e09ebd58..4a5767a15544 100644
 --- a/drivers/hv/hyperv_vmbus.h
 +++ b/drivers/hv/hyperv_vmbus.h
 @@ -18,6 +18,7 @@
@@ -90,8 +84,6 @@ index 9416e09ebd58..4a5767a15544 100644
  
  #include "hv_trace.h"
  
-diff --git a/drivers/hv/vmbus_drv.c b/drivers/hv/vmbus_drv.c
-index 92cb3f7d21d9..3fc06e5f2785 100644
 --- a/drivers/hv/vmbus_drv.c
 +++ b/drivers/hv/vmbus_drv.c
 @@ -22,6 +22,7 @@
@@ -102,7 +94,7 @@ index 92cb3f7d21d9..3fc06e5f2785 100644
  
  #include <linux/delay.h>
  #include <linux/notifier.h>
-@@ -1339,6 +1340,8 @@ static void vmbus_isr(void)
+@@ -1340,6 +1341,8 @@ static void vmbus_isr(void)
  	void *page_addr = hv_cpu->synic_event_page;
  	struct hv_message *msg;
  	union hv_synic_event_flags *event;
@@ -111,7 +103,7 @@ index 92cb3f7d21d9..3fc06e5f2785 100644
  	bool handled = false;
  
  	if (unlikely(page_addr == NULL))
-@@ -1383,7 +1386,7 @@ static void vmbus_isr(void)
+@@ -1384,7 +1387,7 @@ static void vmbus_isr(void)
  			tasklet_schedule(&hv_cpu->msg_dpc);
  	}
  
@@ -120,8 +112,6 @@ index 92cb3f7d21d9..3fc06e5f2785 100644
  }
  
  static irqreturn_t vmbus_percpu_isr(int irq, void *dev_id)
-diff --git a/include/linux/irqdesc.h b/include/linux/irqdesc.h
-index df4651250785..aabd79e8e19a 100644
 --- a/include/linux/irqdesc.h
 +++ b/include/linux/irqdesc.h
 @@ -68,6 +68,7 @@ struct irq_desc {
@@ -132,11 +122,9 @@ index df4651250785..aabd79e8e19a 100644
  	raw_spinlock_t		lock;
  	struct cpumask		*percpu_enabled;
  	const struct cpumask	*percpu_affinity;
-diff --git a/include/linux/random.h b/include/linux/random.h
-index f45b8be3e3c4..0e41d0527809 100644
 --- a/include/linux/random.h
 +++ b/include/linux/random.h
-@@ -35,7 +35,7 @@ static inline void add_latent_entropy(void) {}
+@@ -35,7 +35,7 @@ static inline void add_latent_entropy(vo
  
  extern void add_input_randomness(unsigned int type, unsigned int code,
  				 unsigned int value) __latent_entropy;
@@ -145,16 +133,17 @@ index f45b8be3e3c4..0e41d0527809 100644
  
  extern void get_random_bytes(void *buf, int nbytes);
  extern int wait_for_random_bytes(void);
-diff --git a/kernel/irq/handle.c b/kernel/irq/handle.c
-index 762a928e18f9..7929fcdb7817 100644
 --- a/kernel/irq/handle.c
 +++ b/kernel/irq/handle.c
-@@ -192,10 +192,16 @@ irqreturn_t handle_irq_event_percpu(struct irq_desc *desc)
+@@ -190,12 +190,18 @@ irqreturn_t __handle_irq_event_percpu(st
+ 
+ irqreturn_t handle_irq_event_percpu(struct irq_desc *desc)
  {
- 	irqreturn_t retval;
- 	unsigned int flags = 0;
+-	irqreturn_t retval;
 +	struct pt_regs *regs = get_irq_regs();
 +	u64 ip = regs ? instruction_pointer(regs) : 0;
+ 	unsigned int flags = 0;
++	irqreturn_t retval;
  
  	retval = __handle_irq_event_percpu(desc, &flags);
  
@@ -165,13 +154,11 @@ index 762a928e18f9..7929fcdb7817 100644
 +	add_interrupt_randomness(desc->irq_data.irq, flags, ip);
 +#endif
  
- 	if (!noirqdebug)
+ 	if (!irq_settings_no_debug(desc))
  		note_interrupt(desc, retval);
-diff --git a/kernel/irq/manage.c b/kernel/irq/manage.c
-index b01b4059865c..099751b2e08f 100644
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -1251,6 +1251,12 @@ static int irq_thread(void *data)
+@@ -1282,6 +1282,12 @@ static int irq_thread(void *data)
  		if (action_ret == IRQ_WAKE_THREAD)
  			irq_wake_secondary(desc, action);
  

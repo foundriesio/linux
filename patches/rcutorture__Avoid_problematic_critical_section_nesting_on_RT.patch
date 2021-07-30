@@ -41,14 +41,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- kernel/rcu/rcutorture.c | 97 ++++++++++++++++++++++++++++++++++++++++++--------
+ kernel/rcu/rcutorture.c |   97 +++++++++++++++++++++++++++++++++++++++++-------
  1 file changed, 83 insertions(+), 14 deletions(-)
 ---
-diff --git a/kernel/rcu/rcutorture.c b/kernel/rcu/rcutorture.c
-index 29d2f4c647d3..6096a7d14342 100644
 --- a/kernel/rcu/rcutorture.c
 +++ b/kernel/rcu/rcutorture.c
-@@ -61,10 +61,13 @@ MODULE_AUTHOR("Paul E. McKenney <paulmck@linux.ibm.com> and Josh Triplett <josh@
+@@ -61,10 +61,13 @@ MODULE_AUTHOR("Paul E. McKenney <paulmck
  #define RCUTORTURE_RDR_RBH	 0x08	/*  ... rcu_read_lock_bh(). */
  #define RCUTORTURE_RDR_SCHED	 0x10	/*  ... rcu_read_lock_sched(). */
  #define RCUTORTURE_RDR_RCU	 0x20	/*  ... entering another RCU reader. */
@@ -64,7 +62,7 @@ index 29d2f4c647d3..6096a7d14342 100644
  #define RCUTORTURE_RDR_MAX_LOOPS 0x7	/* Maximum reader extensions. */
  					/* Must be power of two minus one. */
  #define RCUTORTURE_RDR_MAX_SEGS (RCUTORTURE_RDR_MAX_LOOPS + 3)
-@@ -1418,31 +1421,53 @@ static void rcutorture_one_extend(int *readstate, int newstate,
+@@ -1429,31 +1432,53 @@ static void rcutorture_one_extend(int *r
  	WARN_ON_ONCE((idxold >> RCUTORTURE_RDR_SHIFT) > 1);
  	rtrsp->rt_readstate = newstate;
  
@@ -125,7 +123,7 @@ index 29d2f4c647d3..6096a7d14342 100644
  	if (statesold & RCUTORTURE_RDR_RCU) {
  		bool lockit = !statesnew && !(torture_random(trsp) & 0xffff);
  
-@@ -1485,6 +1510,12 @@ rcutorture_extend_mask(int oldmask, struct torture_random_state *trsp)
+@@ -1496,6 +1521,12 @@ rcutorture_extend_mask(int oldmask, stru
  	int mask = rcutorture_extend_mask_max();
  	unsigned long randmask1 = torture_random(trsp) >> 8;
  	unsigned long randmask2 = randmask1 >> 3;
@@ -138,7 +136,7 @@ index 29d2f4c647d3..6096a7d14342 100644
  
  	WARN_ON_ONCE(mask >> RCUTORTURE_RDR_SHIFT);
  	/* Mostly only one bit (need preemption!), sometimes lots of bits. */
-@@ -1492,11 +1523,49 @@ rcutorture_extend_mask(int oldmask, struct torture_random_state *trsp)
+@@ -1503,11 +1534,49 @@ rcutorture_extend_mask(int oldmask, stru
  		mask = mask & randmask2;
  	else
  		mask = mask & (1 << (randmask2 % RCUTORTURE_RDR_NBITS));

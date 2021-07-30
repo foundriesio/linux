@@ -16,11 +16,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- kernel/entry/common.c | 2 +-
+ kernel/entry/common.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 ---
-diff --git a/kernel/entry/common.c b/kernel/entry/common.c
-index a79c40a96825..79c7614c975f 100644
 --- a/kernel/entry/common.c
 +++ b/kernel/entry/common.c
 @@ -397,7 +397,7 @@ void irqentry_exit_cond_resched(void)

@@ -20,12 +20,10 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/shmem_fs.h |  2 +-
- mm/shmem.c               | 31 +++++++++++++++++--------------
+ include/linux/shmem_fs.h |    2 +-
+ mm/shmem.c               |   31 +++++++++++++++++--------------
  2 files changed, 18 insertions(+), 15 deletions(-)
 ---
-diff --git a/include/linux/shmem_fs.h b/include/linux/shmem_fs.h
-index d82b6f396588..12b2e41d8f47 100644
 --- a/include/linux/shmem_fs.h
 +++ b/include/linux/shmem_fs.h
 @@ -31,7 +31,7 @@ struct shmem_sb_info {
@@ -37,11 +35,9 @@ index d82b6f396588..12b2e41d8f47 100644
  	umode_t mode;		    /* Mount mode for root directory */
  	unsigned char huge;	    /* Whether to try for hugepages */
  	kuid_t uid;		    /* Mount uid for root directory */
-diff --git a/mm/shmem.c b/mm/shmem.c
-index 5d46611cba8d..dd3c5302dbb1 100644
 --- a/mm/shmem.c
 +++ b/mm/shmem.c
-@@ -278,10 +278,10 @@ static int shmem_reserve_inode(struct super_block *sb, ino_t *inop)
+@@ -278,10 +278,10 @@ static int shmem_reserve_inode(struct su
  	ino_t ino;
  
  	if (!(sb->s_flags & SB_KERNMOUNT)) {
@@ -54,7 +50,7 @@ index 5d46611cba8d..dd3c5302dbb1 100644
  				return -ENOSPC;
  			}
  			sbinfo->free_inodes--;
-@@ -304,7 +304,7 @@ static int shmem_reserve_inode(struct super_block *sb, ino_t *inop)
+@@ -304,7 +304,7 @@ static int shmem_reserve_inode(struct su
  			}
  			*inop = ino;
  		}
@@ -63,7 +59,7 @@ index 5d46611cba8d..dd3c5302dbb1 100644
  	} else if (inop) {
  		/*
  		 * __shmem_file_setup, one of our callers, is lock-free: it
-@@ -319,13 +319,14 @@ static int shmem_reserve_inode(struct super_block *sb, ino_t *inop)
+@@ -319,13 +319,14 @@ static int shmem_reserve_inode(struct su
  		 * to worry about things like glibc compatibility.
  		 */
  		ino_t *next_ino;
@@ -80,7 +76,7 @@ index 5d46611cba8d..dd3c5302dbb1 100644
  			if (unlikely(is_zero_ino(ino)))
  				ino++;
  		}
-@@ -341,9 +342,9 @@ static void shmem_free_inode(struct super_block *sb)
+@@ -341,9 +342,9 @@ static void shmem_free_inode(struct supe
  {
  	struct shmem_sb_info *sbinfo = SHMEM_SB(sb);
  	if (sbinfo->max_inodes) {
@@ -92,7 +88,7 @@ index 5d46611cba8d..dd3c5302dbb1 100644
  	}
  }
  
-@@ -1453,10 +1454,10 @@ static struct mempolicy *shmem_get_sbmpol(struct shmem_sb_info *sbinfo)
+@@ -1453,10 +1454,10 @@ static struct mempolicy *shmem_get_sbmpo
  {
  	struct mempolicy *mpol = NULL;
  	if (sbinfo->mpol) {
@@ -105,7 +101,7 @@ index 5d46611cba8d..dd3c5302dbb1 100644
  	}
  	return mpol;
  }
-@@ -3532,9 +3533,10 @@ static int shmem_reconfigure(struct fs_context *fc)
+@@ -3500,9 +3501,10 @@ static int shmem_reconfigure(struct fs_c
  	struct shmem_options *ctx = fc->fs_private;
  	struct shmem_sb_info *sbinfo = SHMEM_SB(fc->root->d_sb);
  	unsigned long inodes;
@@ -117,7 +113,7 @@ index 5d46611cba8d..dd3c5302dbb1 100644
  	inodes = sbinfo->max_inodes - sbinfo->free_inodes;
  	if ((ctx->seen & SHMEM_SEEN_BLOCKS) && ctx->blocks) {
  		if (!sbinfo->max_blocks) {
-@@ -3579,14 +3581,15 @@ static int shmem_reconfigure(struct fs_context *fc)
+@@ -3547,14 +3549,15 @@ static int shmem_reconfigure(struct fs_c
  	 * Preserve previous mempolicy unless mpol remount option was specified.
  	 */
  	if (ctx->mpol) {
@@ -136,7 +132,7 @@ index 5d46611cba8d..dd3c5302dbb1 100644
  	return invalfc(fc, "%s", err);
  }
  
-@@ -3703,7 +3706,7 @@ static int shmem_fill_super(struct super_block *sb, struct fs_context *fc)
+@@ -3671,7 +3674,7 @@ static int shmem_fill_super(struct super
  	sbinfo->mpol = ctx->mpol;
  	ctx->mpol = NULL;
  

@@ -23,15 +23,13 @@ Link: https://lkml.kernel.org/r/X9CheYjuXWc75Spa@hirez.programming.kicks-ass.net
 
 
 ---
- net/ipv4/inet_hashtables.c  | 19 ++++++++++++-------
- net/ipv6/inet6_hashtables.c |  5 +----
+ net/ipv4/inet_hashtables.c  |   19 ++++++++++++-------
+ net/ipv6/inet6_hashtables.c |    5 +----
  2 files changed, 13 insertions(+), 11 deletions(-)
 ---
-diff --git a/net/ipv4/inet_hashtables.c b/net/ipv4/inet_hashtables.c
-index c96866a53a66..388e3ebb7f57 100644
 --- a/net/ipv4/inet_hashtables.c
 +++ b/net/ipv4/inet_hashtables.c
-@@ -635,7 +635,9 @@ int __inet_hash(struct sock *sk, struct sock *osk)
+@@ -635,7 +635,9 @@ int __inet_hash(struct sock *sk, struct
  	int err = 0;
  
  	if (sk->sk_state != TCP_LISTEN) {
@@ -89,8 +87,6 @@ index c96866a53a66..388e3ebb7f57 100644
  }
  EXPORT_SYMBOL_GPL(inet_unhash);
  
-diff --git a/net/ipv6/inet6_hashtables.c b/net/ipv6/inet6_hashtables.c
-index 55c290d55605..9bad345cba9a 100644
 --- a/net/ipv6/inet6_hashtables.c
 +++ b/net/ipv6/inet6_hashtables.c
 @@ -333,11 +333,8 @@ int inet6_hash(struct sock *sk)

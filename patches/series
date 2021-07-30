@@ -1,20 +1,34 @@
 ###########################################################################
+# Valentin's PCP fixes
+###########################################################################
+eventfd-Make-signal-recursion-protection-a-task-bit.patch
+sched_Introduce_is_pcpu_safe_.patch
+rcu_nocb_Check_for_migratability_rather_than_pure_preemptability.patch
+arm64_mm_Make_arch_faults_on_old_pte_check_for_migratability.patch
+
+###########################################################################
 # John's printk queue
 ###########################################################################
+printk_console__Check_consistent_sequence_number_when_handling_race_in_console_unlock.patch
+lib_nmi_backtrace__explicitly_serialize_banner_and_regs.patch
 printk__track_limit_recursion.patch
 printk__remove_safe_buffers.patch
-printk__convert_syslog_lock_to_spin_lock.patch
+printk__remove_NMI_tracking.patch
+printk__convert_syslog_lock_to_mutex.patch
+printk__syslog__close_window_between_wait_and_read.patch
+printk__rename_printk_cpulock_API_and_always_disable_interrupts.patch
 console__add_write_atomic_interface.patch
 kdb__only_use_atomic_consoles_for_output_mirroring.patch
 serial__8250__implement_write_atomic.patch
-printk__relocate_printk_delay_and_vprintk_default.patch
-printk__combine_boot_delay_msec_into_printk_delay.patch
+printk__relocate_printk_delay.patch
+printk__call_boot_delay_msec_in_printk_delay.patch
 printk__use_seqcount_latch_for_console_seq.patch
 printk__introduce_kernel_sync_mode.patch
 printk__move_console_printing_to_kthreads.patch
 printk__remove_deferred_printing.patch
 printk__add_console_handover.patch
 printk__add_pr_flush.patch
+printk__Enhance_the_condition_check_of_msleep_in_pr_flush.patch
 
 ###########################################################################
 # Need resend
@@ -24,55 +38,46 @@ timers__Move_clearing_of_base__timer_running_under_base__lock.patch
 
 ###########################################################################
 # mm bits polished by Mel and Vlastimil
+# slub-local-lock-v3r2
 ###########################################################################
-mm_page_alloc__Split_per_cpu_page_lists_and_zone_stats.patch
-mm_page_alloc__Convert_per-cpu_list_protection_to_local_lock.patch
-mm_vmstat__Convert_NUMA_statistics_to_basic_NUMA_counters.patch
-mm_vmstat__Inline_NUMA_event_counter_updates.patch
-mm_page_alloc__Batch_the_accounting_updates_in_the_bulk_allocator.patch
-mm_page_alloc__Reduce_duration_that_IRQs_are_disabled_for_VM_counters.patch
-mm_page_alloc__Explicitly_acquire_the_zone_lock_in___free_pages_ok.patch
-mm_page_alloc__Avoid_conflating_IRQs_disabled_with_zone-lock.patch
-mm_page_alloc__Update_PGFREE_outside_the_zone_lock_in___free_pages_ok.patch
-mm_page_alloc__Split_per_cpu_page_lists_and_zone_stats_-fix.patch
-mm_slub__dont_call_flush_all_from_list_locations.patch
-mm_slub__allocate_private_object_map_for_sysfs_listings.patch
-mm_slub__allocate_private_object_map_for_validate_slab_cache.patch
-mm_slub__dont_disable_irq_for_debug_check_no_locks_freed.patch
-mm_slub__remove_redundant_unfreeze_partials_from_put_cpu_partial.patch
-mm_slub__unify_cmpxchg_double_slab_and___cmpxchg_double_slab.patch
-mm_slub__extract_get_partial_from_new_slab_objects.patch
-mm_slub__dissolve_new_slab_objects_into____slab_alloc.patch
-mm_slub__return_slab_page_from_get_partial_and_set_c-page_afterwards.patch
-mm_slub__restructure_new_page_checks_in____slab_alloc.patch
-mm_slub__simplify_kmem_cache_cpu_and_tid_setup.patch
-mm_slub__move_disabling_enabling_irqs_to____slab_alloc.patch
-mm_slub__do_initial_checks_in____slab_alloc_with_irqs_enabled.patch
-mm_slub__move_disabling_irqs_closer_to_get_partial_in____slab_alloc.patch
-mm_slub__restore_irqs_around_calling_new_slab.patch
-mm_slub__validate_slab_from_partial_list_or_page_allocator_before_making_it_cpu_slab.patch
-mm_slub__check_new_pages_with_restored_irqs.patch
-mm_slub__stop_disabling_irqs_around_get_partial.patch
-mm_slub__move_reset_of_c-page_and_freelist_out_of_deactivate_slab.patch
-mm_slub__make_locking_in_deactivate_slab_irq-safe.patch
-mm_slub__call_deactivate_slab_without_disabling_irqs.patch
-mm_slub__move_irq_control_into_unfreeze_partials.patch
-mm_slub__discard_slabs_in_unfreeze_partials_without_irqs_disabled.patch
-mm_slub__detach_whole_partial_list_at_once_in_unfreeze_partials.patch
-mm_slub__detach_percpu_partial_list_in_unfreeze_partials_using_this_cpu_cmpxchg.patch
-mm_slub__only_disable_irq_with_spin_lock_in___unfreeze_partials.patch
-mm_slub__dont_disable_irqs_in_slub_cpu_dead.patch
-mm_slab__make_flush_slab_possible_to_call_with_irqs_enabled.patch
-mm__slub__Move_flush_cpu_slab_invocations___free_slab_invocations_out_of_IRQ_context.patch
-mm__slub__Make_object_map_lock_a_raw_spinlock_t.patch
-mm_slub__optionally_save_restore_irqs_in_slab_unlock_.patch
-mm_slub__make_slab_lock_disable_irqs_with_PREEMPT_RT.patch
-mm_slub__use_migrate_disable_on_PREEMPT_RT.patch
-mm_slub__convert_kmem_cpu_slab_protection_to_local_lock.patch
-mm_slub__Correct_ordering_in_slab_unlock.patch
+0001-mm-slub-don-t-call-flush_all-from-slab_debug_trace_o.patch
+0002-mm-slub-allocate-private-object-map-for-debugfs-list.patch
+0003-mm-slub-allocate-private-object-map-for-validate_sla.patch
+0004-mm-slub-don-t-disable-irq-for-debug_check_no_locks_f.patch
+0005-mm-slub-remove-redundant-unfreeze_partials-from-put_.patch
+0006-mm-slub-unify-cmpxchg_double_slab-and-__cmpxchg_doub.patch
+0007-mm-slub-extract-get_partial-from-new_slab_objects.patch
+0008-mm-slub-dissolve-new_slab_objects-into-___slab_alloc.patch
+0009-mm-slub-return-slab-page-from-get_partial-and-set-c-.patch
+0010-mm-slub-restructure-new-page-checks-in-___slab_alloc.patch
+0011-mm-slub-simplify-kmem_cache_cpu-and-tid-setup.patch
+0012-mm-slub-move-disabling-enabling-irqs-to-___slab_allo.patch
+0013-mm-slub-do-initial-checks-in-___slab_alloc-with-irqs.patch
+0014-mm-slub-move-disabling-irqs-closer-to-get_partial-in.patch
+0015-mm-slub-restore-irqs-around-calling-new_slab.patch
+0016-mm-slub-validate-slab-from-partial-list-or-page-allo.patch
+0017-mm-slub-check-new-pages-with-restored-irqs.patch
+0018-mm-slub-stop-disabling-irqs-around-get_partial.patch
+0019-mm-slub-move-reset-of-c-page-and-freelist-out-of-dea.patch
+0020-mm-slub-make-locking-in-deactivate_slab-irq-safe.patch
+0021-mm-slub-call-deactivate_slab-without-disabling-irqs.patch
+0022-mm-slub-move-irq-control-into-unfreeze_partials.patch
+0023-mm-slub-discard-slabs-in-unfreeze_partials-without-i.patch
+0024-mm-slub-detach-whole-partial-list-at-once-in-unfreez.patch
+0025-mm-slub-separate-detaching-of-partial-list-in-unfree.patch
+0026-mm-slub-only-disable-irq-with-spin_lock-in-__unfreez.patch
+0027-mm-slub-don-t-disable-irqs-in-slub_cpu_dead.patch
+0028-mm-slab-make-flush_slab-possible-to-call-with-irqs-e.patch
+0029-mm-slub-Move-flush_cpu_slab-invocations-__free_slab-.patch
+0030-mm-slub-Make-object_map_lock-a-raw_spinlock_t.patch
+0031-mm-slub-optionally-save-restore-irqs-in-slab_-un-loc.patch
+0032-mm-slub-make-slab_lock-disable-irqs-with-PREEMPT_RT.patch
+0033-mm-slub-protect-put_cpu_partial-with-disabled-irqs-i.patch
+0034-mm-slub-use-migrate_disable-on-PREEMPT_RT.patch
+0035-mm-slub-convert-kmem_cpu_slab-protection-to-local_lo.patch
 
 ###########################################################################
-# Post 
+# Post
 ###########################################################################
 kthread__Move_prio_affinite_change_into_the_newly_created_thread.patch
 genirq__Move_prio_assignment_into_the_newly_created_thread.patch
@@ -124,10 +129,14 @@ sched__Prepare_for_RT_sleeping_spin_rwlocks.patch
 sched__Rework_the___schedule_preempt_argument.patch
 sched__Provide_schedule_point_for_RT_locks.patch
 sched_wake_q__Provide_WAKE_Q_HEAD_INITIALIZER.patch
+media_atomisp_Use_lockdep_instead_of_mutex_is_locked_.patch
+rtmutex--Remove-rt_mutex_is_locked--.patch
 rtmutex__Convert_macros_to_inlines.patch
+rtmutex--Switch-to-try_cmpxchg--.patch
 rtmutex__Split_API_and_implementation.patch
+rtmutex--Split-out-the-inner-parts-of-struct-rtmutex.patch
 locking_rtmutex__Provide_rt_mutex_slowlock_locked.patch
-locking_rtmutex__Provide_lockdep_less_variants_of_rtmutex_interfaces.patch
+rtmutex--Provide-rt_mutex_base_is_locked--.patch
 locking__Add_base_code_for_RT_rw_semaphore_and_rwlock.patch
 locking_rwsem__Add_rtmutex_based_R_W_semaphore_implementation.patch
 locking_rtmutex__Add_wake_state_to_rt_mutex_waiter.patch
@@ -149,12 +158,21 @@ locking_mutex__Consolidate_core_headers.patch
 locking_mutex__Move_waiter_to_core_header.patch
 locking_ww_mutex__Move_ww_mutex_declarations_into_ww_mutex.h.patch
 locking_mutex__Make_mutex__wait_lock_raw.patch
-locking_mutex__Introduce__mutex_t.patch
-locking_mutex__Rename_the_ww_mutex_relevant_functions.patch
-locking_ww_mutex__Switch_to__mutex_t.patch
-locking_mutex__Replace_struct_mutex_in_core_code.patch
-locking_mutex__Rearrange_items_in_mutex.h.patch
-locking_mutex__Exclude_non-ww_mutex_API_for_RT.patch
+locking_ww_mutex__Simplify_lockdep_annotation.patch
+locking_ww_mutex__Gather_mutex_waiter_initialization.patch
+locking_ww_mutex__Split_up_ww_mutex_unlock.patch
+locking_ww_mutex__Split_W_W_implementation_logic.patch
+locking_ww_mutex__Remove___sched_annotation.patch
+locking_ww_mutex__Abstract_waiter_iteration.patch
+locking_ww_mutex__Abstract_waiter_enqueue.patch
+locking_ww_mutex__Abstract_mutex_accessors.patch
+locking_ww_mutex__Abstract_mutex_types.patch
+locking-ww_mutex--Abstract-internal-lock-access.patch
+locking_ww_mutex__Implement_rt_mutex_accessors.patch
+locking_ww_mutex__Add_RT_priority_to_W_W_order.patch
+locking_ww_mutex__Add_ww_rt_mutex_interface.patch
+locking-rtmutex--Extend-the-rtmutex-core-to-support-ww_mutex.patch
+locking_ww_mutex__Implement_ww_rt_mutex.patch
 locking_rtmutex__Add_mutex_variant_for_RT.patch
 lib_test_lockup__Adapt_to_changed_variables..patch
 futex__Validate_waiter_correctly_in_futex_proxy_trylock_atomic.patch
@@ -188,7 +206,7 @@ lockdep__disable_self-test.patch
 preempt__Provide_preempt__nort_variants.patch
 
 ###########################################################################
-# sched: 
+# sched:
 ###########################################################################
 kernel_sched__add_putget_cpu_light.patch
 sched__Limit_the_number_of_task_migrations_per_batch.patch
@@ -212,19 +230,22 @@ irqwork__push_most_work_into_softirq_context.patch
 ###########################################################################
 # mm: Assorted RT bits. Need care
 ###########################################################################
-mm_slub__Duct_tape_lockdep_assert_heldlocal_lock_t_on_RT.patch
 mm__page_alloc__Use_migrate_disable_in_drain_local_pages_wq.patch
-mm__slub__Dont_enable_partial_CPU_caches_on_PREEMPT_RT_by_default.patch
 mm_vmstat__Protect_per_cpu_variables_with_preempt_disable_on_RT.patch
-mm_memcontrol__Disable_preemption_in___mod_memcg_lruvec_state.patch
 u64_stats__Disable_preemption_on_32bit-UP_SMP_with_RT_during_updates.patch
-mm__memcontrol__Add_an_argument_to_refill_stock_to_indicate_locking.patch
-mm__memcontrol__Replace_disable-IRQ_locking_with_a_local_lock.patch
-mm_memcontrol__Dont_call_schedule_work_on_in_preemption_disabled_context.patch
-mm_memcontrol__Replace_local_irq_disable_with_local_locks.patch
+
 mm_zsmalloc__copy_with_get_cpu_var_and_locking.patch
 mm_vmalloc__Another_preempt_disable_region_which_sucks.patch
 mm_scatterlist__Do_not_disable_irqs_on_RT.patch
+
+###########################################################################
+# Disable memcontrol for now. The protection scopes are FUBARed
+###########################################################################
+mm-memcontro--Disable-on-PREEMPT_RT.patch
+#mm_memcontrol__Disable_preemption_in___mod_memcg_lruvec_state.patch
+#mm__memcontrol__Replace_disable-IRQ_locking_with_a_local_lock.patch
+#mm_memcontrol__Dont_call_schedule_work_on_in_preemption_disabled_context.patch
+#mm_memcontrol__Replace_local_irq_disable_with_local_locks.patch
 
 ###########################################################################
 # ptrace: Revisit
@@ -272,6 +293,7 @@ scsi_fcoe__Make_RT_aware..patch
 ###########################################################################
 crypto__limit_more_FPU-enabled_sections.patch
 crypto__cryptd_-_add_a_lock_instead_preempt_disable_local_bh_disable.patch
+crypto-testmgr-Only-disable-migration-in-crypto_disa.patch
 
 ###########################################################################
 # randomness:
@@ -319,6 +341,7 @@ x86__Enable_RT_also_on_32bit.patch
 sched__Add_support_for_lazy_preemption.patch
 x86_entry__Use_should_resched_in_idtentry_exit_cond_resched.patch
 x86__Support_for_lazy_preemption.patch
+entry--Fix-the-preempt-lazy-fallout.patch
 arm__Add_support_for_lazy_preemption.patch
 powerpc__Add_support_for_lazy_preemption.patch
 arch_arm64__Add_lazy_preempt_support.patch
@@ -328,7 +351,8 @@ arch_arm64__Add_lazy_preempt_support.patch
 ###########################################################################
 ARM__enable_irq_in_translation_section_permission_fault_handlers.patch
 KVM__arm_arm64__downgrade_preempt_disabled_region_to_migrate_disable.patch
-arm64__fpsimd__Delay_freeing_memory_in_fpsimd_flush_thread.patch
+arm64-sve-Delay-freeing-memory-in-fpsimd_flush_threa.patch
+arm64-sve-Make-kernel-FPU-protection-RT-friendly.patch
 ARM__Allow_to_enable_RT.patch
 ARM64__Allow_to_enable_RT.patch
 

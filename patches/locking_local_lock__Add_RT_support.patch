@@ -11,11 +11,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/local_lock_internal.h | 55 ++++++++++++++++++++++++++++++++++++++-
+ include/linux/local_lock_internal.h |   55 ++++++++++++++++++++++++++++++++++++
  1 file changed, 55 insertions(+)
 ---
-diff --git a/include/linux/local_lock_internal.h b/include/linux/local_lock_internal.h
-index 0574e4687d63..f39fb2806164 100644
 --- a/include/linux/local_lock_internal.h
 +++ b/include/linux/local_lock_internal.h
 @@ -6,6 +6,8 @@
@@ -27,7 +25,7 @@ index 0574e4687d63..f39fb2806164 100644
  typedef struct {
  #ifdef CONFIG_DEBUG_LOCK_ALLOC
  	struct lockdep_map	dep_map;
-@@ -63,6 +65,59 @@ static inline void local_lock_release(local_lock_t *l) { }
+@@ -63,6 +65,59 @@ static inline void local_lock_release(lo
  #define ll_local_irq_save(flags)	local_irq_save(flags)
  #define ll_local_irq_restore(flags)	local_irq_restore(flags)
  

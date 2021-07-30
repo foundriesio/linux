@@ -10,15 +10,10 @@ spinlock API differs from a regular rtmutex as it does neither handle
 timeouts nor signals and it is state preserving accross the lock operation.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/spinlock_types.h | 26 ++++++++++++++++++++++++++
+ include/linux/spinlock_types.h |   26 ++++++++++++++++++++++++++
  1 file changed, 26 insertions(+)
 ---
-diff --git a/include/linux/spinlock_types.h b/include/linux/spinlock_types.h
-index 7c8107c280c0..98d498f9e4fc 100644
 --- a/include/linux/spinlock_types.h
 +++ b/include/linux/spinlock_types.h
 @@ -51,6 +51,9 @@
@@ -41,7 +36,7 @@ index 7c8107c280c0..98d498f9e4fc 100644
 +#include <linux/rtmutex.h>
 +
 +typedef struct spinlock {
-+	struct rt_mutex		lock;
++	struct rt_mutex_base	lock;
 +#ifdef CONFIG_DEBUG_LOCK_ALLOC
 +	struct lockdep_map	dep_map;
 +#endif
@@ -49,7 +44,7 @@ index 7c8107c280c0..98d498f9e4fc 100644
 +
 +#define __SPIN_LOCK_UNLOCKED(name)				\
 +	{							\
-+		.lock = __RT_MUTEX_INITIALIZER(name.lock),	\
++		.lock = __RT_MUTEX_BASE_INITIALIZER(name.lock),	\
 +		SPIN_DEP_MAP_INIT(name)				\
 +	}
 +

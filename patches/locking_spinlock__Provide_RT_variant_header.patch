@@ -8,21 +8,16 @@ Provide the necessary wrappers around the actual rtmutex based spinlock
 implementation.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/spinlock.h         |  11 ++-
- include/linux/spinlock_api_smp.h |   3 +-
- include/linux/spinlock_rt.h      | 149 ++++++++++++++++++++++++++++++++++++++++-
+ include/linux/spinlock.h         |   11 ++
+ include/linux/spinlock_api_smp.h |    3 
+ include/linux/spinlock_rt.h      |  149 +++++++++++++++++++++++++++++++++++++++
  3 files changed, 162 insertions(+), 1 deletion(-)
  create mode 100644 include/linux/spinlock_rt.h
 ---
-diff --git a/include/linux/spinlock.h b/include/linux/spinlock.h
-index 5803b56622a8..23925a6c489b 100644
 --- a/include/linux/spinlock.h
 +++ b/include/linux/spinlock.h
-@@ -312,8 +312,10 @@ static inline void do_raw_spin_unlock(raw_spinlock_t *lock) __releases(lock)
+@@ -312,8 +312,10 @@ static inline void do_raw_spin_unlock(ra
  	1 : ({ local_irq_restore(flags); 0; }); \
  })
  
@@ -34,7 +29,7 @@ index 5803b56622a8..23925a6c489b 100644
  
  /*
   * Pull the _spin_*()/_read_*()/_write_*() functions/declarations:
-@@ -324,6 +326,9 @@ static inline void do_raw_spin_unlock(raw_spinlock_t *lock) __releases(lock)
+@@ -324,6 +326,9 @@ static inline void do_raw_spin_unlock(ra
  # include <linux/spinlock_api_up.h>
  #endif
  
@@ -44,7 +39,7 @@ index 5803b56622a8..23925a6c489b 100644
  /*
   * Map the spin_lock functions to the raw variants for PREEMPT_RT=n
   */
-@@ -458,6 +463,10 @@ static __always_inline int spin_is_contended(spinlock_t *lock)
+@@ -458,6 +463,10 @@ static __always_inline int spin_is_conte
  
  #define assert_spin_locked(lock)	assert_raw_spin_locked(&(lock)->rlock)
  
@@ -55,11 +50,9 @@ index 5803b56622a8..23925a6c489b 100644
  /*
   * Pull the atomic_t declaration:
   * (asm-mips/atomic.h needs above definitions)
-diff --git a/include/linux/spinlock_api_smp.h b/include/linux/spinlock_api_smp.h
-index 19a9be9d97ee..51bf88c84133 100644
 --- a/include/linux/spinlock_api_smp.h
 +++ b/include/linux/spinlock_api_smp.h
-@@ -187,6 +187,9 @@ static inline int __raw_spin_trylock_bh(raw_spinlock_t *lock)
+@@ -187,6 +187,9 @@ static inline int __raw_spin_trylock_bh(
  	return 0;
  }
  
@@ -69,9 +62,6 @@ index 19a9be9d97ee..51bf88c84133 100644
 +#endif
  
  #endif /* __LINUX_SPINLOCK_API_SMP_H */
-diff --git a/include/linux/spinlock_rt.h b/include/linux/spinlock_rt.h
-new file mode 100644
-index 000000000000..035b434555df
 --- /dev/null
 +++ b/include/linux/spinlock_rt.h
 @@ -0,0 +1,149 @@
@@ -97,7 +87,7 @@ index 000000000000..035b434555df
 +do {							\
 +	static struct lock_class_key __key;		\
 +							\
-+	rt_mutex_init(&(slock)->lock);			\
++	rt_mutex_base_init(&(slock)->lock);		\
 +	__rt_spin_lock_init(slock, #slock, &__key);	\
 +} while (0)
 +
@@ -218,7 +208,7 @@ index 000000000000..035b434555df
 +
 +static inline int spin_is_locked(spinlock_t *lock)
 +{
-+	return rt_mutex_is_locked(&lock->lock);
++	return rt_mutex_base_is_locked(&lock->lock);
 +}
 +
 +#define assert_spin_locked(lock) BUG_ON(!spin_is_locked(lock))

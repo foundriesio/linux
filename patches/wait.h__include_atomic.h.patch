@@ -22,11 +22,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/wait.h | 1 +
+ include/linux/wait.h |    1 +
  1 file changed, 1 insertion(+)
 ---
-diff --git a/include/linux/wait.h b/include/linux/wait.h
-index fe10e8570a52..e9ce878a4906 100644
 --- a/include/linux/wait.h
 +++ b/include/linux/wait.h
 @@ -10,6 +10,7 @@

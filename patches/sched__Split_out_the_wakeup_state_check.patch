@@ -18,18 +18,13 @@ task::state is checked against the state argument of try_to_wake_up().
 No functional change.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- kernel/sched/core.c | 25 +++++++++++++++++++------
- 1 file changed, 19 insertions(+), 6 deletions(-)
+ kernel/sched/core.c |   24 ++++++++++++++++++------
+ 1 file changed, 18 insertions(+), 6 deletions(-)
 ---
-diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 4ca80df205ce..f7008a248eca 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3207,6 +3207,22 @@ static void ttwu_queue(struct task_struct *p, int cpu, int wake_flags)
+@@ -3564,6 +3564,22 @@ static void ttwu_queue(struct task_struc
  }
  
  /*
@@ -41,7 +36,7 @@ index 4ca80df205ce..f7008a248eca 100644
 +static __always_inline
 +bool ttwu_state_match(struct task_struct *p, unsigned int state, int *success)
 +{
-+	if (p->state & state) {
++	if (READ_ONCE(p->__state) & state) {
 +		*success = 1;
 +		return true;
 +	}
@@ -52,24 +47,23 @@ index 4ca80df205ce..f7008a248eca 100644
   * Notes on Program-Order guarantees on SMP systems.
   *
   *  MIGRATION
-@@ -3345,10 +3361,9 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
+@@ -3702,10 +3718,9 @@ try_to_wake_up(struct task_struct *p, un
  		 *  - we're serialized against set_special_state() by virtue of
  		 *    it disabling IRQs (this allows not taking ->pi_lock).
  		 */
--		if (!(p->state & state))
+-		if (!(READ_ONCE(p->__state) & state))
 +		if (!ttwu_state_match(p, state, &success))
  			goto out;
  
 -		success = 1;
  		trace_sched_waking(p);
- 		p->state = TASK_RUNNING;
+ 		WRITE_ONCE(p->__state, TASK_RUNNING);
  		trace_sched_wakeup(p);
-@@ -3363,14 +3378,12 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
+@@ -3720,14 +3735,11 @@ try_to_wake_up(struct task_struct *p, un
  	 */
  	raw_spin_lock_irqsave(&p->pi_lock, flags);
  	smp_mb__after_spinlock();
--	if (!(p->state & state))
-+
+-	if (!(READ_ONCE(p->__state) & state))
 +	if (!ttwu_state_match(p, state, &success))
  		goto unlock;
  

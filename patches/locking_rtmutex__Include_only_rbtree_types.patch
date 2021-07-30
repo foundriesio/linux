@@ -14,15 +14,10 @@ Include rbtree_types.h instead.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/rtmutex.h | 2 +-
+ include/linux/rtmutex.h |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 ---
-diff --git a/include/linux/rtmutex.h b/include/linux/rtmutex.h
-index 9c1c67f2d810..7bbee67720dc 100644
 --- a/include/linux/rtmutex.h
 +++ b/include/linux/rtmutex.h
 @@ -14,7 +14,7 @@

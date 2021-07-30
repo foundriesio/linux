@@ -8,18 +8,15 @@ The futex key reference mechanism is long gone. Cleanup the stale comments
 which still mention it.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- kernel/futex.c |  9 +++------
- 1 file changed, 3 insertions(+), 6 deletions(-)
+V2: Cleanup more key ref comments - Andre
 ---
-diff --git a/kernel/futex.c b/kernel/futex.c
-index b8eab7a2934b..e0f266fa7249 100644
+ kernel/futex.c |   18 +++++++-----------
+ 1 file changed, 7 insertions(+), 11 deletions(-)
+---
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -1354,7 +1354,7 @@ static int lock_pi_update_atomic(u32 __user *uaddr, u32 uval, u32 newval)
+@@ -1354,7 +1354,7 @@ static int lock_pi_update_atomic(u32 __u
   *  -  1 - acquired the lock;
   *  - <0 - error
   *
@@ -28,7 +25,7 @@ index b8eab7a2934b..e0f266fa7249 100644
   *
   * @exiting is only set when the return value is -EBUSY. If so, this holds
   * a refcount on the exiting task on return and the caller needs to drop it
-@@ -2621,8 +2621,7 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
+@@ -2618,8 +2618,7 @@ static void futex_wait_queue_me(struct f
   *
   * Setup the futex_q and locate the hash_bucket.  Get the futex value and
   * compare it with the expected value.  Handle atomic faults internally.
@@ -38,7 +35,37 @@ index b8eab7a2934b..e0f266fa7249 100644
   *
   * Return:
   *  -  0 - uaddr contains val and hb has been locked;
-@@ -3235,9 +3234,7 @@ static int futex_wait_requeue_pi(u32 __user *uaddr, unsigned int flags,
+@@ -2697,8 +2696,8 @@ static int futex_wait(u32 __user *uaddr,
+ 			       current->timer_slack_ns);
+ retry:
+ 	/*
+-	 * Prepare to wait on uaddr. On success, holds hb lock and increments
+-	 * q.key refs.
++	 * Prepare to wait on uaddr. On success, it holds hb->lock and q
++	 * is initialized.
+ 	 */
+ 	ret = futex_wait_setup(uaddr, val, flags, &q, &hb);
+ 	if (ret)
+@@ -2709,7 +2708,6 @@ static int futex_wait(u32 __user *uaddr,
+ 
+ 	/* If we were woken (and unqueued), we succeeded, whatever. */
+ 	ret = 0;
+-	/* unqueue_me() drops q.key ref */
+ 	if (!unqueue_me(&q))
+ 		goto out;
+ 	ret = -ETIMEDOUT;
+@@ -3202,8 +3200,8 @@ static int futex_wait_requeue_pi(u32 __u
+ 	q.requeue_pi_key = &key2;
+ 
+ 	/*
+-	 * Prepare to wait on uaddr. On success, increments q.key (key1) ref
+-	 * count.
++	 * Prepare to wait on uaddr. On success, it holds hb->lock and q
++	 * is initialized.
+ 	 */
+ 	ret = futex_wait_setup(uaddr, val, flags, &q, &hb);
+ 	if (ret)
+@@ -3232,9 +3230,7 @@ static int futex_wait_requeue_pi(u32 __u
  	 * In order for us to be here, we know our q.key == key2, and since
  	 * we took the hb->lock above, we also know that futex_requeue() has
  	 * completed and we no longer have to concern ourselves with a wakeup

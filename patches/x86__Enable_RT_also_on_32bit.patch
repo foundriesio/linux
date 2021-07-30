@@ -9,11 +9,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- arch/x86/Kconfig | 2 +-
+ arch/x86/Kconfig |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 ---
-diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
-index 34421efd2336..00fbd9c3a179 100644
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
 @@ -27,7 +27,6 @@ config X86_64
@@ -24,10 +22,10 @@ index 34421efd2336..00fbd9c3a179 100644
  	select ARCH_USE_CMPXCHG_LOCKREF
  	select HAVE_ARCH_SOFT_DIRTY
  	select MODULES_USE_ELF_RELA
-@@ -106,6 +105,7 @@ config X86
+@@ -108,6 +107,7 @@ config X86
  	select ARCH_SUPPORTS_KMAP_LOCAL_FORCE_MAP	if NR_CPUS <= 4096
- 	select ARCH_SUPPORTS_LTO_CLANG		if X86_64
- 	select ARCH_SUPPORTS_LTO_CLANG_THIN	if X86_64
+ 	select ARCH_SUPPORTS_LTO_CLANG
+ 	select ARCH_SUPPORTS_LTO_CLANG_THIN
 +	select ARCH_SUPPORTS_RT
  	select ARCH_USE_BUILTIN_BSWAP
  	select ARCH_USE_MEMTEST

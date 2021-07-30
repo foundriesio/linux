@@ -8,20 +8,15 @@ Provide the actual locking functions which make use of the general and
 spinlock specific rtmutex code.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- kernel/locking/Makefile      |   1 +-
- kernel/locking/spinlock_rt.c | 128 ++++++++++++++++++++++++++++++++++++++++++++-
+ kernel/locking/Makefile      |    1 
+ kernel/locking/spinlock_rt.c |  128 +++++++++++++++++++++++++++++++++++++++++++
  2 files changed, 129 insertions(+)
  create mode 100644 kernel/locking/spinlock_rt.c
 ---
-diff --git a/kernel/locking/Makefile b/kernel/locking/Makefile
-index 269f55e1e431..683f0b7fbacc 100644
 --- a/kernel/locking/Makefile
 +++ b/kernel/locking/Makefile
-@@ -25,6 +25,7 @@ obj-$(CONFIG_LOCK_SPIN_ON_OWNER) += osq_lock.o
+@@ -25,6 +25,7 @@ obj-$(CONFIG_LOCK_SPIN_ON_OWNER) += osq_
  obj-$(CONFIG_PROVE_LOCKING) += spinlock.o
  obj-$(CONFIG_QUEUED_SPINLOCKS) += qspinlock.o
  obj-$(CONFIG_RT_MUTEXES) += rtmutex_api.o
@@ -29,9 +24,6 @@ index 269f55e1e431..683f0b7fbacc 100644
  obj-$(CONFIG_DEBUG_SPINLOCK) += spinlock.o
  obj-$(CONFIG_DEBUG_SPINLOCK) += spinlock_debug.o
  obj-$(CONFIG_QUEUED_RWLOCKS) += qrwlock.o
-diff --git a/kernel/locking/spinlock_rt.c b/kernel/locking/spinlock_rt.c
-new file mode 100644
-index 000000000000..0abc06d6092f
 --- /dev/null
 +++ b/kernel/locking/spinlock_rt.c
 @@ -0,0 +1,128 @@
@@ -61,7 +53,7 @@ index 000000000000..0abc06d6092f
 +#define RT_MUTEX_BUILD_SPINLOCKS
 +#include "rtmutex.c"
 +
-+static __always_inline void rtlock_lock(struct rt_mutex *rtm)
++static __always_inline void rtlock_lock(struct rt_mutex_base *rtm)
 +{
 +	if (unlikely(!rt_mutex_cmpxchg_acquire(rtm, NULL, current)))
 +		rtlock_slowlock(rtm);

@@ -38,15 +38,10 @@ waiting state and the wakeup state are distinguishable, which avoids
 spurious wakeups and allows better analysis.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/sched.h | 4 +++-
+ include/linux/sched.h |    4 +++-
  1 file changed, 3 insertions(+), 1 deletion(-)
 ---
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index 32813c345115..372dd72cf604 100644
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
 @@ -95,7 +95,9 @@ struct task_group;

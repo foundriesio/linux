@@ -9,20 +9,16 @@ function which can be reused by the upcoming RT lock substitutions,
 e.g. for rw_semaphores.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- kernel/locking/rtmutex.c        | 95 +++++++++++++++++++++++-------------------
- kernel/locking/rtmutex_api.c    | 16 ++++++-
- kernel/locking/rtmutex_common.h |  3 +-
- 3 files changed, 72 insertions(+), 42 deletions(-)
+V2: Add the dropped debug_rt_mutex_free_waiter() - Valentin
 ---
-diff --git a/kernel/locking/rtmutex.c b/kernel/locking/rtmutex.c
-index 1fc2b1839039..16e838a1f199 100644
+ kernel/locking/rtmutex.c     |  100 ++++++++++++++++++++++++-------------------
+ kernel/locking/rtmutex_api.c |    2 
+ 2 files changed, 59 insertions(+), 43 deletions(-)
+---
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1106,7 +1106,7 @@ static void __sched remove_waiter(struct rt_mutex *lock,
+@@ -1106,7 +1106,7 @@ static void __sched remove_waiter(struct
  }
  
  /**
@@ -31,21 +27,22 @@ index 1fc2b1839039..16e838a1f199 100644
   * @lock:		 the rt_mutex to take
   * @state:		 the state the task should block in (TASK_INTERRUPTIBLE
   *			 or TASK_UNINTERRUPTIBLE)
-@@ -1115,9 +1115,10 @@ static void __sched remove_waiter(struct rt_mutex *lock,
+@@ -1115,10 +1115,10 @@ static void __sched remove_waiter(struct
   *
   * Must be called with lock->wait_lock held and interrupts disabled
   */
--static int __sched __rt_mutex_slowlock(struct rt_mutex *lock, int state,
+-static int __sched __rt_mutex_slowlock(struct rt_mutex_base *lock,
+-				       unsigned int state,
 -				       struct hrtimer_sleeper *timeout,
 -				       struct rt_mutex_waiter *waiter)
-+static int __sched rt_mutex_slowlock_block(struct rt_mutex *lock,
++static int __sched rt_mutex_slowlock_block(struct rt_mutex_base *lock,
 +					   unsigned int state,
 +					   struct hrtimer_sleeper *timeout,
 +					   struct rt_mutex_waiter *waiter)
  {
  	int ret = 0;
  
-@@ -1167,51 +1168,37 @@ static void __sched rt_mutex_handle_deadlock(int res, int detect_deadlock,
+@@ -1168,52 +1168,37 @@ static void __sched rt_mutex_handle_dead
  	}
  }
  
@@ -58,10 +55,11 @@ index 1fc2b1839039..16e838a1f199 100644
 + * @chwalk:	Indicator whether full or partial chainwalk is requested
 + * @waiter:	Initializer waiter for blocking
   */
--static int __sched rt_mutex_slowlock(struct rt_mutex *lock, int state,
+-static int __sched rt_mutex_slowlock(struct rt_mutex_base *lock,
+-				     unsigned int state,
 -				     struct hrtimer_sleeper *timeout,
 -				     enum rtmutex_chainwalk chwalk)
-+static int __sched __rt_mutex_slowlock(struct rt_mutex *lock,
++static int __sched __rt_mutex_slowlock(struct rt_mutex_base *lock,
 +				       unsigned int state,
 +				       enum rtmutex_chainwalk chwalk,
 +				       struct rt_mutex_waiter *waiter)
@@ -114,7 +112,7 @@ index 1fc2b1839039..16e838a1f199 100644
  	}
  
  	/*
-@@ -1219,14 +1206,40 @@ static int __sched rt_mutex_slowlock(struct rt_mutex *lock, int state,
+@@ -1221,14 +1206,45 @@ static int __sched rt_mutex_slowlock(str
  	 * unconditionally. We might have to fix that up.
  	 */
  	fixup_rt_mutex_waiters(lock);
@@ -122,26 +120,30 @@ index 1fc2b1839039..16e838a1f199 100644
 +}
  
 -	raw_spin_unlock_irqrestore(&lock->wait_lock, flags);
-+static inline int __rt_mutex_slowlock_locked(struct rt_mutex *lock,
++static inline int __rt_mutex_slowlock_locked(struct rt_mutex_base *lock,
 +					     unsigned int state)
 +{
 +	struct rt_mutex_waiter waiter;
-+
-+	rt_mutex_init_waiter(&waiter);
++	int ret;
  
 -	/* Remove pending timer: */
 -	if (unlikely(timeout))
 -		hrtimer_cancel(&timeout->timer);
-+	return __rt_mutex_slowlock(lock, state, RT_MUTEX_MIN_CHAINWALK, &waiter);
-+}
++	rt_mutex_init_waiter(&waiter);
++
++	ret = __rt_mutex_slowlock(lock, state, RT_MUTEX_MIN_CHAINWALK, &waiter);
  
--	debug_rt_mutex_free_waiter(&waiter);
+ 	debug_rt_mutex_free_waiter(&waiter);
++	return ret;
++}
++
 +/*
 + * rt_mutex_slowlock - Locking slowpath invoked when fast path fails
 + * @lock:	The rtmutex to block lock
 + * @state:	The task state for sleeping
 + */
-+static int __sched rt_mutex_slowlock(struct rt_mutex *lock, unsigned int state)
++static int __sched rt_mutex_slowlock(struct rt_mutex_base *lock,
++				     unsigned int state)
 +{
 +	unsigned long flags;
 +	int ret;
@@ -160,7 +162,7 @@ index 1fc2b1839039..16e838a1f199 100644
  
  	return ret;
  }
-@@ -1237,7 +1250,7 @@ static __always_inline int __rt_mutex_lock(struct rt_mutex *lock,
+@@ -1239,7 +1255,7 @@ static __always_inline int __rt_mutex_lo
  	if (likely(rt_mutex_cmpxchg_acquire(lock, NULL, current)))
  		return 0;
  
@@ -168,12 +170,10 @@ index 1fc2b1839039..16e838a1f199 100644
 +	return rt_mutex_slowlock(lock, state);
  }
  
- static int __sched __rt_mutex_slowtrylock(struct rt_mutex *lock)
-diff --git a/kernel/locking/rtmutex_api.c b/kernel/locking/rtmutex_api.c
-index c19de2a1246e..e61ae0cd8a1f 100644
+ static int __sched __rt_mutex_slowtrylock(struct rt_mutex_base *lock)
 --- a/kernel/locking/rtmutex_api.c
 +++ b/kernel/locking/rtmutex_api.c
-@@ -337,7 +337,7 @@ int __sched rt_mutex_wait_proxy_lock(struct rt_mutex *lock,
+@@ -342,7 +342,7 @@ int __sched rt_mutex_wait_proxy_lock(str
  	raw_spin_lock_irq(&lock->wait_lock);
  	/* sleep on the mutex */
  	set_current_state(TASK_INTERRUPTIBLE);
@@ -182,35 +182,3 @@ index c19de2a1246e..e61ae0cd8a1f 100644
  	/*
  	 * try_to_take_rt_mutex() sets the waiter bit unconditionally. We might
  	 * have to fix that up.
-@@ -451,3 +451,17 @@ void rt_mutex_debug_task_free(struct task_struct *task)
- 	DEBUG_LOCKS_WARN_ON(task->pi_blocked_on);
- }
- #endif
-+
-+/* Interfaces for PREEMPT_RT lock substitutions */
-+#ifdef CONFIG_PREEMPT_RT
-+/**
-+ * rwsem_rt_mutex_slowlock_locked - Lock slowpath invoked with @lock::wait_lock held
-+ * @lock:	The rtmutex to acquire
-+ * @state:	The task state for blocking
-+ */
-+int __sched rwsem_rt_mutex_slowlock_locked(struct rt_mutex *lock,
-+					  unsigned int state)
-+{
-+	return __rt_mutex_slowlock_locked(lock, state);
-+}
-+#endif
-diff --git a/kernel/locking/rtmutex_common.h b/kernel/locking/rtmutex_common.h
-index 0f314a21d6ca..02a7ad3bd915 100644
---- a/kernel/locking/rtmutex_common.h
-+++ b/kernel/locking/rtmutex_common.h
-@@ -64,6 +64,9 @@ extern bool __rt_mutex_futex_unlock(struct rt_mutex *lock,
- 
- extern void rt_mutex_postunlock(struct wake_q_head *wake_q);
- 
-+/* Special interfaces for RT lock substitutions */
-+int rwsem_rt_mutex_slowlock_locked(struct rt_mutex *lock, unsigned int state);
-+
- /*
-  * Must be guarded because this header is included from rcu/tree_plugin.h
-  * unconditionally.

@@ -18,14 +18,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- net/core/dev.c | 6 ++----
+ net/core/dev.c |    6 ++----
  1 file changed, 2 insertions(+), 4 deletions(-)
 ---
-diff --git a/net/core/dev.c b/net/core/dev.c
-index acf579c2f8dc..7cd7df45bd13 100644
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -4964,11 +4964,9 @@ int netif_rx_ni(struct sk_buff *skb)
+@@ -5003,11 +5003,9 @@ int netif_rx_ni(struct sk_buff *skb)
  
  	trace_netif_rx_ni_entry(skb);
  

@@ -10,15 +10,10 @@ so PREEMPT_LOCK_OFFSET has to be 0 to make the various cond_resched_*lock()
 functions work correctly.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/preempt.h | 4 ++++
+ include/linux/preempt.h |    4 ++++
  1 file changed, 4 insertions(+)
 ---
-diff --git a/include/linux/preempt.h b/include/linux/preempt.h
-index 9881eac0698f..4d244e295e85 100644
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
 @@ -121,7 +121,11 @@

@@ -23,16 +23,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
+
 ---
- include/linux/console.h |  1 +
- kernel/printk/printk.c  | 15 +++++++++++++--
+ include/linux/console.h |    1 +
+ kernel/printk/printk.c  |   15 +++++++++++++--
  2 files changed, 14 insertions(+), 2 deletions(-)
 ---
-diff --git a/include/linux/console.h b/include/linux/console.h
-index c759afc539ce..851daf13de0a 100644
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
-@@ -149,6 +149,7 @@ static inline int con_debug_leave(void)
+@@ -143,6 +143,7 @@ static inline int con_debug_leave(void)
  #define CON_ANYTIME	(16) /* Safe to call when cpu is offline */
  #define CON_BRL		(32) /* Used for a braille device */
  #define CON_EXTENDED	(64) /* Use the extended output format a la /dev/kmsg */
@@ -40,11 +39,9 @@ index c759afc539ce..851daf13de0a 100644
  
  struct console {
  	char	name[16];
-diff --git a/kernel/printk/printk.c b/kernel/printk/printk.c
-index 58daeb0bdcd7..b57b16bc5bbf 100644
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -1722,6 +1722,8 @@ static bool console_may_sync(struct console *con)
+@@ -1750,6 +1750,8 @@ static bool console_may_sync(struct cons
  		return false;
  	if (con->write_atomic && kernel_sync_mode())
  		return true;
@@ -53,7 +50,7 @@ index 58daeb0bdcd7..b57b16bc5bbf 100644
  	if (con->write && (con->flags & CON_BOOT) && !con->thread)
  		return true;
  	return false;
-@@ -1737,7 +1739,14 @@ static bool call_sync_console_driver(struct console *con, const char *text, size
+@@ -1765,7 +1767,14 @@ static bool call_sync_console_driver(str
  		return true;
  	}
  
@@ -69,7 +66,7 @@ index 58daeb0bdcd7..b57b16bc5bbf 100644
  		if (console_trylock()) {
  			con->write(con, text, text_len);
  			console_unlock();
-@@ -2866,8 +2875,10 @@ void register_console(struct console *newcon)
+@@ -2903,8 +2912,10 @@ void register_console(struct console *ne
  	 * the real console are the same physical device, it's annoying to
  	 * see the beginning boot messages twice
  	 */

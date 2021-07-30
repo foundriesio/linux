@@ -13,19 +13,14 @@ That allows to add helpers and defines to the common header for the
 upcoming handling of mutexes and ww_mutexes on PREEMPT_RT.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- kernel/locking/mutex-debug.c |  4 +---
- kernel/locking/mutex-debug.h | 29 -----------------------------
- kernel/locking/mutex.c       |  6 +-----
- kernel/locking/mutex.h       | 20 +++++++++++++++++---
+ kernel/locking/mutex-debug.c |    4 +---
+ kernel/locking/mutex-debug.h |   29 -----------------------------
+ kernel/locking/mutex.c       |    6 +-----
+ kernel/locking/mutex.h       |   20 +++++++++++++++++---
  4 files changed, 19 insertions(+), 40 deletions(-)
  delete mode 100644 kernel/locking/mutex-debug.h
 ---
-diff --git a/kernel/locking/mutex-debug.c b/kernel/locking/mutex-debug.c
-index db9301591e3f..7ef5a36857e8 100644
 --- a/kernel/locking/mutex-debug.c
 +++ b/kernel/locking/mutex-debug.c
 @@ -1,6 +1,4 @@
@@ -44,9 +39,6 @@ index db9301591e3f..7ef5a36857e8 100644
  
  /*
   * Must be called with lock->wait_lock held.
-diff --git a/kernel/locking/mutex-debug.h b/kernel/locking/mutex-debug.h
-deleted file mode 100644
-index 53e631e1d76d..000000000000
 --- a/kernel/locking/mutex-debug.h
 +++ /dev/null
 @@ -1,29 +0,0 @@
@@ -79,8 +71,6 @@ index 53e631e1d76d..000000000000
 -extern void debug_mutex_unlock(struct mutex *lock);
 -extern void debug_mutex_init(struct mutex *lock, const char *name,
 -			     struct lock_class_key *key);
-diff --git a/kernel/locking/mutex.c b/kernel/locking/mutex.c
-index 013e1b08a1bf..68723b49c22e 100644
 --- a/kernel/locking/mutex.c
 +++ b/kernel/locking/mutex.c
 @@ -30,11 +30,7 @@
@@ -96,8 +86,6 @@ index 013e1b08a1bf..68723b49c22e 100644
  
  void
  __mutex_init(struct mutex *lock, const char *name, struct lock_class_key *key)
-diff --git a/kernel/locking/mutex.h b/kernel/locking/mutex.h
-index f0c710b1d192..183965942cde 100644
 --- a/kernel/locking/mutex.h
 +++ b/kernel/locking/mutex.h
 @@ -5,11 +5,24 @@

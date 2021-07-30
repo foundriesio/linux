@@ -25,14 +25,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- drivers/char/tpm/tpm_tis.c | 29 +++++++++++++++++++++++++++--
+ drivers/char/tpm/tpm_tis.c |   29 +++++++++++++++++++++++++++--
  1 file changed, 27 insertions(+), 2 deletions(-)
 ---
-diff --git a/drivers/char/tpm/tpm_tis.c b/drivers/char/tpm/tpm_tis.c
-index 4ed6e660273a..c2bd0d40b5fc 100644
 --- a/drivers/char/tpm/tpm_tis.c
 +++ b/drivers/char/tpm/tpm_tis.c
-@@ -50,6 +50,31 @@ static inline struct tpm_tis_tcg_phy *to_tpm_tis_tcg_phy(struct tpm_tis_data *da
+@@ -50,6 +50,31 @@ static inline struct tpm_tis_tcg_phy *to
  	return container_of(data, struct tpm_tis_tcg_phy, priv);
  }
  
@@ -64,7 +62,7 @@ index 4ed6e660273a..c2bd0d40b5fc 100644
  static int interrupts = -1;
  module_param(interrupts, int, 0444);
  MODULE_PARM_DESC(interrupts, "Enable interrupts");
-@@ -169,7 +194,7 @@ static int tpm_tcg_write_bytes(struct tpm_tis_data *data, u32 addr, u16 len,
+@@ -169,7 +194,7 @@ static int tpm_tcg_write_bytes(struct tp
  	struct tpm_tis_tcg_phy *phy = to_tpm_tis_tcg_phy(data);
  
  	while (len--)
@@ -73,7 +71,7 @@ index 4ed6e660273a..c2bd0d40b5fc 100644
  
  	return 0;
  }
-@@ -196,7 +221,7 @@ static int tpm_tcg_write32(struct tpm_tis_data *data, u32 addr, u32 value)
+@@ -196,7 +221,7 @@ static int tpm_tcg_write32(struct tpm_ti
  {
  	struct tpm_tis_tcg_phy *phy = to_tpm_tis_tcg_phy(data);
  

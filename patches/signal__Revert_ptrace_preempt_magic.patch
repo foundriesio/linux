@@ -12,14 +12,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- kernel/signal.c | 8 --------
+ kernel/signal.c |    8 --------
  1 file changed, 8 deletions(-)
 ---
-diff --git a/kernel/signal.c b/kernel/signal.c
-index 30a0bee5ff9b..b3a6ea42d357 100644
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
-@@ -2215,16 +2215,8 @@ static void ptrace_stop(int exit_code, int why, int clear_code, kernel_siginfo_t
+@@ -2228,16 +2228,8 @@ static void ptrace_stop(int exit_code, i
  		if (gstop_done && ptrace_reparented(current))
  			do_notify_parent_cldstop(current, false, why);
  

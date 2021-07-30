@@ -8,16 +8,12 @@ In preparation for atomic printing, change @console_seq to use
 seqcount_latch so that it can be read without requiring @console_sem.
 
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
-
 ---
- kernel/printk/printk.c | 68 ++++++++++++++++++++++++++++++---------------------
- 1 file changed, 41 insertions(+), 27 deletions(-)
+ kernel/printk/printk.c |   73 +++++++++++++++++++++++++++----------------------
+ 1 file changed, 41 insertions(+), 32 deletions(-)
 ---
-diff --git a/kernel/printk/printk.c b/kernel/printk/printk.c
-index c07da9ed4f63..41431226bb38 100644
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
 @@ -367,9 +367,7 @@ static u64 syslog_seq;
@@ -58,25 +54,28 @@ index c07da9ed4f63..41431226bb38 100644
  static void latched_seq_write(struct latched_seq *ls, u64 val)
  {
  	raw_write_seqcount_latch(&ls->latch);
-@@ -2270,7 +2279,8 @@ EXPORT_SYMBOL(printk);
- #define prb_first_valid_seq(rb)		0
+@@ -2302,9 +2311,9 @@ EXPORT_SYMBOL(printk);
  
- static u64 syslog_seq;
+ #define prb_read_valid(rb, seq, r)	false
+ #define prb_first_valid_seq(rb)		0
++#define latched_seq_read_nolock(seq)	0
++#define latched_seq_write(dst, src)
+ 
+-static u64 syslog_seq;
 -static u64 console_seq;
-+#error FIXME
-+static atomic64_t console_seq = ATOMIC64_INIT(0);
  static u64 exclusive_console_stop_seq;
  static unsigned long console_dropped;
  
-@@ -2586,6 +2596,7 @@ void console_unlock(void)
+@@ -2620,7 +2629,7 @@ void console_unlock(void)
  	bool do_cond_resched, retry;
  	struct printk_info info;
  	struct printk_record r;
+-	u64 __maybe_unused next_seq;
 +	u64 seq;
  
  	if (console_suspended) {
  		up_console_sem();
-@@ -2628,12 +2639,14 @@ void console_unlock(void)
+@@ -2664,12 +2673,14 @@ void console_unlock(void)
  		size_t len;
  
  skip:
@@ -95,7 +94,7 @@ index c07da9ed4f63..41431226bb38 100644
  		}
  
  		if (suppress_message_printing(r.info->level)) {
-@@ -2642,13 +2655,13 @@ void console_unlock(void)
+@@ -2678,13 +2689,13 @@ void console_unlock(void)
  			 * directly to the console when we received it, and
  			 * record that has level above the console loglevel.
  			 */
@@ -111,25 +110,35 @@ index c07da9ed4f63..41431226bb38 100644
  			exclusive_console = NULL;
  		}
  
-@@ -2669,7 +2682,7 @@ void console_unlock(void)
+@@ -2705,7 +2716,7 @@ void console_unlock(void)
  		len = record_print_text(&r,
  				console_msg_format & MSG_FORMAT_SYSLOG,
  				printk_time);
 -		console_seq++;
 +		latched_seq_write(&console_seq, seq + 1);
  
- 		printk_safe_enter_irqsave(flags);
+ 		/*
+ 		 * While actively printing out messages, if another printk()
+@@ -2733,9 +2744,6 @@ void console_unlock(void)
+ 			cond_resched();
+ 	}
  
-@@ -2706,7 +2719,7 @@ void console_unlock(void)
+-	/* Get consistent value of the next-to-be-used sequence number. */
+-	next_seq = console_seq;
+-
+ 	console_locked = 0;
+ 	up_console_sem();
+ 
+@@ -2745,7 +2753,7 @@ void console_unlock(void)
  	 * there's a new owner and the console_unlock() from them will do the
  	 * flush, no worries.
  	 */
--	retry = prb_read_valid(prb, console_seq, NULL);
+-	retry = prb_read_valid(prb, next_seq, NULL);
 +	retry = prb_read_valid(prb, latched_seq_read_nolock(&console_seq), NULL);
  	if (retry && console_trylock())
  		goto again;
  }
-@@ -2758,18 +2771,19 @@ void console_unblank(void)
+@@ -2797,18 +2805,19 @@ void console_unblank(void)
   */
  void console_flush_on_panic(enum con_flush_mode mode)
  {
@@ -161,7 +170,7 @@ index c07da9ed4f63..41431226bb38 100644
  	console_unlock();
  }
  
-@@ -3006,11 +3020,11 @@ void register_console(struct console *newcon)
+@@ -3044,11 +3053,11 @@ void register_console(struct console *ne
  		 * ignores console_lock.
  		 */
  		exclusive_console = newcon;
@@ -169,9 +178,9 @@ index c07da9ed4f63..41431226bb38 100644
 +		exclusive_console_stop_seq = latched_seq_read_nolock(&console_seq);
  
  		/* Get a consistent copy of @syslog_seq. */
- 		spin_lock_irqsave(&syslog_lock, flags);
+ 		mutex_lock(&syslog_lock);
 -		console_seq = syslog_seq;
 +		latched_seq_write(&console_seq, syslog_seq);
- 		spin_unlock_irqrestore(&syslog_lock, flags);
+ 		mutex_unlock(&syslog_lock);
  	}
  	console_unlock();

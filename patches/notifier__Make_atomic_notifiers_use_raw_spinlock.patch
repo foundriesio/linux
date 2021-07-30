@@ -56,12 +56,10 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/notifier.h |  6 +++---
- kernel/notifier.c        | 12 ++++++------
+ include/linux/notifier.h |    6 +++---
+ kernel/notifier.c        |   12 ++++++------
  2 files changed, 9 insertions(+), 9 deletions(-)
 ---
-diff --git a/include/linux/notifier.h b/include/linux/notifier.h
-index 2fb373a5c1ed..723bc2df6388 100644
 --- a/include/linux/notifier.h
 +++ b/include/linux/notifier.h
 @@ -58,7 +58,7 @@ struct notifier_block {
@@ -82,7 +80,7 @@ index 2fb373a5c1ed..723bc2df6388 100644
  		(name)->head = NULL;		\
  	} while (0)
  #define BLOCKING_INIT_NOTIFIER_HEAD(name) do {	\
-@@ -95,7 +95,7 @@ extern void srcu_init_notifier_head(struct srcu_notifier_head *nh);
+@@ -95,7 +95,7 @@ extern void srcu_init_notifier_head(stru
  		cleanup_srcu_struct(&(name)->srcu);
  
  #define ATOMIC_NOTIFIER_INIT(name) {				\
@@ -91,11 +89,9 @@ index 2fb373a5c1ed..723bc2df6388 100644
  		.head = NULL }
  #define BLOCKING_NOTIFIER_INIT(name) {				\
  		.rwsem = __RWSEM_INITIALIZER((name).rwsem),	\
-diff --git a/kernel/notifier.c b/kernel/notifier.c
-index 1b019cbca594..c20782f07643 100644
 --- a/kernel/notifier.c
 +++ b/kernel/notifier.c
-@@ -142,9 +142,9 @@ int atomic_notifier_chain_register(struct atomic_notifier_head *nh,
+@@ -142,9 +142,9 @@ int atomic_notifier_chain_register(struc
  	unsigned long flags;
  	int ret;
  
@@ -107,7 +103,7 @@ index 1b019cbca594..c20782f07643 100644
  	return ret;
  }
  EXPORT_SYMBOL_GPL(atomic_notifier_chain_register);
-@@ -164,9 +164,9 @@ int atomic_notifier_chain_unregister(struct atomic_notifier_head *nh,
+@@ -164,9 +164,9 @@ int atomic_notifier_chain_unregister(str
  	unsigned long flags;
  	int ret;
  
@@ -119,7 +115,7 @@ index 1b019cbca594..c20782f07643 100644
  	synchronize_rcu();
  	return ret;
  }
-@@ -182,9 +182,9 @@ int atomic_notifier_call_chain_robust(struct atomic_notifier_head *nh,
+@@ -182,9 +182,9 @@ int atomic_notifier_call_chain_robust(st
  	 * Musn't use RCU; because then the notifier list can
  	 * change between the up and down traversal.
  	 */

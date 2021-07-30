@@ -13,14 +13,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- drivers/firmware/efi/efi.c | 3 +++
+ drivers/firmware/efi/efi.c |    3 +++
  1 file changed, 3 insertions(+)
 ---
-diff --git a/drivers/firmware/efi/efi.c b/drivers/firmware/efi/efi.c
-index 85496063022d..abb18c958e3b 100644
 --- a/drivers/firmware/efi/efi.c
 +++ b/drivers/firmware/efi/efi.c
-@@ -97,6 +97,9 @@ static int __init parse_efi_cmdline(char *str)
+@@ -97,6 +97,9 @@ static int __init parse_efi_cmdline(char
  	if (parse_option_str(str, "noruntime"))
  		disable_runtime = true;
  

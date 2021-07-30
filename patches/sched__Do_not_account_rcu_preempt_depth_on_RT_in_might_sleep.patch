@@ -11,12 +11,10 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/rcupdate.h | 7 +++++++
- kernel/sched/core.c      | 2 +-
+ include/linux/rcupdate.h |    7 +++++++
+ kernel/sched/core.c      |    2 +-
  2 files changed, 8 insertions(+), 1 deletion(-)
 ---
-diff --git a/include/linux/rcupdate.h b/include/linux/rcupdate.h
-index 9455476c5ba2..094f6caab2ef 100644
 --- a/include/linux/rcupdate.h
 +++ b/include/linux/rcupdate.h
 @@ -54,6 +54,11 @@ void __rcu_read_unlock(void);
@@ -31,7 +29,7 @@ index 9455476c5ba2..094f6caab2ef 100644
  
  #else /* #ifdef CONFIG_PREEMPT_RCU */
  
-@@ -79,6 +84,8 @@ static inline int rcu_preempt_depth(void)
+@@ -79,6 +84,8 @@ static inline int rcu_preempt_depth(void
  	return 0;
  }
  
@@ -40,11 +38,9 @@ index 9455476c5ba2..094f6caab2ef 100644
  #endif /* #else #ifdef CONFIG_PREEMPT_RCU */
  
  /* Internal to kernel */
-diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 6c58de58fc1d..60dce992f0b3 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -8346,7 +8346,7 @@ void __init sched_init(void)
+@@ -9161,7 +9161,7 @@ void __init sched_init(void)
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  static inline int preempt_count_equals(int preempt_offset)
  {

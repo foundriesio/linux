@@ -11,19 +11,17 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- arch/powerpc/kernel/irq.c           | 4 ++++
- arch/sh/kernel/irq.c                | 2 ++
- arch/sparc/kernel/irq_64.c          | 2 ++
- arch/x86/include/asm/irq_stack.h    | 3 +++
- arch/x86/kernel/irq_32.c            | 2 ++
- include/asm-generic/softirq_stack.h | 2 +-
+ arch/powerpc/kernel/irq.c           |    4 ++++
+ arch/sh/kernel/irq.c                |    2 ++
+ arch/sparc/kernel/irq_64.c          |    2 ++
+ arch/x86/include/asm/irq_stack.h    |    3 +++
+ arch/x86/kernel/irq_32.c            |    2 ++
+ include/asm-generic/softirq_stack.h |    2 +-
  6 files changed, 14 insertions(+), 1 deletion(-)
 ---
-diff --git a/arch/powerpc/kernel/irq.c b/arch/powerpc/kernel/irq.c
-index 72cb45393ef2..64bb1620df8c 100644
 --- a/arch/powerpc/kernel/irq.c
 +++ b/arch/powerpc/kernel/irq.c
-@@ -588,6 +588,7 @@ static inline void check_stack_overflow(void)
+@@ -684,6 +684,7 @@ static inline void check_stack_overflow(
  	}
  }
  
@@ -31,7 +29,7 @@ index 72cb45393ef2..64bb1620df8c 100644
  static __always_inline void call_do_softirq(const void *sp)
  {
  	/* Temporarily switch r1 to sp, call __do_softirq() then restore r1. */
-@@ -606,6 +607,7 @@ static __always_inline void call_do_softirq(const void *sp)
+@@ -702,6 +703,7 @@ static __always_inline void call_do_soft
  		   "r11", "r12"
  	);
  }
@@ -39,7 +37,7 @@ index 72cb45393ef2..64bb1620df8c 100644
  
  static __always_inline void call_do_irq(struct pt_regs *regs, void *sp)
  {
-@@ -713,10 +715,12 @@ void *mcheckirq_ctx[NR_CPUS] __read_mostly;
+@@ -809,10 +811,12 @@ void *mcheckirq_ctx[NR_CPUS] __read_most
  void *softirq_ctx[NR_CPUS] __read_mostly;
  void *hardirq_ctx[NR_CPUS] __read_mostly;
  
@@ -52,8 +50,6 @@ index 72cb45393ef2..64bb1620df8c 100644
  
  irq_hw_number_t virq_to_hw(unsigned int virq)
  {
-diff --git a/arch/sh/kernel/irq.c b/arch/sh/kernel/irq.c
-index ef0f0827cf57..2d3eca8fee01 100644
 --- a/arch/sh/kernel/irq.c
 +++ b/arch/sh/kernel/irq.c
 @@ -149,6 +149,7 @@ void irq_ctx_exit(int cpu)
@@ -72,11 +68,9 @@ index ef0f0827cf57..2d3eca8fee01 100644
  #else
  static inline void handle_one_irq(unsigned int irq)
  {
-diff --git a/arch/sparc/kernel/irq_64.c b/arch/sparc/kernel/irq_64.c
-index c8848bb681a1..41fa1be980a3 100644
 --- a/arch/sparc/kernel/irq_64.c
 +++ b/arch/sparc/kernel/irq_64.c
-@@ -855,6 +855,7 @@ void __irq_entry handler_irq(int pil, struct pt_regs *regs)
+@@ -855,6 +855,7 @@ void __irq_entry handler_irq(int pil, st
  	set_irq_regs(old_regs);
  }
  
@@ -92,8 +86,6 @@ index c8848bb681a1..41fa1be980a3 100644
  
  #ifdef CONFIG_HOTPLUG_CPU
  void fixup_irqs(void)
-diff --git a/arch/x86/include/asm/irq_stack.h b/arch/x86/include/asm/irq_stack.h
-index 562854c60808..ea0c5ab31da4 100644
 --- a/arch/x86/include/asm/irq_stack.h
 +++ b/arch/x86/include/asm/irq_stack.h
 @@ -185,6 +185,7 @@
@@ -113,11 +105,9 @@ index 562854c60808..ea0c5ab31da4 100644
  #else /* CONFIG_X86_64 */
  /* System vector handlers always run on the stack they interrupted. */
  #define run_sysvec_on_irqstack_cond(func, regs)				\
-diff --git a/arch/x86/kernel/irq_32.c b/arch/x86/kernel/irq_32.c
-index 044902d5a3c4..e5dd6da78713 100644
 --- a/arch/x86/kernel/irq_32.c
 +++ b/arch/x86/kernel/irq_32.c
-@@ -132,6 +132,7 @@ int irq_init_percpu_irqstack(unsigned int cpu)
+@@ -132,6 +132,7 @@ int irq_init_percpu_irqstack(unsigned in
  	return 0;
  }
  
@@ -133,8 +123,6 @@ index 044902d5a3c4..e5dd6da78713 100644
  
  void __handle_irq(struct irq_desc *desc, struct pt_regs *regs)
  {
-diff --git a/include/asm-generic/softirq_stack.h b/include/asm-generic/softirq_stack.h
-index eceeecf6a5bd..d3e2d81656e0 100644
 --- a/include/asm-generic/softirq_stack.h
 +++ b/include/asm-generic/softirq_stack.h
 @@ -2,7 +2,7 @@

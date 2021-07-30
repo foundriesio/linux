@@ -25,14 +25,12 @@ Cc: stable-rt@vger.kernel.org
 
 
 ---
- kernel/time/timer.c | 6 ++++--
+ kernel/time/timer.c |    6 ++++--
  1 file changed, 4 insertions(+), 2 deletions(-)
 ---
-diff --git a/kernel/time/timer.c b/kernel/time/timer.c
-index d111adf4a0cb..9b73908a4c53 100644
 --- a/kernel/time/timer.c
 +++ b/kernel/time/timer.c
-@@ -1277,8 +1277,10 @@ static inline void timer_base_unlock_expiry(struct timer_base *base)
+@@ -1265,8 +1265,10 @@ static inline void timer_base_unlock_exp
  static void timer_sync_wait_running(struct timer_base *base)
  {
  	if (atomic_read(&base->timer_waiters)) {
@@ -43,7 +41,7 @@ index d111adf4a0cb..9b73908a4c53 100644
  	}
  }
  
-@@ -1469,14 +1471,14 @@ static void expire_timers(struct timer_base *base, struct hlist_head *head)
+@@ -1457,14 +1459,14 @@ static void expire_timers(struct timer_b
  		if (timer->flags & TIMER_IRQSAFE) {
  			raw_spin_unlock(&base->lock);
  			call_timer_fn(timer, fn, baseclk);

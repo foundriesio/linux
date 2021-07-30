@@ -26,17 +26,15 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/irq_work.h |  6 ++++-
- kernel/irq_work.c        | 69 +++++++++++++++++++++++++++++++++++++++----------
- kernel/sched/topology.c  |  3 +-
- kernel/time/timer.c      |  2 +-
+ include/linux/irq_work.h |    6 ++++
+ kernel/irq_work.c        |   69 ++++++++++++++++++++++++++++++++++++++---------
+ kernel/sched/topology.c  |    3 +-
+ kernel/time/timer.c      |    2 +
  4 files changed, 66 insertions(+), 14 deletions(-)
 ---
-diff --git a/include/linux/irq_work.h b/include/linux/irq_work.h
-index ec2a47a81e42..dbbef9089789 100644
 --- a/include/linux/irq_work.h
 +++ b/include/linux/irq_work.h
-@@ -64,4 +64,10 @@ static inline void irq_work_run(void) { }
+@@ -64,4 +64,10 @@ static inline void irq_work_run(void) {
  static inline void irq_work_single(void *arg) { }
  #endif
  
@@ -47,8 +45,6 @@ index ec2a47a81e42..dbbef9089789 100644
 +#endif
 +
  #endif /* _LINUX_IRQ_WORK_H */
-diff --git a/kernel/irq_work.c b/kernel/irq_work.c
-index db8c248ebc8c..0ec825dbe9f0 100644
 --- a/kernel/irq_work.c
 +++ b/kernel/irq_work.c
 @@ -18,6 +18,7 @@
@@ -94,7 +90,7 @@ index db8c248ebc8c..0ec825dbe9f0 100644
  			arch_irq_work_raise();
  	}
  }
-@@ -104,7 +119,14 @@ bool irq_work_queue_on(struct irq_work *work, int cpu)
+@@ -104,7 +119,14 @@ bool irq_work_queue_on(struct irq_work *
  	if (cpu != smp_processor_id()) {
  		/* Arch remote IPI send/receive backend aren't NMI safe */
  		WARN_ON_ONCE(in_nmi());
@@ -122,7 +118,7 @@ index db8c248ebc8c..0ec825dbe9f0 100644
  
  	/* All work should have been flushed before going offline */
  	WARN_ON_ONCE(cpu_is_offline(smp_processor_id()));
-@@ -167,8 +188,12 @@ static void irq_work_run_list(struct llist_head *list)
+@@ -167,8 +188,12 @@ static void irq_work_run_list(struct lli
  	struct irq_work *work, *tmp;
  	struct llist_node *llnode;
  
@@ -136,7 +132,7 @@ index db8c248ebc8c..0ec825dbe9f0 100644
  	if (llist_empty(list))
  		return;
  
-@@ -184,7 +209,16 @@ static void irq_work_run_list(struct llist_head *list)
+@@ -184,7 +209,16 @@ static void irq_work_run_list(struct lli
  void irq_work_run(void)
  {
  	irq_work_run_list(this_cpu_ptr(&raised_list));
@@ -172,11 +168,9 @@ index db8c248ebc8c..0ec825dbe9f0 100644
  
  /*
   * Synchronize against the irq_work @entry, ensures the entry is not
-diff --git a/kernel/sched/topology.c b/kernel/sched/topology.c
-index 55a0a243e871..3e2e6238ee8b 100644
 --- a/kernel/sched/topology.c
 +++ b/kernel/sched/topology.c
-@@ -526,7 +526,8 @@ static int init_rootdomain(struct root_domain *rd)
+@@ -526,7 +526,8 @@ static int init_rootdomain(struct root_d
  #ifdef HAVE_RT_PUSH_IPI
  	rd->rto_cpu = -1;
  	raw_spin_lock_init(&rd->rto_lock);
@@ -186,11 +180,9 @@ index 55a0a243e871..3e2e6238ee8b 100644
  #endif
  
  	rd->visit_gen = 0;
-diff --git a/kernel/time/timer.c b/kernel/time/timer.c
-index 9b73908a4c53..c48b7c469622 100644
 --- a/kernel/time/timer.c
 +++ b/kernel/time/timer.c
-@@ -1757,6 +1757,8 @@ static __latent_entropy void run_timer_softirq(struct softirq_action *h)
+@@ -1744,6 +1744,8 @@ static __latent_entropy void run_timer_s
  {
  	struct timer_base *base = this_cpu_ptr(&timer_bases[BASE_STD]);
  

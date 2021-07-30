@@ -20,13 +20,11 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- fs/dcache.c        | 12 +++++++-----
- fs/inode.c         |  2 +-
- include/linux/fs.h |  2 +-
+ fs/dcache.c        |   12 +++++++-----
+ fs/inode.c         |    2 +-
+ include/linux/fs.h |    2 +-
  3 files changed, 9 insertions(+), 7 deletions(-)
 ---
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 93165b9ba3b0..f34344ceece7 100644
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
 @@ -2538,9 +2538,10 @@ EXPORT_SYMBOL(d_rehash);
@@ -42,7 +40,7 @@ index 93165b9ba3b0..f34344ceece7 100644
  			return n;
  		cpu_relax();
  	}
-@@ -2548,7 +2549,8 @@ static inline unsigned start_dir_add(struct inode *dir)
+@@ -2548,7 +2549,8 @@ static inline unsigned start_dir_add(str
  
  static inline void end_dir_add(struct inode *dir, unsigned n)
  {
@@ -52,7 +50,7 @@ index 93165b9ba3b0..f34344ceece7 100644
  }
  
  static void d_wait_lookup(struct dentry *dentry)
-@@ -2584,7 +2586,7 @@ struct dentry *d_alloc_parallel(struct dentry *parent,
+@@ -2584,7 +2586,7 @@ struct dentry *d_alloc_parallel(struct d
  
  retry:
  	rcu_read_lock();
@@ -61,7 +59,7 @@ index 93165b9ba3b0..f34344ceece7 100644
  	r_seq = read_seqbegin(&rename_lock);
  	dentry = __d_lookup_rcu(parent, name, &d_seq);
  	if (unlikely(dentry)) {
-@@ -2612,7 +2614,7 @@ struct dentry *d_alloc_parallel(struct dentry *parent,
+@@ -2612,7 +2614,7 @@ struct dentry *d_alloc_parallel(struct d
  	}
  
  	hlist_bl_lock(b);
@@ -70,11 +68,9 @@ index 93165b9ba3b0..f34344ceece7 100644
  		hlist_bl_unlock(b);
  		rcu_read_unlock();
  		goto retry;
-diff --git a/fs/inode.c b/fs/inode.c
-index c93500d84264..d8416687b0e9 100644
 --- a/fs/inode.c
 +++ b/fs/inode.c
-@@ -157,7 +157,7 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
+@@ -157,7 +157,7 @@ int inode_init_always(struct super_block
  	inode->i_pipe = NULL;
  	inode->i_cdev = NULL;
  	inode->i_link = NULL;
@@ -83,8 +79,6 @@ index c93500d84264..d8416687b0e9 100644
  	inode->i_rdev = 0;
  	inode->dirtied_when = 0;
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index c3c88fdb9b2a..193749503d9d 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
 @@ -699,7 +699,7 @@ struct inode {

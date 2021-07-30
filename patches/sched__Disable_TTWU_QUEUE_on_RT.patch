@@ -11,11 +11,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- kernel/sched/features.h | 5 +++++
+ kernel/sched/features.h |    5 +++++
  1 file changed, 5 insertions(+)
 ---
-diff --git a/kernel/sched/features.h b/kernel/sched/features.h
-index 7f8dace0964c..1cf435bbcd9c 100644
 --- a/kernel/sched/features.h
 +++ b/kernel/sched/features.h
 @@ -46,11 +46,16 @@ SCHED_FEAT(DOUBLE_TICK, false)

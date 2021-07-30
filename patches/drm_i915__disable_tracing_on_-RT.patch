@@ -27,11 +27,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- drivers/gpu/drm/i915/i915_trace.h | 4 ++++
+ drivers/gpu/drm/i915/i915_trace.h |    4 ++++
  1 file changed, 4 insertions(+)
 ---
-diff --git a/drivers/gpu/drm/i915/i915_trace.h b/drivers/gpu/drm/i915/i915_trace.h
-index a4addcc64978..0ba5a0a0fd25 100644
 --- a/drivers/gpu/drm/i915/i915_trace.h
 +++ b/drivers/gpu/drm/i915/i915_trace.h
 @@ -2,6 +2,10 @@

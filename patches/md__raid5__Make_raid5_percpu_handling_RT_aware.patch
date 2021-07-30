@@ -18,15 +18,13 @@ Tested-by: Udo van den Heuvel <udovdh@xs4all.nl>
 
 
 ---
- drivers/md/raid5.c | 7 +++++--
- drivers/md/raid5.h | 1 +
+ drivers/md/raid5.c |    7 +++++--
+ drivers/md/raid5.h |    1 +
  2 files changed, 6 insertions(+), 2 deletions(-)
 ---
-diff --git a/drivers/md/raid5.c b/drivers/md/raid5.c
-index 7d4ff8a5c55e..29055cdc9446 100644
 --- a/drivers/md/raid5.c
 +++ b/drivers/md/raid5.c
-@@ -2217,8 +2217,9 @@ static void raid_run_ops(struct stripe_head *sh, unsigned long ops_request)
+@@ -2217,8 +2217,9 @@ static void raid_run_ops(struct stripe_h
  	struct raid5_percpu *percpu;
  	unsigned long cpu;
  
@@ -37,7 +35,7 @@ index 7d4ff8a5c55e..29055cdc9446 100644
  	if (test_bit(STRIPE_OP_BIOFILL, &ops_request)) {
  		ops_run_biofill(sh);
  		overlap_clear++;
-@@ -2277,7 +2278,8 @@ static void raid_run_ops(struct stripe_head *sh, unsigned long ops_request)
+@@ -2277,7 +2278,8 @@ static void raid_run_ops(struct stripe_h
  			if (test_and_clear_bit(R5_Overlap, &dev->flags))
  				wake_up(&sh->raid_conf->wait_for_overlap);
  		}
@@ -47,7 +45,7 @@ index 7d4ff8a5c55e..29055cdc9446 100644
  }
  
  static void free_stripe(struct kmem_cache *sc, struct stripe_head *sh)
-@@ -7078,6 +7080,7 @@ static int raid456_cpu_up_prepare(unsigned int cpu, struct hlist_node *node)
+@@ -7102,6 +7104,7 @@ static int raid456_cpu_up_prepare(unsign
  			__func__, cpu);
  		return -ENOMEM;
  	}
@@ -55,8 +53,6 @@ index 7d4ff8a5c55e..29055cdc9446 100644
  	return 0;
  }
  
-diff --git a/drivers/md/raid5.h b/drivers/md/raid5.h
-index 5c05acf20e1f..665fe138ab4f 100644
 --- a/drivers/md/raid5.h
 +++ b/drivers/md/raid5.h
 @@ -635,6 +635,7 @@ struct r5conf {

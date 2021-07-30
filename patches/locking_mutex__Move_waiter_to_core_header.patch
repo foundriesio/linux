@@ -8,16 +8,11 @@ Move the mutex waiter declaration from the global to the core local
 header. There is no reason to expose it outside of the core code.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/mutex.h  | 13 -------------
- kernel/locking/mutex.h | 13 +++++++++++++
+ include/linux/mutex.h  |   13 -------------
+ kernel/locking/mutex.h |   13 +++++++++++++
  2 files changed, 13 insertions(+), 13 deletions(-)
 ---
-diff --git a/include/linux/mutex.h b/include/linux/mutex.h
-index e19323521f9c..62bafee747e9 100644
 --- a/include/linux/mutex.h
 +++ b/include/linux/mutex.h
 @@ -74,19 +74,6 @@ struct ww_mutex {
@@ -40,8 +35,6 @@ index e19323521f9c..62bafee747e9 100644
  #ifdef CONFIG_DEBUG_MUTEXES
  
  #define __DEBUG_MUTEX_INITIALIZER(lockname)				\
-diff --git a/kernel/locking/mutex.h b/kernel/locking/mutex.h
-index 183965942cde..8d1b0ee49062 100644
 --- a/kernel/locking/mutex.h
 +++ b/kernel/locking/mutex.h
 @@ -7,6 +7,19 @@

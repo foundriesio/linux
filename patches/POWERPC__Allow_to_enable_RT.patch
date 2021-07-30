@@ -11,14 +11,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- arch/powerpc/Kconfig | 2 ++
+ arch/powerpc/Kconfig |    2 ++
  1 file changed, 2 insertions(+)
 ---
-diff --git a/arch/powerpc/Kconfig b/arch/powerpc/Kconfig
-index 1bde323ecf4c..95c4518680ca 100644
 --- a/arch/powerpc/Kconfig
 +++ b/arch/powerpc/Kconfig
-@@ -152,6 +152,7 @@ config PPC
+@@ -154,6 +154,7 @@ config PPC
  	select ARCH_STACKWALK
  	select ARCH_SUPPORTS_ATOMIC_RMW
  	select ARCH_SUPPORTS_DEBUG_PAGEALLOC	if PPC32 || PPC_BOOK3S_64
@@ -26,7 +24,7 @@ index 1bde323ecf4c..95c4518680ca 100644
  	select ARCH_USE_BUILTIN_BSWAP
  	select ARCH_USE_CMPXCHG_LOCKREF		if PPC64
  	select ARCH_USE_MEMTEST
-@@ -222,6 +223,7 @@ config PPC
+@@ -224,6 +225,7 @@ config PPC
  	select HAVE_IOREMAP_PROT
  	select HAVE_IRQ_EXIT_ON_IRQ_STACK
  	select HAVE_IRQ_TIME_ACCOUNTING

@@ -30,15 +30,13 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- arch/x86/include/asm/fpu/api.h |  1 +
- arch/x86/kernel/fpu/core.c     | 12 ++++++++++++
+ arch/x86/include/asm/fpu/api.h |    1 +
+ arch/x86/kernel/fpu/core.c     |   12 ++++++++++++
  2 files changed, 13 insertions(+)
 ---
-diff --git a/arch/x86/include/asm/fpu/api.h b/arch/x86/include/asm/fpu/api.h
-index 23bef08a8388..62cf3e4c06fb 100644
 --- a/arch/x86/include/asm/fpu/api.h
 +++ b/arch/x86/include/asm/fpu/api.h
-@@ -28,6 +28,7 @@ extern void kernel_fpu_begin_mask(unsigned int kfpu_mask);
+@@ -28,6 +28,7 @@ extern void kernel_fpu_begin_mask(unsign
  extern void kernel_fpu_end(void);
  extern bool irq_fpu_usable(void);
  extern void fpregs_mark_activate(void);
@@ -46,11 +44,9 @@ index 23bef08a8388..62cf3e4c06fb 100644
  
  /* Code that is unaware of kernel_fpu_begin_mask() can use this */
  static inline void kernel_fpu_begin(void)
-diff --git a/arch/x86/kernel/fpu/core.c b/arch/x86/kernel/fpu/core.c
-index 571220ac8bea..d315d45b64fa 100644
 --- a/arch/x86/kernel/fpu/core.c
 +++ b/arch/x86/kernel/fpu/core.c
-@@ -159,6 +159,18 @@ void kernel_fpu_end(void)
+@@ -185,6 +185,18 @@ void kernel_fpu_end(void)
  }
  EXPORT_SYMBOL_GPL(kernel_fpu_end);
  
@@ -67,5 +63,5 @@ index 571220ac8bea..d315d45b64fa 100644
 +EXPORT_SYMBOL_GPL(kernel_fpu_resched);
 +
  /*
-  * Save the FPU state (mark it for reload if necessary):
-  *
+  * Sync the FPU register state to current's memory register state when the
+  * current task owns the FPU. The hardware register state is preserved.

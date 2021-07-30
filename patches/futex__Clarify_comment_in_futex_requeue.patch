@@ -8,18 +8,13 @@ The comment about the restriction of the number of waiters to wake for the
 REQUEUE_PI case is confusing at best. Rewrite it.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- kernel/futex.c | 28 ++++++++++++++++++++--------
+ kernel/futex.c |   28 ++++++++++++++++++++--------
  1 file changed, 20 insertions(+), 8 deletions(-)
 ---
-diff --git a/kernel/futex.c b/kernel/futex.c
-index 8ffeb9871476..e92c871aa133 100644
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -1960,15 +1960,27 @@ static int futex_requeue(u32 __user *uaddr1, unsigned int flags,
+@@ -1957,15 +1957,27 @@ static int futex_requeue(u32 __user *uad
  		 */
  		if (refill_pi_state_cache())
  			return -ENOMEM;

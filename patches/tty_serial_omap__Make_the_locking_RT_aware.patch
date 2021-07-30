@@ -12,14 +12,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- drivers/tty/serial/omap-serial.c | 12 ++++--------
+ drivers/tty/serial/omap-serial.c |   12 ++++--------
  1 file changed, 4 insertions(+), 8 deletions(-)
 ---
-diff --git a/drivers/tty/serial/omap-serial.c b/drivers/tty/serial/omap-serial.c
-index 84e8158088cd..342005ed5ebf 100644
 --- a/drivers/tty/serial/omap-serial.c
 +++ b/drivers/tty/serial/omap-serial.c
-@@ -1311,13 +1311,10 @@ serial_omap_console_write(struct console *co, const char *s,
+@@ -1311,13 +1311,10 @@ serial_omap_console_write(struct console
  
  	pm_runtime_get_sync(up->dev);
  
@@ -36,7 +34,7 @@ index 84e8158088cd..342005ed5ebf 100644
  
  	/*
  	 * First save the IER then disable the interrupts
-@@ -1346,8 +1343,7 @@ serial_omap_console_write(struct console *co, const char *s,
+@@ -1346,8 +1343,7 @@ serial_omap_console_write(struct console
  	pm_runtime_mark_last_busy(up->dev);
  	pm_runtime_put_autosuspend(up->dev);
  	if (locked)

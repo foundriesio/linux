@@ -17,14 +17,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- init/Kconfig | 1 +
+ init/Kconfig |    1 +
  1 file changed, 1 insertion(+)
 ---
-diff --git a/init/Kconfig b/init/Kconfig
-index 356d00f78511..6ca28e2268ba 100644
 --- a/init/Kconfig
 +++ b/init/Kconfig
-@@ -977,6 +977,7 @@ config CFS_BANDWIDTH
+@@ -980,6 +980,7 @@ config CFS_BANDWIDTH
  config RT_GROUP_SCHED
  	bool "Group scheduling for SCHED_RR/FIFO"
  	depends on CGROUP_SCHED

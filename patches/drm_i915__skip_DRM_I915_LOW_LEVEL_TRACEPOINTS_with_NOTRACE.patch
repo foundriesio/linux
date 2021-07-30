@@ -14,14 +14,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- drivers/gpu/drm/i915/i915_trace.h | 2 +-
+ drivers/gpu/drm/i915/i915_trace.h |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 ---
-diff --git a/drivers/gpu/drm/i915/i915_trace.h b/drivers/gpu/drm/i915/i915_trace.h
-index 0ba5a0a0fd25..396b6598694d 100644
 --- a/drivers/gpu/drm/i915/i915_trace.h
 +++ b/drivers/gpu/drm/i915/i915_trace.h
-@@ -782,7 +782,7 @@ DEFINE_EVENT(i915_request, i915_request_add,
+@@ -821,7 +821,7 @@ DEFINE_EVENT(i915_request, i915_request_
  	    TP_ARGS(rq)
  );
  

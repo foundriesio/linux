@@ -4,25 +4,15 @@ Date: Tue Jul  6 16:36:50 2021 +0200
 
 From: Thomas Gleixner <tglx@linutronix.de>
 
-PREEMPT_RT wants to utilize the existing ww_mutex implementation instead of
-trying to mangle ww_mutex functionality into the rtmutex based mutex
-implementation. The mutex internal wait_lock is a regular spinlock which
-would be converted to a sleeping spinlock on RT, but that's not really
-required because the wait_lock held times are short and limited.
-
-Convert it to a raw_spinlock like the wait_lock of rtmutex.
+The wait_lock of mutex is really a low level lock. Convert it to a
+raw_spinlock like the wait_lock of rtmutex.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/mutex.h  |  4 ++--
- kernel/locking/mutex.c | 22 +++++++++++-----------
+ include/linux/mutex.h  |    4 ++--
+ kernel/locking/mutex.c |   22 +++++++++++-----------
  2 files changed, 13 insertions(+), 13 deletions(-)
 ---
-diff --git a/include/linux/mutex.h b/include/linux/mutex.h
-index db3367586a06..0bbc872ba72b 100644
 --- a/include/linux/mutex.h
 +++ b/include/linux/mutex.h
 @@ -50,7 +50,7 @@
@@ -43,8 +33,6 @@ index db3367586a06..0bbc872ba72b 100644
  		, .wait_list = LIST_HEAD_INIT(lockname.wait_list) \
  		__DEBUG_MUTEX_INITIALIZER(lockname) \
  		__DEP_MAP_MUTEX_INITIALIZER(lockname) }
-diff --git a/kernel/locking/mutex.c b/kernel/locking/mutex.c
-index 68723b49c22e..16360787aa47 100644
 --- a/kernel/locking/mutex.c
 +++ b/kernel/locking/mutex.c
 @@ -36,7 +36,7 @@ void
@@ -56,7 +44,7 @@ index 68723b49c22e..16360787aa47 100644
  	INIT_LIST_HEAD(&lock->wait_list);
  #ifdef CONFIG_MUTEX_SPIN_ON_OWNER
  	osq_lock_init(&lock->osq);
-@@ -487,9 +487,9 @@ ww_mutex_set_context_fastpath(struct ww_mutex *lock, struct ww_acquire_ctx *ctx)
+@@ -487,9 +487,9 @@ ww_mutex_set_context_fastpath(struct ww_
  	 * Uh oh, we raced in fastpath, check if any of the waiters need to
  	 * die or wound us.
  	 */
@@ -68,7 +56,7 @@ index 68723b49c22e..16360787aa47 100644
  }
  
  #ifdef CONFIG_MUTEX_SPIN_ON_OWNER
-@@ -964,7 +964,7 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
+@@ -964,7 +964,7 @@ static __always_inline int __sched
  		return 0;
  	}
  
@@ -77,7 +65,7 @@ index 68723b49c22e..16360787aa47 100644
  	/*
  	 * After waiting to acquire the wait_lock, try again.
  	 */
-@@ -1028,7 +1028,7 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
+@@ -1028,7 +1028,7 @@ static __always_inline int __sched
  				goto err;
  		}
  
@@ -86,7 +74,7 @@ index 68723b49c22e..16360787aa47 100644
  		schedule_preempt_disabled();
  
  		/*
-@@ -1051,9 +1051,9 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
+@@ -1051,9 +1051,9 @@ static __always_inline int __sched
  		    (first && mutex_optimistic_spin(lock, ww_ctx, &waiter)))
  			break;
  
@@ -98,7 +86,7 @@ index 68723b49c22e..16360787aa47 100644
  acquired:
  	__set_current_state(TASK_RUNNING);
  
-@@ -1078,7 +1078,7 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
+@@ -1078,7 +1078,7 @@ static __always_inline int __sched
  	if (ww_ctx)
  		ww_mutex_lock_acquired(ww, ww_ctx);
  
@@ -107,7 +95,7 @@ index 68723b49c22e..16360787aa47 100644
  	preempt_enable();
  	return 0;
  
-@@ -1086,7 +1086,7 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
+@@ -1086,7 +1086,7 @@ static __always_inline int __sched
  	__set_current_state(TASK_RUNNING);
  	__mutex_remove_waiter(lock, &waiter);
  err_early_kill:
@@ -116,7 +104,7 @@ index 68723b49c22e..16360787aa47 100644
  	debug_mutex_free_waiter(&waiter);
  	mutex_release(&lock->dep_map, ip);
  	preempt_enable();
-@@ -1255,7 +1255,7 @@ static noinline void __sched __mutex_unlock_slowpath(struct mutex *lock, unsigne
+@@ -1255,7 +1255,7 @@ static noinline void __sched __mutex_unl
  		owner = old;
  	}
  
@@ -125,7 +113,7 @@ index 68723b49c22e..16360787aa47 100644
  	debug_mutex_unlock(lock);
  	if (!list_empty(&lock->wait_list)) {
  		/* get the first entry from the wait-list: */
-@@ -1272,7 +1272,7 @@ static noinline void __sched __mutex_unlock_slowpath(struct mutex *lock, unsigne
+@@ -1272,7 +1272,7 @@ static noinline void __sched __mutex_unl
  	if (owner & MUTEX_FLAG_HANDOFF)
  		__mutex_handoff(lock, next);
  

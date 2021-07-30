@@ -14,15 +14,13 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/vmstat.h |  4 ++++
- mm/vmstat.c            | 12 ++++++++++++
+ include/linux/vmstat.h |    4 ++++
+ mm/vmstat.c            |   12 ++++++++++++
  2 files changed, 16 insertions(+)
 ---
-diff --git a/include/linux/vmstat.h b/include/linux/vmstat.h
-index d6a6cf53b127..81f001e71a31 100644
 --- a/include/linux/vmstat.h
 +++ b/include/linux/vmstat.h
-@@ -63,7 +63,9 @@ DECLARE_PER_CPU(struct vm_event_state, vm_event_states);
+@@ -63,7 +63,9 @@ DECLARE_PER_CPU(struct vm_event_state, v
   */
  static inline void __count_vm_event(enum vm_event_item item)
  {
@@ -32,7 +30,7 @@ index d6a6cf53b127..81f001e71a31 100644
  }
  
  static inline void count_vm_event(enum vm_event_item item)
-@@ -73,7 +75,9 @@ static inline void count_vm_event(enum vm_event_item item)
+@@ -73,7 +75,9 @@ static inline void count_vm_event(enum v
  
  static inline void __count_vm_events(enum vm_event_item item, long delta)
  {
@@ -42,11 +40,9 @@ index d6a6cf53b127..81f001e71a31 100644
  }
  
  static inline void count_vm_events(enum vm_event_item item, long delta)
-diff --git a/mm/vmstat.c b/mm/vmstat.c
-index b0534e068166..d06332c221b1 100644
 --- a/mm/vmstat.c
 +++ b/mm/vmstat.c
-@@ -319,6 +319,7 @@ void __mod_zone_page_state(struct zone *zone, enum zone_stat_item item,
+@@ -319,6 +319,7 @@ void __mod_zone_page_state(struct zone *
  	long x;
  	long t;
  
@@ -54,7 +50,7 @@ index b0534e068166..d06332c221b1 100644
  	x = delta + __this_cpu_read(*p);
  
  	t = __this_cpu_read(pcp->stat_threshold);
-@@ -328,6 +329,7 @@ void __mod_zone_page_state(struct zone *zone, enum zone_stat_item item,
+@@ -328,6 +329,7 @@ void __mod_zone_page_state(struct zone *
  		x = 0;
  	}
  	__this_cpu_write(*p, x);
@@ -62,7 +58,7 @@ index b0534e068166..d06332c221b1 100644
  }
  EXPORT_SYMBOL(__mod_zone_page_state);
  
-@@ -350,6 +352,7 @@ void __mod_node_page_state(struct pglist_data *pgdat, enum node_stat_item item,
+@@ -350,6 +352,7 @@ void __mod_node_page_state(struct pglist
  		delta >>= PAGE_SHIFT;
  	}
  
@@ -70,7 +66,7 @@ index b0534e068166..d06332c221b1 100644
  	x = delta + __this_cpu_read(*p);
  
  	t = __this_cpu_read(pcp->stat_threshold);
-@@ -359,6 +362,7 @@ void __mod_node_page_state(struct pglist_data *pgdat, enum node_stat_item item,
+@@ -359,6 +362,7 @@ void __mod_node_page_state(struct pglist
  		x = 0;
  	}
  	__this_cpu_write(*p, x);
@@ -78,7 +74,7 @@ index b0534e068166..d06332c221b1 100644
  }
  EXPORT_SYMBOL(__mod_node_page_state);
  
-@@ -391,6 +395,7 @@ void __inc_zone_state(struct zone *zone, enum zone_stat_item item)
+@@ -391,6 +395,7 @@ void __inc_zone_state(struct zone *zone,
  	s8 __percpu *p = pcp->vm_stat_diff + item;
  	s8 v, t;
  
@@ -86,7 +82,7 @@ index b0534e068166..d06332c221b1 100644
  	v = __this_cpu_inc_return(*p);
  	t = __this_cpu_read(pcp->stat_threshold);
  	if (unlikely(v > t)) {
-@@ -399,6 +404,7 @@ void __inc_zone_state(struct zone *zone, enum zone_stat_item item)
+@@ -399,6 +404,7 @@ void __inc_zone_state(struct zone *zone,
  		zone_page_state_add(v + overstep, zone, item);
  		__this_cpu_write(*p, -overstep);
  	}
@@ -94,7 +90,7 @@ index b0534e068166..d06332c221b1 100644
  }
  
  void __inc_node_state(struct pglist_data *pgdat, enum node_stat_item item)
-@@ -409,6 +415,7 @@ void __inc_node_state(struct pglist_data *pgdat, enum node_stat_item item)
+@@ -409,6 +415,7 @@ void __inc_node_state(struct pglist_data
  
  	VM_WARN_ON_ONCE(vmstat_item_in_bytes(item));
  
@@ -102,7 +98,7 @@ index b0534e068166..d06332c221b1 100644
  	v = __this_cpu_inc_return(*p);
  	t = __this_cpu_read(pcp->stat_threshold);
  	if (unlikely(v > t)) {
-@@ -417,6 +424,7 @@ void __inc_node_state(struct pglist_data *pgdat, enum node_stat_item item)
+@@ -417,6 +424,7 @@ void __inc_node_state(struct pglist_data
  		node_page_state_add(v + overstep, pgdat, item);
  		__this_cpu_write(*p, -overstep);
  	}
@@ -110,7 +106,7 @@ index b0534e068166..d06332c221b1 100644
  }
  
  void __inc_zone_page_state(struct page *page, enum zone_stat_item item)
-@@ -437,6 +445,7 @@ void __dec_zone_state(struct zone *zone, enum zone_stat_item item)
+@@ -437,6 +445,7 @@ void __dec_zone_state(struct zone *zone,
  	s8 __percpu *p = pcp->vm_stat_diff + item;
  	s8 v, t;
  
@@ -118,7 +114,7 @@ index b0534e068166..d06332c221b1 100644
  	v = __this_cpu_dec_return(*p);
  	t = __this_cpu_read(pcp->stat_threshold);
  	if (unlikely(v < - t)) {
-@@ -445,6 +454,7 @@ void __dec_zone_state(struct zone *zone, enum zone_stat_item item)
+@@ -445,6 +454,7 @@ void __dec_zone_state(struct zone *zone,
  		zone_page_state_add(v - overstep, zone, item);
  		__this_cpu_write(*p, overstep);
  	}
@@ -126,7 +122,7 @@ index b0534e068166..d06332c221b1 100644
  }
  
  void __dec_node_state(struct pglist_data *pgdat, enum node_stat_item item)
-@@ -455,6 +465,7 @@ void __dec_node_state(struct pglist_data *pgdat, enum node_stat_item item)
+@@ -455,6 +465,7 @@ void __dec_node_state(struct pglist_data
  
  	VM_WARN_ON_ONCE(vmstat_item_in_bytes(item));
  
@@ -134,7 +130,7 @@ index b0534e068166..d06332c221b1 100644
  	v = __this_cpu_dec_return(*p);
  	t = __this_cpu_read(pcp->stat_threshold);
  	if (unlikely(v < - t)) {
-@@ -463,6 +474,7 @@ void __dec_node_state(struct pglist_data *pgdat, enum node_stat_item item)
+@@ -463,6 +474,7 @@ void __dec_node_state(struct pglist_data
  		node_page_state_add(v - overstep, pgdat, item);
  		__this_cpu_write(*p, overstep);
  	}

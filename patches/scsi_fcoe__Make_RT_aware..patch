@@ -11,16 +11,14 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- drivers/scsi/fcoe/fcoe.c      | 16 ++++++++--------
- drivers/scsi/fcoe/fcoe_ctlr.c |  4 ++--
- drivers/scsi/libfc/fc_exch.c  |  4 ++--
+ drivers/scsi/fcoe/fcoe.c      |   16 ++++++++--------
+ drivers/scsi/fcoe/fcoe_ctlr.c |    4 ++--
+ drivers/scsi/libfc/fc_exch.c  |    4 ++--
  3 files changed, 12 insertions(+), 12 deletions(-)
 ---
-diff --git a/drivers/scsi/fcoe/fcoe.c b/drivers/scsi/fcoe/fcoe.c
-index 89ec735929c3..9c1dc0767bb9 100644
 --- a/drivers/scsi/fcoe/fcoe.c
 +++ b/drivers/scsi/fcoe/fcoe.c
-@@ -1452,11 +1452,11 @@ static int fcoe_rcv(struct sk_buff *skb, struct net_device *netdev,
+@@ -1450,11 +1450,11 @@ static int fcoe_rcv(struct sk_buff *skb,
  static int fcoe_alloc_paged_crc_eof(struct sk_buff *skb, int tlen)
  {
  	struct fcoe_percpu_s *fps;
@@ -35,7 +33,7 @@ index 89ec735929c3..9c1dc0767bb9 100644
  
  	return rc;
  }
-@@ -1641,11 +1641,11 @@ static inline int fcoe_filter_frames(struct fc_lport *lport,
+@@ -1639,11 +1639,11 @@ static inline int fcoe_filter_frames(str
  		return 0;
  	}
  
@@ -49,7 +47,7 @@ index 89ec735929c3..9c1dc0767bb9 100644
  	return -EINVAL;
  }
  
-@@ -1686,7 +1686,7 @@ static void fcoe_recv_frame(struct sk_buff *skb)
+@@ -1684,7 +1684,7 @@ static void fcoe_recv_frame(struct sk_bu
  	 */
  	hp = (struct fcoe_hdr *) skb_network_header(skb);
  
@@ -58,7 +56,7 @@ index 89ec735929c3..9c1dc0767bb9 100644
  	if (unlikely(FC_FCOE_DECAPS_VER(hp) != FC_FCOE_VER)) {
  		if (stats->ErrorFrames < 5)
  			printk(KERN_WARNING "fcoe: FCoE version "
-@@ -1718,13 +1718,13 @@ static void fcoe_recv_frame(struct sk_buff *skb)
+@@ -1716,13 +1716,13 @@ static void fcoe_recv_frame(struct sk_bu
  		goto drop;
  
  	if (!fcoe_filter_frames(lport, fp)) {
@@ -74,11 +72,9 @@ index 89ec735929c3..9c1dc0767bb9 100644
  	kfree_skb(skb);
  }
  
-diff --git a/drivers/scsi/fcoe/fcoe_ctlr.c b/drivers/scsi/fcoe/fcoe_ctlr.c
-index 1756a0ac6f08..3a2cbf35ea3d 100644
 --- a/drivers/scsi/fcoe/fcoe_ctlr.c
 +++ b/drivers/scsi/fcoe/fcoe_ctlr.c
-@@ -828,7 +828,7 @@ static unsigned long fcoe_ctlr_age_fcfs(struct fcoe_ctlr *fip)
+@@ -828,7 +828,7 @@ static unsigned long fcoe_ctlr_age_fcfs(
  
  	INIT_LIST_HEAD(&del_list);
  
@@ -87,7 +83,7 @@ index 1756a0ac6f08..3a2cbf35ea3d 100644
  
  	list_for_each_entry_safe(fcf, next, &fip->fcfs, list) {
  		deadline = fcf->time + fcf->fka_period + fcf->fka_period / 2;
-@@ -864,7 +864,7 @@ static unsigned long fcoe_ctlr_age_fcfs(struct fcoe_ctlr *fip)
+@@ -864,7 +864,7 @@ static unsigned long fcoe_ctlr_age_fcfs(
  				sel_time = fcf->time;
  		}
  	}
@@ -96,11 +92,9 @@ index 1756a0ac6f08..3a2cbf35ea3d 100644
  
  	list_for_each_entry_safe(fcf, next, &del_list, list) {
  		/* Removes fcf from current list */
-diff --git a/drivers/scsi/libfc/fc_exch.c b/drivers/scsi/libfc/fc_exch.c
-index 841000445b9a..26d661ddc950 100644
 --- a/drivers/scsi/libfc/fc_exch.c
 +++ b/drivers/scsi/libfc/fc_exch.c
-@@ -825,10 +825,10 @@ static struct fc_exch *fc_exch_em_alloc(struct fc_lport *lport,
+@@ -825,10 +825,10 @@ static struct fc_exch *fc_exch_em_alloc(
  	}
  	memset(ep, 0, sizeof(*ep));
  

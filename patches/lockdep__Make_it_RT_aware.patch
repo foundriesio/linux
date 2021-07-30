@@ -10,12 +10,10 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/irqflags.h | 23 +++++++++++++++--------
- kernel/locking/lockdep.c |  2 ++
+ include/linux/irqflags.h |   23 +++++++++++++++--------
+ kernel/locking/lockdep.c |    2 ++
  2 files changed, 17 insertions(+), 8 deletions(-)
 ---
-diff --git a/include/linux/irqflags.h b/include/linux/irqflags.h
-index 600c10da321a..4b140938b03e 100644
 --- a/include/linux/irqflags.h
 +++ b/include/linux/irqflags.h
 @@ -71,14 +71,6 @@ do {						\
@@ -55,11 +53,9 @@ index 600c10da321a..4b140938b03e 100644
  #if defined(CONFIG_IRQSOFF_TRACER) || \
  	defined(CONFIG_PREEMPT_TRACER)
   extern void stop_critical_timings(void);
-diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
-index e32313072506..fe3c9c2a63ff 100644
 --- a/kernel/locking/lockdep.c
 +++ b/kernel/locking/lockdep.c
-@@ -5362,6 +5362,7 @@ static noinstr void check_flags(unsigned long flags)
+@@ -5473,6 +5473,7 @@ static noinstr void check_flags(unsigned
  		}
  	}
  
@@ -67,7 +63,7 @@ index e32313072506..fe3c9c2a63ff 100644
  	/*
  	 * We dont accurately track softirq state in e.g.
  	 * hardirq contexts (such as on 4KSTACKS), so only
-@@ -5376,6 +5377,7 @@ static noinstr void check_flags(unsigned long flags)
+@@ -5487,6 +5488,7 @@ static noinstr void check_flags(unsigned
  			DEBUG_LOCKS_WARN_ON(!current->softirqs_enabled);
  		}
  	}

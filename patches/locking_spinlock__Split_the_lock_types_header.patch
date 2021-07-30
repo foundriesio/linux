@@ -11,19 +11,14 @@ the raw spinlock types.
 No functional change.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/rwlock_types.h       |  4 ++-
- include/linux/spinlock.h           |  4 ++-
- include/linux/spinlock_types.h     | 19 +-----------
- include/linux/spinlock_types_raw.h | 65 +++++++++++++++++++++++++++++++++++++++-
+ include/linux/rwlock_types.h       |    4 ++
+ include/linux/spinlock.h           |    4 ++
+ include/linux/spinlock_types.h     |   19 ----------
+ include/linux/spinlock_types_raw.h |   65 +++++++++++++++++++++++++++++++++++++
  4 files changed, 74 insertions(+), 18 deletions(-)
  create mode 100644 include/linux/spinlock_types_raw.h
 ---
-diff --git a/include/linux/rwlock_types.h b/include/linux/rwlock_types.h
-index 3bd03e18061c..0ad226b5d8fd 100644
 --- a/include/linux/rwlock_types.h
 +++ b/include/linux/rwlock_types.h
 @@ -1,6 +1,10 @@
@@ -37,8 +32,6 @@ index 3bd03e18061c..0ad226b5d8fd 100644
  /*
   * include/linux/rwlock_types.h - generic rwlock type definitions
   *				  and initializers
-diff --git a/include/linux/spinlock.h b/include/linux/spinlock.h
-index 79897841a2cc..5803b56622a8 100644
 --- a/include/linux/spinlock.h
 +++ b/include/linux/spinlock.h
 @@ -12,6 +12,8 @@
@@ -59,8 +52,6 @@ index 79897841a2cc..5803b56622a8 100644
   *  linux/spinlock_types.h:
   *                        defines the generic type and initializers
   *
-diff --git a/include/linux/spinlock_types.h b/include/linux/spinlock_types.h
-index b981caafe8bf..7c8107c280c0 100644
 --- a/include/linux/spinlock_types.h
 +++ b/include/linux/spinlock_types.h
 @@ -9,24 +9,7 @@
@@ -89,9 +80,6 @@ index b981caafe8bf..7c8107c280c0 100644
  
  #define SPINLOCK_MAGIC		0xdead4ead
  
-diff --git a/include/linux/spinlock_types_raw.h b/include/linux/spinlock_types_raw.h
-new file mode 100644
-index 000000000000..1d4a180e983d
 --- /dev/null
 +++ b/include/linux/spinlock_types_raw.h
 @@ -0,0 +1,65 @@

@@ -17,14 +17,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/local_lock_internal.h | 19 +++++++++++++------
+ include/linux/local_lock_internal.h |   19 +++++++++++++------
  1 file changed, 13 insertions(+), 6 deletions(-)
 ---
-diff --git a/include/linux/local_lock_internal.h b/include/linux/local_lock_internal.h
-index ded90b097e6e..0574e4687d63 100644
 --- a/include/linux/local_lock_internal.h
 +++ b/include/linux/local_lock_internal.h
-@@ -56,38 +56,45 @@ static inline void local_lock_acquire(local_lock_t *l) { }
+@@ -56,38 +56,45 @@ static inline void local_lock_acquire(lo
  static inline void local_lock_release(local_lock_t *l) { }
  #endif /* !CONFIG_DEBUG_LOCK_ALLOC */
  

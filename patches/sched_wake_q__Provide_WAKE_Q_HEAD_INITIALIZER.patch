@@ -9,15 +9,10 @@ to be woken waiters. Provide a WAKE_Q_HEAD_INITIALIZER which can be used by
 the rtmutex code to implement a RT aware wake_q derivative.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- include/linux/sched/wake_q.h | 7 +++++--
+ include/linux/sched/wake_q.h |    7 +++++--
  1 file changed, 5 insertions(+), 2 deletions(-)
 ---
-diff --git a/include/linux/sched/wake_q.h b/include/linux/sched/wake_q.h
-index 26a2013ac39c..06cd8fb2f409 100644
 --- a/include/linux/sched/wake_q.h
 +++ b/include/linux/sched/wake_q.h
 @@ -42,8 +42,11 @@ struct wake_q_head {

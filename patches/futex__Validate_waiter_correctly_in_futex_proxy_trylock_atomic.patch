@@ -10,18 +10,13 @@ sufficient, but futexes are cursed so add it for completness and paranoia
 sake.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
-
 ---
- kernel/futex.c | 4 ++++
+ kernel/futex.c |    4 ++++
  1 file changed, 4 insertions(+)
 ---
-diff --git a/kernel/futex.c b/kernel/futex.c
-index e60bcddec287..b8eab7a2934b 100644
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -1882,6 +1882,10 @@ futex_proxy_trylock_atomic(u32 __user *pifutex, struct futex_hash_bucket *hb1,
+@@ -1879,6 +1879,10 @@ futex_proxy_trylock_atomic(u32 __user *p
  	if (!top_waiter)
  		return 0;
  

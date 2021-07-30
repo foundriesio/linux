@@ -6,14 +6,12 @@ From: Thomas Gleixner <tglx@linutronix.de>
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- net/core/sock.c | 6 ++----
+ net/core/sock.c |    6 ++----
  1 file changed, 2 insertions(+), 4 deletions(-)
 ---
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 946888afef88..aadd730df18c 100644
 --- a/net/core/sock.c
 +++ b/net/core/sock.c
-@@ -3066,12 +3066,11 @@ void lock_sock_nested(struct sock *sk, int subclass)
+@@ -3163,12 +3163,11 @@ void lock_sock_nested(struct sock *sk, i
  	if (sk->sk_lock.owned)
  		__lock_sock(sk);
  	sk->sk_lock.owned = 1;
@@ -27,7 +25,7 @@ index 946888afef88..aadd730df18c 100644
  }
  EXPORT_SYMBOL(lock_sock_nested);
  
-@@ -3120,13 +3119,12 @@ bool lock_sock_fast(struct sock *sk) __acquires(&sk->sk_lock.slock)
+@@ -3217,13 +3216,12 @@ bool lock_sock_fast(struct sock *sk) __a
  
  	__lock_sock(sk);
  	sk->sk_lock.owned = 1;

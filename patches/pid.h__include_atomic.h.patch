@@ -26,11 +26,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/pid.h | 1 +
+ include/linux/pid.h |    1 +
  1 file changed, 1 insertion(+)
 ---
-diff --git a/include/linux/pid.h b/include/linux/pid.h
-index fa10acb8d6a4..2f86f84e9fc1 100644
 --- a/include/linux/pid.h
 +++ b/include/linux/pid.h
 @@ -3,6 +3,7 @@

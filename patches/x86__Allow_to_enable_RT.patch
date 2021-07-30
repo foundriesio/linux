@@ -11,11 +11,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- arch/x86/Kconfig | 1 +
+ arch/x86/Kconfig |    1 +
  1 file changed, 1 insertion(+)
 ---
-diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
-index 0045e1b44190..3dc12f4a730a 100644
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
 @@ -27,6 +27,7 @@ config X86_64

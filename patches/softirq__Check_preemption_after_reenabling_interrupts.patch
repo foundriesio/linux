@@ -18,13 +18,11 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- include/linux/preempt.h | 3 +++
- lib/irq_poll.c          | 5 +++++
- net/core/dev.c          | 7 +++++++
+ include/linux/preempt.h |    3 +++
+ lib/irq_poll.c          |    5 +++++
+ net/core/dev.c          |    7 +++++++
  3 files changed, 15 insertions(+)
 ---
-diff --git a/include/linux/preempt.h b/include/linux/preempt.h
-index 5ceac863e729..fb140e00f74d 100644
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
 @@ -190,8 +190,10 @@ do { \
@@ -46,11 +44,9 @@ index 5ceac863e729..fb140e00f74d 100644
  #define preemptible()				0
  
  #endif /* CONFIG_PREEMPT_COUNT */
-diff --git a/lib/irq_poll.c b/lib/irq_poll.c
-index 2f17b488d58e..7557bf7ecf1f 100644
 --- a/lib/irq_poll.c
 +++ b/lib/irq_poll.c
-@@ -37,6 +37,7 @@ void irq_poll_sched(struct irq_poll *iop)
+@@ -37,6 +37,7 @@ void irq_poll_sched(struct irq_poll *iop
  	list_add_tail(&iop->list, this_cpu_ptr(&blk_cpu_iopoll));
  	raise_softirq_irqoff(IRQ_POLL_SOFTIRQ);
  	local_irq_restore(flags);
@@ -58,7 +54,7 @@ index 2f17b488d58e..7557bf7ecf1f 100644
  }
  EXPORT_SYMBOL(irq_poll_sched);
  
-@@ -72,6 +73,7 @@ void irq_poll_complete(struct irq_poll *iop)
+@@ -72,6 +73,7 @@ void irq_poll_complete(struct irq_poll *
  	local_irq_save(flags);
  	__irq_poll_complete(iop);
  	local_irq_restore(flags);
@@ -66,7 +62,7 @@ index 2f17b488d58e..7557bf7ecf1f 100644
  }
  EXPORT_SYMBOL(irq_poll_complete);
  
-@@ -96,6 +98,7 @@ static void __latent_entropy irq_poll_softirq(struct softirq_action *h)
+@@ -96,6 +98,7 @@ static void __latent_entropy irq_poll_so
  		}
  
  		local_irq_enable();
@@ -74,7 +70,7 @@ index 2f17b488d58e..7557bf7ecf1f 100644
  
  		/* Even though interrupts have been re-enabled, this
  		 * access is safe because interrupts can only add new
-@@ -133,6 +136,7 @@ static void __latent_entropy irq_poll_softirq(struct softirq_action *h)
+@@ -133,6 +136,7 @@ static void __latent_entropy irq_poll_so
  		__raise_softirq_irqoff(IRQ_POLL_SOFTIRQ);
  
  	local_irq_enable();
@@ -82,7 +78,7 @@ index 2f17b488d58e..7557bf7ecf1f 100644
  }
  
  /**
-@@ -196,6 +200,7 @@ static int irq_poll_cpu_dead(unsigned int cpu)
+@@ -196,6 +200,7 @@ static int irq_poll_cpu_dead(unsigned in
  			 this_cpu_ptr(&blk_cpu_iopoll));
  	__raise_softirq_irqoff(IRQ_POLL_SOFTIRQ);
  	local_irq_enable();
@@ -90,11 +86,9 @@ index 2f17b488d58e..7557bf7ecf1f 100644
  
  	return 0;
  }
-diff --git a/net/core/dev.c b/net/core/dev.c
-index ef8cf7619baf..acf579c2f8dc 100644
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -3121,6 +3121,7 @@ static void __netif_reschedule(struct Qdisc *q)
+@@ -3123,6 +3123,7 @@ static void __netif_reschedule(struct Qd
  	sd->output_queue_tailp = &q->next_sched;
  	raise_softirq_irqoff(NET_TX_SOFTIRQ);
  	local_irq_restore(flags);
@@ -102,7 +96,7 @@ index ef8cf7619baf..acf579c2f8dc 100644
  }
  
  void __netif_schedule(struct Qdisc *q)
-@@ -3183,6 +3184,7 @@ void __dev_kfree_skb_irq(struct sk_buff *skb, enum skb_free_reason reason)
+@@ -3185,6 +3186,7 @@ void __dev_kfree_skb_irq(struct sk_buff
  	__this_cpu_write(softnet_data.completion_queue, skb);
  	raise_softirq_irqoff(NET_TX_SOFTIRQ);
  	local_irq_restore(flags);
@@ -110,7 +104,7 @@ index ef8cf7619baf..acf579c2f8dc 100644
  }
  EXPORT_SYMBOL(__dev_kfree_skb_irq);
  
-@@ -4688,6 +4690,7 @@ static int enqueue_to_backlog(struct sk_buff *skb, int cpu,
+@@ -4727,6 +4729,7 @@ static int enqueue_to_backlog(struct sk_
  	rps_unlock(sd);
  
  	local_irq_restore(flags);
@@ -118,7 +112,7 @@ index ef8cf7619baf..acf579c2f8dc 100644
  
  	atomic_long_inc(&skb->dev->rx_dropped);
  	kfree_skb(skb);
-@@ -6397,12 +6400,14 @@ static void net_rps_action_and_irq_enable(struct softnet_data *sd)
+@@ -6452,12 +6455,14 @@ static void net_rps_action_and_irq_enabl
  		sd->rps_ipi_list = NULL;
  
  		local_irq_enable();
@@ -133,7 +127,7 @@ index ef8cf7619baf..acf579c2f8dc 100644
  }
  
  static bool sd_has_rps_ipi_waiting(struct softnet_data *sd)
-@@ -6480,6 +6485,7 @@ void __napi_schedule(struct napi_struct *n)
+@@ -6535,6 +6540,7 @@ void __napi_schedule(struct napi_struct
  	local_irq_save(flags);
  	____napi_schedule(this_cpu_ptr(&softnet_data), n);
  	local_irq_restore(flags);
@@ -141,7 +135,7 @@ index ef8cf7619baf..acf579c2f8dc 100644
  }
  EXPORT_SYMBOL(__napi_schedule);
  
-@@ -11274,6 +11280,7 @@ static int dev_cpu_dead(unsigned int oldcpu)
+@@ -11342,6 +11348,7 @@ static int dev_cpu_dead(unsigned int old
  
  	raise_softirq_irqoff(NET_TX_SOFTIRQ);
  	local_irq_enable();

@@ -19,11 +19,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 
 ---
- kernel/ksysfs.c | 12 ++++++++++++
+ kernel/ksysfs.c |   12 ++++++++++++
  1 file changed, 12 insertions(+)
 ---
-diff --git a/kernel/ksysfs.c b/kernel/ksysfs.c
-index 35859da8bd4f..dfff31ed644a 100644
 --- a/kernel/ksysfs.c
 +++ b/kernel/ksysfs.c
 @@ -138,6 +138,15 @@ KERNEL_ATTR_RO(vmcoreinfo);
@@ -42,7 +40,7 @@ index 35859da8bd4f..dfff31ed644a 100644
  /* whether file capabilities are enabled */
  static ssize_t fscaps_show(struct kobject *kobj,
  				  struct kobj_attribute *attr, char *buf)
-@@ -229,6 +238,9 @@ static struct attribute * kernel_attrs[] = {
+@@ -229,6 +238,9 @@ static struct attribute * kernel_attrs[]
  	&rcu_expedited_attr.attr,
  	&rcu_normal_attr.attr,
  #endif
