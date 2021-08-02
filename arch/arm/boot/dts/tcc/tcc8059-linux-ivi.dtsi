@@ -863,6 +863,8 @@
 
 			interrupt-parent = <&gpsd1>;
 			interrupts = <9 IRQ_TYPE_EDGE_FALLING>;
+
+			reset-gpio = <&gpb 16 0>;
 		};
 
 		mxt_touch@4d {
