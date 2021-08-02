@@ -10,6 +10,8 @@ on RT enabled kernels.
 Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
+V3: Make lock_interruptible interruptible for real (Mike)
+---
  kernel/locking/Makefile      |    2 -
  kernel/locking/ww_rt_mutex.c |   76 +++++++++++++++++++++++++++++++++++++++++++
  2 files changed, 77 insertions(+), 1 deletion(-)
@@ -90,7 +92,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +int __sched
 +ww_mutex_lock_interruptible(struct ww_mutex *lock, struct ww_acquire_ctx *ctx)
 +{
-+	return __ww_rt_mutex_lock(lock, ctx, TASK_UNINTERRUPTIBLE, _RET_IP_);
++	return __ww_rt_mutex_lock(lock, ctx, TASK_INTERRUPTIBLE, _RET_IP_);
 +}
 +EXPORT_SYMBOL(ww_mutex_lock_interruptible);
 +

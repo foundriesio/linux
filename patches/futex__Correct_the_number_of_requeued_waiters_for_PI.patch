@@ -16,7 +16,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -2128,6 +2128,8 @@ static int futex_requeue(u32 __user *uad
+@@ -2131,6 +2131,8 @@ static int futex_requeue(u32 __user *uad
  
  		/* Ensure we requeue to the expected futex for requeue_pi. */
  		if (requeue_pi && !match_futex(this->requeue_pi_key, &key2)) {
@@ -25,7 +25,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			ret = -EINVAL;
  			break;
  		}
-@@ -2169,6 +2171,8 @@ static int futex_requeue(u32 __user *uad
+@@ -2172,6 +2174,8 @@ static int futex_requeue(u32 __user *uad
  				 */
  				this->pi_state = NULL;
  				put_pi_state(pi_state);

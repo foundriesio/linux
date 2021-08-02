@@ -16,7 +16,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -2116,20 +2116,17 @@ static int futex_requeue(u32 __user *uad
+@@ -2119,20 +2119,17 @@ static int futex_requeue(u32 __user *uad
  			break;
  		}
  
@@ -44,7 +44,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			ret = -EINVAL;
  			break;
  		}
-@@ -2137,50 +2134,45 @@ static int futex_requeue(u32 __user *uad
+@@ -2140,50 +2137,45 @@ static int futex_requeue(u32 __user *uad
  		/*
  		 * Requeue nr_requeue waiters and possibly one more in the case
  		 * of requeue_pi if we couldn't acquire the lock atomically.

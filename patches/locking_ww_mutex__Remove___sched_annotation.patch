@@ -4,7 +4,7 @@ Date: Fri Jul 16 18:07:49 2021 +0200
 
 From: Peter Zijlstra <peterz@infradead.org>
 
-None of these functions will be on the stack when we block in
+None of these functions will be on the stack when blocking in
 schedule(), hence __sched is not needed.
 
 Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>

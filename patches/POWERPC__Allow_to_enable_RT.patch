@@ -24,7 +24,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	select ARCH_USE_BUILTIN_BSWAP
  	select ARCH_USE_CMPXCHG_LOCKREF		if PPC64
  	select ARCH_USE_MEMTEST
-@@ -224,6 +225,7 @@ config PPC
+@@ -223,6 +224,7 @@ config PPC
  	select HAVE_IOREMAP_PROT
  	select HAVE_IRQ_EXIT_ON_IRQ_STACK
  	select HAVE_IRQ_TIME_ACCOUNTING

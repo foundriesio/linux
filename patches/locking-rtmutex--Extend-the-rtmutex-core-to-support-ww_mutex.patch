@@ -90,7 +90,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static __always_inline void
-@@ -939,6 +991,7 @@ try_to_take_rt_mutex(struct rt_mutex_bas
+@@ -945,6 +997,7 @@ try_to_take_rt_mutex(struct rt_mutex_bas
  static int __sched task_blocks_on_rt_mutex(struct rt_mutex_base *lock,
  					   struct rt_mutex_waiter *waiter,
  					   struct task_struct *task,
@@ -98,7 +98,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  					   enum rtmutex_chainwalk chwalk)
  {
  	struct task_struct *owner = rt_mutex_owner(lock);
-@@ -975,6 +1028,16 @@ static int __sched task_blocks_on_rt_mut
+@@ -981,6 +1034,16 @@ static int __sched task_blocks_on_rt_mut
  
  	raw_spin_unlock(&task->pi_lock);
  
@@ -115,7 +115,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (!owner)
  		return 0;
  
-@@ -1260,6 +1323,7 @@ static void __sched remove_waiter(struct
+@@ -1266,6 +1329,7 @@ static void __sched remove_waiter(struct
  /**
   * rt_mutex_slowlock_block() - Perform the wait-wake-try-to-take loop
   * @lock:		 the rt_mutex to take
@@ -123,7 +123,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   * @state:		 the state the task should block in (TASK_INTERRUPTIBLE
   *			 or TASK_UNINTERRUPTIBLE)
   * @timeout:		 the pre-initialized and started timer, or NULL for none
-@@ -1268,10 +1332,12 @@ static void __sched remove_waiter(struct
+@@ -1274,10 +1338,12 @@ static void __sched remove_waiter(struct
   * Must be called with lock->wait_lock held and interrupts disabled
   */
  static int __sched rt_mutex_slowlock_block(struct rt_mutex_base *lock,
@@ -136,7 +136,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	int ret = 0;
  
  	for (;;) {
-@@ -1288,6 +1354,12 @@ static int __sched rt_mutex_slowlock_blo
+@@ -1294,6 +1360,12 @@ static int __sched rt_mutex_slowlock_blo
  			break;
  		}
  
@@ -149,7 +149,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		raw_spin_unlock_irq(&lock->wait_lock);
  
  		schedule();
-@@ -1310,6 +1382,9 @@ static void __sched rt_mutex_handle_dead
+@@ -1316,6 +1388,9 @@ static void __sched rt_mutex_handle_dead
  	if (res != -EDEADLOCK || detect_deadlock)
  		return;
  
@@ -159,7 +159,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * Yell loudly and stop the task right here.
  	 */
-@@ -1323,31 +1398,46 @@ static void __sched rt_mutex_handle_dead
+@@ -1329,31 +1404,46 @@ static void __sched rt_mutex_handle_dead
  /**
   * __rt_mutex_slowlock - Locking slowpath invoked with lock::wait_lock held
   * @lock:	The rtmutex to block lock
@@ -211,7 +211,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		__set_current_state(TASK_RUNNING);
  		remove_waiter(lock, waiter);
  		rt_mutex_handle_deadlock(ret, chwalk, waiter);
-@@ -1362,14 +1452,17 @@ static int __sched __rt_mutex_slowlock(s
+@@ -1368,14 +1458,17 @@ static int __sched __rt_mutex_slowlock(s
  }
  
  static inline int __rt_mutex_slowlock_locked(struct rt_mutex_base *lock,
@@ -230,7 +230,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	debug_rt_mutex_free_waiter(&waiter);
  	return ret;
-@@ -1378,9 +1471,11 @@ static inline int __rt_mutex_slowlock_lo
+@@ -1384,9 +1477,11 @@ static inline int __rt_mutex_slowlock_lo
  /*
   * rt_mutex_slowlock - Locking slowpath invoked when fast path fails
   * @lock:	The rtmutex to block lock
@@ -242,7 +242,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  				     unsigned int state)
  {
  	unsigned long flags;
-@@ -1395,7 +1490,7 @@ static int __sched rt_mutex_slowlock(str
+@@ -1401,7 +1496,7 @@ static int __sched rt_mutex_slowlock(str
  	 * irqsave/restore variants.
  	 */
  	raw_spin_lock_irqsave(&lock->wait_lock, flags);
@@ -251,7 +251,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	raw_spin_unlock_irqrestore(&lock->wait_lock, flags);
  
  	return ret;
-@@ -1407,7 +1502,7 @@ static __always_inline int __rt_mutex_lo
+@@ -1413,7 +1508,7 @@ static __always_inline int __rt_mutex_lo
  	if (likely(rt_mutex_cmpxchg_acquire(lock, NULL, current)))
  		return 0;
  
@@ -260,7 +260,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  #endif /* RT_MUTEX_BUILD_MUTEX */
  
-@@ -1434,7 +1529,7 @@ static void __sched rtlock_slowlock_lock
+@@ -1440,7 +1535,7 @@ static void __sched rtlock_slowlock_lock
  	/* Save current state and set state to TASK_RTLOCK_WAIT */
  	current_save_and_set_rtlock_wait_state();
  

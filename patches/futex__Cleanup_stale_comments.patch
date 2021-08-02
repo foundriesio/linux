@@ -25,7 +25,7 @@ V2: Cleanup more key ref comments - Andre
   *
   * @exiting is only set when the return value is -EBUSY. If so, this holds
   * a refcount on the exiting task on return and the caller needs to drop it
-@@ -2618,8 +2618,7 @@ static void futex_wait_queue_me(struct f
+@@ -2621,8 +2621,7 @@ static void futex_wait_queue_me(struct f
   *
   * Setup the futex_q and locate the hash_bucket.  Get the futex value and
   * compare it with the expected value.  Handle atomic faults internally.
@@ -35,7 +35,7 @@ V2: Cleanup more key ref comments - Andre
   *
   * Return:
   *  -  0 - uaddr contains val and hb has been locked;
-@@ -2697,8 +2696,8 @@ static int futex_wait(u32 __user *uaddr,
+@@ -2700,8 +2699,8 @@ static int futex_wait(u32 __user *uaddr,
  			       current->timer_slack_ns);
  retry:
  	/*
@@ -46,7 +46,7 @@ V2: Cleanup more key ref comments - Andre
  	 */
  	ret = futex_wait_setup(uaddr, val, flags, &q, &hb);
  	if (ret)
-@@ -2709,7 +2708,6 @@ static int futex_wait(u32 __user *uaddr,
+@@ -2712,7 +2711,6 @@ static int futex_wait(u32 __user *uaddr,
  
  	/* If we were woken (and unqueued), we succeeded, whatever. */
  	ret = 0;
@@ -54,7 +54,7 @@ V2: Cleanup more key ref comments - Andre
  	if (!unqueue_me(&q))
  		goto out;
  	ret = -ETIMEDOUT;
-@@ -3202,8 +3200,8 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3205,8 +3203,8 @@ static int futex_wait_requeue_pi(u32 __u
  	q.requeue_pi_key = &key2;
  
  	/*
@@ -65,7 +65,7 @@ V2: Cleanup more key ref comments - Andre
  	 */
  	ret = futex_wait_setup(uaddr, val, flags, &q, &hb);
  	if (ret)
-@@ -3232,9 +3230,7 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3235,9 +3233,7 @@ static int futex_wait_requeue_pi(u32 __u
  	 * In order for us to be here, we know our q.key == key2, and since
  	 * we took the hb->lock above, we also know that futex_requeue() has
  	 * completed and we no longer have to concern ourselves with a wakeup

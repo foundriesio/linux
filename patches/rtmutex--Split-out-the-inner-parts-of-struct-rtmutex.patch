@@ -2,6 +2,8 @@ Subject: rtmutex: Split out the inner parts of struct rtmutex
 From: Peter Zijlstra <peterz@infradead.org>
 Date: Wed, 14 Jul 2021 15:30:47 +0200
 
+From: Peter Zijlstra <peterz@infradead.org>
+
 RT builds substitutions for rwsem, mutex, spinlock and rwlock around
 rtmutexes. Split the inner working out so each lock substitution can use
 them with the appropiate lockdep annotations. This avoid having an extra

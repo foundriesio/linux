@@ -87,8 +87,8 @@ requeue side.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- kernel/futex.c |  349 +++++++++++++++++++++++++++++++++++++++++++++------------
- 1 file changed, 278 insertions(+), 71 deletions(-)
+ kernel/futex.c |  344 +++++++++++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 273 insertions(+), 71 deletions(-)
 ---
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
@@ -112,7 +112,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  } __randomize_layout;
  
  static const struct futex_q futex_q_init = {
-@@ -1793,6 +1799,158 @@ void requeue_futex(struct futex_q *q, st
+@@ -1793,6 +1799,153 @@ void requeue_futex(struct futex_q *q, st
  	q->key = *key2;
  }
  
@@ -170,15 +170,16 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +static inline bool futex_requeue_pi_prepare(struct futex_q *q,
 +					    struct futex_pi_state *pi_state)
 +{
-+	int cur, res, new;
++	int old, new;
 +
 +	/*
 +	 * Set state to Q_REQUEUE_PI_IN_PROGRESS unless an early wakeup has
 +	 * already set Q_REQUEUE_PI_IGNORE to signal that requeue should
 +	 * ignore the waiter.
 +	 */
-+	for (cur = atomic_read(&q->requeue_state);; cur = res) {
-+		if (cur == Q_REQUEUE_PI_IGNORE)
++	old = atomic_read_acquire(&q->requeue_state);
++	do {
++		if (old == Q_REQUEUE_PI_IGNORE)
 +			return false;
 +
 +		/*
@@ -189,74 +190,68 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +		 * trylock, but that would just add more conditionals
 +		 * all over the place for a dubious value.
 +		 */
-+		if (cur != Q_REQUEUE_PI_NONE)
++		if (old != Q_REQUEUE_PI_NONE)
 +			break;
 +
 +		new = Q_REQUEUE_PI_IN_PROGRESS;
-+		res = atomic_cmpxchg(&q->requeue_state, cur, new);
-+		if (likely(cur == res))
-+			break;
-+	}
++	} while (!atomic_try_cmpxchg(&q->requeue_state, &old, new));
++
 +	q->pi_state = pi_state;
 +	return true;
 +}
 +
 +static inline void futex_requeue_pi_complete(struct futex_q *q, int locked)
 +{
-+	int cur, res, new;
++	int old, new;
 +
-+	for (cur = atomic_read(&q->requeue_state);; cur = res) {
++	old = atomic_read_acquire(&q->requeue_state);
++	do {
 +		if (locked >= 0) {
 +			/* Requeue succeeded. Set DONE or LOCKED */
 +			new = Q_REQUEUE_PI_DONE + locked;
-+		} else if (cur == Q_REQUEUE_PI_IN_PROGRESS) {
++		} else if (old == Q_REQUEUE_PI_IN_PROGRESS) {
 +			/* Deadlock, no early wakeup interleave */
 +			new = Q_REQUEUE_PI_NONE;
 +		} else {
 +			/* Deadlock, early wakeup interleave. */
 +			new = Q_REQUEUE_PI_IGNORE;
 +		}
-+
-+		res = atomic_cmpxchg(&q->requeue_state, cur, new);
-+		if (likely(cur == res))
-+			break;
-+	}
++	} while (!atomic_try_cmpxchg(&q->requeue_state, &old, new));
 +
 +#ifdef CONFIG_PREEMPT_RT
 +	/* If the waiter interleaved with the requeue let it know */
-+	if (unlikely(cur == Q_REQUEUE_PI_WAIT))
++	if (unlikely(old == Q_REQUEUE_PI_WAIT))
 +		rcuwait_wake_up(&q->requeue_wait);
 +#endif
 +}
 +
 +static inline int futex_requeue_pi_wakeup_sync(struct futex_q *q)
 +{
-+	int cur, new, res;
++	int old, new;
 +
-+	for (cur = atomic_read(&q->requeue_state);; cur = res) {
++	old = atomic_read_acquire(&q->requeue_state);
++	do {
 +		/* Is requeue done already? */
-+		if (cur >= Q_REQUEUE_PI_DONE)
-+			break;
++		if (old >= Q_REQUEUE_PI_DONE)
++			return old;
 +
 +		/*
 +		 * If not done, then tell the requeue code to either ignore
 +		 * the waiter or to wake it up once the requeue is done.
 +		 */
-+		new = !cur ? Q_REQUEUE_PI_IGNORE : Q_REQUEUE_PI_WAIT;
-+		res = atomic_cmpxchg(&q->requeue_state, cur, new);
-+		if (likely(cur == res))
-+			break;
-+	}
++		new = Q_REQUEUE_PI_WAIT;
++		if (old == Q_REQUEUE_PI_NONE)
++			new = Q_REQUEUE_PI_IGNORE;
++	} while (!atomic_try_cmpxchg(&q->requeue_state, &old, new));
 +
 +	/* If the requeue was in progress, wait for it to complete */
-+	if (cur == Q_REQUEUE_PI_IN_PROGRESS) {
++	if (old == Q_REQUEUE_PI_IN_PROGRESS) {
 +#ifdef CONFIG_PREEMPT_RT
 +		rcuwait_wait_event(&q->requeue_wait,
 +				   atomic_read(&q->requeue_state) != Q_REQUEUE_PI_WAIT,
 +				   TASK_UNINTERRUPTIBLE);
 +#else
-+		while (atomic_read(&q->requeue_state) == Q_REQUEUE_PI_WAIT)
-+			cpu_relax();
++		(void)atomic_cond_read_relaxed(&q->requeue_state, VAL != Q_REQUEUE_PI_WAIT);
 +#endif
 +	}
 +
@@ -271,7 +266,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
   * requeue_pi_wake_futex() - Wake a task that acquired the lock during requeue
   * @q:		the futex_q
-@@ -1820,6 +1978,8 @@ void requeue_pi_wake_futex(struct futex_
+@@ -1820,6 +1973,8 @@ void requeue_pi_wake_futex(struct futex_
  
  	q->lock_ptr = &hb->lock;
  
@@ -280,7 +275,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	wake_up_state(q->task, TASK_NORMAL);
  }
  
-@@ -1887,6 +2047,10 @@ futex_proxy_trylock_atomic(u32 __user *p
+@@ -1890,6 +2045,10 @@ futex_proxy_trylock_atomic(u32 __user *p
  	if (!match_futex(top_waiter->requeue_pi_key, key2))
  		return -EINVAL;
  
@@ -291,7 +286,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * Try to take the lock for top_waiter.  Set the FUTEX_WAITERS bit in
  	 * the contended case or if set_waiters is 1.  The pi_state is returned
-@@ -1896,8 +2060,22 @@ futex_proxy_trylock_atomic(u32 __user *p
+@@ -1899,8 +2058,22 @@ futex_proxy_trylock_atomic(u32 __user *p
  	ret = futex_lock_pi_atomic(pifutex, hb2, key2, ps, top_waiter->task,
  				   exiting, set_waiters);
  	if (ret == 1) {
@@ -314,7 +309,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  	return ret;
  }
-@@ -2038,6 +2216,8 @@ static int futex_requeue(u32 __user *uad
+@@ -2041,6 +2214,8 @@ static int futex_requeue(u32 __user *uad
  		 * intend to requeue waiters, force setting the FUTEX_WAITERS
  		 * bit.  We force this here where we are able to easily handle
  		 * faults rather in the requeue loop below.
@@ -323,7 +318,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		 */
  		ret = futex_proxy_trylock_atomic(uaddr2, hb1, hb2, &key1,
  						 &key2, &pi_state,
-@@ -2051,6 +2231,27 @@ static int futex_requeue(u32 __user *uad
+@@ -2054,6 +2229,27 @@ static int futex_requeue(u32 __user *uad
  		 * vpid of the top waiter task.
  		 * If the lock was not taken, we have pi_state and an initial
  		 * refcount on it. In case of an error we have nothing.
@@ -351,7 +346,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		 */
  		if (ret > 0) {
  			WARN_ON(pi_state);
-@@ -2076,7 +2277,10 @@ static int futex_requeue(u32 __user *uad
+@@ -2079,7 +2275,10 @@ static int futex_requeue(u32 __user *uad
  			/* We hold a reference on the pi state. */
  			break;
  
@@ -363,7 +358,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		case -EFAULT:
  			double_unlock_hb(hb1, hb2);
  			hb_waiters_dec(hb2);
-@@ -2152,21 +2356,39 @@ static int futex_requeue(u32 __user *uad
+@@ -2155,21 +2354,39 @@ static int futex_requeue(u32 __user *uad
  		 * object of the waiter.
  		 */
  		get_pi_state(pi_state);
@@ -408,7 +403,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			/*
  			 * rt_mutex_start_proxy_lock() detected a potential
  			 * deadlock when we tried to queue that waiter.
-@@ -2176,15 +2398,13 @@ static int futex_requeue(u32 __user *uad
+@@ -2179,15 +2396,13 @@ static int futex_requeue(u32 __user *uad
  			 */
  			this->pi_state = NULL;
  			put_pi_state(pi_state);
@@ -425,7 +420,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  
  	/*
-@@ -3082,27 +3302,22 @@ static int futex_unlock_pi(u32 __user *u
+@@ -3085,27 +3300,22 @@ static int futex_unlock_pi(u32 __user *u
  }
  
  /**
@@ -458,7 +453,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/*
  	 * With the hb lock held, we avoid races while we process the wakeup.
-@@ -3111,22 +3326,21 @@ int handle_early_requeue_pi_wakeup(struc
+@@ -3114,22 +3324,21 @@ int handle_early_requeue_pi_wakeup(struc
  	 * It can't be requeued from uaddr2 to something else since we don't
  	 * support a PI aware source futex for requeue.
  	 */
@@ -495,7 +490,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return ret;
  }
  
-@@ -3179,6 +3393,7 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3182,6 +3391,7 @@ static int futex_wait_requeue_pi(u32 __u
  	struct futex_hash_bucket *hb;
  	union futex_key key2 = FUTEX_KEY_INIT;
  	struct futex_q q = futex_q_init;
@@ -503,7 +498,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	int res, ret;
  
  	if (!IS_ENABLED(CONFIG_FUTEX_PI))
-@@ -3228,30 +3443,22 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3231,30 +3441,22 @@ static int futex_wait_requeue_pi(u32 __u
  	/* Queue the futex_q, drop the hb lock, wait for wakeup. */
  	futex_wait_queue_me(hb, &q, to);
  
@@ -545,7 +540,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			 */
  			put_pi_state(q.pi_state);
  			spin_unlock(q.lock_ptr);
-@@ -3261,18 +3468,14 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3264,18 +3466,14 @@ static int futex_wait_requeue_pi(u32 __u
  			 */
  			ret = ret < 0 ? ret : 0;
  		}
@@ -568,7 +563,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		spin_lock(q.lock_ptr);
  		if (ret && !rt_mutex_cleanup_proxy_lock(pi_mutex, &rt_waiter))
  			ret = 0;
-@@ -3292,17 +3495,21 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3295,17 +3493,21 @@ static int futex_wait_requeue_pi(u32 __u
  
  		unqueue_me_pi(&q);
  		spin_unlock(q.lock_ptr);

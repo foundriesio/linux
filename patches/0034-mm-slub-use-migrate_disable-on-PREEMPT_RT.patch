@@ -92,7 +92,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
  	return p;
  }
-@@ -3491,7 +3512,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3499,7 +3520,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  	 * IRQs, which protects against PREEMPT and interrupts
  	 * handlers invoking normal fastpath.
  	 */
@@ -101,7 +101,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	local_irq_disable();
  
  	for (i = 0; i < size; i++) {
-@@ -3537,7 +3558,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3545,7 +3566,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  	}
  	c->tid = next_tid(c->tid);
  	local_irq_enable();
@@ -110,7 +110,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * memcg and kmem_cache debug support and memory initialization.
-@@ -3547,7 +3568,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3555,7 +3576,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  				slab_want_init_on_alloc(flags, s));
  	return i;
  error:

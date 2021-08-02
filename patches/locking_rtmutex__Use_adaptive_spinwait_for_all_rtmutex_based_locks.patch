@@ -3,7 +3,7 @@ From: Thomas Gleixner <tglx@linutronix.de>
 Date: Fri, 30 Jul 2021 11:58:42 +0200
 
 There is no reason to restrict adaptive spinwait to the rt mutex based
-'spinlocks'. Testing shows a 4x impromevemt for hackbench.
+'spinlocks'. Testing on RT shows a 4x impromevemt for hackbench.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
@@ -13,7 +13,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1277,6 +1277,43 @@ static __always_inline void __rt_mutex_u
+@@ -1283,6 +1283,43 @@ static __always_inline void __rt_mutex_u
  	rt_mutex_slowunlock(lock);
  }
  
@@ -57,7 +57,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef RT_MUTEX_BUILD_MUTEX
  /*
   * Functions required for:
-@@ -1361,6 +1398,7 @@ static int __sched rt_mutex_slowlock_blo
+@@ -1367,6 +1404,7 @@ static int __sched rt_mutex_slowlock_blo
  					   struct rt_mutex_waiter *waiter)
  {
  	struct rt_mutex *rtm = container_of(lock, struct rt_mutex, rtmutex);
@@ -65,7 +65,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	int ret = 0;
  
  	for (;;) {
-@@ -1383,9 +1421,14 @@ static int __sched rt_mutex_slowlock_blo
+@@ -1389,9 +1427,14 @@ static int __sched rt_mutex_slowlock_blo
  				break;
  		}
  
@@ -81,7 +81,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  		raw_spin_lock_irq(&lock->wait_lock);
  		set_current_state(state);
-@@ -1534,43 +1577,6 @@ static __always_inline int __rt_mutex_lo
+@@ -1540,43 +1583,6 @@ static __always_inline int __rt_mutex_lo
   * Functions required for spin/rw_lock substitution on RT kernels
   */
  
@@ -125,7 +125,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
   * rtlock_slowlock_locked - Slow path lock acquisition for RT locks
   * @lock:	The underlying rt mutex
-@@ -1603,7 +1609,7 @@ static void __sched rtlock_slowlock_lock
+@@ -1609,7 +1615,7 @@ static void __sched rtlock_slowlock_lock
  			owner = NULL;
  		raw_spin_unlock_irq(&lock->wait_lock);
  

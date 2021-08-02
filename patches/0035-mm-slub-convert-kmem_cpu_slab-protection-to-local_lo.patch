@@ -358,7 +358,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		stat(s, FREE_FASTPATH);
  	} else
  		__slab_free(s, page, head, tail_obj, cnt, addr);
-@@ -3513,7 +3593,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3521,7 +3601,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  	 * handlers invoking normal fastpath.
  	 */
  	c = slub_get_cpu_ptr(s->cpu_slab);
@@ -367,7 +367,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	for (i = 0; i < size; i++) {
  		void *object = kfence_alloc(s, s->object_size, flags);
-@@ -3534,7 +3614,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3542,7 +3622,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  			 */
  			c->tid = next_tid(c->tid);
  
@@ -376,7 +376,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  			/*
  			 * Invoking slow path likely have side-effect
-@@ -3548,7 +3628,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3556,7 +3636,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  			c = this_cpu_ptr(s->cpu_slab);
  			maybe_wipe_obj_freeptr(s, p[i]);
  
@@ -385,7 +385,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  			continue; /* goto for-loop */
  		}
-@@ -3557,7 +3637,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3565,7 +3645,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  		maybe_wipe_obj_freeptr(s, p[i]);
  	}
  	c->tid = next_tid(c->tid);

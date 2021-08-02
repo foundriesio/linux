@@ -16,7 +16,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1410,3 +1410,63 @@ static __always_inline int __rt_mutex_lo
+@@ -1416,3 +1416,63 @@ static __always_inline int __rt_mutex_lo
  	return rt_mutex_slowlock(lock, state);
  }
  #endif /* RT_MUTEX_BUILD_MUTEX */

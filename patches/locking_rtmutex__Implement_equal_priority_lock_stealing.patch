@@ -57,7 +57,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define __node_2_waiter(node) \
  	rb_entry((node), struct rt_mutex_waiter, tree_entry)
  
-@@ -906,19 +926,21 @@ try_to_take_rt_mutex(struct rt_mutex_bas
+@@ -912,19 +932,21 @@ try_to_take_rt_mutex(struct rt_mutex_bas
  	 * trylock attempt.
  	 */
  	if (waiter) {
@@ -89,7 +89,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	} else {
  		/*
  		 * If the lock has waiters already we check whether @task is
-@@ -929,13 +951,9 @@ try_to_take_rt_mutex(struct rt_mutex_bas
+@@ -935,13 +957,9 @@ try_to_take_rt_mutex(struct rt_mutex_bas
  		 * not need to be dequeued.
  		 */
  		if (rt_mutex_has_waiters(lock)) {

@@ -33,7 +33,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   *
   *  See Documentation/locking/rt-mutex-design.rst for details.
   */
-@@ -1529,6 +1534,43 @@ static __always_inline int __rt_mutex_lo
+@@ -1535,6 +1540,43 @@ static __always_inline int __rt_mutex_lo
   * Functions required for spin/rw_lock substitution on RT kernels
   */
  
@@ -77,7 +77,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
   * rtlock_slowlock_locked - Slow path lock acquisition for RT locks
   * @lock:	The underlying rt mutex
-@@ -1536,6 +1578,7 @@ static __always_inline int __rt_mutex_lo
+@@ -1542,6 +1584,7 @@ static __always_inline int __rt_mutex_lo
  static void __sched rtlock_slowlock_locked(struct rt_mutex_base *lock)
  {
  	struct rt_mutex_waiter waiter;
@@ -85,7 +85,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	lockdep_assert_held(&lock->wait_lock);
  
-@@ -1554,9 +1597,14 @@ static void __sched rtlock_slowlock_lock
+@@ -1560,9 +1603,14 @@ static void __sched rtlock_slowlock_lock
  		if (try_to_take_rt_mutex(lock, current, &waiter))
  			break;
  

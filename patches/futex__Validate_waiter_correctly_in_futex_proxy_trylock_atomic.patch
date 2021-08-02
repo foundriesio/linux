@@ -11,16 +11,19 @@ sake.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- kernel/futex.c |    4 ++++
- 1 file changed, 4 insertions(+)
+ kernel/futex.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
 ---
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -1879,6 +1879,10 @@ futex_proxy_trylock_atomic(u32 __user *p
+@@ -1879,6 +1879,13 @@ futex_proxy_trylock_atomic(u32 __user *p
  	if (!top_waiter)
  		return 0;
  
-+	/* Ensure that this is a waiter sitting in futex_wait_requeue_pi() */
++	/*
++	 * Ensure that this is a waiter sitting in futex_wait_requeue_pi()
++	 * and waiting on the 'waitqueue' futex which is always !PI.
++	 */
 +	if (!top_waiter->rt_waiter || top_waiter->pi_state)
 +		ret = -EINVAL;
 +
