@@ -300,6 +300,9 @@ static void tcc_sc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 			(u32) EXT_CSD_PART_CONFIG_ACC_MASK;
 	else
 		cmd.part_num = 0;
+	if (mrq->sbc) {
+		cmd.rel_wr = mrq->sbc->arg & (0x1 << 31);
+	}
 
 	if (mrq->cmd->data != NULL) {
 

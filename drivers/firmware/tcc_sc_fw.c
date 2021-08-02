@@ -493,7 +493,7 @@ static void *tcc_sc_fw_cmd_request_mmc_cmd(
 	req_cmd.args[0] = cmd->opcode;
 	req_cmd.args[1] = cmd->arg;
 	req_cmd.args[2] = cmd->flags;
-	req_cmd.args[3] = cmd->part_num;
+	req_cmd.args[3] = cmd->part_num | cmd->rel_wr;
 	req_cmd.args[4] = 0;
 	req_cmd.args[5] = 0;
 
