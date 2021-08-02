@@ -22,9 +22,9 @@
 #define LCD_PORT3_RST "gpc-8"
 #define LCD_PORT3_BLK "gpmb-29"
 
-#define LCD_PORT4_PWR "gpc-23"
-#define LCD_PORT4_RST "gpc-25"
-#define LCD_PORT4_BLK "gpc-21"
+#define LCD_PORT4_PWR "gpmc-23"
+#define LCD_PORT4_RST "gpmc-25"
+#define LCD_PORT4_BLK "gpmc-21"
 
 #include "tcc8050-linux-ivi-display.dtsi"
 
