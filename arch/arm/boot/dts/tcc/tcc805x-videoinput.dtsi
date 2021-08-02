@@ -54,10 +54,10 @@
 		 * 1: bypass isp
 		 * 0: use isp
 		 */
-		isp0-bypass = <0>;
-		isp1-bypass = <0>;
-		isp2-bypass = <0>;
-		isp3-bypass = <0>;
+		isp0-bypass = <1>;
+		isp1-bypass = <1>;
+		isp2-bypass = <1>;
+		isp3-bypass = <1>;
 
 		mipi_csi2_0: mipi_csi2_0@1bc00800 {
 			compatible = "telechips,tcc805x-mipi-csi2";
