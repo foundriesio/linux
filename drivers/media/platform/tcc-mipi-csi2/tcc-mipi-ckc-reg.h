@@ -10,7 +10,9 @@
  * MIPI CKC REG BASE
  */
 #define CLKCTRL0	(0x00)
+#define MIPI_BUS_CLK	(0x00)
 #define CLKCTRL1	(0x04)
+#define MIPI_PIXEL_CLK	(0x04)
 #define PLLPMS		(0x08)
 #define PLLCON		(0x0C)
 #define PLLMON		(0x10)

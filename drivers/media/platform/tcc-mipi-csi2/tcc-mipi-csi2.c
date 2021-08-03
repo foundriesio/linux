@@ -155,6 +155,7 @@ struct v4l2_mbus_config mipi_csi2_mbus_config = {
 		V4L2_MBUS_PCLK_SAMPLE_RISING	|
 		V4L2_MBUS_MASTER,
 };
+
 /*
  * Helper fuctions for reflection
  */
@@ -162,7 +163,6 @@ static inline struct tcc_mipi_csi2_state *sd_to_state(struct v4l2_subdev *sd)
 {
 	return v4l2_get_subdevdata(sd);
 }
-
 
 static void MIPI_CSIS_Set_DPHY_B_Control(struct tcc_mipi_csi2_state *state,
 		unsigned int high_part,
@@ -459,122 +459,118 @@ static unsigned int MIPI_CSIS_Get_CSIS_Interrupt_Src(
 }
 
 #if defined(CONFIG_ARCH_TCC805X)
-static void MIPI_WRAP_Set_PLL_Reset(
-		struct tcc_mipi_csi2_state *state,
-		unsigned int onOff)
-{
-	unsigned int val = 0;
-	void __iomem *reg = 0;
-
-	reg = state->ckc_base + PLLPMS;
-
-	val = __raw_readl(reg);
-
-	if (onOff)
-		val &= ~(PLLPMS_RESETB_MASK);
-	else
-		val |= PLLPMS_RESETB_MASK;
-
-	__raw_writel(val, reg);
-}
-
 static void MIPI_WRAP_Set_PLL_DIV(
 		struct tcc_mipi_csi2_state *state,
 		unsigned int onOff, unsigned int pdiv)
 {
-	unsigned int val = 0;
+	unsigned int val = 0, target = 0;
 	void __iomem *reg = 0;
 
 	reg = state->ckc_base + CLKDIVC;
+	target = (((onOff) << CLKDIVC_PE_SHIFT) |
+		  ((pdiv) << CLKDIVC_PDIV_SHIFT));
 
 	val = __raw_readl(reg);
 
-	val &= ~(CLKDIVC_PE_MASK | CLKDIVC_PDIV_MASK);
-	val |= (((onOff) << CLKDIVC_PE_SHIFT) |
-		((pdiv) << CLKDIVC_PDIV_SHIFT));
+	if (val != target) {
+		val &= ~(CLKDIVC_PE_MASK | CLKDIVC_PDIV_MASK);
+		val |= target;
 
-	__raw_writel(val, reg);
+		__raw_writel(val, reg);
+	} else {
+		/* pll divisor is already set */
+		logi(&(state->pdev->dev), "skip setting divisor\n");
+	}
 }
 
 static int MIPI_WRAP_Set_PLL_PMS(
 		struct tcc_mipi_csi2_state *state,
 		unsigned int p, unsigned int m, unsigned int s)
 {
-	unsigned int val = 0;
+	unsigned int val = 0, target;
 	void __iomem *reg = 0;
+	int retval = 0;
 
 	reg = state->ckc_base + PLLPMS;
-
+	target = (((1) << PLLPMS_RESETB_SHIFT) |
+		  (PLLPMS_LOCK_MASK) |
+		  ((p) << PLLPMS_P_SHIFT) |
+		  ((m) << PLLPMS_M_SHIFT) |
+		  ((s) << PLLPMS_S_SHIFT));
 	val = __raw_readl(reg);
 
-	val &= ~(PLLPMS_RESETB_MASK |
-		PLLPMS_S_MASK |
-		PLLPMS_M_MASK |
-		PLLPMS_P_MASK);
+	if ((val & target) != target) {
+		val &= ~(PLLPMS_S_MASK | PLLPMS_M_MASK | PLLPMS_P_MASK);
 
-	val |= (((p) << PLLPMS_P_SHIFT) |
-		((m) << PLLPMS_M_SHIFT) |
-		((s) << PLLPMS_S_SHIFT));
+		val |= (((p) << PLLPMS_P_SHIFT) |
+			((m) << PLLPMS_M_SHIFT) |
+			((s) << PLLPMS_S_SHIFT));
 
-	__raw_writel(val, reg);
+		__raw_writel(val, reg);
 
-	usleep_range(1000, 2000);
+		usleep_range(1000, 2000);
 
-	val |= ((1) << PLLPMS_RESETB_SHIFT);
+		val |= ((1) << PLLPMS_RESETB_SHIFT);
 
-	__raw_writel(val, reg);
+		__raw_writel(val, reg);
 
-	usleep_range(1000, 2000);
+		usleep_range(1000, 2000);
 
-	val = __raw_readl(reg);
+		val = __raw_readl(reg);
 
-	if (val & PLLPMS_LOCK_MASK)
-		return 1;
-	else
-		return -1;
+		if (val & PLLPMS_LOCK_MASK)
+			retval = 0;
+		else
+			retval = -EBUSY;
+	} else {
+		/* PMS is already set */
+		logi(&(state->pdev->dev), "skip setting PMS\n");
+		retval = 0;
+	}
+
+	return retval;
 }
 
-static unsigned int MIPI_WRAP_Set_CKC(struct tcc_mipi_csi2_state *state)
+static void MIPI_WRAP_Set_CLKSRC(struct tcc_mipi_csi2_state *state,
+	int src, int out)
 {
-	unsigned int ret = 0;
-	unsigned int val = 0;
+	unsigned int val = 0, target = 0;
 	void __iomem *reg = 0;
+
+	reg = state->ckc_base + out;
+	target = (src << CLKCTRL_SEL_SHIFT);
+
+	val = __raw_readl(reg);
+
+	if ((val & target) != target) {
+		val &= ~(CLKCTRL_CHGRQ_MASK | CLKCTRL_SEL_MASK);
+		val |= (src << CLKCTRL_SEL_SHIFT);
+		__raw_writel(val, reg);
+	} else {
+		/* CLKSRC selection is already set */
+		logi(&(state->pdev->dev), "skip setting %s SRC\n",
+		    (out == MIPI_BUS_CLK) ? "MIPI_BUS_CLK" : "MIPI_PIXEL_CLK");
+	}
+}
+
+static int MIPI_WRAP_Set_CKC(struct tcc_mipi_csi2_state *state)
+{
+	int ret = 0;
 	int pll_div = 5, pll_p = 2, pll_m = 200, pll_s = 2;
 	int sel_pclk = CLKCTRL_SEL_PLL_DIRECT;
 	int sel_bclk = CLKCTRL_SEL_PLL_DIVIDER;
-
-	/*
-	 * set source clock to XIN
-	 * (for core reset case(SD805XA1-365))
-	 */
-	reg = state->ckc_base + CLKCTRL0;
-	val = __raw_readl(reg);
-
-	val &= ~(CLKCTRL_SEL_MASK);
-	val |= (CLKCTRL_SEL_XIN << CLKCTRL_SEL_SHIFT);
-	__raw_writel(val, reg);
-
-	val = 0;
-	reg = state->ckc_base + CLKCTRL1;
-	val = __raw_readl(reg);
-
-	val &= ~(CLKCTRL_SEL_MASK);
-	val |= (CLKCTRL_SEL_XIN << CLKCTRL_SEL_SHIFT);
-	__raw_writel(val, reg);
+	const char * const clksrc_sel[] = {
+		"XIN", "PLL_DIRECT_OUTPUT", "PLL_DIVIDER_OUTPUT"};
 
 	/*
 	 * XIN is 24Mhz
 	 * set pixel clock 600MHz
 	 * set bus clock 100MHz
 	 */
-	MIPI_WRAP_Set_PLL_Reset(state, 1);
-
-	MIPI_WRAP_Set_PLL_DIV(state, ON, pll_div);
-	ret = MIPI_WRAP_Set_PLL_PMS(state, pll_p, pll_m, pll_s);
-
 	logi(&(state->pdev->dev), "DIV(%d), PMS(%d %d %d)\n",
 		pll_div, pll_p, pll_m, pll_s);
-
+	MIPI_WRAP_Set_PLL_DIV(state, ON, pll_div);
+	ret = MIPI_WRAP_Set_PLL_PMS(state, pll_p, pll_m, pll_s);
 	if (ret < 0) {
 		loge(&(state->pdev->dev), "FAIL - MIPI WRAP PLL SETTING\n");
 		goto ERR;
@@ -583,22 +579,10 @@ static unsigned int MIPI_WRAP_Set_CKC(struct tcc_mipi_csi2_state *state)
 	/*
 	 * set source clock to PLL
 	 */
-	logi(&(state->pdev->dev), "BUSCLK SRC(%d), PIXELCLK SRC(%d)\n",
-		sel_bclk, sel_pclk);
-
-	reg = state->ckc_base + CLKCTRL0;
-	val = __raw_readl(reg);
-
-	val &= ~(CLKCTRL_CHGRQ_MASK | CLKCTRL_SEL_MASK);
-	val |= (sel_bclk << CLKCTRL_SEL_SHIFT);
-	__raw_writel(val, reg);
-
-	reg = state->ckc_base + CLKCTRL1;
-	val = __raw_readl(reg);
-
-	val &= ~(CLKCTRL_CHGRQ_MASK | CLKCTRL_SEL_MASK);
-	val |= (sel_pclk << CLKCTRL_SEL_SHIFT);
-	__raw_writel(val, reg);
+	logi(&(state->pdev->dev), "BUSCLK SRC(%s), PIXELCLK SRC(%s)\n",
+		clksrc_sel[sel_bclk], clksrc_sel[sel_pclk]);
+	MIPI_WRAP_Set_CLKSRC(state, sel_bclk, MIPI_BUS_CLK);
+	MIPI_WRAP_Set_CLKSRC(state, sel_pclk, MIPI_PIXEL_CLK);
 
 ERR:
 	return ret;
@@ -1076,7 +1060,6 @@ static int tcc_mipi_csi2_parse_dt(struct platform_device *pdev,
 			index, state->isp_info[index].pixel_mode);
 	}
 
-
 err:
 	of_node_put(node);
 
@@ -1184,7 +1167,6 @@ err:
  */
 static int tcc_mipi_csi2_s_power(struct v4l2_subdev *sd, int on)
 {
-	struct tcc_mipi_csi2_state	*state	= sd_to_state(sd);
 	int				ret	= 0;
 
 	return ret;
@@ -1210,7 +1192,6 @@ static int tcc_mipi_csi2_init(struct v4l2_subdev *sd, u32 enable)
 	logi(&(state->pdev->dev), "use_cnt is %d\n", state->use_cnt);
 
 	mutex_unlock(&state->lock);
-
 
 	return ret;
 }
@@ -1395,7 +1376,7 @@ static int tcc_mipi_csi2_probe(struct platform_device *pdev)
 
 	logi(&(state->pdev->dev), "csi clock is %d Hz\n", state->clk_frequency);
 #else
-	if (!(MIPI_WRAP_Set_CKC(state))) {
+	if (MIPI_WRAP_Set_CKC(state)) {
 		loge(&(state->pdev->dev), "fail - mipi wrap clock setting\n");
 		ret = -ENODEV;
 		goto err;
@@ -1487,7 +1468,6 @@ static int tcc_mipi_csi2_suspend(struct device *dev)
 	clk_disable(state->clock);
 	tcc_mipi_csi2_clk_put(state);
 #else
-
 #endif
 
 	return ret;
@@ -1516,7 +1496,7 @@ static int tcc_mipi_csi2_resume(struct device *dev)
 
 	logi(&(state->pdev->dev), "csi clock is %d Hz\n", state->clk_frequency);
 #else
-	if (!(MIPI_WRAP_Set_CKC(state))) {
+	if (MIPI_WRAP_Set_CKC(state)) {
 		loge(&(state->pdev->dev), "fail - mipi wrap clock setting\n");
 		ret = -ENODEV;
 		goto err;
