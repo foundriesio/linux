@@ -26,9 +26,13 @@ MODULE_LICENSE("GPL");
 static int phy_read_c22_to_c45(struct phy_device *phydev, uint16_t dev_addr,
 			       u32 reg_addr)
 {
-	phy_write(phydev, MMD_ACCESS_CTRL, (((OPERATION_ADDR) & 0x3)<<OPERATION_BIT_SHIFT) | (dev_addr & 0x1F));
+	phy_write(phydev, MMD_ACCESS_CTRL,
+			(((OPERATION_ADDR) & 0x3)<<OPERATION_BIT_SHIFT) |
+			(dev_addr & 0x1F));
 	phy_write(phydev, MMD_ACCESS_ADDR_DATA, reg_addr);
-	phy_write(phydev, MMD_ACCESS_CTRL, (((OPERATION_RW) & 0x3)<<OPERATION_BIT_SHIFT) | (dev_addr & 0x1F));
+	phy_write(phydev, MMD_ACCESS_CTRL,
+			(((OPERATION_RW) & 0x3)<<OPERATION_BIT_SHIFT) |
+			(dev_addr & 0x1F));
 
 	return phy_read(phydev, (u32) MMD_ACCESS_ADDR_DATA);
 }
@@ -36,9 +40,13 @@ static int phy_read_c22_to_c45(struct phy_device *phydev, uint16_t dev_addr,
 static void phy_write_c22_to_c45(struct phy_device *phydev, uint16_t dev_addr,
 				 uint16_t reg_addr, uint16_t data)
 {
-	phy_write(phydev, MMD_ACCESS_CTRL, (((OPERATION_ADDR) & 0x3)<<OPERATION_BIT_SHIFT) | (dev_addr & 0x1F));
+	phy_write(phydev, MMD_ACCESS_CTRL,
+			(((OPERATION_ADDR) & 0x3)<<OPERATION_BIT_SHIFT) |
+			(dev_addr & 0x1F));
 	phy_write(phydev, MMD_ACCESS_ADDR_DATA, reg_addr);
-	phy_write(phydev, MMD_ACCESS_CTRL, (((OPERATION_RW) & 0x3)<<OPERATION_BIT_SHIFT) | (dev_addr & 0x1F));
+	phy_write(phydev, MMD_ACCESS_CTRL,
+			(((OPERATION_RW) & 0x3)<<OPERATION_BIT_SHIFT) |
+			(dev_addr & 0x1F));
 	phy_write(phydev, MMD_ACCESS_ADDR_DATA, data);
 
 	return;
@@ -99,11 +107,9 @@ static void setMasterSlave(struct phy_device *phydev, bool forceMaster)
 
 static uint16_t getMasterSlave(struct phy_device *phydev)
 {
-	return (unsigned
-		short)((unsigned int)((unsigned int)
-				  phy_read_c22_to_c45(phydev, 7,
-						      0x8001) >> (unsigned int)14) &
-		(unsigned int)0x0001);
+	return (unsigned short)((unsigned int)((unsigned int)
+				phy_read_c22_to_c45(phydev, 7, 0x8001) >>
+				(unsigned int)14) & (unsigned int)0x0001);
 }
 
 static bool checkLink(struct phy_device *phydev)
@@ -259,7 +265,7 @@ static int q2110_config_init(struct phy_device *phydev)
 
 #if defined(CONFIG_TCC_MARVELL_LOOPBACK)
 	// Ethernet phy loopback mode
-	pr_info(" Set Loopback mode !!!! \n");
+	pr_info("Set Loopback mode !!!!\n");
 
 	regData = phy_read_c22_to_c45(phydev, 1, 0x0000);
 	pr_info("Before set loopback: %08x\n", regData);
@@ -270,7 +276,6 @@ static int q2110_config_init(struct phy_device *phydev)
 	regData = phy_read_c22_to_c45(phydev, 1, 0x0000);
 	pr_info("After set loopback: %08x\n", regData);
 #endif
-
 	pr_info("phy id before: %08x\n", phydev->phy_id);
 	phydev->phy_id = (unsigned int)phy_read_c22_to_c45(phydev, 1, 0x0003);
 

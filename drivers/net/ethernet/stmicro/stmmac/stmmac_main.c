@@ -60,7 +60,6 @@
 
 #include "dwmac-tcc-v2.h"
 
-// #include "dwmac4_dma.h"
 #define	STMMAC_ALIGN(x)		ALIGN(ALIGN(x, SMP_CACHE_BYTES), 16)
 #define	TSO_MAX_BUFF_SIZE	(SZ_16K - 1)
 
@@ -132,8 +131,7 @@ static void stmmac_exit_fs(struct net_device *dev);
 
 struct net_device *misc_ndev;
 
-struct iodata
-{
+struct iodata {
 	unsigned short addr;
 	unsigned short data;
 };
@@ -3883,22 +3881,22 @@ long stmmac_misc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	pr_info("USERDATA, addr : 0x%08x, data : 0x%08x \n", iodata.addr,
 			iodata.data);
 
-	switch(cmd){
-		case CMD_PHY_READ:
-			data = phy_read(misc_ndev->phydev, iodata.addr);
-			pr_info("Read addr: 0x%08x, value :0x%08x\n",
-					iodata.addr, data);
-			return data;
-		case CMD_PHY_WRITE:
-			phy_write(misc_ndev->phydev, iodata.addr, iodata.data);
-			pr_info("Write addr: %08x, data: %08x\n", iodata.addr,
-					iodata.data);
-			pr_info("--Read: %08x\n", phy_read(misc_ndev->phydev,
-						iodata.addr));
-			break;
-		default:
-			pr_info("not supported IOCTL cmd: %08x\n", cmd);
-			break;
+	switch (cmd) {
+	case CMD_PHY_READ:
+		data = phy_read(misc_ndev->phydev, iodata.addr);
+		pr_info("Read addr: 0x%08x, value :0x%08x\n",
+				iodata.addr, data);
+		return data;
+	case CMD_PHY_WRITE:
+		phy_write(misc_ndev->phydev, iodata.addr, iodata.data);
+		pr_info("Write addr: %08x, data: %08x\n", iodata.addr,
+				iodata.data);
+		pr_info("--Read: %08x\n", phy_read(misc_ndev->phydev,
+					iodata.addr));
+		break;
+	default:
+		pr_info("not supported IOCTL cmd: %08x\n", cmd);
+		break;
 	}
 	return ret;
 }
@@ -4202,7 +4200,7 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 		return -ENOMEM;
 
 #if defined(CONFIG_DWMAC_TCC_510A)
-	if ((unsigned)(priv->synopsys_id) != 0x51){
+	if ((unsigned)(priv->synopsys_id) != 0x51) {
 		pr_info("%s.[WARN] Exit gmac probe due to version mismatch\n",
 				__func__);
 		pr_info("%s.[WARN] device driver : 5.1a version.\n", __func__);
@@ -4211,7 +4209,7 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 		return -ENODEV;
 	}
 #elif defined(CONFIG_DWMAC_TCC_373A)
-	if ((unsigned)(priv->synopsys_id) != 0x37){
+	if ((unsigned)(priv->synopsys_id) != 0x37) {
 		pr_info("%s.[WARN] Exit gmac probe due to version mismatch\n",
 				__func__);
 		pr_info("%s.[WARN] device driver : 3.7a version.\n", __func__);
@@ -4647,12 +4645,6 @@ int stmmac_resume(struct device *dev)
 {
 	struct net_device *ndev = dev_get_drvdata(dev);
 	struct stmmac_priv *priv = netdev_priv(ndev);
-
-	struct device_node *np = priv->device->of_node;
-	struct plat_stmmacenet_data *plat_dat = priv->plat;
-	struct pinctrl *pin;
-
-	pr_info("%s.\n", __func__);
 
 	if (!netif_running(ndev))
 		return 0;
