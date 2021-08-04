@@ -20,7 +20,7 @@
 #define FRAMES_CAMERA_PREVIEW5		0
 #define FRAMES_CAMERA_PREVIEW6		0
 #define FRAMES_CAMERA_PGL		0
-#define FRAMES_CAMERA_LASTFRAME		1
+#define FRAMES_CAMERA_LASTFRAME		0
 
 //****************************** Calculation ******************************/
 #undef SZ_1MB
