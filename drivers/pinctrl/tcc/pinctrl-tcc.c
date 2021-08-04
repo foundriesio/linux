@@ -753,7 +753,7 @@ static s32 tcc_pinctrl_parse_dt(struct platform_device *pdev,
 		if (ret != 0) {
 			dev_err(&(pdev->dev),
 				"[ERROR][PINCTRL] failed to parse device tree about\n");
-			return ret;
+			continue;
 		}
 
 		group->name = kstrdup(child->name, GFP_KERNEL);
