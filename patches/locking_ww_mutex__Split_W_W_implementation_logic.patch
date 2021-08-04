@@ -4,7 +4,7 @@ Date: Fri Jul 16 18:07:50 2021 +0200
 
 From: Peter Zijlstra <peterz@infradead.org>
 
-Split the W/W mutex helper functions out into a seperate header file so
+Split the W/W mutex helper functions out into a separate header file so
 they can be shared with a rtmutex based variant later.
 
 Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>

@@ -91,6 +91,10 @@ samples_kfifo__Rename_read_lock_write_lock.patch
 smp__Wake_ksoftirqd_on_PREEMPT_RT_instead_do_softirq..patch
 genirq__update_irq_set_irqchip_state_documentation.patch
 
+# Block / io-ring pending
+0001-io-wq-remove-GFP_ATOMIC-allocation-off-schedule-out-.patch
+0002-io-wq-Don-t-mix-raw_spinlock_irq-spin_lock_irq.patch
+
 ###########################################################################
 # Kconfig bits:
 ###########################################################################
@@ -125,6 +129,7 @@ debugobjects__Make_RT_aware.patch
 ###########################################################################
 sched__Split_out_the_wakeup_state_check.patch
 sched__Introduce_TASK_RTLOCK_WAIT.patch
+sched--Reorganize-current--state-helpers.patch
 sched__Prepare_for_RT_sleeping_spin_rwlocks.patch
 sched__Rework_the___schedule_preempt_argument.patch
 sched__Provide_schedule_point_for_RT_locks.patch
@@ -180,6 +185,7 @@ futex__Cleanup_stale_comments.patch
 futex__Correct_the_number_of_requeued_waiters_for_PI.patch
 futex__Restructure_futex_requeue.patch
 futex__Clarify_comment_in_futex_requeue.patch
+futex--Simplify-handle_early_requeue_pi_wakeup--.patch
 futex__Prevent_requeue_pi_lock_nesting_issue_on_RT.patch
 rtmutex__Prevent_lockdep_false_positive_with_PI_futexes.patch
 preempt__Adjust_PREEMPT_LOCK_OFFSET_for_RT.patch

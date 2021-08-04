@@ -7,7 +7,7 @@ From: Thomas Gleixner <tglx@linutronix.de>
 Move the ww_mutex declarations into the ww_mutex specific header where they
 belong.
 
-Preperatory change to allow compiling ww_mutex standalone.
+Preparatory change to allow compiling ww_mutex standalone.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---

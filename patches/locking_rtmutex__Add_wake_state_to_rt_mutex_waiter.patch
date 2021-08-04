@@ -13,7 +13,7 @@ on RT kernels these locks are converted to rtmutex based 'sleeping' locks.
 So in case of contention the task goes to block which requires to carefully
 preserve the task state and restore it after acquiring the lock taking
 regular wakeups for the task into account which happened while the task was
-blocked. This state preserving is achieved by having a seperate task state
+blocked. This state preserving is achieved by having a separate task state
 for blocking on a RT spin/rwlock and a saved_state field in task_struct
 along with careful handling of these wakeup scenarios in try_to_wake_up().
 

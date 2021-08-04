@@ -14,8 +14,8 @@ on rtmutex. Blocking on such a lock is similar to preemption versus:
  - RCU considers this like a preemption because the task might be in a read
    side critical section.
 
-Add a seperate scheduling point for this and hand a new scheduling mode
-argument to __schedule() which allows along with seperate mode masks to
+Add a separate scheduling point for this and hand a new scheduling mode
+argument to __schedule() which allows along with separate mode masks to
 handle this gracefully from within the scheduler without proliferating that
 to other subsystems like RCU.
 
@@ -29,7 +29,7 @@ V2: Adopt to the simplified mask logic
 ---
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -294,6 +294,9 @@ extern long schedule_timeout_idle(long t
+@@ -287,6 +287,9 @@ extern long schedule_timeout_idle(long t
  asmlinkage void schedule(void);
  extern void schedule_preempt_disabled(void);
  asmlinkage void preempt_schedule_irq(void);

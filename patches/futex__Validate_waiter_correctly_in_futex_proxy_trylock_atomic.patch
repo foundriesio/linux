@@ -6,7 +6,7 @@ From: Thomas Gleixner <tglx@linutronix.de>
 
 The loop in futex_requeue() has a sanity check for the waiter which is
 missing in futex_proxy_trylock_atomic(). In theory the key2 check is
-sufficient, but futexes are cursed so add it for completness and paranoia
+sufficient, but futexes are cursed so add it for completeness and paranoia
 sake.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>

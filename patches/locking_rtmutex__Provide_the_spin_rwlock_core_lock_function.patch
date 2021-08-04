@@ -6,7 +6,7 @@ From: Thomas Gleixner <tglx@linutronix.de>
 
 A simplified version of the rtmutex slowlock function which neither handles
 signals nor timeouts and is careful about preserving the state of the
-blocked task accross the lock operation.
+blocked task across the lock operation.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---

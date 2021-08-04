@@ -8,7 +8,7 @@ Similar to rw_semaphores on RT the rwlock substitution is not writer fair
 because it's not feasible to have a writer inherit it's priority to
 multiple readers. Readers blocked on a writer follow the normal rules of
 priority inheritance. Like RT spinlocks RT rwlocks are state preserving
-accross the slow lock operations (contended case).
+across the slow lock operations (contended case).
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---

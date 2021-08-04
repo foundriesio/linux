@@ -40,41 +40,35 @@ For non-RT kernels there is no functional change.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- include/linux/sched.h |   70 ++++++++++++++++++++++++++++++++++++++++++++++++++
- kernel/sched/core.c   |   33 +++++++++++++++++++++++
- 2 files changed, 103 insertions(+)
+ include/linux/sched.h |   65 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ kernel/sched/core.c   |   33 +++++++++++++++++++++++++
+ 2 files changed, 98 insertions(+)
 ---
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -155,6 +155,27 @@ struct task_group;
- 		WRITE_ONCE(current->__state, (state_value));		\
- 		raw_spin_unlock_irqrestore(&current->pi_lock, flags);	\
+@@ -143,9 +143,21 @@ struct task_group;
+ 		current->task_state_change = _THIS_IP_;			\
  	} while (0)
-+
-+
-+#define current_save_and_set_rtlock_wait_state()			\
-+	do {								\
-+		raw_spin_lock(&current->pi_lock);			\
-+		current->saved_state = current->__state;		\
+ 
++# debug_rtlock_wait_set_state()						 \
++	do {								 \
 +		current->saved_state_change = current->task_state_change;\
-+		current->task_state_change = _THIS_IP_;			\
-+		WRITE_ONCE(current->__state, TASK_RTLOCK_WAIT);		\
-+		raw_spin_unlock(&current->pi_lock);			\
-+	} while (0);
++		current->task_state_change = _THIS_IP_;			 \
++	} while (0)
 +
-+#define current_restore_rtlock_saved_state()				\
-+	do {								\
-+		raw_spin_lock(&current->pi_lock);			\
++# debug_rtlock_wait_restore_state()					 \
++	do {								 \
 +		current->task_state_change = current->saved_state_change;\
-+		WRITE_ONCE(current->__state, current->saved_state);	\
-+		current->saved_state = TASK_RUNNING;			\
-+		raw_spin_unlock(&current->pi_lock);			\
-+	} while (0);
-+
++	} while (0)
  #else
+ # debug_normal_state_change(cond)	do { } while (0)
+ # debug_special_state_change(cond)	do { } while (0)
++# debug_rtlock_wait_set_state()		do { } while (0)
++# debug_rtlock_wait_restore_state()	do { } while (0)
+ #endif
+ 
  /*
-  * set_current_state() includes a barrier so that the write of current->state
-@@ -213,6 +234,47 @@ struct task_group;
+@@ -213,6 +225,51 @@ struct task_group;
  		raw_spin_unlock_irqrestore(&current->pi_lock, flags);	\
  	} while (0)
  
@@ -105,24 +99,28 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 + */
 +#define current_save_and_set_rtlock_wait_state()			\
 +	do {								\
++		lockdep_assert_irqs_disabled();				\
 +		raw_spin_lock(&current->pi_lock);			\
 +		current->saved_state = current->__state;		\
++		debug_rtlock_wait_set_state();				\
 +		WRITE_ONCE(current->__state, TASK_RTLOCK_WAIT);		\
 +		raw_spin_unlock(&current->pi_lock);			\
 +	} while (0);
 +
 +#define current_restore_rtlock_saved_state()				\
 +	do {								\
++		lockdep_assert_irqs_disabled();				\
 +		raw_spin_lock(&current->pi_lock);			\
++		debug_rtlock_wait_restore_state();			\
 +		WRITE_ONCE(current->__state, current->saved_state);	\
 +		current->saved_state = TASK_RUNNING;			\
 +		raw_spin_unlock(&current->pi_lock);			\
 +	} while (0);
 +
- #endif
- 
  #define get_current_state()	READ_ONCE(current->__state)
-@@ -670,6 +732,11 @@ struct task_struct {
+ 
+ /* Task command name length: */
+@@ -668,6 +725,11 @@ struct task_struct {
  #endif
  	unsigned int			__state;
  
@@ -134,7 +132,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * This begins the randomizable portion of task_struct. Only
  	 * scheduling-critical items should be added above here.
-@@ -1363,6 +1430,9 @@ struct task_struct {
+@@ -1361,6 +1423,9 @@ struct task_struct {
  	struct kmap_ctrl		kmap_ctrl;
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  	unsigned long			task_state_change;
@@ -174,7 +172,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +
 +#ifdef CONFIG_PREEMPT_RT
 +	/*
-+	 * Saved state preserves the task state accross blocking on
++	 * Saved state preserves the task state across blocking on
 +	 * a RT lock.  If the state matches, set p::saved_state to
 +	 * TASK_RUNNING, but do not wake the task because it waits
 +	 * for a lock wakeup. Also indicate success because from

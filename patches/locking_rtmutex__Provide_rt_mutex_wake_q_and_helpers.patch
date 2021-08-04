@@ -7,7 +7,7 @@ From: Thomas Gleixner <tglx@linutronix.de>
 To handle the difference of wakeups for regular sleeping locks (mutex,
 rtmutex, rw_semaphore) and the wakeups for 'sleeping' spin/rwlocks on
 PREEMPT_RT enabled kernels correctly, it is required to provide a
-wake_q construct which allows to keep them seperate.
+wake_q construct which allows to keep them separate.
 
 Provide a wrapper around wake_q and the required helpers, which will be
 extended with the state handling later.

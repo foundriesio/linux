@@ -9,6 +9,12 @@ specific wakeup for spin/rwlock waiters. The pointer is just consuming 4/8
 bytes on stack so it is provided unconditionaly to avoid #ifdeffery all
 over the place.
 
+This cannot use a wake_q because a task can have concurrent wakeups which
+would make it miss either lock or the regular wakeup depending on what gets
+queued first unless task struct gains a separate wake_q_node for this which
+would be overkill because there can only be a single task which gets woken
+up in the spin/rw_lock unlock path.
+
 No functional change for non-RT enabled kernels.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>

@@ -25,10 +25,10 @@ out by the compiler the following solution has been chosen:
    and one for the actual scheduling decision.
 
    For a non RT kernel these masks are UINT_MAX, i.e. all bits are set
-   which allows the compiler to optimze the AND operation out because it is
+   which allows the compiler to optimize the AND operation out because it is
    not masking out anything. IOW, it's not different from the boolean.
 
-   RT enabled kernels will define these masks seperately.
+   RT enabled kernels will define these masks separately.
 
 No functional change.
 

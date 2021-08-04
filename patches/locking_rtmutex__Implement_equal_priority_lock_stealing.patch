@@ -7,7 +7,7 @@ From: Gregory Haskins <ghaskins@novell.com>
 The current logic only allows lock stealing to occur if the current task is
 of higher priority than the pending owner.
 
-Signficant throughput improvements can be gained by allowing the lock
+Significant throughput improvements can be gained by allowing the lock
 stealing to include tasks of equal priority when the contended lock is a
 spin_lock or a rw_lock and the tasks are not in a RT scheduling task.
 

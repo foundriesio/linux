@@ -46,10 +46,10 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 -#define task_is_stopped_or_traced(task)	((READ_ONCE(task->__state) & (__TASK_STOPPED | __TASK_TRACED)) != 0)
 -
- #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
- 
  /*
-@@ -1986,6 +1982,81 @@ static inline int test_tsk_need_resched(
+  * Special states are those that do not use the normal wait-loop pattern. See
+  * the comment with set_special_state().
+@@ -1979,6 +1975,81 @@ static inline int test_tsk_need_resched(
  	return unlikely(test_tsk_thread_flag(tsk,TIF_NEED_RESCHED));
  }
  

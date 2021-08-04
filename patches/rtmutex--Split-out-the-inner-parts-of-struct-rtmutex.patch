@@ -6,7 +6,7 @@ From: Peter Zijlstra <peterz@infradead.org>
 
 RT builds substitutions for rwsem, mutex, spinlock and rwlock around
 rtmutexes. Split the inner working out so each lock substitution can use
-them with the appropiate lockdep annotations. This avoid having an extra
+them with the appropriate lockdep annotations. This avoid having an extra
 unused lockdep map in the wrapped rtmutex.
 
 No functional change.

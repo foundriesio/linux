@@ -4,7 +4,7 @@ Date: Tue Jul  6 16:36:46 2021 +0200
 
 From: Thomas Gleixner <tglx@linutronix.de>
 
-Split the inner workings of rt_mutex_slowlock() out into a seperate
+Split the inner workings of rt_mutex_slowlock() out into a separate
 function which can be reused by the upcoming RT lock substitutions,
 e.g. for rw_semaphores.
 

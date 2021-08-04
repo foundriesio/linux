@@ -7,7 +7,7 @@ From: Thomas Gleixner <tglx@linutronix.de>
 RT replaces spinlocks with a simple wrapper around a rtmutex which turns
 spinlocks on RT into 'sleeping' spinlocks. The actual implementation of the
 spinlock API differs from a regular rtmutex as it does neither handle
-timeouts nor signals and it is state preserving accross the lock operation.
+timeouts nor signals and it is state preserving across the lock operation.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
