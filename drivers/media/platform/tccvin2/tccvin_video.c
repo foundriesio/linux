@@ -2072,16 +2072,18 @@ static int32_t tccvin_video_subdevs_s_power(struct tccvin_streaming *stream,
 	struct tccvin_device		*dev		= NULL;
 	int32_t				idx		= 0;
 	struct v4l2_subdev		*subdev		= NULL;
+	struct device			*dev_ptr	= NULL;
 	int32_t				ret		= 0;
 
 	WARN_ON(IS_ERR_OR_NULL(stream));
 
 	dev		= stream->dev;
+	dev_ptr		= tccvin_streaming_to_devptr(stream);
 
 	for (idx = 0; idx < dev->bounded_subdevs; idx++) {
 		subdev = dev->linked_subdevs[idx].sd;
 
-		logi(&stream->vdev.dev, "call %s s_power\n", subdev->name);
+		logi(dev_ptr, "call %s s_power\n", subdev->name);
 		/* power-up sequence & initial i2c setting */
 		ret = v4l2_subdev_call(subdev, core, s_power, onOff);
 	}
@@ -2101,9 +2103,9 @@ int32_t tccvin_video_subdevs_set_fmt(struct tccvin_streaming *stream)
 
 	WARN_ON(IS_ERR_OR_NULL(stream));
 
-	dev		= stream->dev;
-
+	dev = stream->dev;
 	subdev = dev->linked_subdevs[dev->bounded_subdevs - 1].sd;
+	dev_ptr = tccvin_streaming_to_devptr(stream);
 
 	subdev->entity.num_pads = dev->bounded_subdevs;
 	pad_cfg = v4l2_subdev_alloc_pad_config(subdev);
@@ -2202,7 +2204,7 @@ int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
 	timings		= &stream->dv_timings;
 	dev_ptr		= tccvin_streaming_to_devptr(stream);
 
-	logi(&stream->vdev.dev, "call %s g_dv_timings\n", subdev->name);
+	logi(dev_ptr, "call %s g_dv_timings\n", subdev->name);
 	ret = v4l2_subdev_call(subdev, video, g_dv_timings, timings);
 	if (ret != 0) {
 		logd(dev_ptr, "video.g_dv_timings, ret: %d\n", ret);
@@ -2219,14 +2221,14 @@ int32_t tccvin_video_subdevs_get_config(struct tccvin_streaming *stream)
 			(timings->bt.interlaced & V4L2_DV_INTERLACED) ? 1 : 0;
 	}
 
-	logi(&stream->vdev.dev, "call %s get_fmt\n", subdev->name);
+	logi(dev_ptr, "call %s get_fmt\n", subdev->name);
 	ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, fmt);
 	if (ret != 0) {
 		logi(dev_ptr, "pad.get_fmt, ret: %d\n", ret);
 	} else {
 		switch (fmt->format.code) {
 		case MEDIA_BUS_FMT_RGB888_1X24:
-			logi(&stream->vdev.dev, "MEDIA_BUS_FMT_RGB888_1X24");
+			logi(dev_ptr, "MEDIA_BUS_FMT_RGB888_1X24");
 			stream->vs_info.data_format = FMT_RGB444_24BIT;
 			break;
 		case MEDIA_BUS_FMT_UYVY8_2X8:
