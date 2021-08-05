@@ -91,9 +91,9 @@ static const struct drm_framebuffer_funcs tcc_drm_fb_funcs = {
 };
 
 
-static struct drm_framebuffer *
+struct drm_framebuffer *
 tcc_user_fb_create(struct drm_device *dev, struct drm_file *file_priv,
-		      const struct drm_mode_fb_cmd2 *mode_cmd)
+		   const struct drm_mode_fb_cmd2 *mode_cmd)
 {
 	const struct drm_format_info *info =
 			drm_get_format_info(dev, mode_cmd);
@@ -171,51 +171,6 @@ dma_addr_t tcc_drm_fb_dma_addr(struct drm_framebuffer *fb, int index)
 
 err_null:
 	return 0;
-}
-
-/*
- * This is &drm_mode_config_helper_funcs.atomic_commit_tail hook,
- * for drivers that support runtime_pm or need the CRTC to be enabled to
- * perform a commit. Otherwise, one should use the default implementation
- * drm_atomic_helper_commit_tail().
- */
-#if defined(CONFIG_DRM_TCC_USES_CONFIG_HELPERS)
-static struct drm_mode_config_helper_funcs tcc_drm_mode_config_helpers = {
-	.atomic_commit_tail = drm_atomic_helper_commit_tail_rpm,
-};
-#endif
-
-static const struct drm_mode_config_funcs tcc_drm_mode_config_funcs = {
-	.fb_create = tcc_user_fb_create,
-	.output_poll_changed = tcc_drm_output_poll_changed,
-	.atomic_check = tcc_atomic_check,
-	.atomic_commit = drm_atomic_helper_commit,
-};
-
-void tcc_drm_mode_config_init(struct drm_device *dev)
-{
-	drm_mode_config_init(dev);
-
-	dev->mode_config.min_width = 0;
-	dev->mode_config.min_height = 0;
-
-	/*
-	 * set max width and height as default value(4096x4096).
-	 * this value would be used to check framebuffer size limitation
-	 * at drm_mode_addfb().
-	 */
-	dev->mode_config.max_width = 4096;
-	dev->mode_config.max_height = 4096;
-
-	dev->mode_config.funcs = &tcc_drm_mode_config_funcs;
-	#if defined(CONFIG_DRM_TCC_USES_CONFIG_HELPERS)
-	dev->mode_config.helper_private = &tcc_drm_mode_config_helpers;
-	#endif
-
-	dev->mode_config.allow_fb_modifiers = true;
-
-	dev->mode_config.fb_base = 0;
-	dev->mode_config.async_page_flip = true;
 }
 
 struct drm_framebuffer *

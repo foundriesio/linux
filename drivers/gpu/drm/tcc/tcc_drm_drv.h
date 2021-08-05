@@ -270,10 +270,6 @@ static inline int tcc_dpi_bind(
 }
 #endif
 
-int tcc_atomic_commit(struct drm_device *dev, struct drm_atomic_state *state,
-			 bool nonblock);
-int tcc_atomic_check(struct drm_device *dev, struct drm_atomic_state *state);
-
 extern struct platform_driver lcd_driver;
 extern struct platform_driver ext_driver;
 extern struct platform_driver third_driver;

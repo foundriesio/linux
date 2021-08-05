@@ -35,10 +35,10 @@
 #define LOG_TAG "TCCDRM"
 #define DRIVER_NAME	"tccdrm"
 #define DRIVER_DESC	"Telechips SoC DRM"
-#define DRIVER_DATE	"20210629"
+#define DRIVER_DATE	"20210805"
 #define DRIVER_MAJOR	1
-#define DRIVER_MINOR	4
-#define DRIVER_PATCH	15
+#define DRIVER_MINOR	5
+#define DRIVER_PATCH	0
 
 static struct device *tcc_drm_get_dma_device(void);
 
@@ -288,6 +288,105 @@ static struct component_match *tcc_drm_match_add(struct device *dev)
 	}
 
 	return match ?: ERR_PTR(-ENODEV);
+}
+
+static void tcc_drm_wait_for_vblanks(struct drm_device *dev,
+		struct drm_atomic_state *old_state)
+{
+	struct drm_crtc *crtc;
+	struct drm_crtc_state *old_crtc_state, *new_crtc_state;
+	int i, ret;
+	unsigned int crtc_mask = 0;
+
+	/*
+	 * Legacy cursor ioctls are completely unsynced, and userspace
+	 * relies on that (by doing tons of cursor updates).
+	 */
+	if (old_state->legacy_cursor_update)
+		return;
+
+	for_each_oldnew_crtc_in_state(old_state, crtc, old_crtc_state,
+				      new_crtc_state, i) {
+		if (!new_crtc_state->active ||
+		    !new_crtc_state->planes_changed)
+			continue;
+		ret = drm_crtc_vblank_get(crtc);
+		if (ret != 0)
+			continue;
+		crtc_mask |= drm_crtc_mask(crtc);
+		old_state->crtcs[i].last_vblank_count =
+			drm_crtc_vblank_count(crtc);
+	}
+
+	for_each_old_crtc_in_state(old_state, crtc, old_crtc_state, i) {
+		if (!(crtc_mask & drm_crtc_mask(crtc)))
+			continue;
+		ret = wait_event_timeout(dev->vblank[i].queue,
+				old_state->crtcs[i].last_vblank_count !=
+					drm_crtc_vblank_count(crtc),
+				msecs_to_jiffies(50));
+		dev_info(dev->dev, "[CRTC:%d:%s] vblank\r\n", crtc->base.id,
+			 crtc->name);
+		drm_crtc_vblank_put(crtc);
+	}
+}
+
+static void tcc_drm_commit_tail(struct drm_atomic_state *old_state)
+{
+	struct drm_device *dev = old_state->dev;
+
+	drm_atomic_helper_commit_modeset_disables(dev, old_state);
+
+	drm_atomic_helper_commit_planes(dev, old_state, 0);
+
+	drm_atomic_helper_commit_modeset_enables(dev, old_state);
+
+	drm_atomic_helper_commit_hw_done(old_state);
+
+	tcc_drm_wait_for_vblanks(dev, old_state);
+
+	drm_atomic_helper_cleanup_planes(dev, old_state);
+}
+
+/*
+ * This is &drm_mode_config_helper_funcs.atomic_commit_tail hook,
+ * for drivers that support runtime_pm or need the CRTC to be enabled to
+ * perform a commit. Otherwise, one should use the default implementation
+ * drm_atomic_helper_commit_tail().
+ */
+static struct drm_mode_config_helper_funcs tcc_drm_mode_config_helpers = {
+	.atomic_commit_tail = tcc_drm_commit_tail,
+};
+
+static const struct drm_mode_config_funcs tcc_drm_mode_config_funcs = {
+	.fb_create = tcc_user_fb_create,
+	.output_poll_changed = tcc_drm_output_poll_changed,
+	.atomic_check = tcc_atomic_check,
+	.atomic_commit = drm_atomic_helper_commit,
+};
+
+static void tcc_drm_mode_config_init(struct drm_device *dev)
+{
+	drm_mode_config_init(dev);
+
+	dev->mode_config.min_width = 0;
+	dev->mode_config.min_height = 0;
+
+	/*
+	 * set max width and height as default value(4096x4096).
+	 * this value would be used to check framebuffer size limitation
+	 * at drm_mode_addfb().
+	 */
+	dev->mode_config.max_width = 4096;
+	dev->mode_config.max_height = 4096;
+
+	dev->mode_config.funcs = &tcc_drm_mode_config_funcs;
+	dev->mode_config.helper_private = &tcc_drm_mode_config_helpers;
+
+	dev->mode_config.allow_fb_modifiers = true;
+
+	dev->mode_config.fb_base = 0;
+	dev->mode_config.async_page_flip = true;
 }
 
 static int tcc_drm_bind(struct device *dev)
