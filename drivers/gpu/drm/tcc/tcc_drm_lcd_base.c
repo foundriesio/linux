@@ -103,6 +103,9 @@ struct lcd_context {
 
 	/* H/W data */
 	struct tcc_hw_device hw_data;
+	#if defined(CONFIG_SMP)
+	int last_cpu;
+	#endif
 };
 
 static const uint32_t lcd_formats[] = {
@@ -226,6 +229,10 @@ static int lcd_enable_vblank(struct tcc_drm_crtc *crtc)
 			ctx->hw_data.display_device.blk_num,
 			VIOC_DISP_INTR_DISPLAY);
 
+		#if defined(CONFIG_SMP)
+		irq_set_affinity(ctx->hw_data.display_device.irq_num,
+				 cpumask_of(ctx->last_cpu));
+		#endif
 		vioc_intr_enable(
 			ctx->hw_data.display_device.irq_num,
 			get_vioc_index(ctx->hw_data.display_device.blk_num),
@@ -860,6 +867,15 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 		ret = -ENOMEM;
 		goto out;
 	}
+
+	#if defined(CONFIG_SMP)
+	for_each_online_cpu(i) {
+		ctx->last_cpu = i;
+	}
+	dev_info(dev, "[INFO][%s] %s last cpu id is = %d\r\n",
+		 LOG_TAG, __func__, i);
+	#endif
+
 	ctx->drm = drm;
 	if (
 		tcc_drm_address_dt_parse(
@@ -1006,7 +1022,10 @@ static int lcd_bind(struct device *dev, struct device *master, void *data)
 
 	if (ret)
 		goto out;
-
+	#if defined(CONFIG_SMP)
+	irq_set_affinity(ctx->hw_data.display_device.irq_num,
+			 cpumask_of(ctx->last_cpu));
+	#endif
 	ret = devm_request_irq(
 		ctx->dev, ctx->hw_data.display_device.irq_num,
 		lcd_irq_handler, IRQF_SHARED, ctx->data->name, ctx);

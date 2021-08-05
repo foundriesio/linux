@@ -38,7 +38,7 @@
 #define DRIVER_DATE	"20210805"
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	5
-#define DRIVER_PATCH	0
+#define DRIVER_PATCH	1
 
 static struct device *tcc_drm_get_dma_device(void);
 
@@ -325,8 +325,10 @@ static void tcc_drm_wait_for_vblanks(struct drm_device *dev,
 				old_state->crtcs[i].last_vblank_count !=
 					drm_crtc_vblank_count(crtc),
 				msecs_to_jiffies(50));
-		dev_info(dev->dev, "[CRTC:%d:%s] vblank\r\n", crtc->base.id,
-			 crtc->name);
+		if (!ret)
+			dev_info(dev->dev,
+				 "[CRTC:%d:%s] vblank\r\n", crtc->base.id,
+				 crtc->name);
 		drm_crtc_vblank_put(crtc);
 	}
 }
