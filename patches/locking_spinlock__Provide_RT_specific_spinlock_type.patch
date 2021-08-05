@@ -16,9 +16,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/include/linux/spinlock_types.h
 +++ b/include/linux/spinlock_types.h
-@@ -51,6 +51,9 @@
+@@ -11,6 +11,9 @@
  
- #define DEFINE_RAW_SPINLOCK(x)	raw_spinlock_t x = __RAW_SPIN_LOCK_UNLOCKED(x)
+ #include <linux/spinlock_types_raw.h>
  
 +#ifndef CONFIG_PREEMPT_RT
 +
@@ -26,7 +26,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  typedef struct spinlock {
  	union {
  		struct raw_spinlock rlock;
-@@ -79,6 +82,29 @@ typedef struct spinlock {
+@@ -39,6 +42,29 @@ typedef struct spinlock {
  
  #define DEFINE_SPINLOCK(x)	spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
  

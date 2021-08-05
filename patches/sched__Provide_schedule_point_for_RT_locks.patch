@@ -29,7 +29,7 @@ V2: Adopt to the simplified mask logic
 ---
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -287,6 +287,9 @@ extern long schedule_timeout_idle(long t
+@@ -288,6 +288,9 @@ extern long schedule_timeout_idle(long t
  asmlinkage void schedule(void);
  extern void schedule_preempt_disabled(void);
  asmlinkage void preempt_schedule_irq(void);

@@ -40,35 +40,36 @@ For non-RT kernels there is no functional change.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- include/linux/sched.h |   65 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/sched.h |   66 ++++++++++++++++++++++++++++++++++++++++++++++++++
  kernel/sched/core.c   |   33 +++++++++++++++++++++++++
- 2 files changed, 98 insertions(+)
+ 2 files changed, 99 insertions(+)
 ---
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -143,9 +143,21 @@ struct task_group;
+@@ -143,9 +143,22 @@ struct task_group;
  		current->task_state_change = _THIS_IP_;			\
  	} while (0)
  
-+# debug_rtlock_wait_set_state()						 \
++# define debug_rtlock_wait_set_state()					\
 +	do {								 \
 +		current->saved_state_change = current->task_state_change;\
 +		current->task_state_change = _THIS_IP_;			 \
 +	} while (0)
 +
-+# debug_rtlock_wait_restore_state()					 \
++# define debug_rtlock_wait_restore_state()				\
 +	do {								 \
 +		current->task_state_change = current->saved_state_change;\
 +	} while (0)
++
  #else
- # debug_normal_state_change(cond)	do { } while (0)
- # debug_special_state_change(cond)	do { } while (0)
-+# debug_rtlock_wait_set_state()		do { } while (0)
-+# debug_rtlock_wait_restore_state()	do { } while (0)
+ # define debug_normal_state_change(cond)	do { } while (0)
+ # define debug_special_state_change(cond)	do { } while (0)
++# define debug_rtlock_wait_set_state()		do { } while (0)
++# define debug_rtlock_wait_restore_state()	do { } while (0)
  #endif
  
  /*
-@@ -213,6 +225,51 @@ struct task_group;
+@@ -213,6 +226,51 @@ struct task_group;
  		raw_spin_unlock_irqrestore(&current->pi_lock, flags);	\
  	} while (0)
  
@@ -120,7 +121,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define get_current_state()	READ_ONCE(current->__state)
  
  /* Task command name length: */
-@@ -668,6 +725,11 @@ struct task_struct {
+@@ -668,6 +726,11 @@ struct task_struct {
  #endif
  	unsigned int			__state;
  
@@ -132,7 +133,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * This begins the randomizable portion of task_struct. Only
  	 * scheduling-critical items should be added above here.
-@@ -1361,6 +1423,9 @@ struct task_struct {
+@@ -1361,6 +1424,9 @@ struct task_struct {
  	struct kmap_ctrl		kmap_ctrl;
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  	unsigned long			task_state_change;

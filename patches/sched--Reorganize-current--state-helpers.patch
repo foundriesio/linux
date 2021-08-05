@@ -42,14 +42,14 @@ V3: New patch.
 -		current->task_state_change = _THIS_IP_;		\
 -		smp_store_mb(current->__state, (state_value));	\
 +#ifdef CONFIG_DEBUG_ATOMIC_SLEEP
-+# debug_normal_state_change(state_value)				\
++# define debug_normal_state_change(state_value)				\
 +	do {								\
 +		WARN_ON_ONCE(is_special_task_state(state_value));	\
 +		current->task_state_change = _THIS_IP_;			\
  	} while (0)
  
 -#define set_special_state(state_value)					\
-+# debug_special_state_change(state_value)				\
++# define debug_special_state_change(state_value)			\
  	do {								\
 -		unsigned long flags; /* may shadow */			\
  		WARN_ON_ONCE(!is_special_task_state(state_value));	\
@@ -60,8 +60,8 @@ V3: New patch.
  	} while (0)
 +
  #else
-+# debug_normal_state_change(cond)	do { } while (0)
-+# debug_special_state_change(cond)	do { } while (0)
++# define debug_normal_state_change(cond)	do { } while (0)
++# define debug_special_state_change(cond)	do { } while (0)
 +#endif
 +
  /*

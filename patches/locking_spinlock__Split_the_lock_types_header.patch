@@ -12,11 +12,13 @@ No functional change.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
+V3: Remove the duplicate defines
+---
  include/linux/rwlock_types.h       |    4 ++
  include/linux/spinlock.h           |    4 ++
- include/linux/spinlock_types.h     |   19 ----------
+ include/linux/spinlock_types.h     |   59 ---------------------------------
  include/linux/spinlock_types_raw.h |   65 +++++++++++++++++++++++++++++++++++++
- 4 files changed, 74 insertions(+), 18 deletions(-)
+ 4 files changed, 74 insertions(+), 58 deletions(-)
  create mode 100644 include/linux/spinlock_types_raw.h
 ---
 --- a/include/linux/rwlock_types.h
@@ -54,7 +56,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   *
 --- a/include/linux/spinlock_types.h
 +++ b/include/linux/spinlock_types.h
-@@ -9,24 +9,7 @@
+@@ -9,64 +9,7 @@
   * Released under the General Public License (GPL).
   */
  
@@ -76,10 +78,50 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -	struct lockdep_map dep_map;
 -#endif
 -} raw_spinlock_t;
+-
+-#define SPINLOCK_MAGIC		0xdead4ead
+-
+-#define SPINLOCK_OWNER_INIT	((void *)-1L)
+-
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
+-# define RAW_SPIN_DEP_MAP_INIT(lockname)		\
+-	.dep_map = {					\
+-		.name = #lockname,			\
+-		.wait_type_inner = LD_WAIT_SPIN,	\
+-	}
+-# define SPIN_DEP_MAP_INIT(lockname)			\
+-	.dep_map = {					\
+-		.name = #lockname,			\
+-		.wait_type_inner = LD_WAIT_CONFIG,	\
+-	}
+-#else
+-# define RAW_SPIN_DEP_MAP_INIT(lockname)
+-# define SPIN_DEP_MAP_INIT(lockname)
+-#endif
+-
+-#ifdef CONFIG_DEBUG_SPINLOCK
+-# define SPIN_DEBUG_INIT(lockname)		\
+-	.magic = SPINLOCK_MAGIC,		\
+-	.owner_cpu = -1,			\
+-	.owner = SPINLOCK_OWNER_INIT,
+-#else
+-# define SPIN_DEBUG_INIT(lockname)
+-#endif
+-
+-#define __RAW_SPIN_LOCK_INITIALIZER(lockname)	\
+-	{					\
+-	.raw_lock = __ARCH_SPIN_LOCK_UNLOCKED,	\
+-	SPIN_DEBUG_INIT(lockname)		\
+-	RAW_SPIN_DEP_MAP_INIT(lockname) }
+-
+-#define __RAW_SPIN_LOCK_UNLOCKED(lockname)	\
+-	(raw_spinlock_t) __RAW_SPIN_LOCK_INITIALIZER(lockname)
+-
+-#define DEFINE_RAW_SPINLOCK(x)	raw_spinlock_t x = __RAW_SPIN_LOCK_UNLOCKED(x)
 +#include <linux/spinlock_types_raw.h>
  
- #define SPINLOCK_MAGIC		0xdead4ead
- 
+ typedef struct spinlock {
+ 	union {
 --- /dev/null
 +++ b/include/linux/spinlock_types_raw.h
 @@ -0,0 +1,65 @@
