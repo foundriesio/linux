@@ -47,13 +47,12 @@
 //#define TCC_SDR_RX_ISR_DEBUG
 //#define TCC_SDR_READ_DEBUG
 
-#if 0
-#define SDR_DBG(fmt, args...)  pr_info("[DEBUG][SDR] "fmt, ## args)
-#define DBG(fmt, args...)  pr_info(fmt, ## args)
-#else
+/* //for debug
+ *#define SDR_DBG(fmt, args...)  pr_info("[DEBUG][SDR] "fmt, ## args)
+ *#define DBG(fmt, args...)  pr_info(fmt, ## args)
+ */
 #define SDR_DBG(fmt, args...)  do { } while (0)
 #define DBG(fmt, args...)  do { } while (0)
-#endif
 
 #ifdef TCC_SDR_RX_ISR_DEBUG
 #define RX_ISR_DBG(fmt, args...)  pr_info("[DEBUG][SDR_RX_ISR] "fmt, ## args)
@@ -70,14 +69,14 @@
 #define SDR_WARN(fmt, args...)	pr_info("[WARN][SDR] "fmt, ## args)
 #define SDR_ERR(fmt, args...)	pr_info("[ERROR][SDR] "fmt, ## args)
 
-
 #define PREALLOCATE_DMA_BUFFER_MODE
 
 #define SDR_MAX_PORT_NUM	(4)
 #define SDR_READ_TIMEOUT 1000
 #define OVERRUN_NOTIFY_INTERVAL 100 //ms
 
-#define HRSTEN_ENABLE
+//#define HRSTEN_ENABLE
+//#define RADIO_STOP_MIN_DELAY
 struct tcc_sdr_port_t {
 	void *dma_vaddr;
 	dma_addr_t dma_paddr;
@@ -120,7 +119,10 @@ struct tcc_sdr_t {
 	void *mono_dma_vaddr;
 	dma_addr_t mono_dma_paddr;
 	//This is for normal I2S slave mode
-
+#ifdef RADIO_STOP_MIN_DELAY
+	uint32_t nperiod;
+	uint32_t nirq;
+#endif
 	uint32_t period_bytes;
 	void *dma_vaddr_base;
 	dma_addr_t dma_paddr_base;
@@ -354,19 +356,11 @@ int tcc_sdr_initialize(struct tcc_sdr_t *sdr, gfp_t gfp)
 	tcc_dai_set_rx_mute(sdr->dai_reg, true);
 
 	if (sdr->dai_pclk) {
-		if (sdr->radio_mode) {
-			clk_set_rate(sdr->dai_filter_clk,
-					TCC_DAI_FILTER_MAX_FREQ);
-			clk_prepare_enable(sdr->dai_filter_clk);
-			clk_set_rate(sdr->dai_pclk, TCC_DAI_MAX_FREQ);
-			clk_prepare_enable(sdr->dai_pclk);
-		} else {
-			clk_set_rate(sdr->dai_filter_clk,
-					TCC_DAI_FILTER_MAX_FREQ);
-			clk_prepare_enable(sdr->dai_filter_clk);
-			clk_set_rate(sdr->dai_pclk, TCC_DAI_MAX_FREQ);
-			clk_prepare_enable(sdr->dai_pclk);
-		}
+		clk_set_rate(sdr->dai_filter_clk,
+				TCC_DAI_FILTER_MAX_FREQ);
+		clk_prepare_enable(sdr->dai_filter_clk);
+		clk_set_rate(sdr->dai_pclk, TCC_DAI_MAX_FREQ);
+		clk_prepare_enable(sdr->dai_pclk);
 	}
 	//SLAVE MODE Setting mclk_mst, bclk_mst,
 	//lrck_mst, tdm_mode, is_pinctrl_export
@@ -435,7 +429,7 @@ int tcc_sdr_initialize(struct tcc_sdr_t *sdr, gfp_t gfp)
 
 int tcc_sdr_set_param(struct tcc_sdr_t *sdr, struct HS_I2S_PARAM *p)
 {
-	uint32_t period_min = 0, sz_check = 0;
+	uint32_t period_min = 0, sz_check = 0, overall_sz = 0;
 	int ret = 0;
 
 	SDR_DBG("%s\n", __func__);
@@ -550,7 +544,12 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, struct HS_I2S_PARAM *p)
 
 		for (i = 0; i < sdr->ports_num; i++)
 			sdr->port[i].overrun = 0;
-
+#ifdef RADIO_STOP_MIN_DELAY
+		overall_sz = TCC_SDR_PERIOD_SZ_RADIO_MIN;
+#else
+		overall_sz = 64;
+		//2^(16BSIZE+32WSIZE)
+#endif
 	} else {		//I2S Slave Mode
 		sdr->radio_mode = 0;
 		sdr->channels = p->eChannel;
@@ -559,6 +558,8 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, struct HS_I2S_PARAM *p)
 		sdr->mclk_div = DEFAULT_MCLK_DIV;
 		sdr->bitmode = p->eBitMode;
 		sdr->port[0].overrun = 0;
+		overall_sz = 32;
+		//2^(8BSIZE+32WSIZE)
 	}
 
 	if (p->eBufferSize != (1 << sz_check)) {
@@ -573,19 +574,28 @@ int tcc_sdr_set_param(struct tcc_sdr_t *sdr, struct HS_I2S_PARAM *p)
 		sdr->buffer_bytes = p->eBufferSize;
 	}
 
-	sz_check = p->ePeriodSize % 32;
+	sz_check = p->ePeriodSize % overall_sz;
 	if (sz_check) {
-		sz_check = p->ePeriodSize / 32;
-		SDR_WARN("period_bytes[%u] should be multiple of 32[%u]\n",
-		       p->ePeriodSize, sz_check * 32);
+		sz_check = p->ePeriodSize / overall_sz;
+		SDR_WARN("period_bytes[%u] should be multiple of %d[%u]\n",
+		       p->ePeriodSize, overall_sz, sz_check * overall_sz);
 		SDR_WARN("period_bytes[%u] change to [%u]\n",
-		       p->ePeriodSize, sz_check * 32);
-		p->ePeriodSize = sz_check * 32;
+		       p->ePeriodSize, sz_check * overall_sz);
+		p->ePeriodSize = sz_check * overall_sz;
 		sdr->period_bytes = p->ePeriodSize;
 		ret = 1;
 	} else {
 		sdr->period_bytes = p->ePeriodSize;
 	}
+
+#ifdef RADIO_STOP_MIN_DELAY
+	if (p->eRadioMode) {
+		sdr->nperiod = p->ePeriodSize / TCC_SDR_PERIOD_SZ_RADIO_MIN;
+		sdr->period_bytes = TCC_SDR_PERIOD_SZ_RADIO_MIN;
+	} else {		//I2S Slave Mode
+		sdr->nperiod = 1;
+	}
+#endif
 
 	tcc_sdr_initialize(sdr, GFP_KERNEL);
 
@@ -695,15 +705,30 @@ static irqreturn_t tcc_sdr_isr(int irq, void *dev)
 
 	adma_istatus = tcc_adma_dai_rx_irq_check(sdr->adma_reg);
 
+#ifdef RADIO_STOP_MIN_DELAY
+	if (adma_istatus == true) {
+
+		sdr->nirq++;
+		if (sdr->nirq >= sdr->nperiod) {
+			tcc_sdr_rx_isr(sdr);
+			sdr->nirq = 0;
+		}
+	}
+#else
 	if (adma_istatus == true)
 		tcc_sdr_rx_isr(sdr);
+#endif
 
 	tcc_adma_dai_rx_irq_clear(sdr->adma_reg);
+	adma_istatus = tcc_adma_dai_rx_irq_check(sdr->adma_reg);
+	if (adma_istatus == true)
+		SDR_ERR("%s : DAI RX IRQ not clear!\n", __func__);
+
 
 	return IRQ_HANDLED;
 }
 
-unsigned int tcc_sdr_copy_from_dma(
+int tcc_sdr_copy_from_dma(
 	struct tcc_sdr_t *sdr,
 	uint32_t sdr_port,
 	char *buf,
@@ -717,7 +742,7 @@ unsigned int tcc_sdr_copy_from_dma(
 
 	if (!sdr->started) {
 		SDR_DBG("%s - not started\n", __func__);
-		return -1;
+		return -EPROTO;
 	}
 
 	if (port->overrun) {
@@ -736,7 +761,7 @@ unsigned int tcc_sdr_copy_from_dma(
 		SDR_ERR("%s - dev-%d timeout[%d]sec, ret=[%d].",
 		       __func__, sdr->blk_no, SDR_READ_TIMEOUT, ret);
 		SDR_ERR("Please check turner status.\n");
-		return -1;
+		return -EIO;
 	}
 
 	spin_lock_irqsave(&sdr->lock, flags);
@@ -826,11 +851,10 @@ int tcc_sdr_start(struct tcc_sdr_t *sdr, gfp_t gfp)
 	if (sdr->started) {
 		SDR_DBG("%s - already started\n",
 		       __func__);
-		return -1;
+		return -EPROTO;
 	}
-#if 0
-	tcc_sdr_initialize(sdr, gfp);
-	tcc_adma_set_dai_rx_dma_repeat_enable(sdr->adma_reg, true);
+#ifdef RADIO_STOP_MIN_DELAY
+	sdr->nirq = 0;
 #endif
 	for (i = 0; i < sdr->ports_num; i++) {
 		sdr->port[i].valid_sz = 0;
@@ -867,34 +891,44 @@ int tcc_sdr_start(struct tcc_sdr_t *sdr, gfp_t gfp)
 
 int tcc_sdr_stop(struct tcc_sdr_t *sdr)
 {
+	uint32_t ret = 0;
+
 	if (!sdr->started) {
 		SDR_DBG("%s - not started\n", __func__);
-		return -1;
+		return -EPROTO;
 	}
 
 	SDR_DBG("%s\n", __func__);
 
 	tcc_dai_set_rx_mute(sdr->dai_reg, true);
 
-	tcc_adma_dai_rx_dma_enable(sdr->adma_reg, false);
+	ret = tcc_adma_dai_rx_auto_dma_disable(sdr->adma_reg);
+	if (ret != 0)
+		tcc_adma_dai_rx_dma_enable(sdr->adma_reg, false);
+
+	tcc_adma_dai_rx_irq_enable(sdr->adma_reg, false);
 
 	/* HopCount Clear */
 	tcc_adma_dai_rx_hopcnt_clear(sdr->adma_reg);
+
+	tcc_adma_dai_rx_reset_enable(sdr->adma_reg, true);
 
 	//FIFO Clear
 	tcc_dai_rx_fifo_clear(sdr->dai_reg);
 
 	udelay(1000);
 
-	if (sdr->radio_mode)
-		tcc_radio_enable(sdr->dai_reg, false); //radio disable
-
-	tcc_dai_enable(sdr->dai_reg, false); //dai disable
 	tcc_dai_rx_enable(sdr->dai_reg, false); //dai rx disable
-	//audio filter disable
-	tcc_dai_set_audio_filter_enable(sdr->dai_reg, false);
 
 	tcc_dai_rx_fifo_release(sdr->dai_reg);
+
+	tcc_adma_dai_rx_reset_enable(sdr->adma_reg, false);
+	if (sdr->radio_mode)
+		tcc_radio_enable(sdr->dai_reg, false); //radio disable
+	else
+		tcc_dai_enable(sdr->dai_reg, false); //dai disable
+	//audio filter disable
+	tcc_dai_set_audio_filter_enable(sdr->dai_reg, false);
 
 //      tcc_sdr_deinitialize(sdr);
 
@@ -952,7 +986,7 @@ long tcc_sdr_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 	struct miscdevice *misc = (struct miscdevice *)flip->private_data;
 	struct tcc_sdr_t *sdr =
 	    (struct tcc_sdr_t *)dev_get_drvdata(misc->parent);
-	int i = 0, ret = -1;
+	int i = 0, ret = -EINVAL;
 
 	mutex_lock(&sdr->m);
 	switch (cmd) {
@@ -1064,7 +1098,7 @@ long tcc_sdr_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 ioctl_end:
 	mutex_unlock(&sdr->m);
 
-	return ret;
+	return (long)ret;
 }
 
 int tcc_sdr_open(struct inode *inode, struct file *flip)
@@ -1085,7 +1119,6 @@ int tcc_sdr_open(struct inode *inode, struct file *flip)
 		return -EMFILE;
 	}
 
-	tcc_adma_dai_rx_reset_enable(sdr->adma_reg, false);
 	sdr->opened = true;
 
 	return ret;
@@ -1103,7 +1136,6 @@ int tcc_sdr_release(struct inode *inode, struct file *flip)
 
 	tcc_sdr_stop(sdr);
 	tcc_sdr_deinitialize(sdr);
-	tcc_adma_dai_rx_reset_enable(sdr->adma_reg, true);
 
 	sdr->opened = false;
 	sdr->started = false;
@@ -1176,17 +1208,6 @@ static int parse_sdr_dt(struct platform_device *pdev, struct tcc_sdr_t *sdr)
 			       sdr->adma_reg);
 
 		sdr->adma_irq = of_irq_get(of_node_adma, 0);
-#if 0
-		of_property_read_u32(of_node_adma, "adrcnt-mode",
-		&sdr->adrcnt_mode);
-		SDR_DBG("adrcnt_mode : %u\n", sdr->adrcnt_mode);
-		if (sdr->adrcnt_mode) {
-			pr_err("[dev-%d] In radio mode, adrcnt_mode[%u]",
-				sdr->blk_no);
-			pr_err("doesn't support.\n",
-				sdr->adrcnt_mode);
-		}
-#endif
 #ifdef HRSTEN_ENABLE
 		sdr->iocfg_reg = of_iomap(of_node_adma, 1);
 		if (IS_ERR((void *)sdr->iocfg_reg)) {
@@ -1196,18 +1217,16 @@ static int parse_sdr_dt(struct platform_device *pdev, struct tcc_sdr_t *sdr)
 			SDR_DBG("iocfg_reg=%p\n", sdr->iocfg_reg);
 			sdr->hrsten_reg_offset = 0;
 			of_property_read_u32(of_node_adma, "hrsten-reg-offset", &sdr->hrsten_reg_offset);
-			if (sdr->hrsten_reg_offset != 0) {
+			if (sdr->hrsten_reg_offset != 0)
 				SDR_DBG("hrsten_reg_offset : 0x%08x\n", sdr->hrsten_reg_offset);
-			}
 			of_property_read_u32(of_node_adma, "hrsten-bit-offset", &sdr->hrsten_bit_offset);
-			if (sdr->hrsten_bit_offset != 0) {
+			if (sdr->hrsten_bit_offset != 0)
 				SDR_DBG("hrsten_bit_offset : %u\n", sdr->hrsten_bit_offset);
-			}
 		}
 #endif
 	} else {
 		SDR_DBG("of_node_adma is NULL\n");
-		return -1;
+		return -EINVAL;
 	}
 
 	if (of_property_read_string(pdev->dev.of_node, "dev-name", &devname) ==

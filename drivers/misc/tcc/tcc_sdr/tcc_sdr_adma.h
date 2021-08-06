@@ -61,14 +61,13 @@ enum TCC_ADMA_REPEAT_MODE {
 	TCC_ADMA_REPEAT_FROM_START_ADDR = 1,
 };
 
-#if 0 //DEBUG
-#define adma_writel(v, c) \
-	({pr_info("<ASoC> ADMA_REG(%p) = 0x%08x\n",\
-	c, (unsigned int)v); writel(v, c); })
-#else
+/* //DEBUG
+ *#define adma_writel(v, c) \
+ *	({pr_info("<ASoC> ADMA_REG(%p) = 0x%08x\n",\
+ *	c, (unsigned int)v); writel(v, c); })
+ */
 #define adma_writel(v, c) \
 	writel(v, c)
-#endif
 
 static inline void tcc_adma_dump(void __iomem *base_addr)
 {
@@ -87,15 +86,14 @@ static inline void tcc_audio_sw_reset_enable(void __iomem *base_addr, uint32_t r
 {
 	uint32_t value = readl(base_addr + reg_offset);
 	uint32_t mask_bit = 0;
-	
+
 	//printk("iocfg reset before(0x%03x) : 0x%08x\n", (uint32_t)reg_offset, value);
 	mask_bit = 0x1 << bit_offset;
 
-	if (enable) {
+	if (enable)
 		value &= ~mask_bit;
-	} else {
+	else
 		value |= mask_bit;
-	}
 
 	//printk("iocfg reset after(0x%03x) : 0x%08x\n", (uint32_t)reg_offset, value);
 	adma_writel(value, base_addr + reg_offset);
@@ -378,7 +376,7 @@ static inline int tcc_adma_set_rx_dma_params(
 	tcc_adma_dai_rx_dma_enable(base_addr, FALSE);
 
 	if (buffer_bytes == 0)
-		return -1;
+		return -EINVAL;
 
 	if (radio_mode) {
 #if defined(CONFIG_ARCH_TCC803X) || defined(CONFIG_ARCH_TCC805X) || \
@@ -463,7 +461,7 @@ static inline int tcc_adma_set_rx_dma_addr(
 				    base_addr + TCC_ADMA_RXDADAR3_OFFSET);
 			adma_writel(0, base_addr + TCC_ADMA_RXDADARL3_OFFSET);
 		} else {
-			return -1;
+			return -EINVAL;
 		}
 	} else {
 		if (mono_mode) {
@@ -524,5 +522,47 @@ static inline void tcc_adma_dai_rx_hopcnt_clear(void __iomem *base_addr)
 		base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
 }
 
+static inline int tcc_adma_dai_rx_auto_dma_disable(void __iomem *base_addr)
+{
+	uint32_t transctrl = 0, tcnt = 0, chctrl = 0;
+	uint32_t timeout = 0, ret = 0;
+
+	// ADMA RX Repeat mode off
+	transctrl = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
+	transctrl &= ~ADMA_TRANSCTRL_DAI_RX_DMA_REPEAT_MODE_Msk;
+	transctrl |= ADMA_TRANSCTRL_DAI_RX_DMA_REPEAT_DISABLE;
+	adma_writel(
+		transctrl,
+		base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
+
+	// Wait until CurTCNT zero and ADMA disable
+	while (1) {
+		tcnt = readl(base_addr + TCC_ADMA_RXDATCNT_OFFSET)
+			& ADMA_COUNTER_CUR_COUNT_Msk;
+		chctrl = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET)
+			& ADMA_CHCTRL_DAI_RX_DMA_MODE_Msk;
+		if ((tcnt == 0) && (chctrl == 0))
+			break;
+
+		udelay(1000);
+		timeout++;
+
+		if (timeout >= 300) {
+			ret = -ETIME;
+			break;
+		}
+	};
+
+	transctrl = readl(base_addr + TCC_ADMA_TRANSCTRL_OFFSET);
+	tcnt = readl(base_addr + TCC_ADMA_RXDATCNT_OFFSET);
+	chctrl = readl(base_addr + TCC_ADMA_CHCTRL_OFFSET);
+	if (chctrl & ADMA_CHCTRL_DAI_RX_DMA_MODE_Msk) {
+		pr_info("timeout: %d, tcnt: 0x%08x, chctrl: 0x%08x, trans: 0x%08x\n",
+				timeout, tcnt, chctrl, transctrl);
+		ret = -ETIME;
+	}
+
+	return ret;
+}
 #endif /*_TCC_SDR_ADMA_H_*/
 
