@@ -1438,7 +1438,7 @@
 	udma0_ac: access_control@16684020 {
 		reg = <16684020 0x20>;
 		access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-		access-control1 = <0x00000000 0x00000000>;
+		access-control1 = <0x16600000 0x16600003>; /* UART 0 Data Register*/
 		access-control2 = <0x00000000 0x00000000>;
 		access-control3 = <0x00000000 0x00000000>;
 	};
@@ -1446,7 +1446,7 @@
 	udma1_ac: access_control@16684040 {
 		reg = <16684040 0x20>;
 		access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-		access-control1 = <0x00000000 0x00000000>;
+		access-control1 = <0x16610000 0x16610003>; /* UART 1 Data Register*/
 		access-control2 = <0x00000000 0x00000000>;
 		access-control3 = <0x00000000 0x00000000>;
 	};
@@ -1454,7 +1454,7 @@
 	udma2_ac: access_control@16684060 {
 		reg = <16684060 0x20>;
 		access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-		access-control1 = <0x00000000 0x00000000>;
+		access-control1 = <0x16620000 0x16620003>; /* UART 2 Data Register*/
 		access-control2 = <0x00000000 0x00000000>;
 		access-control3 = <0x00000000 0x00000000>;
 	};
@@ -1462,7 +1462,7 @@
 	udma3_ac: access_control@16684080 {
 		reg = <16684080 0x20>;
 		access-control0 = <0x20000000 0xC0000000>; /* DRAM */
-		access-control1 = <0x00000000 0x00000000>;
+		access-control1 = <0x16630000 0x16630003>; /* UART 3 Data Register*/
 		access-control2 = <0x00000000 0x00000000>;
 		access-control3 = <0x00000000 0x00000000>;
 	};
