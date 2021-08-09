@@ -772,13 +772,6 @@ static void tcc_isp_enable(struct tcc_isp_state *state, unsigned int enable)
 {
 	if (enable) {
 		/* enable isp */
-		if (tcc_isp_check_all_isp_is_stopped()) {
-			/* reset release of all ISP */
-			tcc_isp_reset(state, OFF);
-		} else {
-			/* already reset release has been done */
-			logi(&(state->pdev->dev), "skip isp reset release\n");
-		}
 		tcc_isp_set_basic(state);
 		tcc_isp_set_tune(state);
 	} else {
@@ -786,6 +779,8 @@ static void tcc_isp_enable(struct tcc_isp_state *state, unsigned int enable)
 		if (tcc_isp_check_all_isp_is_stopped()) {
 			/* reset all ISP */
 			tcc_isp_reset(state, ON);
+			/* reset release of all ISP */
+			tcc_isp_reset(state, OFF);
 		} else {
 			/* already reset has been done */
 			logi(&(state->pdev->dev), "skip isp reset\n");
