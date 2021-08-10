@@ -2006,7 +2006,6 @@ static int32_t tcc_spi_remove(struct platform_device *pdev)
 	struct spi_master *master = platform_get_drvdata(pdev);
 	struct tcc_spi *tccspi = spi_master_get_devdata(master);
 	struct tcc_spi_pl_data *pd;
-	ulong flags;
 	int32_t gdma_enable;
 
 	if (tccspi == NULL) {
@@ -2025,14 +2024,12 @@ static int32_t tcc_spi_remove(struct platform_device *pdev)
 	}
 
 	/* Disable clock */
-	spin_lock_irqsave(&(tccspi->lock), flags);
 	if (pd->pclk != NULL) {
 		clk_disable_unprepare(pd->pclk);
 	}
 	if (pd->hclk != NULL) {
 		clk_disable_unprepare(pd->hclk);
 	}
-	spin_unlock_irqrestore(&(tccspi->lock), flags);
 
 	/* Release DMA buffers */
 	if (tccspi->rx_buf.v_addr != NULL) {
@@ -2056,7 +2053,6 @@ static int32_t tcc_spi_suspend(struct device *dev)
 	struct spi_master *master = dev_get_drvdata(dev);
 	struct tcc_spi *tccspi = spi_master_get_devdata(master);
 	struct tcc_spi_pl_data *pd;
-	ulong flags;
 
 	if (tccspi == NULL) {
 		pr_err("[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
@@ -2068,14 +2064,12 @@ static int32_t tcc_spi_suspend(struct device *dev)
 	TCC_GPSB_BITCLR(tccspi->base + TCC_GPSB_MODE, TCC_GPSB_MODE_EN);
 	tcc_spi_stop_dma(tccspi);
 
-	spin_lock_irqsave(&(tccspi->lock), flags);
 	if (pd->pclk != NULL) {
 		clk_disable_unprepare(pd->pclk);
 	}
 	if (pd->hclk != NULL) {
 		clk_disable_unprepare(pd->hclk);
 	}
-	spin_unlock_irqrestore(&(tccspi->lock), flags);
 
 	return spi_master_suspend(master);
 }
@@ -2084,7 +2078,6 @@ static int32_t tcc_spi_resume(struct device *dev)
 {
 	struct spi_master *master = dev_get_drvdata(dev);
 	struct tcc_spi *tccspi = spi_master_get_devdata(master);
-	ulong flags;
 	int32_t status;
 
 	if (tccspi == NULL) {
@@ -2093,9 +2086,7 @@ static int32_t tcc_spi_resume(struct device *dev)
 	}
 
 	/* Initialize GPSB */
-	spin_lock_irqsave(&(tccspi->lock), flags);
 	status = tcc_spi_init(tccspi);
-	spin_unlock_irqrestore(&(tccspi->lock), flags);
 
 	if (status < 0) {
 		dev_err(dev,
