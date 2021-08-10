@@ -902,7 +902,11 @@ int tcc_sdr_stop(struct tcc_sdr_t *sdr)
 
 	tcc_dai_set_rx_mute(sdr->dai_reg, true);
 
-	ret = tcc_adma_dai_rx_auto_dma_disable(sdr->adma_reg);
+	if (sdr->radio_mode)
+		ret = tcc_adma_dai_rx_auto_dma_disable(sdr->adma_reg);
+	else
+		ret = 1; //i2s mode
+
 	if (ret != 0)
 		tcc_adma_dai_rx_dma_enable(sdr->adma_reg, false);
 
