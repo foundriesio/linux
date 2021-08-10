@@ -34,7 +34,6 @@ printk__Enhance_the_condition_check_of_msleep_in_pr_flush.patch
 # Need resend
 ###########################################################################
 highmem__Dont_disable_preemption_on_RT_in_kmap_atomic.patch
-timers__Move_clearing_of_base__timer_running_under_base__lock.patch
 
 ###########################################################################
 # mm bits polished by Mel and Vlastimil

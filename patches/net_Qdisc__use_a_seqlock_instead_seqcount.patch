@@ -269,7 +269,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	.gso_skb = {
  		.next = (struct sk_buff *)&noop_qdisc.gso_skb,
 @@ -916,9 +920,15 @@ struct Qdisc *qdisc_alloc(struct netdev_
- 	lockdep_set_class(&sch->busylock,
+ 	lockdep_set_class(&sch->seqlock,
  			  dev->qdisc_tx_busylock ?: &qdisc_tx_busylock);
  
 +#ifdef CONFIG_PREEMPT_RT
