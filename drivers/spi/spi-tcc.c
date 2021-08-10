@@ -2078,7 +2078,10 @@ static int32_t tcc_spi_resume(struct device *dev)
 {
 	struct spi_master *master = dev_get_drvdata(dev);
 	struct tcc_spi *tccspi = spi_master_get_devdata(master);
+	struct device_node *np = dev->of_node;
 	int32_t status;
+	int32_t i, nb, cs_value, ret;
+	char cs_name[28];
 
 	if (tccspi == NULL) {
 		pr_err("[ERROR][SPI] [%s] tccspi is null!!\n", __func__);
@@ -2098,11 +2101,35 @@ static int32_t tcc_spi_resume(struct device *dev)
 	/* Get pin control (active state)*/
 	tccspi->pinctrl = devm_pinctrl_get_select(tccspi->dev, "active");
 	if (IS_ERR(tccspi->pinctrl)) {
-		dev_err(tccspi->dev,
+		dev_err(dev,
 				"[ERROR][SPI] Failed to get pinctrl (active state)\n");
 		return -ENXIO;
 	}
 
+	/* Set CS pin direction */
+	if (master->cs_gpios != NULL){
+		nb = of_gpio_named_count(np, "cs-gpios");
+		for (i=0;i<nb;i++){
+			if ((tccspi->mode & SPI_CS_HIGH) == 0U) {
+				cs_value = 1;
+			} else {
+				cs_value = 0;
+			}
+			sprintf(cs_name, "tcc_spi_cs_gpio_%d", i);
+
+			gpio_free(master->cs_gpios[i]);
+			ret = gpio_request(master->cs_gpios[i], cs_name);
+			if (ret != 0) {
+				dev_err(dev, "[ERROR][SPI] gpio_request err (gpio %d ret %d)\n",
+				master->cs_gpios[i], ret);
+			}
+
+			gpio_direction_output(master->cs_gpios[i], cs_value);
+			dev_dbg(dev, "[DEBUG][SPI] %s: cs [gpio: %d] direction output\n",
+					__func__,
+					master->cs_gpios[i]);
+		}
+	}
 	return spi_master_resume(master);
 }
 
