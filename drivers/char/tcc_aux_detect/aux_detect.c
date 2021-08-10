@@ -423,8 +423,21 @@ static int32_t aux_detect_suspend(
 
 static int32_t aux_detect_resume(struct platform_device *pdev)
 {
-	(void)pdev;
-	return 0;
+	struct pinctrl	*pinctrl = NULL;
+	int32_t ret = 0;
+
+	if (pdev == NULL) {
+		elog("aux device is null\n");
+		ret = -ENODEV;
+	} else {
+		/* pinctrl */
+		pinctrl = pinctrl_get_select(&pdev->dev, "default");
+		if (IS_ERR(pinctrl)) {
+			ret = -EFAULT;
+			elog("pinctrl select failed\n");
+		}
+	}
+	return ret;
 }
 
 
