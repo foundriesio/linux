@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static inline bool ___cmpxchg_double_slab(struct kmem_cache *s, struct page *page,
-@@ -428,14 +428,19 @@ static inline bool ___cmpxchg_double_sla
+@@ -429,14 +429,19 @@ static inline bool ___cmpxchg_double_sla
  	return false;
  }
  

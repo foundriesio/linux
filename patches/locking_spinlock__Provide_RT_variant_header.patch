@@ -9,6 +9,8 @@ implementation.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
+V4: spin_unlock() -> rt_spin_unlock() (Peter)
+---
  include/linux/spinlock.h         |   11 ++
  include/linux/spinlock_api_smp.h |    3 
  include/linux/spinlock_rt.h      |  149 +++++++++++++++++++++++++++++++++++++++
@@ -179,7 +181,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +static __always_inline void spin_unlock_irqrestore(spinlock_t *lock,
 +						   unsigned long flags)
 +{
-+	spin_unlock(lock);
++	rt_spin_unlock(lock);
 +}
 +
 +#define spin_trylock(lock)				\

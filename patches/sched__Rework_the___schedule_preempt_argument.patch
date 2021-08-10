@@ -41,7 +41,7 @@ V2: Simplify the masking logic
 ---
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -5822,6 +5822,18 @@ pick_next_task(struct rq *rq, struct tas
+@@ -5820,6 +5820,18 @@ pick_next_task(struct rq *rq, struct tas
  #endif /* CONFIG_SCHED_CORE */
  
  /*
@@ -60,7 +60,7 @@ V2: Simplify the masking logic
   * __schedule() is the main scheduler function.
   *
   * The main means of driving the scheduler and thus entering this function are:
-@@ -5860,7 +5872,7 @@ pick_next_task(struct rq *rq, struct tas
+@@ -5858,7 +5870,7 @@ pick_next_task(struct rq *rq, struct tas
   *
   * WARNING: must be called with preemption disabled!
   */
@@ -69,7 +69,7 @@ V2: Simplify the masking logic
  {
  	struct task_struct *prev, *next;
  	unsigned long *switch_count;
-@@ -5873,13 +5885,13 @@ static void __sched notrace __schedule(b
+@@ -5871,13 +5883,13 @@ static void __sched notrace __schedule(b
  	rq = cpu_rq(cpu);
  	prev = rq->curr;
  
@@ -85,7 +85,7 @@ V2: Simplify the masking logic
  
  	/*
  	 * Make sure that signal_pending_state()->signal_pending() below
-@@ -5913,7 +5925,7 @@ static void __sched notrace __schedule(b
+@@ -5911,7 +5923,7 @@ static void __sched notrace __schedule(b
  	 *  - ptrace_{,un}freeze_traced() can change ->state underneath us.
  	 */
  	prev_state = READ_ONCE(prev->__state);
@@ -94,7 +94,7 @@ V2: Simplify the masking logic
  		if (signal_pending_state(prev_state, prev)) {
  			WRITE_ONCE(prev->__state, TASK_RUNNING);
  		} else {
-@@ -5979,7 +5991,7 @@ static void __sched notrace __schedule(b
+@@ -5977,7 +5989,7 @@ static void __sched notrace __schedule(b
  		migrate_disable_switch(rq, prev);
  		psi_sched_switch(prev, next, !task_on_rq_queued(prev));
  
@@ -103,7 +103,7 @@ V2: Simplify the masking logic
  
  		/* Also unlocks the rq: */
  		rq = context_switch(rq, prev, next, &rf);
-@@ -6000,7 +6012,7 @@ void __noreturn do_task_dead(void)
+@@ -5998,7 +6010,7 @@ void __noreturn do_task_dead(void)
  	/* Tell freezer to ignore us: */
  	current->flags |= PF_NOFREEZE;
  
@@ -112,7 +112,7 @@ V2: Simplify the masking logic
  	BUG();
  
  	/* Avoid "noreturn function does return" - but don't continue if BUG() is a NOP: */
-@@ -6061,7 +6073,7 @@ asmlinkage __visible void __sched schedu
+@@ -6059,7 +6071,7 @@ asmlinkage __visible void __sched schedu
  	sched_submit_work(tsk);
  	do {
  		preempt_disable();
@@ -121,7 +121,7 @@ V2: Simplify the masking logic
  		sched_preempt_enable_no_resched();
  	} while (need_resched());
  	sched_update_worker(tsk);
-@@ -6089,7 +6101,7 @@ void __sched schedule_idle(void)
+@@ -6087,7 +6099,7 @@ void __sched schedule_idle(void)
  	 */
  	WARN_ON_ONCE(current->__state);
  	do {
@@ -130,7 +130,7 @@ V2: Simplify the masking logic
  	} while (need_resched());
  }
  
-@@ -6142,7 +6154,7 @@ static void __sched notrace preempt_sche
+@@ -6140,7 +6152,7 @@ static void __sched notrace preempt_sche
  		 */
  		preempt_disable_notrace();
  		preempt_latency_start(1);
@@ -139,7 +139,7 @@ V2: Simplify the masking logic
  		preempt_latency_stop(1);
  		preempt_enable_no_resched_notrace();
  
-@@ -6221,7 +6233,7 @@ asmlinkage __visible void __sched notrac
+@@ -6219,7 +6231,7 @@ asmlinkage __visible void __sched notrac
  		 * an infinite recursion.
  		 */
  		prev_ctx = exception_enter();
@@ -148,7 +148,7 @@ V2: Simplify the masking logic
  		exception_exit(prev_ctx);
  
  		preempt_latency_stop(1);
-@@ -6370,7 +6382,7 @@ asmlinkage __visible void __sched preemp
+@@ -6368,7 +6380,7 @@ asmlinkage __visible void __sched preemp
  	do {
  		preempt_disable();
  		local_irq_enable();

@@ -14,8 +14,8 @@ parameter, to use the internal version.
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- mm/slub.c |   49 +++++++++++++++++++++++++++++++------------------
- 1 file changed, 31 insertions(+), 18 deletions(-)
+ mm/slub.c |   52 +++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 33 insertions(+), 19 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
@@ -55,9 +55,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static inline bool ___cmpxchg_double_slab(struct kmem_cache *s, struct page *page,
-@@ -390,21 +407,15 @@ static inline bool ___cmpxchg_double_sla
+@@ -388,23 +405,18 @@ static inline bool ___cmpxchg_double_sla
+ 	} else
+ #endif
  	{
- 		unsigned long flags;
+-		unsigned long flags;
++		/* init to 0 to prevent spurious warnings */
++		unsigned long flags = 0;
  
 -		if (disable_irqs)
 -			local_irq_save(flags);
@@ -80,7 +84,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	cpu_relax();
-@@ -1255,11 +1266,11 @@ static noinline int free_debug_processin
+@@ -1255,11 +1267,11 @@ static noinline int free_debug_processin
  	struct kmem_cache_node *n = get_node(s, page_to_nid(page));
  	void *object = head;
  	int cnt = 0;
@@ -94,7 +98,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (s->flags & SLAB_CONSISTENCY_CHECKS) {
  		if (!check_slab(s, page))
-@@ -1292,7 +1303,7 @@ static noinline int free_debug_processin
+@@ -1292,7 +1304,7 @@ static noinline int free_debug_processin
  		slab_err(s, page, "Bulk freelist count(%d) invalid(%d)\n",
  			 bulk_cnt, cnt);
  
@@ -103,7 +107,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_unlock_irqrestore(&n->list_lock, flags);
  	if (!ret)
  		slab_fix(s, "Object at 0x%p not freed", object);
-@@ -4048,9 +4059,10 @@ static void list_slab_objects(struct kme
+@@ -4054,9 +4066,10 @@ static void list_slab_objects(struct kme
  	void *addr = page_address(page);
  	unsigned long *map;
  	void *p;
@@ -115,7 +119,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	map = get_map(s, page);
  	for_each_object(p, s, addr, page->objects) {
-@@ -4061,7 +4073,7 @@ static void list_slab_objects(struct kme
+@@ -4067,7 +4080,7 @@ static void list_slab_objects(struct kme
  		}
  	}
  	put_map(map);
@@ -124,7 +128,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
  }
  
-@@ -4786,8 +4798,9 @@ static void validate_slab(struct kmem_ca
+@@ -4799,8 +4812,9 @@ static void validate_slab(struct kmem_ca
  {
  	void *p;
  	void *addr = page_address(page);
@@ -135,7 +139,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (!check_slab(s, page) || !on_freelist(s, page, NULL))
  		goto unlock;
-@@ -4802,7 +4815,7 @@ static void validate_slab(struct kmem_ca
+@@ -4815,7 +4829,7 @@ static void validate_slab(struct kmem_ca
  			break;
  	}
  unlock:

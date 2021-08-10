@@ -7,12 +7,22 @@ locking primitives for RT.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- include/linux/rtmutex.h |   11 +++++++++++
- 1 file changed, 11 insertions(+)
+V4: Use READ_ONCE() - Davidlohr
+---
+ include/linux/rtmutex.h |   12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
 --- a/include/linux/rtmutex.h
 +++ b/include/linux/rtmutex.h
-@@ -32,6 +32,17 @@ struct rt_mutex_base {
+@@ -16,6 +16,7 @@
+ #include <linux/linkage.h>
+ #include <linux/rbtree.h>
+ #include <linux/spinlock_types.h>
++#include <linux/compiler.h>
+ 
+ extern int max_lock_depth; /* for sysctl */
+ 
+@@ -32,6 +33,17 @@ struct rt_mutex_base {
  	.owner = NULL							\
  }
  
@@ -24,7 +34,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 + */
 +static inline bool rt_mutex_base_is_locked(struct rt_mutex_base *lock)
 +{
-+	return lock->owner != NULL;
++	return READ_ONCE(lock->owner) != NULL;
 +}
 +
  extern void rt_mutex_base_init(struct rt_mutex_base *rtb);

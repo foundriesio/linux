@@ -1,8 +1,6 @@
-Subject: shmem: Use raw_spinlock_t for ->stat_lock
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Fri Aug 14 18:53:34 2020 +0200
-
-From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Subject: [PATCH] shmem: Use raw_spinlock_t for ->stat_lock
+Date: Fri, 06 Aug 2021 16:29:16 +0200
 
 Each CPU has SHMEM_INO_BATCH inodes available in `->ino_batch' which is
 per-CPU. Access here is serialized by disabling preemption. If the pool is
@@ -11,19 +9,17 @@ empty, it gets reloaded from `->next_ino'. Access here is serialized by
 preemption.
 One way around it would make per-CPU ino_batch struct containing the inode
 number a local_lock_t.
-Another sollution is to promote ->stat_lock to a raw_spinlock_t. The critical
-sections are short. The mpol_put() should be moved outside of the critical
-section to avoid invoking the destrutor with disabled preemption.
+Another solution is to promote ->stat_lock to a raw_spinlock_t. The critical
+sections are short. The mpol_put() must be moved outside of the critical
+section to avoid invoking the destructor with disabled preemption.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
+Link: https://lore.kernel.org/r/20210806142916.jdwkb5bx62q5fwfo@linutronix.de
 ---
  include/linux/shmem_fs.h |    2 +-
  mm/shmem.c               |   31 +++++++++++++++++--------------
  2 files changed, 18 insertions(+), 15 deletions(-)
----
+
 --- a/include/linux/shmem_fs.h
 +++ b/include/linux/shmem_fs.h
 @@ -31,7 +31,7 @@ struct shmem_sb_info {

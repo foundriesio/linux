@@ -542,7 +542,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -EXPORT_SYMBOL(vprintk);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3164,8 +3164,8 @@ static int select_fallback_rq(int cpu, s
+@@ -3162,8 +3162,8 @@ static int select_fallback_rq(int cpu, s
  		 * leave kernel.
  		 */
  		if (p->mm && printk_ratelimit()) {
@@ -761,7 +761,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -9801,7 +9801,6 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -9803,7 +9803,6 @@ void ftrace_dump(enum ftrace_dump_mode o
  	tracing_off();
  
  	local_irq_save(flags);
@@ -769,7 +769,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/* Simulate the iterator */
  	trace_init_global_iter(&iter);
-@@ -9883,7 +9882,6 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -9885,7 +9884,6 @@ void ftrace_dump(enum ftrace_dump_mode o
  		atomic_dec(&per_cpu_ptr(iter.array_buffer->data, cpu)->disabled);
  	}
  	atomic_dec(&dump_running);

@@ -15,7 +15,7 @@ V3: New patch - Suggested by Peter
 
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
-@@ -3085,27 +3085,22 @@ static int futex_unlock_pi(u32 __user *u
+@@ -3070,27 +3070,22 @@ static int futex_unlock_pi(u32 __user *u
  }
  
  /**
@@ -48,7 +48,7 @@ V3: New patch - Suggested by Peter
  
  	/*
  	 * With the hb lock held, we avoid races while we process the wakeup.
-@@ -3114,22 +3109,21 @@ int handle_early_requeue_pi_wakeup(struc
+@@ -3099,22 +3094,21 @@ int handle_early_requeue_pi_wakeup(struc
  	 * It can't be requeued from uaddr2 to something else since we don't
  	 * support a PI aware source futex for requeue.
  	 */
@@ -86,7 +86,7 @@ V3: New patch - Suggested by Peter
  	return ret;
  }
  
-@@ -3232,7 +3226,9 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3217,7 +3211,9 @@ static int futex_wait_requeue_pi(u32 __u
  	futex_wait_queue_me(hb, &q, to);
  
  	spin_lock(&hb->lock);

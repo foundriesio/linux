@@ -89,8 +89,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 V3: Folded Peter's improvements
 ---
- kernel/futex.c |  311 ++++++++++++++++++++++++++++++++++++++++++++++++---------
- 1 file changed, 262 insertions(+), 49 deletions(-)
+ kernel/futex.c |  308 +++++++++++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 259 insertions(+), 49 deletions(-)
 ---
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
@@ -174,7 +174,7 @@ V3: Folded Peter's improvements
  };
  
  /*
-@@ -1793,6 +1851,108 @@ void requeue_futex(struct futex_q *q, st
+@@ -1772,6 +1830,108 @@ void requeue_futex(struct futex_q *q, st
  	q->key = *key2;
  }
  
@@ -283,7 +283,7 @@ V3: Folded Peter's improvements
  /**
   * requeue_pi_wake_futex() - Wake a task that acquired the lock during requeue
   * @q:		the futex_q
-@@ -1820,6 +1980,8 @@ void requeue_pi_wake_futex(struct futex_
+@@ -1799,6 +1959,8 @@ void requeue_pi_wake_futex(struct futex_
  
  	q->lock_ptr = &hb->lock;
  
@@ -292,7 +292,7 @@ V3: Folded Peter's improvements
  	wake_up_state(q->task, TASK_NORMAL);
  }
  
-@@ -1890,6 +2052,10 @@ futex_proxy_trylock_atomic(u32 __user *p
+@@ -1869,6 +2031,10 @@ futex_proxy_trylock_atomic(u32 __user *p
  	if (!match_futex(top_waiter->requeue_pi_key, key2))
  		return -EINVAL;
  
@@ -303,7 +303,7 @@ V3: Folded Peter's improvements
  	/*
  	 * Try to take the lock for top_waiter.  Set the FUTEX_WAITERS bit in
  	 * the contended case or if set_waiters is 1.  The pi_state is returned
-@@ -1899,8 +2065,22 @@ futex_proxy_trylock_atomic(u32 __user *p
+@@ -1878,8 +2044,22 @@ futex_proxy_trylock_atomic(u32 __user *p
  	ret = futex_lock_pi_atomic(pifutex, hb2, key2, ps, top_waiter->task,
  				   exiting, set_waiters);
  	if (ret == 1) {
@@ -326,7 +326,7 @@ V3: Folded Peter's improvements
  	}
  	return ret;
  }
-@@ -2041,6 +2221,8 @@ static int futex_requeue(u32 __user *uad
+@@ -2020,6 +2200,8 @@ static int futex_requeue(u32 __user *uad
  		 * intend to requeue waiters, force setting the FUTEX_WAITERS
  		 * bit.  We force this here where we are able to easily handle
  		 * faults rather in the requeue loop below.
@@ -335,18 +335,15 @@ V3: Folded Peter's improvements
  		 */
  		ret = futex_proxy_trylock_atomic(uaddr2, hb1, hb2, &key1,
  						 &key2, &pi_state,
-@@ -2054,6 +2236,27 @@ static int futex_requeue(u32 __user *uad
- 		 * vpid of the top waiter task.
+@@ -2033,6 +2215,24 @@ static int futex_requeue(u32 __user *uad
+ 		 * VPID of the top waiter task.
  		 * If the lock was not taken, we have pi_state and an initial
  		 * refcount on it. In case of an error we have nothing.
 +		 *
 +		 * The top waiter's requeue_state is up to date:
 +		 *
 +		 *  - If the lock was acquired atomically (ret > 0), then
-+		 *    the state is Q_REQUEUE_PI_LOCKED. No matter whether
-+		 *    the below lookup_pi_state() fails or not requeue_state
-+		 *    is correct because that waiter is dequeued and woken
-+		 *    up and nothing can hold it up.
++		 *    the state is Q_REQUEUE_PI_LOCKED.
 +		 *
 +		 *  - If the trylock failed with an error (ret < 0) then
 +		 *    the state is either Q_REQUEUE_PI_NONE, i.e. "nothing
@@ -363,7 +360,7 @@ V3: Folded Peter's improvements
  		 */
  		if (ret > 0) {
  			WARN_ON(pi_state);
-@@ -2079,7 +2282,10 @@ static int futex_requeue(u32 __user *uad
+@@ -2064,7 +2264,10 @@ static int futex_requeue(u32 __user *uad
  			/* We hold a reference on the pi state. */
  			break;
  
@@ -375,7 +372,7 @@ V3: Folded Peter's improvements
  		case -EFAULT:
  			double_unlock_hb(hb1, hb2);
  			hb_waiters_dec(hb2);
-@@ -2155,21 +2361,39 @@ static int futex_requeue(u32 __user *uad
+@@ -2140,21 +2343,39 @@ static int futex_requeue(u32 __user *uad
  		 * object of the waiter.
  		 */
  		get_pi_state(pi_state);
@@ -420,7 +417,7 @@ V3: Folded Peter's improvements
  			/*
  			 * rt_mutex_start_proxy_lock() detected a potential
  			 * deadlock when we tried to queue that waiter.
-@@ -2179,15 +2403,13 @@ static int futex_requeue(u32 __user *uad
+@@ -2164,15 +2385,13 @@ static int futex_requeue(u32 __user *uad
  			 */
  			this->pi_state = NULL;
  			put_pi_state(pi_state);
@@ -437,7 +434,7 @@ V3: Folded Peter's improvements
  	}
  
  	/*
-@@ -3176,6 +3398,7 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3161,6 +3380,7 @@ static int futex_wait_requeue_pi(u32 __u
  	struct futex_hash_bucket *hb;
  	union futex_key key2 = FUTEX_KEY_INIT;
  	struct futex_q q = futex_q_init;
@@ -445,7 +442,7 @@ V3: Folded Peter's improvements
  	int res, ret;
  
  	if (!IS_ENABLED(CONFIG_FUTEX_PI))
-@@ -3225,32 +3448,22 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3210,32 +3430,22 @@ static int futex_wait_requeue_pi(u32 __u
  	/* Queue the futex_q, drop the hb lock, wait for wakeup. */
  	futex_wait_queue_me(hb, &q, to);
  
@@ -488,7 +485,7 @@ V3: Folded Peter's improvements
  			 */
  			put_pi_state(q.pi_state);
  			spin_unlock(q.lock_ptr);
-@@ -3260,18 +3473,14 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3245,18 +3455,14 @@ static int futex_wait_requeue_pi(u32 __u
  			 */
  			ret = ret < 0 ? ret : 0;
  		}
@@ -511,7 +508,7 @@ V3: Folded Peter's improvements
  		spin_lock(q.lock_ptr);
  		if (ret && !rt_mutex_cleanup_proxy_lock(pi_mutex, &rt_waiter))
  			ret = 0;
-@@ -3291,17 +3500,21 @@ static int futex_wait_requeue_pi(u32 __u
+@@ -3276,17 +3482,21 @@ static int futex_wait_requeue_pi(u32 __u
  
  		unqueue_me_pi(&q);
  		spin_unlock(q.lock_ptr);

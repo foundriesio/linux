@@ -12,8 +12,7 @@ collision.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
+Link: https://lkml.kernel.org/r/20210806152551.qio7c3ho6pexezup@linutronix.de
 ---
  samples/kfifo/bytestream-example.c |   12 ++++++------
  samples/kfifo/inttype-example.c    |   12 ++++++------

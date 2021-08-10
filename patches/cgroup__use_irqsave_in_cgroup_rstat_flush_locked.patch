@@ -18,6 +18,7 @@ Acquire the raw_spin_lock_t with disabled interrupts.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Link: https://www.spinics.net/lists/cgroups/msg23051.html
 
 
 ---

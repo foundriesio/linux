@@ -1,21 +1,31 @@
-Subject: highmem: Don't disable preemption on RT in kmap_atomic()
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Fri Oct 30 13:59:06 2020 +0100
+Date: Fri, 30 Oct 2020 13:59:06 +0100
+Subject: [PATCH] highmem: Don't disable preemption on RT in kmap_atomic()
 
-From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+kmap_atomic() disables preemption and pagefaults for historical
+reasons. The conversion to kmap_local(), which only disables
+migration, cannot be done wholesale because quite some call sites need
+to be updated to accommodate with the changed semantics.
 
-Disabling preemption makes it impossible to acquire sleeping locks within
-kmap_atomic() section.
-For PREEMPT_RT it is sufficient to disable migration.
+On PREEMPT_RT enabled kernels the kmap_atomic() semantics are
+problematic due to the implicit disabling of preemption which makes it
+impossible to acquire 'sleeping' spinlocks within the kmap atomic
+sections.
+
+PREEMPT_RT replaces the preempt_disable() with a migrate_disable() for
+more than a decade. It could be argued that this is a justification to
+do this unconditionally, but PREEMPT_RT covers only a limited number of
+architectures and it disables some functionality which limits the
+coverage further.
+
+Limit the replacement to PREEMPT_RT for now.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
+https://lkml.kernel.org/r/20210810091116.pocdmaatdcogvdso@linutronix.de
 ---
  include/linux/highmem-internal.h |   27 ++++++++++++++++++++++-----
  1 file changed, 22 insertions(+), 5 deletions(-)
----
+
 --- a/include/linux/highmem-internal.h
 +++ b/include/linux/highmem-internal.h
 @@ -90,7 +90,11 @@ static inline void __kunmap_local(void *

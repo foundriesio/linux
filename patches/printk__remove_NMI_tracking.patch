@@ -234,7 +234,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		len = vprintk_store(0, LOGLEVEL_DEFAULT, NULL, fmt, args);
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -9801,7 +9801,7 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -9803,7 +9803,7 @@ void ftrace_dump(enum ftrace_dump_mode o
  	tracing_off();
  
  	local_irq_save(flags);
@@ -243,7 +243,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/* Simulate the iterator */
  	trace_init_global_iter(&iter);
-@@ -9883,7 +9883,7 @@ void ftrace_dump(enum ftrace_dump_mode o
+@@ -9885,7 +9885,7 @@ void ftrace_dump(enum ftrace_dump_mode o
  		atomic_dec(&per_cpu_ptr(iter.array_buffer->data, cpu)->disabled);
  	}
  	atomic_dec(&dump_running);

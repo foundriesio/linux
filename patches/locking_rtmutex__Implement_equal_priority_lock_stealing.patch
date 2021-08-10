@@ -30,7 +30,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -321,6 +321,26 @@ static __always_inline int rt_mutex_wait
+@@ -338,6 +338,26 @@ static __always_inline int rt_mutex_wait
  	return 1;
  }
  
@@ -57,7 +57,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define __node_2_waiter(node) \
  	rb_entry((node), struct rt_mutex_waiter, tree_entry)
  
-@@ -912,19 +932,21 @@ try_to_take_rt_mutex(struct rt_mutex_bas
+@@ -932,19 +952,21 @@ try_to_take_rt_mutex(struct rt_mutex_bas
  	 * trylock attempt.
  	 */
  	if (waiter) {
@@ -89,7 +89,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	} else {
  		/*
  		 * If the lock has waiters already we check whether @task is
-@@ -935,13 +957,9 @@ try_to_take_rt_mutex(struct rt_mutex_bas
+@@ -955,13 +977,9 @@ try_to_take_rt_mutex(struct rt_mutex_bas
  		 * not need to be dequeued.
  		 */
  		if (rt_mutex_has_waiters(lock)) {

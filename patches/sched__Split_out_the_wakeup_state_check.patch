@@ -24,7 +24,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3564,6 +3564,22 @@ static void ttwu_queue(struct task_struc
+@@ -3562,6 +3562,22 @@ static void ttwu_queue(struct task_struc
  }
  
  /*
@@ -47,7 +47,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   * Notes on Program-Order guarantees on SMP systems.
   *
   *  MIGRATION
-@@ -3702,10 +3718,9 @@ try_to_wake_up(struct task_struct *p, un
+@@ -3700,10 +3716,9 @@ try_to_wake_up(struct task_struct *p, un
  		 *  - we're serialized against set_special_state() by virtue of
  		 *    it disabling IRQs (this allows not taking ->pi_lock).
  		 */
@@ -59,7 +59,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		trace_sched_waking(p);
  		WRITE_ONCE(p->__state, TASK_RUNNING);
  		trace_sched_wakeup(p);
-@@ -3720,14 +3735,11 @@ try_to_wake_up(struct task_struct *p, un
+@@ -3718,14 +3733,11 @@ try_to_wake_up(struct task_struct *p, un
  	 */
  	raw_spin_lock_irqsave(&p->pi_lock, flags);
  	smp_mb__after_spinlock();
