@@ -956,17 +956,14 @@ static int32_t tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 
 	pv_i2c = filp->private_data;
 	i2c = pv_i2c;
-	spin_lock_irqsave(&i2c->lock, flags);
 
 	if (i2c->opened) {
-		spin_unlock_irqrestore(&i2c->lock, flags);
 		return -EBUSY;
 	}
 
 	if (i2c->read_buf == NULL) {
 		i2c->read_buf = kmalloc(i2c->rw_buf_size, GFP_KERNEL);
 		if (i2c->read_buf == NULL) {
-			spin_unlock_irqrestore(&i2c->lock, flags);
 			ret = -ENOMEM;
 			goto memerr;
 		}
@@ -975,7 +972,6 @@ static int32_t tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 	if (i2c->write_buf == NULL) {
 		i2c->write_buf = kmalloc(i2c->rw_buf_size, GFP_KERNEL);
 		if (i2c->write_buf == NULL) {
-			spin_unlock_irqrestore(&i2c->lock, flags);
 			ret = -ENOMEM;
 			goto memerr;
 		}
@@ -989,7 +985,6 @@ static int32_t tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 	if (ret != 0) {
 		dev_err(i2c->dev,
 			"[ERROR][I2C] failed to set port configuration\n");
-		spin_unlock_irqrestore(&i2c->lock, flags);
 		ret = -ENXIO;
 		goto memerr;
 	}
@@ -999,14 +994,12 @@ static int32_t tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 		if (ret != 0) {
 			dev_err(i2c->dev,
 				"[ERROR][I2C] can't do i2c slave hclk clock enable\n");
-			spin_unlock_irqrestore(&i2c->lock, flags);
 			ret = -ENXIO;
 			goto memerr;
 		}
 	} else {
 		dev_err(i2c->dev,
 			"[ERROR][I2C] failed to enable i2c slave clock\n");
-		spin_unlock_irqrestore(&i2c->lock, flags);
 		ret = -ENXIO;
 		goto memerr;
 	}
@@ -1019,7 +1012,6 @@ static int32_t tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 	if (ret < 0) {
 		dev_err(i2c->dev, "[ERROR][I2C] failed to request irq %i\n",
 			i2c->irq);
-		spin_unlock_irqrestore(&i2c->lock, flags);
 		goto clkerr;
 	}
 
@@ -1028,6 +1020,7 @@ static int32_t tcc_i2c_slave_open(struct inode *inode, struct file *filp)
 	init_waitqueue_head(&(i2c->wait_q));
 
 	/* Initialize circular buffer */
+	spin_lock_irqsave(&i2c->lock, flags);
 	i2c->tx_buf.circ.head = 0;
 	i2c->tx_buf.circ.tail = i2c->tx_buf.circ.head;
 	i2c->rx_buf.circ.head = 0;
@@ -1074,8 +1067,6 @@ static int32_t tcc_i2c_slave_release(struct inode *inode, struct file *filp)
 	i2c = pv_i2c;
 	dev_dbg(i2c->dev, "[DEBUG][I2C] %s\n", __func__);
 
-	spin_lock_irqsave(&i2c->lock, flags);
-
 	/* Disable i2c slave core */
 	i2c_slave_writel(0x0, i2c->regs + I2C_CTL);
 
@@ -1100,10 +1091,10 @@ static int32_t tcc_i2c_slave_release(struct inode *inode, struct file *filp)
 		kfree(i2c->write_buf);
 	}
 
+	spin_lock_irqsave(&i2c->lock, flags);
 	i2c->read_buf = NULL;
 	i2c->write_buf = NULL;
 	i2c->opened = (bool)false;
-
 	spin_unlock_irqrestore(&i2c->lock, flags);
 
 	tcc_i2c_slave_stop_dma_engine(i2c, I2C_SLV_RX);
@@ -1248,10 +1239,10 @@ static ssize_t tcc_i2c_slave_write(struct file *filp, const char *buf,
 			__func__, tcc_i2c_slave_tx_fifo_cnt(i2c));
 	} else {
 		/* DMA mode */
-		spin_lock_irqsave(&i2c->lock, flags);
 		if (i2c->is_tx_dma_running == 0) {
 			int32_t copy_size;
 
+			spin_lock_irqsave(&i2c->lock, flags);
 			i2c->is_tx_dma_running = 1;
 			spin_unlock_irqrestore(&i2c->lock, flags);
 
@@ -1820,12 +1811,10 @@ static int32_t tcc_i2c_slave_suspend(struct device *dev)
 {
 	struct tcc_i2c_slave *i2c = dev_get_drvdata(dev);
 
-	spin_lock(&i2c->lock);
 	if (i2c->hclk != NULL) {
 		clk_disable_unprepare(i2c->hclk);
 	}
 	i2c->is_suspended = (bool)true;
-	spin_unlock(&i2c->lock);
 	return 0;
 }
 
@@ -1834,14 +1823,12 @@ static int32_t tcc_i2c_slave_resume(struct device *dev)
 	int32_t ret;
 	struct tcc_i2c_slave *i2c = dev_get_drvdata(dev);
 
-	spin_lock(&i2c->lock);
 	/* Enable Clock */
 	if (i2c->hclk != NULL) {
 		ret = clk_prepare_enable(i2c->hclk);
 		if (ret < 0) {
 			dev_err(i2c->dev,
 				"[ERROR][I2C] can't do i2c slave hclk clock enable\n");
-			spin_unlock(&i2c->lock);
 			return -ENXIO;
 		}
 	}
@@ -1851,14 +1838,12 @@ static int32_t tcc_i2c_slave_resume(struct device *dev)
 		dev_err(i2c->dev,
 			"[ERROR][I2C] Failed to get pinctrl (default state)\n");
 		clk_disable_unprepare(i2c->hclk);
-		spin_unlock(&i2c->lock);
 		return -ENODEV;
 	}
 	/* Initialize I2C Slave */
 	tcc_i2c_slave_hwinit(i2c);
 	i2c->is_suspended = (bool)false;
 
-	spin_unlock(&i2c->lock);
 	return 0;
 }
 
