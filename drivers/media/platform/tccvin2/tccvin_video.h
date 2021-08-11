@@ -301,6 +301,7 @@ struct tccvin_subdev {
 	struct v4l2_async_subdev asd;
 	struct v4l2_subdev *sd;
 	struct v4l2_subdev_format fmt;
+	int channel;
 };
 
 struct tccvin_device {

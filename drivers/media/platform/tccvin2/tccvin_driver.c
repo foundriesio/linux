@@ -61,7 +61,6 @@ static inline struct v4l2_subdev *tccvin_search_subdev(
 	mutex_lock(&founded_subdev_list_lock);
 
 	for (i = 0; i < founded_subdev_num; i++) {
-		logi(dev_ptr, "check founded subdev %d\n", i);
 		if (founded_subdev[i]->dev->of_node == e) {
 			mutex_unlock(&founded_subdev_list_lock);
 			return founded_subdev[i];
@@ -336,10 +335,10 @@ void tccvin_print_fw_node_info(struct tccvin_device *vdev,
 
 	of_property_read_string(ep, "io-direction", &io);
 
-	logi(dev_ptr,
+	logd(dev_ptr,
 		"end point is %s %s\n", parent_node->name, io);
 
-	logi(dev_ptr,
+	logd(dev_ptr,
 		"bus-type: %d\n", vdev->fw_ep[vdev->num_ep].bus_type);
 	switch (vdev->fw_ep[vdev->num_ep].bus_type) {
 	case V4L2_MBUS_PARALLEL:
@@ -413,10 +412,13 @@ static void tccvin_fwnode_endpoint_parse(struct tccvin_device *vdev,
 }
 
 static inline void tccvin_add_async_subdev(struct tccvin_device *vdev,
-					   struct device_node *node)
+					   struct device_node *node,
+					   int ch)
 {
 	struct v4l2_async_subdev *asd = NULL;
 	int linked_sd_idx = vdev->num_asd + vdev->bounded_subdevs;
+
+	vdev->linked_subdevs[linked_sd_idx].channel = ch;
 
 	asd = &(vdev->linked_subdevs[linked_sd_idx].asd);
 
@@ -454,15 +456,21 @@ static int tccvin_traversal_subdevices(struct tccvin_device *vdev,
 
 	founded_sd = tccvin_search_subdev(vdev, node);
 	if (founded_sd == NULL) {
-		tccvin_add_async_subdev(vdev, node);
+		tccvin_add_async_subdev(vdev, node, target_ch);
 	} else {
 		linked_sd_idx = vdev->num_asd + vdev->bounded_subdevs;
 		vdev->linked_subdevs[linked_sd_idx].sd = founded_sd;
+		vdev->linked_subdevs[linked_sd_idx].channel = target_ch;
 		vdev->bounded_subdevs++;
 		logi(dev_ptr,
 			"already subdev(%s) is founded\n", node->name);
 	}
 
+	if (target_ch != -1) {
+		logi(tccvin_device_to_devptr(vdev),
+			"linked to the %s's channel(%d)\n",
+			node->name, target_ch);
+	}
 skip_alloc_async_subdev:
 	for_each_endpoint_of_node(node, local_ep) {
 		of_property_read_string(local_ep, "io-direction", &io);
@@ -494,7 +502,7 @@ skip_alloc_async_subdev:
 
 			if (target_ch != -1 && target_ch == local_input_ch) {
 				logi(dev_ptr,
-					"found matched target ch(%d)\n",
+					"matching target channel(%d)\n",
 					target_ch);
 				target_ch = -1;
 				skip_traversal = true;
@@ -503,9 +511,7 @@ skip_alloc_async_subdev:
 			if (target_ch != -1 && local_input_ch != -1 &&
 				target_ch != local_input_ch) {
 				logi(dev_ptr,
-					"skip this ep... ch is not matched\n");
-				logi(dev_ptr,
-					"target_ch(%d), input_ch(%d)\n",
+					"target_ch(%d), current EP's ch(%d)\n",
 					target_ch, local_input_ch);
 				of_node_put(remote_dev);
 				of_node_put(remote_ep);
