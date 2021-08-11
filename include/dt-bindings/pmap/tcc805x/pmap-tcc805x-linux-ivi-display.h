@@ -26,8 +26,11 @@
 //****************************** Calculation ******************************/
 #undef SZ_1MB
 #define SZ_1MB				(1024*1024)
+#undef ARRAY_16MBYTE
 #define ARRAY_16MBYTE(x)		((((x) + ((16*SZ_1MB)-1)) >> 24) << 24)
+#undef ARRAY_MBYTE
 #define ARRAY_MBYTE(x)			((((x) + (SZ_1MB-1)) >> 20) << 20)
+#undef ARRAY_256KBYTE
 #define ARRAY_256KBYTE(x)		((((x) + ((SZ_1MB/4)-1)) >> 18) << 18)
 
 #if 0
