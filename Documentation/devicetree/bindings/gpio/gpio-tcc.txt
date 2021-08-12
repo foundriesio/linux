@@ -23,7 +23,7 @@ Required properties:
        3 : base source number
        4 : number of pin
 //Second number ranges
-       5 : start pin number 
+       5 : start pin number
        6 : base source number
        7 : number of pin
 //Next number ranges
@@ -42,7 +42,7 @@ Required properties:
        4 = active high level-sensitive
        8 = active low level-sensitive
  - interrupt-controller: Identifies the node as an interrupt controller
- - interrupts: The interrupt number to fthe cpu.The interrupt specifier format 
+ - interrupts: The interrupt number to fthe cpu.The interrupt specifier format
                depends on the interrupt controller
 
 Optional properties:

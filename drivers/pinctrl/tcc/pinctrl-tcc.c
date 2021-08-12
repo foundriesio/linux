@@ -244,9 +244,8 @@ static s32 tcc_dt_node_to_map(struct pinctrl_dev *pctldev,
 	}
 
 	prop_ret = of_find_property(np, "telechips,pin-function", NULL);
-	if (prop_ret != NULL) {
+	if (prop_ret != NULL)
 		++nmaps;
-	}
 
 	if (np == NULL) {
 		dev_err(pctl->dev,
@@ -885,7 +884,8 @@ static int tcc_gpio_set_function(void __iomem *base, u32 offset, int func)
 	}
 
 	reg = reg - base_offset_sc;
-	return request_gpio_to_sc((phys_addr_t)reg, shift, width, (ulong)func_value);
+	return request_gpio_to_sc((phys_addr_t)reg, shift, width,
+		(ulong)func_value);
 #else
 	data = readl(reg) & ~mask;
 	data |= func << shift;
@@ -940,7 +940,8 @@ static int tcc_gpio_set_drive_strength(void __iomem *base, u32 offset,
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	bit_num = (offset % 16U) << 1U;
 	reg = reg - base_offset_sc;
-	return request_gpio_to_sc((phys_addr_t)reg, (ulong)bit_num, 2U, (ulong)value);
+	return request_gpio_to_sc((phys_addr_t)reg, (ulong)bit_num, 2U,
+				    (ulong)value);
 #else
 	data = readl(reg);
 	data &= ~((u32)0x3U << (2U * (offset % 16U)));
@@ -1004,7 +1005,8 @@ static int tcc_pin_conf_get(void __iomem *base, u32 offset, int param)
 }
 
 #define TCC_ECLKSEL		(0x2B0U)
-int tcc_gpio_set_eclk_sel(void __iomem *base, u32 offset, s32 value, struct tcc_pinctrl *pctl)
+int tcc_gpio_set_eclk_sel(void __iomem *base, u32 offset, s32 value,
+				    struct tcc_pinctrl *pctl)
 {
 	void __iomem *reg = pctl->base + TCC_ECLKSEL;
 	struct tcc_pin_bank *bank;
@@ -1030,7 +1032,9 @@ int tcc_gpio_set_eclk_sel(void __iomem *base, u32 offset, s32 value, struct tcc_
 	for (i = 0; i < pctl->nbanks ; i++) {
 		if (bank->reg_base == port) {
 			if (bank->source_num == 0xffU) {
-						(void)pr_err("[ERROR][ECLK] %s: %s is not supported for external interrupt\n", __func__, bank->name);
+				(void)pr_err(
+		"[ERROR][ECLK] %s: %s is not supported for external interrupt\n"
+						    , __func__, bank->name);
 				return -EINVAL;
 			}
 			for (j = 0; j < bank->source_num; j++) {
@@ -1073,7 +1077,8 @@ int tcc_gpio_set_eclk_sel(void __iomem *base, u32 offset, s32 value, struct tcc_
 
 #if defined(CONFIG_PINCTRL_TCC_SCFW)
 	reg = reg - base_offset_sc;
-	return request_gpio_to_sc((ulong)reg, (ulong)value << 3U, 8U, (ulong)idx);
+	return request_gpio_to_sc((ulong)reg, (ulong)value << 3U, 8U,
+				(ulong)idx);
 #else
 	data = readl(reg);
 	data &= ~((u32)0xFFU << ((u32)value * 8U));
@@ -1269,9 +1274,12 @@ static int tcc_pinctrl_probe(struct platform_device *pdev)
 			return -EINVAL;
 		}
 		if (bank->source_num != 0xffU) {
-			bank->source_offset_base = devm_kzalloc(&pdev->dev, sizeof(u32), GFP_KERNEL);
-			bank->source_base = devm_kzalloc(&pdev->dev, sizeof(u32), GFP_KERNEL);
-			bank->source_range = devm_kzalloc(&pdev->dev, sizeof(u32), GFP_KERNEL);
+			bank->source_offset_base = devm_kzalloc(&pdev->dev,
+						    sizeof(u32), GFP_KERNEL);
+			bank->source_base = devm_kzalloc(&pdev->dev,
+						    sizeof(u32), GFP_KERNEL);
+			bank->source_range = devm_kzalloc(&pdev->dev,
+						    sizeof(u32), GFP_KERNEL);
 			for (i = 0U; i < bank->source_num; i++) {
 				ret = of_property_read_u32_index(np,
 					"source-num", ((i * 3) + 1),
