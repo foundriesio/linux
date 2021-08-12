@@ -599,6 +599,58 @@
 				<CLK_IGNORE_UNUSED>;    /* PERI_HSMB */
 		};
 
+		clk_cpubus: clk@17000000 {
+			compatible = "telechips,clk-cpubus";
+			#clock-cells = <1>;
+			clocks = <&clk_fbus FBUS_CBUS>;
+			clock-indices =
+				<CPUBUS_WDT0>, <CPUBUS_WDT1>, <CPUBUS_WDT2>,
+				<CPUBUS_WDT3>, <CPUBUS_WDT4>, <CPUBUS_CBUSCFG>,
+				<CPUBUS_MB2DAP>, <CPUBUS_DAP>, <CPUBUS_DAPCFG>,
+				<CPUBUS_DAP2MB>, <CPUBUS_MB2CB>, <CPUBUS_AHBMUX>,
+				<CPUBUS_APBIF>,	<CPUBUS_CA72H2H>, <CPUBUS_CA53H2H>,
+				<CPUBUS_GIC0_H2X>,<CPUBUS_GIC0>, <CPUBUS_MBOX>,
+				<CPUBUS_WDT5>, <CPUBUS_WDT6>, <CPUBUS_WDT7>,
+				<CPUBUS_DAPNIC>, <CPUBUS_SJTAG>, <CPUBUS_GIC1_H2X>,
+				<CPUBUS_GIC1>;
+			clock-output-names =
+				"cpubus_wdt0", "cpubus_wdt1", "cpubus_wdt2",
+				"cpubus_wdt3", "cpubus_wdt4", "cpubus_cbuscfg",
+				"cpubus_mb2dap", "cpubus_dap", "cpubus_dapcfg",
+				"cpubus_dap2mb", "cpubus_mb2cb", "cpubus_ahbmux",
+				"cpubus_apbif",	"cpubus_ca72h2h", "cpubus_ca53h2h",
+				"cpubus_gic0_h2x","cpubus_gic0", "cpubus_mbox",
+				"cpubus_wdt5", "cpubus_wdt6", "cpubus_wdt7",
+				"cpubus_dapnic", "cpubus_sjtag", "cpubus_gic1_h2x",
+				"cpubus_gic1";
+			telechips,clock-flags =
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_WDT0 */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_WDT1 */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_WDT2 */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_WDT3 */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_WDT4 */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_CBUSCFG */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_MB2DAP */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_DAP */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_DAPCFG */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_DAP2MB */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_MB2CB */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_AHBMUX */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_APBIF */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_CA72H2H */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_CA53H2H */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_GIC0_H2X */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_GIC0 */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_MBOX */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_WDT5 */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_WDT6 */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_WDT7 */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_DAPNIC */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_SJTAG */
+				<CLK_IGNORE_UNUSED>,	/* CPUBUS_GIC1_H2X */
+				<CLK_IGNORE_UNUSED>;	/* CPUBUS_GIC1 */
+		};
+
 		clk_io: clk@16051000 {
 			compatible = "telechips,clk-iobus";
 			#clock-cells = <1>;

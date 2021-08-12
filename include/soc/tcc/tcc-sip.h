@@ -96,6 +96,7 @@ enum {
 	SIP_CLK_DISABLE_CPUBUS,
 	SIP_CLK_RESET_CPUBUS,
 	SIP_CLK_PWDN_CPUBUS,
+	SIP_CLK_IS_CPUBUS,
 };
 
 /* TCC SiP Service for Wake-up */

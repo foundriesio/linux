@@ -192,7 +192,7 @@ static long tcc_clk_register(struct device_node *np, const struct clk_ops *ops)
 		}
 		init.parent_names = parent_names;
 		init.flags = flags;
-#ifdef CONFIG_ARM64
+#ifndef CONFIG_ARCH_TCC805X
 		/* XXX: Do we need it? */
 		init.flags |= CLK_IGNORE_UNUSED;
 #endif
@@ -1140,3 +1140,70 @@ static void __init tcc_pll_init(struct device_node *np)
 }
 
 CLK_OF_DECLARE(tcc_clk_pll, "telechips,clk-pll", tcc_pll_init);
+
+static s32 tcc_cpubus_enable(struct clk_hw *hw) {
+	struct arm_smccc_res res;
+	struct tcc_clk *tcc = to_tcc_clk((hw));
+	int ret = 0;
+
+	if (ckc_ops != NULL) {
+		pr_err("[ERROR][tcc_clk][%s] Function not support.\n",
+			__func__);
+		ret = -1;
+	} else {
+		arm_smccc_smc((ulong)SIP_CLK_ENABLE_CPUBUS, tcc->id, 0,
+				0, 0, 0, 0, 0, &res);
+	}
+
+	return ret;
+}
+
+static void tcc_cpubus_disable(struct clk_hw *hw) {
+	struct arm_smccc_res res;
+	struct tcc_clk *tcc = to_tcc_clk((hw));
+
+	if (ckc_ops != NULL) {
+		pr_err("[ERROR][tcc_clk][%s] Function not support.\n",
+			__func__);
+	} else {
+		arm_smccc_smc((ulong)SIP_CLK_DISABLE_CPUBUS, tcc->id, 0,
+				0, 0, 0, 0, 0, &res);
+	}
+}
+
+static s32 tcc_cpubus_is_enabled(struct clk_hw *hw) {
+	struct arm_smccc_res res;
+	struct tcc_clk *tcc = to_tcc_clk((hw));
+	int ret = 0;
+
+	if (ckc_ops != NULL) {
+		pr_err("[ERROR][tcc_clk][%s] Function not support.\n",
+			__func__);
+		ret = -1;
+	} else {
+		arm_smccc_smc((ulong)SIP_CLK_IS_CPUBUS, tcc->id, 0,
+				0, 0, 0, 0, 0, &res);
+	}
+
+	return ret;
+}
+
+static const struct clk_ops tcc_cpubus_ops = {
+	.enable = tcc_cpubus_enable,
+	.disable = tcc_cpubus_disable,
+	.is_enabled = tcc_cpubus_is_enabled,
+	.debug_init = tcc_clk_debug_init,
+};
+
+static void __init tcc_cpubus_init(struct device_node *np) {
+	s32 ret_val;
+
+	ret_val = tcc_clk_register(np, &tcc_cpubus_ops);
+
+	if (ret_val != 0) {
+		pr_err("[ERROR][tcc_clk][%s] ret_val is not zero.\n",
+			__func__);
+	}
+}
+
+CLK_OF_DECLARE(tcc_clk_cpubus, "telechips,clk-cpubus", tcc_cpubus_init);
