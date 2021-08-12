@@ -490,7 +490,8 @@ struct irq_chip {
 	void		(*ipi_send_mask)(struct irq_data *data, const struct cpumask *dest);
 
 #if defined(CONFIG_ARCH_TCC)
-	int             (*irq_tcc_set_type)(struct irq_data *data, unsigned int flow_type);
+	int             (*irq_tcc_set_type)(struct irq_data *data, unsigned int
+								    flow_type);
 #endif
 	unsigned long	flags;
 };
