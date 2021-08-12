@@ -758,24 +758,24 @@ int32_t Dptx_Avgen_Calculate_Video_Average_TU_Symbols(struct Dptx_Params *pstDpt
 	iH_AverageSymbol_Per_TU = ((8 * iColor_Depth * iPixel_Clock) / (iNumOfLane * iLink_Rate));
 
 	if (!pstDptx->bMultStreamTransport) {
-		dptx_info("SST %s Pixel => ", pstVideoParams->ucMultiPixel == MULTI_PIXEL_TYPE_SINGLE ? "Single" :
+		dptx_notice("SST %s Pixel => ", pstVideoParams->ucMultiPixel == MULTI_PIXEL_TYPE_SINGLE ? "Single" :
 										pstVideoParams->ucMultiPixel == MULTI_PIXEL_TYPE_DUAL ? "Dual" : "Quad");
-		dptx_info(" -.Pixel clock: %d", iPixel_Clock);
-		dptx_info(" -.Num of Lanes: %d ", iNumOfLane);
-		dptx_info(" -.Link rate: %s", iLinkRate == DPTX_PHYIF_CTRL_RATE_RBR ? "RBR" :
+		dptx_notice(" -.Pixel clock: %d", iPixel_Clock);
+		dptx_notice(" -.Num of Lanes: %d ", iNumOfLane);
+		dptx_notice(" -.Link rate: %s", iLinkRate == DPTX_PHYIF_CTRL_RATE_RBR ? "RBR" :
 										(iLinkRate == DPTX_PHYIF_CTRL_RATE_HBR) ?	"HBR" :
 										(iLinkRate == DPTX_PHYIF_CTRL_RATE_HBR2) ? "HB2" : "HBR3");
-		dptx_info(" -.Hblanking: %d", pstDtd->h_blanking);
-		dptx_info(" -.Link Bpc: %d", iLink_Rate);
-		dptx_info(" -.Link Clk: %d", iLink_Clock);
-		dptx_info(" -.Average Symbols per TU: %d <- (( 8 * %d * %d ) / ( %d * %d ))",
+		dptx_notice(" -.Hblanking: %d", pstDtd->h_blanking);
+		dptx_notice(" -.Link Bpc: %d", iLink_Rate);
+		dptx_notice(" -.Link Clk: %d", iLink_Clock);
+		dptx_notice(" -.Average Symbols per TU: %d <- (( 8 * %d * %d ) / ( %d * %d ))",
 										pstVideoParams->ucAverage_BytesPerTu,
 										iColor_Depth,
 										iPixel_Clock,
 										iNumOfLane,
 										iLink_Rate);
-		dptx_info(" -.Fraction per TU: %d", pstVideoParams->ucAver_BytesPer_Tu_Frac);
-		dptx_info(" -.Init thresh: %d",	pstVideoParams->ucInit_Threshold);
+		dptx_notice(" -.Fraction per TU: %d", pstVideoParams->ucAver_BytesPer_Tu_Frac);
+		dptx_notice(" -.Init thresh: %d",	pstVideoParams->ucInit_Threshold);
 	}
 
 	if (pstDptx->bMultStreamTransport) {
@@ -795,21 +795,21 @@ int32_t Dptx_Avgen_Calculate_Video_Average_TU_Symbols(struct Dptx_Params *pstDpt
 		pstVideoParams->ucAverage_BytesPerTu	= (u8)uiAverage_BytesPerTu;
 		pstVideoParams->ucAver_BytesPer_Tu_Frac = (u8)uiAver_BytesPer_Tu_Frac;
 
-		dptx_info("MST %s Pixel : ", pstVideoParams->ucMultiPixel == MULTI_PIXEL_TYPE_SINGLE ? "Single" :
+		dptx_notice("MST %s Pixel : ", pstVideoParams->ucMultiPixel == MULTI_PIXEL_TYPE_SINGLE ? "Single" :
 									pstVideoParams->ucMultiPixel == MULTI_PIXEL_TYPE_DUAL ? "Dual" : "Quad");
-		dptx_info(" -.Pixel clock: %d", iPixel_Clock);
-		dptx_info(" -.Num of Lanes: %d", iNumOfLane);
-		dptx_info(" -.Link rate: %s", iLinkRate == DPTX_PHYIF_CTRL_RATE_RBR ? "RBR" :
+		dptx_notice(" -.Pixel clock: %d", iPixel_Clock);
+		dptx_notice(" -.Num of Lanes: %d", iNumOfLane);
+		dptx_notice(" -.Link rate: %s", iLinkRate == DPTX_PHYIF_CTRL_RATE_RBR ? "RBR" :
 										(iLinkRate == DPTX_PHYIF_CTRL_RATE_HBR) ? "HBR" :
 										(iLinkRate == DPTX_PHYIF_CTRL_RATE_HBR2) ? "HB2" : "HBR3");
-		dptx_info(" -.VCP Id: %d", pstDptx->aucVCP_Id[ucStream_Index]);
-		dptx_info(" -.Pixel clock: %d", iPixel_Clock);
-		dptx_info(" -.Hblanking: %d", pstDtd->h_blanking);
-		dptx_info(" -.Link Bpc: %d", iLink_Rate);
-		dptx_info(" -.Link Clk: %d", iLink_Clock);
-		dptx_info(" -.Average Symbols Per TU: %d ", pstVideoParams->ucAverage_BytesPerTu);
-		dptx_info(" -.Fraction Per TU: %d", pstVideoParams->ucAver_BytesPer_Tu_Frac);
-		dptx_info(" -.Init thresh: %d",	pstVideoParams->ucInit_Threshold);
+		dptx_notice(" -.VCP Id: %d", pstDptx->aucVCP_Id[ucStream_Index]);
+		dptx_notice(" -.Pixel clock: %d", iPixel_Clock);
+		dptx_notice(" -.Hblanking: %d", pstDtd->h_blanking);
+		dptx_notice(" -.Link Bpc: %d", iLink_Rate);
+		dptx_notice(" -.Link Clk: %d", iLink_Clock);
+		dptx_notice(" -.Average Symbols Per TU: %d ", pstVideoParams->ucAverage_BytesPerTu);
+		dptx_notice(" -.Fraction Per TU: %d", pstVideoParams->ucAver_BytesPer_Tu_Frac);
+		dptx_notice(" -.Init thresh: %d",	pstVideoParams->ucInit_Threshold);
 	}
 
 	return DPTX_RETURN_NO_ERROR;

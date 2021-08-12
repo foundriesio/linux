@@ -30,6 +30,9 @@
 #include "Dptx_drm_dp_addition.h"
 
 extern void Hpd_Intr_CallBabck(u8 ucDP_Index, bool bHPD_State);
+extern int Str_Resume_CallBabck(void);
+extern int Panel_Topology_CallBabck(uint8_t *pucNumOfPorts);
+
 
 static int32_t of_parse_dp_dt(
 			struct Dptx_Params	*pstDptx,
@@ -116,13 +119,16 @@ static int32_t of_parse_dp_dt(
 
 static int32_t Dpv14_Tx_Probe(struct platform_device *pdev)
 {
-	bool	 bRetVal;
 	uint8_t  ucHotPlugged;
 	int32_t	 iRetVal;
 	uint32_t auiPeri_Pixel_Clock[PHY_INPUT_STREAM_MAX] = { 0, };
 	struct resource			*pstResource;
 	struct Dptx_Params		*pstDptx;
 	struct Dptx_Video_Params	*pstVideoParams;
+
+#if !defined(CONFIG_DRM_PANEL_MAX968XX)
+	bool	 bRetVal;
+#endif
 
 	dptx_dbg("");
 	dptx_dbg("****************************************");
@@ -233,6 +239,12 @@ static int32_t Dpv14_Tx_Probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	Dptx_Intr_Register_HPD_Callback(pstDptx, Hpd_Intr_CallBabck);
+	Dptx_Intr_Register_Panel_Callback(pstDptx, Panel_Topology_CallBabck);
+
+	if (pstDptx->bSerDes_Reset_STR)
+		pstDptx->pvStr_Resume_CallBack = Str_Resume_CallBabck;
+
 	mutex_init(&pstDptx->Mutex);
 
 	init_waitqueue_head(&pstDptx->WaitQ);
@@ -270,9 +282,11 @@ static int32_t Dpv14_Tx_Probe(struct platform_device *pdev)
 
 	pstVideoParams = &pstDptx->stVideoParams;
 
+#if !defined(CONFIG_DRM_PANEL_MAX968XX)
 	bRetVal = Touch_Max968XX_update_reg(pstDptx);
 	if (bRetVal)
 		dptx_err("failed to update Ser/Des Register for Touch");
+#endif
 
 	dptx_notice("TCC-DPTX-V %d.%d.%d",
 		TCC_DPTX_DRV_MAJOR_VER,
@@ -319,7 +333,6 @@ static int32_t Dpv14_Tx_Probe(struct platform_device *pdev)
 		pstVideoParams->uiPeri_Pixel_Clock[2],
 		pstVideoParams->uiPeri_Pixel_Clock[3]);
 
-	Dptx_Intr_Register_HPD_Callback(pstDptx, Hpd_Intr_CallBabck);
 	Dptx_Core_Enable_Global_Intr(
 			pstDptx,
 			(DPTX_IEN_HPD |
@@ -396,8 +409,10 @@ int Dpv14_Tx_Resume_T(struct Dptx_Params *pstDptx)
 		pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_2],
 		pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_3]);
 
-	if (pstDptx->bSerDes_Reset_STR)
-		Dptx_Max968XX_Reset(pstDptx);
+	if (pstDptx->bSerDes_Reset_STR) {
+		if (pstDptx->pvStr_Resume_CallBack != NULL)
+			pstDptx->pvStr_Resume_CallBack();
+	}
 
 	Dptx_Platform_Set_PMU_ColdReset_Release(pstDptx);
 	Dptx_Platform_Set_APAccess_Mode(pstDptx);
@@ -531,8 +546,10 @@ static int Dpv14_Tx_Resume(struct platform_device *pdev)
 		pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_2],
 		pstVideoParams->uiPeri_Pixel_Clock[PHY_INPUT_STREAM_3]);
 
-	if (pstDptx->bSerDes_Reset_STR)
-		Dptx_Max968XX_Reset(pstDptx);
+		if (pstDptx->bSerDes_Reset_STR) {
+			if (pstDptx->pvStr_Resume_CallBack != NULL)
+				pstDptx->pvStr_Resume_CallBack();
+		}
 
 	Dptx_Platform_Set_PMU_ColdReset_Release(pstDptx);
 	Dptx_Platform_Set_APAccess_Mode(pstDptx);

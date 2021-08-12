@@ -8,8 +8,15 @@ ifeq ($(CONFIG_DRM_TCC),y)
 ccflags-y += -I$(srctree)/drivers/gpu/drm/tcc
 endif
 
+ifeq ($(CONFIG_DRM_PANEL_MAX968XX),y)
+ccflags-y += -I$(srctree)/drivers/gpu/drm/panel
+endif
+
+ifneq ($(CONFIG_DRM_PANEL_MAX968XX),y)
+obj-y += Dptx_serdes.o
+endif
+
 obj-$(CONFIG_TCC_DP_DRIVER_V1_4) +=\
-	Dptx_serdes.o \
 	Dptx.o \
 	Dptx_api.o \
 	Dptx_platform.o \

@@ -662,12 +662,12 @@ int32_t Dptx_Max968XX_Get_TopologyState(u8 *pucNumOfPluggedPorts)
 			break;
 	}
 
-	if (ucElements < (u8)SER_DES_INPUT_INDEX_MAX) {
+	if (ucElements <= (u8)SER_DES_INPUT_INDEX_MAX) {
 		*pucNumOfPluggedPorts = (ucElements - 1);
 	} else {
 		*pucNumOfPluggedPorts = 0;
 
-		dptx_info("No SerDes is connected");
+		dptx_info("Invalid num of ports as %d", (ucElements - 1));
 		return DPTX_RETURN_NO_ERROR;
 	}
 

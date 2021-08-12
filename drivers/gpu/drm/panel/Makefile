@@ -2,6 +2,11 @@
 ifneq (,$(filter y,$(CONFIG_DRM_PANEL_LVDS_TCC) $(CONFIG_DRM_PANEL_DPV14_TCC)))
 EXTRA_CFLAGS += -I$(srctree)/drivers/gpu/drm/tcc
 endif
+
+ifeq ($(CONFIG_DRM_PANEL_MAX968XX),y)
+EXTRA_CFLAGS += -I$(srctree)/drivers/char/displayport_v1_4/include
+endif
+
 obj-$(CONFIG_DRM_PANEL_LVDS) += panel-lvds.o
 obj-$(CONFIG_DRM_PANEL_SIMPLE) += panel-simple.o
 obj-$(CONFIG_DRM_PANEL_INNOLUX_P079ZCA) += panel-innolux-p079zca.o

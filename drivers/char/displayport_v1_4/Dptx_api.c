@@ -17,6 +17,11 @@
 #include <tcc_drm_dpi.h>
 #endif
 
+#if defined(CONFIG_DRM_PANEL_MAX968XX)
+#include <panel-tcc-dpv14.h>
+#endif
+
+
 #define MAX_CHECK_HPD_NUM					200
 
 #define REG_PRINT_BUF_SIZE					1024
@@ -347,27 +352,27 @@ int dpv14_api_set_video_timing(
 				stDtd_Params_Configured.v_sync_offset) &&
 			(stDtd_Params.v_sync_pulse_width ==
 				stDtd_Params_Configured.v_sync_pulse_width)) {
-			dptx_info("[Detailed timing from DRM] : ");
-			dptx_info("Video timing of DP %d was already configured --> Skip",
+			dptx_notice("[Detailed timing from DRM] : ");
+			dptx_notice("Video timing of DP %d was already configured --> Skip",
 				dp_id);
-			dptx_info("		Pixel clk = %d ",
+			dptx_notice("		Pixel clk = %d ",
 				(u32)dptx_detailed_timing->pixel_clock);
-			dptx_info("		%s",
+			dptx_notice("		%s",
 				(dptx_detailed_timing->interlaced) ?
 				"Interlace" : "Progressive");
-			dptx_info("		H Active(%d), V Active(%d)",
+			dptx_notice("		H Active(%d), V Active(%d)",
 				(u32)dptx_detailed_timing->h_active,
 				(u32)dptx_detailed_timing->v_active);
-			dptx_info("		H Blanking(%d), V Blanking(%d)",
+			dptx_notice("		H Blanking(%d), V Blanking(%d)",
 				(u32)dptx_detailed_timing->h_blanking,
 				(u32)dptx_detailed_timing->v_blanking);
-			dptx_info("		H Sync offset(%d), V Sync offset(%d) ",
+			dptx_notice("		H Sync offset(%d), V Sync offset(%d) ",
 				(u32)dptx_detailed_timing->h_sync_offset,
 				(u32)dptx_detailed_timing->v_sync_offset);
-			dptx_info("		H Sync plus W(%d), V Sync plus W(%d) ",
+			dptx_notice("		H Sync plus W(%d), V Sync plus W(%d) ",
 				(u32)dptx_detailed_timing->h_sync_pulse_width,
 				(u32)dptx_detailed_timing->v_sync_pulse_width);
-			dptx_info("		H Sync Polarity(%d), V Sync Polarity(%d)",
+			dptx_notice("		H Sync Polarity(%d), V Sync Polarity(%d)",
 				(u32)dptx_detailed_timing->h_sync_polarity,
 				(u32)dptx_detailed_timing->v_sync_polarity);
 
@@ -382,26 +387,26 @@ int dpv14_api_set_video_timing(
 	if (iRetVal != DPTX_RETURN_NO_ERROR)
 		return -ENODEV;
 
-	dptx_info("[Detailed timing from DRM] : Video timing of DP %d is being aconfigured ",
+	dptx_notice("[Detailed timing from DRM] : Video timing of DP %d is being aconfigured ",
 		dp_id);
-	dptx_info("		Pixel clk = %d ",
+	dptx_notice("		Pixel clk = %d ",
 		(u32)dptx_detailed_timing->pixel_clock);
-	dptx_info("		%s",
+	dptx_notice("		%s",
 		(dptx_detailed_timing->interlaced) ?
 		"Interlace" : "Progressive");
-	dptx_info("		H Active(%d), V Active(%d)",
+	dptx_notice("		H Active(%d), V Active(%d)",
 		(u32)dptx_detailed_timing->h_active,
 		(u32)dptx_detailed_timing->v_active);
-	dptx_info("		H Blanking(%d), V Blanking(%d)",
+	dptx_notice("		H Blanking(%d), V Blanking(%d)",
 		(u32)dptx_detailed_timing->h_blanking,
 		(u32)dptx_detailed_timing->v_blanking);
-	dptx_info("		H Sync offset(%d), V Sync offset(%d) ",
+	dptx_notice("		H Sync offset(%d), V Sync offset(%d) ",
 		(u32)dptx_detailed_timing->h_sync_offset,
 		(u32)dptx_detailed_timing->v_sync_offset);
-	dptx_info("		H Sync plus W(%d), V Sync plus W(%d) ",
+	dptx_notice("		H Sync plus W(%d), V Sync plus W(%d) ",
 		(u32)dptx_detailed_timing->h_sync_pulse_width,
 		(u32)dptx_detailed_timing->v_sync_pulse_width);
-	dptx_info("		H Sync Polarity(%d), V Sync Polarity(%d)",
+	dptx_notice("		H Sync Polarity(%d), V Sync Polarity(%d)",
 		(u32)dptx_detailed_timing->h_sync_polarity,
 		(u32)dptx_detailed_timing->v_sync_polarity);
 
@@ -498,8 +503,34 @@ int32_t tcc_dp_identify_lcd_mux_configuration(
 
 	return 0;
 }
+#endif
 
+#if defined(CONFIG_DRM_PANEL_MAX968XX)
+int dpv14_set_num_of_panels(unsigned char num_of_panels)
+{
+	bool bMST_Mode;
+	struct Dptx_Params *pstHandle;
 
+	if (num_of_panels > PHY_INPUT_STREAM_MAX) {
+		dptx_err("Invalid num_of_panels as %d", num_of_panels);
+		return -EINVAL;
+	}
+
+	pstHandle = Dptx_Platform_Get_Device_Handle();
+	if (pstHandle == NULL) {
+		dptx_err("Failed to get handle");
+		return -ENXIO;
+	}
+
+	if (!pstHandle->bSideBand_MSG_Supported) {
+		bMST_Mode = (num_of_panels > 1) ? true : false;
+		Dptx_Ext_Set_Stream_Mode(pstHandle, bMST_Mode, num_of_panels);
+
+		dptx_info("MST: %d, Num of panels: %d", bMST_Mode, num_of_panels);
+	}
+
+	return 0;
+}
 #endif
 
 void Hpd_Intr_CallBabck(u8 ucDP_Index, bool bHPD_State)
@@ -518,6 +549,60 @@ void Hpd_Intr_CallBabck(u8 ucDP_Index, bool bHPD_State)
 }
 EXPORT_SYMBOL(Hpd_Intr_CallBabck);
 
+int Str_Resume_CallBabck(void)
+{
+	int iRetVal;
+
+	dptx_info("Str Resume Callback is called");
+
+#if defined(CONFIG_DRM_PANEL_MAX968XX)
+	iRetVal = panel_max968xx_reset();
+	if (iRetVal < 0)
+		dptx_info("Error from panel_max968xx_reset()");
+#else
+	struct Dptx_Params *pstHandle;
+
+	pstHandle = Dptx_Platform_Get_Device_Handle();
+	if (pstHandle == NULL) {
+		dptx_err("Failed to get handle");
+		return -ENXIO;
+	}
+
+	iRetVal = Dptx_Max968XX_Reset(pstHandle);
+#endif
+
+	return iRetVal;
+}
+EXPORT_SYMBOL(Str_Resume_CallBabck);
+
+int Panel_Topology_CallBabck(uint8_t *pucNumOfPorts)
+{
+	int iRetVal;
+
+	if (pucNumOfPorts == NULL) {
+		dptx_err("pucNumOfPorts == NULL");
+		return -ENXIO;
+	}
+
+#if defined(CONFIG_DRM_PANEL_MAX968XX)
+	iRetVal = panel_max968xx_get_topology(pucNumOfPorts);
+	if (iRetVal < 0)
+		dptx_info("Error from panel_max968xx_get_topology()");
+#else
+	struct Dptx_Params *pstHandle;
+
+	pstHandle = Dptx_Platform_Get_Device_Handle();
+	if (pstHandle == NULL) {
+		dptx_err("Failed to get handle");
+		return -ENXIO;
+	}
+
+	iRetVal = Dptx_Max968XX_Get_TopologyState(pucNumOfPorts);
+#endif
+
+	return iRetVal;
+}
+EXPORT_SYMBOL(Panel_Topology_CallBabck);
 
 int32_t Dptx_Api_Init_Params(void)
 {

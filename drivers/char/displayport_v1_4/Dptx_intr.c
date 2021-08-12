@@ -44,7 +44,7 @@
 #define EDID_START_BIT_OF_1ST_DETAILED_DES			54
 #define EDID_SIZE_OF_DETAILED_DES					18
 
-static int dptx_intr_handle_drm_interface(struct Dptx_Params *pstDptx, bool bHotPlugged)
+static int dptx_intr_handle_hpd(struct Dptx_Params *pstDptx, bool bHotPlugged)
 {
 	bool bTrainingState;
 	u8 ucDP_Index;
@@ -118,7 +118,6 @@ static void dptx_intr_handle_hpd_irq( struct Dptx_Params *pstDptx )
 
 irqreturn_t Dptx_Intr_Threaded_IRQ(int irq, void *dev)
 {
-	u8 ucStream_Index;
 	u32 uiHpdStatus;
 	enum HPD_Detection_Status eHPDStatus;
 
@@ -140,23 +139,7 @@ irqreturn_t Dptx_Intr_Threaded_IRQ(int irq, void *dev)
 				(pstDptx->eLast_HPDStatus == HPD_STATUS_PLUGGED) ? "Plugged" : "Unplugged",
 				(eHPDStatus == HPD_STATUS_PLUGGED) ? "Plugged" : "Unplugged");
 
-			if (eHPDStatus == HPD_STATUS_PLUGGED) {
-				if (pstDptx->bUsed_TCC_DRM_Interface) {
-					dptx_intr_handle_drm_interface(pstDptx, (bool)HPD_STATUS_PLUGGED);
-				} else {
-					for (ucStream_Index = 0; ucStream_Index < pstDptx->ucNumOfStreams; ucStream_Index++)
-						pstDptx->pvHPD_Intr_CallBack(ucStream_Index, (bool)HPD_STATUS_PLUGGED);
-				}
-			} else {
-				if (pstDptx->bUsed_TCC_DRM_Interface) {
-					dptx_intr_handle_drm_interface(pstDptx, (bool)HPD_STATUS_UNPLUGGED);
-				} else {
-					Dptx_Intr_Handle_HotUnplug(pstDptx);
-
-					for (ucStream_Index = 0; ucStream_Index < pstDptx->ucNumOfStreams; ucStream_Index++)
-						pstDptx->pvHPD_Intr_CallBack(ucStream_Index, (bool)HPD_STATUS_UNPLUGGED);
-				}
-			}
+			dptx_intr_handle_hpd(pstDptx, (bool)eHPDStatus);
 
 			pstDptx->eLast_HPDStatus = eHPDStatus;
 		}
@@ -165,8 +148,7 @@ irqreturn_t Dptx_Intr_Threaded_IRQ(int irq, void *dev)
 	if (atomic_read(&pstDptx->Sink_request))
 		atomic_set(&pstDptx->Sink_request, 0);
 
-	dptx_dbg("DONE");
-	dptx_dbg("=======================================\n\n");
+	dptx_dbg("=== DONE ===\n");
 
 	mutex_unlock(&pstDptx->Mutex);
 
@@ -282,7 +264,7 @@ irqreturn_t Dptx_Intr_IRQ(int irq, void *dev)
 
 int32_t Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucClear_PayloadID)
 {
-	uint8_t ucMST_Supported = 0, ucNumOfPluggedPorts = 0, ucDP_Index;
+	uint8_t ucMST_Supported = 0, ucNumOfPluggedPorts = 0, ucDP_Index = 0;
 	int32_t iRetVal;
 
 	iRetVal = Dptx_Ext_Get_Sink_Stream_Capability(pstDptx, &ucMST_Supported);
@@ -294,6 +276,8 @@ int32_t Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucCl
 		pstDptx->bSideBand_MSG_Supported = false;
 	else
 		pstDptx->bSideBand_MSG_Supported = true;
+
+	memset(pstDptx->paucEdidBuf_Entry[ucDP_Index], 0,	(DPTX_EDID_BUFLEN * PHY_INPUT_STREAM_MAX));
 
 	if (pstDptx->bSideBand_MSG_Supported) {
 		if (ucMST_Supported) {
@@ -313,30 +297,32 @@ int32_t Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucCl
 		if (ucNumOfPluggedPorts == 1) {
 			iRetVal = Dptx_Edid_Read_EDID_I2C_Over_Aux(pstDptx);
 			if (iRetVal !=  DPTX_RETURN_NO_ERROR)
-				memset(pstDptx->paucEdidBuf_Entry[ucDP_Index], 0,   DPTX_EDID_BUFLEN);
+				return iRetVal;
 		} else {
 			for (ucDP_Index = 0; ucDP_Index < ucNumOfPluggedPorts; ucDP_Index++) {
 				iRetVal = Dptx_Edid_Read_EDID_Over_Sideband_Msg(pstDptx, ucDP_Index);
 				if (iRetVal != DPTX_RETURN_NO_ERROR)
-					memset(pstDptx->paucEdidBuf_Entry[ucDP_Index], 0,   DPTX_EDID_BUFLEN);
+					return iRetVal;
 				else
 					memcpy(pstDptx->paucEdidBuf_Entry[ucDP_Index], pstDptx->pucEdidBuf, DPTX_EDID_BUFLEN);
 			}
 		}
-		dptx_notice("%d %s connected", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? "Ext. monitor is":"Ext. monitors are");
+		dptx_info("%d %s connected", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? "Ext. monitor is":"Ext. monitors are");
 	} else {
-		iRetVal = Dptx_Max968XX_Get_TopologyState(&ucNumOfPluggedPorts);
+
+		if (pstDptx->pvPanel_Topology_CallBack != NULL )
+			iRetVal = pstDptx->pvPanel_Topology_CallBack(&ucNumOfPluggedPorts);
+		else
+			iRetVal = DPTX_RETURN_NO_ERROR;
+
 		if (iRetVal != DPTX_RETURN_NO_ERROR)
 			ucNumOfPluggedPorts = 1;
 
-		for (ucDP_Index = 0; ucDP_Index < ucNumOfPluggedPorts; ucDP_Index++)
-			memset(pstDptx->paucEdidBuf_Entry[ucDP_Index], 0,	 DPTX_EDID_BUFLEN);
-
-		dptx_notice("%d %s connected", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? " panel is":" panels are");
+		dptx_info("%d %s connected", ucNumOfPluggedPorts, ucNumOfPluggedPorts == 1 ? " panel is":" panels are");
 	}
 
 	pstDptx->ucNumOfPorts = ucNumOfPluggedPorts;
-	pstDptx->bMultStreamTransport = (ucNumOfPluggedPorts == 1) ? false:true;
+	pstDptx->bMultStreamTransport = (ucNumOfPluggedPorts > 1) ? true : false;
 
 	return DPTX_RETURN_NO_ERROR;
 }
@@ -344,6 +330,13 @@ int32_t Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucCl
 int32_t Dptx_Intr_Register_HPD_Callback(struct Dptx_Params *pstDptx, Dptx_HPD_Intr_Callback HPD_Intr_Callback)
 {
 	pstDptx->pvHPD_Intr_CallBack = HPD_Intr_Callback;
+
+	return DPTX_RETURN_NO_ERROR;
+}
+
+int32_t Dptx_Intr_Register_Panel_Callback(struct Dptx_Params *pstDptx, Dptx_Panel_Topology_Callback Panel_Topology_CallBack)
+{
+	pstDptx->pvPanel_Topology_CallBack = Panel_Topology_CallBack;
 
 	return DPTX_RETURN_NO_ERROR;
 }

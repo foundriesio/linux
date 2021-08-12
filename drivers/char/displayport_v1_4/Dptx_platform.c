@@ -28,12 +28,7 @@ int32_t Dptx_Platform_Init_Params(
 
 	pstDptx->bSpreadSpectrum_Clock		= true;
 
-#if defined(CONFIG_DRM_TCC)
-	pstDptx->bUsed_TCC_DRM_Interface	= true;
-#endif
-
 	pstDptx->eEstablished_Timing		= DMT_NOT_SUPPORTED;
-
 	pstDptx->uiHDCP22_RegAddr_Offset	= DP_HDCP_OFFSET;
 	pstDptx->uiRegBank_RegAddr_Offset	= DP_REGISTER_BANK_OFFSET;
 	pstDptx->uiCKC_RegAddr_Offset		= DP_CKC_OFFSET;

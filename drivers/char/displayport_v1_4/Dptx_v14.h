@@ -44,8 +44,8 @@
 
 
 #define TCC_DPTX_DRV_MAJOR_VER			2
-#define TCC_DPTX_DRV_MINOR_VER			3
-#define TCC_DPTX_DRV_SUBTITLE_VER		1
+#define TCC_DPTX_DRV_MINOR_VER			4
+#define TCC_DPTX_DRV_SUBTITLE_VER		0
 
 #define TCC805X_REVISION_CS				0x01
 
@@ -202,8 +202,12 @@ enum VIDEO_COLORIMETRY_TYPE {
 };
 
 enum VIDEO_PIXEL_COLOR_DEPTH {
+	PIXEL_COLOR_DEPTH_6			= 6,
 	PIXEL_COLOR_DEPTH_8				= 8,
-	PIXEL_COLOR_DEPTH_MAX			= 9
+	PIXEL_COLOR_DEPTH_10		= 10,
+	PIXEL_COLOR_DEPTH_12		= 12,
+	PIXEL_COLOR_DEPTH_16		= 16,
+	PIXEL_COLOR_DEPTH_MAX		= 17
 };
 
 enum VIDEO_LINK_BPP {
@@ -226,6 +230,12 @@ enum VIDEO_FORMAT_TYPE {
 	VIDEO_FORMAT_MAX
 };
 
+enum VIDEO_DYNAMIC_RANGE_TYPE {
+	VIDEO_DYNAMIC_RANGE_CEA		= 1,
+	VIDEO_DYNAMIC_RANGE_VESA 	= 2,
+	VIDEO_DYNAMIC_RANGE_MAX
+};
+
 enum VIDEO_BIT_PER_COMPONET {
 	BIT_PER_COMPONENT_8BPC	= 8,
 	BIT_PER_COMPONENT_10BPC = 10,
@@ -246,8 +256,9 @@ enum VIDEO_REFRESH_RATE {
 
 enum VIDEO_PIXEL_ENCODING_TYPE {
 	PIXEL_ENCODING_TYPE_RGB				= 0,
-	PIXEL_ENCODING_TYPE_YCBCR422		= 1,
-	PIXEL_ENCODING_TYPE_YCBCR444		= 2,
+	PIXEL_ENCODING_TYPE_YCBCR420		= 1,
+	PIXEL_ENCODING_TYPE_YCBCR422		= 2,
+	PIXEL_ENCODING_TYPE_YCBCR444		= 3,
 	PIXEL_ENCODING_TYPE_MAX
 };
 
@@ -258,12 +269,12 @@ enum VIDEO_MULTI_PIXEL_TYPE {
 	MULTI_PIXEL_TYPE_MAX		= 3
 };
 
-enum DPTX_VIDEO_CTS_PATTERN_MODE {
-	DP_TRAIN_NONE_LNANE_REMAINS	= 0,
-	DP_TRAIN_LNANE0_REMAINS = 1,
-	DP_TRAIN_LNANE1_REMAINS = 2,
-	DP_TRAIN_LNANE2_REMAINS = 4,
-	DP_TRAIN_LNANE3_REMAINS = 8
+enum DPTX_VIDEO_PATTERN_MODE {
+	VIDEO_PATTERN_TILE = 0,
+	VIDEO_PATTERN_RAMP = 1,
+	VIDEO_PATTERN_CHESS = 2,
+	VIDEO_PATTERN_COLRAMP = 3,
+	VIDEO_PATTERN_MAX = 4
 };
 
 enum AUDIO_INPUT_MUTE {
@@ -365,6 +376,8 @@ enum AUX_REPLY_Status {
 
 
 typedef void (*Dptx_HPD_Intr_Callback)(u8 ucDP_Index, bool bHPD_State);
+typedef int (*Dptx_Str_Resume_Callback)(void);
+typedef int (*Dptx_Panel_Topology_Callback)(uint8_t *pucNumOfPorts);
 
 
 struct Dptx_Link_Params {
@@ -443,7 +456,6 @@ struct Dptx_Params {
 	u32			uiHPD_IRQ;
 	u32			uiTCC805X_Revision;
 
-	bool		bUsed_TCC_DRM_Interface;
 	bool		bSideBand_MSG_Supported;
 	bool		bSerDes_Reset_STR;
 	bool		bPHY_Lane_Reswap;
@@ -495,6 +507,8 @@ struct Dptx_Params {
 	struct proc_dir_entry			*pstDP_Auio_Dir;
 
 	Dptx_HPD_Intr_Callback				pvHPD_Intr_CallBack;
+	Dptx_Str_Resume_Callback		pvStr_Resume_CallBack;
+	Dptx_Panel_Topology_Callback	pvPanel_Topology_CallBack;
 };
 
 
@@ -597,6 +611,7 @@ irqreturn_t Dptx_Intr_IRQ(int irq, void *dev);
 irqreturn_t Dptx_Intr_Threaded_IRQ(int irq, void *dev);
 int32_t Dptx_Intr_Get_Port_Composition(struct Dptx_Params *pstDptx, uint8_t ucClear_PayloadID);
 int32_t Dptx_Intr_Register_HPD_Callback(struct Dptx_Params *pstDptx, Dptx_HPD_Intr_Callback HPD_Intr_Callback);
+int32_t Dptx_Intr_Register_Panel_Callback(struct Dptx_Params *pstDptx, Dptx_Panel_Topology_Callback Panel_Topology_CallBack);
 int32_t Dptx_Intr_Handle_HotUnplug(struct Dptx_Params *pstDptx);
 int32_t Dptx_Intr_Get_HotPlug_Status(struct Dptx_Params *pstDptx, uint8_t *pucHotPlug_Status);
 

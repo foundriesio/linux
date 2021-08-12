@@ -1094,7 +1094,7 @@ int32_t Dptx_Ext_Remote_I2C_Read(struct Dptx_Params *pstDptx, u8 ucStream_Index)
 		if (iRetVal != DPTX_RETURN_NO_ERROR)
 			return iRetVal;
 
-		memcpy(&pstDptx->pucEdidBuf[DPTX_ONE_EDID_BLK_LEN], &aucRep_Buf[3], DPTX_ONE_EDID_BLK_LEN);
+		memcpy(&pstDptx->pucEdidBuf[(DPTX_ONE_EDID_BLK_LEN * ucBlk_Index)], &aucRep_Buf[3], DPTX_ONE_EDID_BLK_LEN);
 
 		dptx_dbg("Extended messages replied => ");
 		dptx_dbg(" -.Reply type: %s", (aucRep_Buf[0] & 0x80) ? "ACK":"NAK");

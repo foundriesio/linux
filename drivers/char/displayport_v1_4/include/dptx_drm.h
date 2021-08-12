@@ -42,6 +42,9 @@ int32_t tcc_dp_identify_lcd_mux_configuration(
 			uint32_t dp_id,
 			uint8_t lcd_mux_index);
 
+#if defined(CONFIG_DRM_PANEL_MAX968XX)
+int dpv14_set_num_of_panels(unsigned char num_of_panels);
+#endif
 
 #endif /* __DPTX_DRM_H__  */
 

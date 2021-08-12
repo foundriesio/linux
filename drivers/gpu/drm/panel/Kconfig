@@ -135,6 +135,14 @@ config DRM_PANEL_DPV14_TCC
 	  This driver supports DP panels that don't require device-specific
 	  handling of power supplies or control signals.
 
+config DRM_PANEL_MAX968XX
+	tristate "Max96851/96878 SerDes driver for Telechips"
+	depends on OF && DRM_PANEL_DPV14_TCC && TCC_DP_DRIVER_V1_4
+	default y
+	select VIDEOMODE_HELPERS
+	help
+	  This driver supports Max96851 / 96878 SerDes for DP panels.
+
 config DRM_TCC_CTRL_BACKLIGHT
 	tristate "binding TCC LVDS & DP backlight driver(gpio, pwm ...)"
 	depends on OF && DRM_TCC && ARCH_TCC805X
