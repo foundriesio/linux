@@ -4,7 +4,7 @@ tcc-ufs nodes are defined to describe on-chip UFS host controllers, UNIPRO and M
 Each UFS controller instance should have its own node.
 
 Required properties:
-- compatible	: 
+- compatible	:
 - reg		: <registers mapping>
 - interrupts	: <interrupt mapping for UFS host controller IRQ>
 

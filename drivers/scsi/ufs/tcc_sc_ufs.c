@@ -241,8 +241,9 @@ static int tcc_sc_ufs_queuecommand_sc(struct Scsi_Host *host,
 		BUG();
 	}
 
-	sc_host->xfer_handle = handle->ops.ufs_ops->request_command(handle, &sc_cmd,
-			&tcc_sc_ufs_complete, sc_host);
+	sc_host->xfer_handle =
+		handle->ops.ufs_ops->request_command(handle, &sc_cmd,
+				&tcc_sc_ufs_complete, sc_host);
 
 	timeout = jiffies;
 	timeout += (unsigned long) (10U * HZ);
