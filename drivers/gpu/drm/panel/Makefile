@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0
 ifneq (,$(filter y,$(CONFIG_DRM_PANEL_LVDS_TCC) $(CONFIG_DRM_PANEL_DPV14_TCC)))
-EXTRA_CFLAGS += -I$(srctree)/drivers/gpu/drm/tcc
+ccflags-y += -I$(srctree)/drivers/gpu/drm/tcc
 endif
 
 ifeq ($(CONFIG_DRM_PANEL_MAX968XX),y)
-EXTRA_CFLAGS += -I$(srctree)/drivers/char/displayport_v1_4/include
+ccflags-y += -I$(srctree)/drivers/char/displayport_v1_4/include
 endif
 
 obj-$(CONFIG_DRM_PANEL_LVDS) += panel-lvds.o

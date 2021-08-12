@@ -9,7 +9,7 @@
 static inline int panel_tcc_pin_select_state(struct pinctrl *p,
 						struct pinctrl_state *s)
 {
-	if(!p || !s)
+	if (!p || !s)
 		goto err_out;
 
 	return pinctrl_select_state(p, s);
@@ -18,3 +18,4 @@ err_out:
 }
 
 #endif // __PANEL_TCC_H__
+
