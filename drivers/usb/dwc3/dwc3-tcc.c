@@ -767,6 +767,7 @@ static ssize_t dwc3_pcfg_store(struct device *dev,
 		(struct USB30PHYCFG *)tcc->dwc3_phy->get_base(tcc->dwc3_phy);
 	int32_t i;
 	uint32_t old_reg = readl(&pUSBPHYCFG->U30_PHY_CFG);
+	int32_t ret;
 	uint32_t new_reg;
 	char str[256] = {0};
 
