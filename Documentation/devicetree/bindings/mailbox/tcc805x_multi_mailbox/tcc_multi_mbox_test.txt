@@ -1,0 +1,23 @@
+Telechips Mailbox test device for TCC805x
+
+Required properties:
+- compatible:
+	telechips,mbox-test
+
+- device-name: device name
+
+- mbox-names: List of identifier strings for each mailbox channel.
+
+- mboxes: List of phandle and mailbox channel specifiers.
+
+- mbox-id: TCC_MBOX_TEST_ID
+
+Example:
+
+	mbox_test0: mbox_test0 {
+		compatible = "telechips,mbox_test";
+		device-name = "micom_mbox_test";
+		mbox-names ="mbox_test";
+		mboxes = <&micom_mbox TCC_MICOM_MBOX0_TEST>;
+		mbox-id = TCC_MBOX_TEST_ID;
+	};
