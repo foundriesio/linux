@@ -246,7 +246,8 @@ static int32_t mbox_receive_queue_init(
 
 			ret = -ENOMEM;
 		} else {
-			sched_setscheduler(mbox_queue->kworker_task, SCHED_FIFO, &param);
+			sched_setscheduler(mbox_queue->kworker_task,
+					SCHED_FIFO, &param);
 			kthread_init_work(&mbox_queue->pump_messages,
 				mbox_pump_messages);
 			ret = 0;

@@ -363,8 +363,8 @@ static void sss_busy_check(void)
 	sss_status_vaddr =
 		ioremap_nocache((phys_addr_t)SSS_MBOX_STATUS_ADDR, (ulong)64);
 
-	/* Wait until SSS mbox busy is 0
-	 * Timeout if there is a delay of more than 100ms */
+	/* Wait until SSS mbox busy is 0 */
+	/* Timeout if there is a delay of more than 100ms */
 	for (i = 0; i < SSS_MAX_ATTEMPT_COUNT; i++) {
 		if (((readl_relaxed(sss_status_vaddr) & (uint32_t)0x01)
 		     == (uint32_t)0x00)) {
@@ -514,7 +514,8 @@ static int32_t mbox_receive_queue_init(
 				LOG_TAG, __func__);
 			ret = -ENOMEM;
 		} else {
-			sched_setscheduler(mbox_queue->kworker_task, SCHED_FIFO, &param);
+			sched_setscheduler(mbox_queue->kworker_task,
+					SCHED_FIFO, &param);
 			kthread_init_work(&mbox_queue->pump_messages,
 				mbox_pump_rx_messages);
 			ret = 0;
@@ -622,7 +623,8 @@ static int32_t mbox_transmit_queue_init(struct mbox_transmitQueue *mbox_queue,
 				LOG_TAG, __func__);
 			ret = -ENOMEM;
 		} else {
-			sched_setscheduler(mbox_queue->kworker_task, SCHED_FIFO, &param);
+			sched_setscheduler(mbox_queue->kworker_task,
+					SCHED_FIFO, &param);
 			kthread_init_work(
 				&mbox_queue->pump_messages,
 				mbox_pump_tx_messages);
