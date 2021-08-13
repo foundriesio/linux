@@ -72,26 +72,26 @@ static ssize_t show_xhci_testmode(struct device *dev,
 	spin_unlock_irqrestore(&xhci->lock, flags);
 
 	switch (reg) {
-		case 0:
-			pr_info("no test\n");
-			break;
-		case TEST_J:
-			pr_info("test_j\n");
-			break;
-		case TEST_K:
-			pr_info("test_k\n");
-			break;
-		case TEST_SE0_NAK:
-			pr_info("test_se0_nak\n");
-			break;
-		case TEST_PACKET:
-			pr_info("test_packet\n");
-			break;
-		case TEST_FORCE_EN:
-			pr_info("test_force_enable\n");
-			break;
-		default:
-			pr_info("UNKNOWN test mode\n");
+	case 0:
+		pr_info("no test\n");
+		break;
+	case TEST_J:
+		pr_info("test_j\n");
+		break;
+	case TEST_K:
+		pr_info("test_k\n");
+		break;
+	case TEST_SE0_NAK:
+		pr_info("test_se0_nak\n");
+		break;
+	case TEST_PACKET:
+		pr_info("test_packet\n");
+		break;
+	case TEST_FORCE_EN:
+		pr_info("test_force_enable\n");
+		break;
+	default:
+		pr_info("UNKNOWN test mode\n");
 	}
 
 	return 0;

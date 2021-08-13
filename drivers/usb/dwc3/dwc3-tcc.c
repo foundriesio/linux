@@ -85,14 +85,14 @@ enum {
 };
 
 struct pcfg_unit USB_PCFG[7] = {
-        /* name, offset, mask */
-        {"TXVRT  ",  0, (0xF<<0)},
-        {"CDT    ",  4, (0x7<<4)},
-        {"TXPPT  ",  7, (0x1<<7)},
-        {"TP     ",  8, (0x3<<8)},
-        {"TXRT   ", 10, (0x3<<10)},
-        {"TXREST ", 12, (0x3<<12)},
-        {"TXHSXVT", 14, (0x3<<14)},
+	/* name, offset, mask */
+	{"TXVRT  ",  0, (0xF<<0)},
+	{"CDT    ",  4, (0x7<<4)},
+	{"TXPPT  ",  7, (0x1<<7)},
+	{"TP     ",  8, (0x3<<8)},
+	{"TXRT   ", 10, (0x3<<10)},
+	{"TXREST ", 12, (0x3<<12)},
+	{"TXHSXVT", 14, (0x3<<14)},
 };
 #else
 struct USB30PHYCFG {
@@ -126,14 +126,14 @@ enum {
 };
 
 struct pcfg_unit USB_PCFG[7] = {
-        /* name, offset, mask */
-        {"TXVREFTUNE       ",  6, (0xF<<6)},
-        {"TXRISETUNE       ", 10, (0x3<<10)},
-        {"TXRESTUNE        ", 12, (0x3<<12)},
-        {"TXPREEMPPULSETUNE", 14, (0x1<<14)},
-        {"TXPREEMPAMPTUNE  ", 15, (0x3<<15)},
-        {"TXHSXVTUNE       ", 17, (0x3<<17)},
-        {"COMPDISTUNE      ", 29, (0x7<<29)},
+	/* name, offset, mask */
+	{"TXVREFTUNE       ",  6, (0xF<<6)},
+	{"TXRISETUNE       ", 10, (0x3<<10)},
+	{"TXRESTUNE        ", 12, (0x3<<12)},
+	{"TXPREEMPPULSETUNE", 14, (0x1<<14)},
+	{"TXPREEMPAMPTUNE  ", 15, (0x3<<15)},
+	{"TXHSXVTUNE       ", 17, (0x3<<17)},
+	{"COMPDISTUNE      ", 29, (0x7<<29)},
 };
 #endif
 
@@ -767,7 +767,7 @@ static ssize_t dwc3_pcfg_store(struct device *dev,
 		(struct USB30PHYCFG *)tcc->dwc3_phy->get_base(tcc->dwc3_phy);
 	int32_t i;
 	uint32_t old_reg = readl(&pUSBPHYCFG->U30_PHY_CFG);
-	uint32_t new_reg = simple_strtoul(buf, NULL, 16);
+	uint32_t new_reg;
 	char str[256] = {0};
 
 	if (tcc->dwc3_phy == NULL) {
@@ -807,6 +807,11 @@ static ssize_t dwc3_pcfg_store(struct device *dev,
 			pr_info("\t\t2) X is hex number(0 to f)\n\n");
 			return (ssize_t)count;
 		}
+	}
+
+	ret = kstrtoul(buf, 0, (unsigned long *)&new_reg);
+	if (ret) {
+		return -EINVAL;
 	}
 
 	pr_info("[INFO][USB] Before\nU30_PHY_CFG = 0x%08X\n", old_reg);

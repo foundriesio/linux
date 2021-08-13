@@ -275,7 +275,7 @@ static int dwc3_chgdet_thread(void *work)
 	dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB]Start to check CHGDET\n");
 	while (!kthread_should_stop() && timeout > 0) {
 		pcfg2 = readl(&USBPHYCFG->FPHY_PCFG2);
-		usleep_range(1000,1100);
+		usleep_range(1000, 1100);
 		timeout--;
 	}
 
@@ -340,7 +340,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 		if ((readl(&USBPHYCFG->FPHY_PCFG2) & (1 << 22)) != 0) {
 			break;
 		}
-		usleep_range(1000,1100);
+		usleep_range(1000, 1100);
 		count--;
 	}
 
@@ -354,7 +354,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 		while (timeout_count > 0) {
 			pcfg2 = readl(&USBPHYCFG->FPHY_PCFG2);
 			if ((pcfg2 & (1 << 22)) != 0) {
-				usleep_range(1000,1100);
+				usleep_range(1000, 1100);
 				timeout_count--;
 			} else {
 				break;
@@ -379,7 +379,8 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 			dev_dbg(dwc3_phy_dev->dev, "[DEBUG][USB] start chg det thread!\n");
 			dwc3_phy_dev->dwc3_chgdet_thread =
 				kthread_run(dwc3_chgdet_thread,
-						(void *)dwc3_phy_dev, "dwc3-chgdet");
+						(void *)dwc3_phy_dev,
+						"dwc3-chgdet");
 			if (IS_ERR(dwc3_phy_dev->dwc3_chgdet_thread)) {
 				dev_err(dwc3_phy_dev->dev, "[ERROR][USB] failed to run dwc3_chgdet_thread\n");
 			}
@@ -434,7 +435,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 			dev_info(dwc3_phy_dev->dev, "[INFO][USB] Chager Detecttion!!\n");
 			break;
 		}
-		usleep_range(1000,1100);
+		usleep_range(1000, 1100);
 		count--;
 	}
 
@@ -444,7 +445,7 @@ static void tcc_dwc3_set_cdp(struct work_struct *data)
 	} else {
 		pcfg = readl(&USBPHYCFG->U30_PCFG1);
 		writel((pcfg | (1 << 18)), &USBPHYCFG->U30_PCFG1);
-		usleep_range(1000,1100);
+		usleep_range(1000, 1100);
 		writel(readl(&USBPHYCFG->U30_PCFG1) & ~((1 << 18) | (1 << 17)),
 				&USBPHYCFG->U30_PCFG1);
 	}
@@ -589,7 +590,8 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 		/* Set 2.0phy REXT */
 		tmp_cnt = 0;
 
-		if (IS_ENABLED(CONFIG_ARCH_TCC803X) || (get_chip_name() == 0x8059)) {
+		if (IS_ENABLED(CONFIG_ARCH_TCC803X) ||
+				(get_chip_name() == 0x8059)) {
 			do {
 				// Read calculated value
 				writel(Hw26|Hw25, dwc3_phy_dev->ref_base);
@@ -605,7 +607,8 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 				uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
 
 				//Read Override Bus
-				writel(Hw29 | Hw26 | Hw25, &USBPHYCFG->FPHY_PCFG3);
+				writel(Hw29 | Hw26 | Hw25,
+						&USBPHYCFG->FPHY_PCFG3);
 				uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
 
 				//Write Override Bus
@@ -615,7 +618,8 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 				udelay(1);
 
 				writel(Hw29 | Hw28 | Hw26 | Hw25 |
-						Hw23 | Hw22 | Hw21 | Hw20 | tmp_data,
+						Hw23 | Hw22 | Hw21 | Hw20 |
+						tmp_data,
 						&USBPHYCFG->FPHY_PCFG3);
 				udelay(1);
 
@@ -629,7 +633,8 @@ static int32_t dwc3_tcc_ss_phy_ctrl_native(struct usb_phy *phy, int32_t on_off)
 				uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
 
 				//Read Override Bus
-				writel(Hw29 | Hw26 | Hw25, &USBPHYCFG->FPHY_PCFG3);
+				writel(Hw29 | Hw26 | Hw25,
+						&USBPHYCFG->FPHY_PCFG3);
 				uTmp = readl(&USBPHYCFG->FPHY_PCFG3);
 				dev_info(dwc3_phy_dev->dev, "[INFO][USB] 2.0 REXT = 0x%08x\n",
 						(0x0000F000U & uTmp));

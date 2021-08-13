@@ -148,47 +148,46 @@ static struct usb_ehci_pdata ehci_platform_defaults = {
 };
 
 static ssize_t show_ehci_testmode(struct device *dev,
-                    struct device_attribute *attr,
-                    char *buf)
+		struct device_attribute *attr,
+		char *buf)
 {
 	struct usb_hcd  *hcd = dev_get_drvdata(dev);
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-    u32 reg;
+	u32 reg;
 
-    if (ehci == NULL)
-    {
-        pr_err("%s: ehci is null\n", __func__);
+	if (ehci == NULL) {
+		pr_err("%s: ehci is null\n", __func__);
 		return 0;
-    }
+	}
 
-    reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
-    reg &= EHCI_PORTPMSC_TESTMODE_MASK;
-    reg >>= 16;
+	reg = ehci_readl(ehci, &ehci->regs->port_status[0]);
+	reg &= EHCI_PORTPMSC_TESTMODE_MASK;
+	reg >>= 16;
 
-    switch (reg) {
-        case 0:
-            pr_info("no test\n");
-            break;
-        case TEST_J:
-            pr_info("test_j\n");
-            break;
-        case TEST_K:
-            pr_info("test_k\n");
-            break;
-        case TEST_SE0_NAK:
-            pr_info("test_se0_nak\n");
-            break;
-        case TEST_PACKET:
-            pr_info("test_packet\n");
-            break;
-        case TEST_FORCE_EN:
-            pr_info("test_force_enable\n");
-            break;
-        default:
-            pr_info("UNKNOWN test mode\n");
-    }
+	switch (reg) {
+	case 0:
+		pr_info("no test\n");
+		break;
+	case TEST_J:
+		pr_info("test_j\n");
+		break;
+	case TEST_K:
+		pr_info("test_k\n");
+		break;
+	case TEST_SE0_NAK:
+		pr_info("test_se0_nak\n");
+		break;
+	case TEST_PACKET:
+		pr_info("test_packet\n");
+		break;
+	case TEST_FORCE_EN:
+		pr_info("test_force_enable\n");
+		break;
+	default:
+		pr_info("UNKNOWN test mode\n");
+	}
 
-    return 0;
+	return 0;
 }
 
 static ssize_t store_ehci_testmode(struct device *dev,

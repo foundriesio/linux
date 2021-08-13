@@ -183,7 +183,7 @@ static int ehci_chgdet_thread(void *work)
 	dev_dbg(phy_dev->dev, "[DEBUG][USB]Start to check CHGDET\n");
 	while (!kthread_should_stop() && timeout > 0) {
 		pcfg2 = readl(&ehci_pcfg->pcfg2);
-		usleep_range(1000,1100);
+		usleep_range(1000, 1100);
 		timeout--;
 	}
 
@@ -218,7 +218,7 @@ static void chgdet_monitor(struct work_struct *data)
 	while (timeout_count > 0) {
 		pcfg2 = readl(&ehci_pcfg->pcfg2);
 		if ((pcfg2 & (1 << 22)) != 0) { //Check VDP_SRC signal
-			usleep_range(1000,1100);
+			usleep_range(1000, 1100);
 			timeout_count--;
 		} else {
 			break;

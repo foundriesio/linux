@@ -1236,22 +1236,22 @@ static ssize_t dwc3_tcc_drd_mode_show(struct device *dev,
 	struct dwc3 *dwc = dev_get_drvdata(dev);
 	unsigned long flags;
 	u32 reg;
-	char* mode;
+	char *mode;
 
 	spin_lock_irqsave(&dwc->lock, flags);
 	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
 	spin_unlock_irqrestore(&dwc->lock, flags);
 
 	switch (DWC3_GCTL_PRTCAP(reg)) {
-		case DWC3_GCTL_PRTCAP_HOST:
-			mode = "host";
-			break;
-		case DWC3_GCTL_PRTCAP_DEVICE:
-			mode = "device";
-			break;
-		default:
-			mode = "UNKNOWN";
-			break;
+	case DWC3_GCTL_PRTCAP_HOST:
+		mode = "host";
+		break;
+	case DWC3_GCTL_PRTCAP_DEVICE:
+		mode = "device";
+		break;
+	default:
+		mode = "UNKNOWN";
+		break;
 	}
 
 	return sprintf(buf, "dwc3 dr_mode - %s\n", mode);
