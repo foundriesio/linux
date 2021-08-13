@@ -360,20 +360,21 @@ static s32 tcc_clkctrl_is_enabled(struct clk_hw *hw)
 	struct arm_smccc_res res;
 	struct tcc_clk *tcc = to_tcc_clk((hw));
 	s32 id = (s32)tcc->id;
+	s32 ret = 0;
 
 	if (ckc_ops != NULL) {
 		if ((ckc_ops->ckc_is_clkctrl_enabled) != NULL) {
-			s32 ret_val = ckc_ops->ckc_is_clkctrl_enabled(id);
+			ret = ckc_ops->ckc_is_clkctrl_enabled(id);
 
-			return (ret_val != 0) ? 1 : 0;
+			ret = (ret != 0) ? 1 : 0;
 		}
 	} else {
 		arm_smccc_smc((ulong)SIP_CLK_IS_CLKCTRL, tcc->id, 0, 0,
 			      0, 0, 0, 0, &res);
-		return (s32)res.a0;
+		ret = (s32)res.a0;
 	}
 
-	return 0;
+	return ret;
 }
 
 static const struct clk_ops tcc_clkctrl_ops = {
@@ -504,19 +505,21 @@ static s32 tcc_peri_is_enabled(struct clk_hw *hw)
 	struct arm_smccc_res res;
 	struct tcc_clk *tcc = to_tcc_clk((hw));
 	s32 id = (s32)tcc->id;
+	s32 ret = 0;
 
 	if (ckc_ops != NULL) {
 		if ((ckc_ops->ckc_is_peri_enabled) != NULL) {
-			s32 ret_val = ckc_ops->ckc_is_peri_enabled(id);
+			ret = ckc_ops->ckc_is_peri_enabled(id);
 
-			return (ret_val != 0) ? 1 : 0;
+			ret = (ret != 0) ? 1 : 0;
 		}
 	} else {
 		arm_smccc_smc((ulong)SIP_CLK_IS_PERI, id, 0, 0, 0,
 			      0, 0, 0, &res);
-		return (s32)res.a0;
+		ret = (s32)res.a0;
 	}
-	return 0;
+
+	return ret;
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -652,19 +655,29 @@ static s32 tcc_isoip_top_is_enabled(struct clk_hw *hw)
 	struct arm_smccc_res res;
 	struct tcc_clk *tcc = to_tcc_clk((hw));
 	s32 id = (s32)tcc->id;
+	s32 ret = 0;
 
 	if (ckc_ops != NULL) {
 		if ((ckc_ops->ckc_is_isoip_top_pwdn) != NULL) {
-			s32 ret_val = ckc_ops->ckc_is_isoip_top_pwdn(id);
-
-			return (ret_val != 0) ? 0 : 1;
+			ret = ckc_ops->ckc_is_isoip_top_pwdn(id);
 		}
 	} else {
 		arm_smccc_smc((ulong)SIP_CLK_IS_ISOTOP, id, 0, 0,
 			      0, 0, 0, 0, &res);
-		return (res.a0 == (ulong)1) ? 0 : 1;
+
+		ret = res.a0;
 	}
-	return 0;
+
+	if (ret < 0) {
+		pr_debug("[DEBUG][tcc_clk][%s]"
+			" Fail to get enable status. err_code=%ld\n",
+			__func__, ret);
+		ret = 0;
+	} else {
+		ret = (ret != 0) ? 0 : 1;
+	}
+
+	return ret;
 }
 
 static const struct clk_ops tcc_isoip_top_ops = {
@@ -729,20 +742,29 @@ static s32 tcc_isoip_ddi_is_enabled(struct clk_hw *hw)
 	struct arm_smccc_res res;
 	struct tcc_clk *tcc = to_tcc_clk((hw));
 	s32 id = (s32)tcc->id;
+	s32 ret = 0;
 
 	if (ckc_ops != NULL) {
 		if ((ckc_ops->ckc_is_isoip_ddi_pwdn) != NULL) {
-			s32 ret_val = ckc_ops->ckc_is_isoip_ddi_pwdn(id);
-
-			return (ret_val != 0) ? 0 : 1;
+			ret = ckc_ops->ckc_is_isoip_ddi_pwdn(id);
 		}
 	} else {
 		arm_smccc_smc((ulong)SIP_CLK_IS_ISODDI, id, 0, 0,
 			      0, 0, 0, 0, &res);
-		return (res.a0 == (ulong)1) ? 0 : 1;
+
+		ret = res.a0;
 	}
 
-	return 0;
+	if (ret < 0) {
+		pr_debug("[DEBUG][tcc_clk][%s]"
+			" Fail to get enable status. err_code=%ld\n",
+			__func__, ret);
+		ret = 0;
+	} else {
+		ret = (ret != 0) ? 0 : 1;
+	}
+
+	return ret;
 }
 
 static const struct clk_ops tcc_isoip_ddi_ops = {
@@ -809,20 +831,29 @@ static s32 tcc_ddibus_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
 	struct tcc_clk *tcc = to_tcc_clk((hw));
+	s32 ret = 0;
 
 	if (ckc_ops != NULL) {
 		if ((ckc_ops->ckc_is_ddibus_pwdn) != NULL) {
-			s32 ret_val = ckc_ops->ckc_is_ddibus_pwdn((s32)tcc->id);
-
-			return (ret_val != 0) ? 0 : 1;
+			ret = ckc_ops->ckc_is_ddibus_pwdn((s32)tcc->id);
 		}
 	} else {
 		arm_smccc_smc((ulong)SIP_CLK_IS_DDIBUS, tcc->id, 0, 0,
 			      0, 0, 0, 0, &res);
-		return (res.a0 == (ulong)1) ? 0 : 1;
+
+		ret = res.a0;
 	}
 
-	return 0;
+	if (ret < 0) {
+		pr_debug("[DEBUG][tcc_clk][%s]"
+			" Fail to get enable status. err_code=%ld\n",
+			__func__, ret);
+		ret = 0;
+	} else {
+		ret = (ret != 0) ? 0 : 1;
+	}
+
+	return ret;
 }
 
 static const struct clk_ops tcc_ddibus_ops = {
@@ -887,20 +918,29 @@ static s32 tcc_iobus_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
 	struct tcc_clk *tcc = to_tcc_clk((hw));
+	s32 ret = 0;
 
 	if (ckc_ops != NULL) {
 		if ((ckc_ops->ckc_is_iobus_pwdn) != NULL) {
-			s32 ret_val = ckc_ops->ckc_is_iobus_pwdn((s32)tcc->id);
-
-			return (ret_val != 0) ? 0 : 1;
+			ret = ckc_ops->ckc_is_iobus_pwdn((s32)tcc->id);
 		}
 	} else {
 		arm_smccc_smc((ulong)SIP_CLK_IS_IOBUS, tcc->id, 0, 0, 0,
 			      0, 0, 0, &res);
-		return (res.a0 == (ulong)1) ? 0 : 1;
+
+		ret = res.a0;
 	}
 
-	return 0;
+	if (ret < 0) {
+		pr_debug("[DEBUG][tcc_clk][%s]"
+			" Fail to get enable status. err_code=%ld\n",
+			__func__, ret);
+		ret = 0;
+	} else {
+		ret = (ret != 0) ? 0 : 1;
+	}
+
+	return ret;
 }
 
 static const struct clk_ops tcc_iobus_ops = {
@@ -966,20 +1006,29 @@ static s32 tcc_vpubus_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
 	struct tcc_clk *tcc = to_tcc_clk((hw));
+	s32 ret = 0;
 
 	if (ckc_ops != NULL) {
 		if ((ckc_ops->ckc_is_vpubus_pwdn) != NULL) {
-			s32 ret_val = ckc_ops->ckc_is_vpubus_pwdn((s32)tcc->id);
-
-			return (ret_val != 0) ? 0 : 1;
+			ret = ckc_ops->ckc_is_vpubus_pwdn((s32)tcc->id);
 		}
 	} else {
 		arm_smccc_smc((ulong)SIP_CLK_IS_VPUBUS, tcc->id, 0, 0,
 			      0, 0, 0, 0, &res);
-		return (res.a0 == (ulong)1) ? 0 : 1;
+
+		ret = res.a0;
 	}
 
-	return 0;
+	if (ret < 0) {
+		pr_debug("[DEBUG][tcc_clk][%s]"
+			" Fail to get enable status. err_code=%ld\n",
+			__func__, ret);
+		ret = 0;
+	} else {
+		ret = (ret != 0) ? 0 : 1;
+	}
+
+	return ret;
 }
 
 static const struct clk_ops tcc_vpubus_ops = {
@@ -1046,20 +1095,29 @@ static s32 tcc_hsiobus_is_enabled(struct clk_hw *hw)
 	struct arm_smccc_res res;
 	struct tcc_clk *tcc = to_tcc_clk((hw));
 	s32 id = (s32)tcc->id;
+	s32 ret = 0;
 
 	if (ckc_ops != NULL) {
 		if ((ckc_ops->ckc_is_hsiobus_pwdn) != NULL) {
-			s32 ret_val = ckc_ops->ckc_is_hsiobus_pwdn(id);
-
-			return (ret_val != 0) ? 0 : 1;
+			ret = ckc_ops->ckc_is_hsiobus_pwdn(id);
 		}
 	} else {
 		arm_smccc_smc((ulong)SIP_CLK_IS_HSIOBUS, id, 0, 0,
 			      0, 0, 0, 0, &res);
-		return (res.a0 == (ulong)1) ? 0 : 1;
+
+		ret = res.a0;
 	}
 
-	return 0;
+	if (ret < 0) {
+		pr_debug("[DEBUG][tcc_clk][%s]"
+			" Fail to get enable status. err_code=%ld\n",
+			__func__, ret);
+		ret = 0;
+	} else {
+		ret = (ret != 0) ? 0 : 1;
+	}
+
+	return ret;
 }
 
 static const struct clk_ops tcc_hsiobus_ops = {
@@ -1087,19 +1145,21 @@ static s32 tcc_pll_is_enabled(struct clk_hw *hw)
 {
 	struct arm_smccc_res res;
 	struct tcc_clk *tcc = to_tcc_clk((hw));
+	s32 ret = 0;
 
 	if (ckc_ops != NULL) {
 		if ((ckc_ops->ckc_is_pll_enabled) != NULL) {
-			s32 ret_val = ckc_ops->ckc_is_pll_enabled((s32)tcc->id);
+			ret = ckc_ops->ckc_is_pll_enabled((s32)tcc->id);
 
-			return (ret_val != 0) ? 0 : 1;
+			ret = (ret != 0) ? 0 : 1;
 		}
 	} else {
 		arm_smccc_smc((ulong)SIP_CLK_IS_PLL_ENABLED, tcc->id,
 			      0, 0, 0, 0, 0, 0, &res);
-		return (s32)res.a0;
+		ret = (s32)res.a0;
 	}
-	return 0;
+
+	return ret;
 }
 
 static ulong tcc_pll_recalc_rate(struct clk_hw *hw,
@@ -1179,10 +1239,20 @@ static s32 tcc_cpubus_is_enabled(struct clk_hw *hw) {
 	if (ckc_ops != NULL) {
 		pr_err("[ERROR][tcc_clk][%s] Function not support.\n",
 			__func__);
-		ret = -1;
 	} else {
 		arm_smccc_smc((ulong)SIP_CLK_IS_CPUBUS, tcc->id, 0,
 				0, 0, 0, 0, 0, &res);
+
+		ret = res.a0;
+	}
+
+	if (ret < 0) {
+		pr_debug("[DEBUG][tcc_clk][%s]"
+			" Fail to get enable status. err_code=%ld\n",
+			__func__, ret);
+		ret = 0;
+	} else {
+		ret = (ret != 0) ? 0 : 1;
 	}
 
 	return ret;
@@ -1196,12 +1266,12 @@ static const struct clk_ops tcc_cpubus_ops = {
 };
 
 static void __init tcc_cpubus_init(struct device_node *np) {
-	s32 ret_val;
+	s32 ret;
 
-	ret_val = tcc_clk_register(np, &tcc_cpubus_ops);
+	ret = tcc_clk_register(np, &tcc_cpubus_ops);
 
-	if (ret_val != 0) {
-		pr_err("[ERROR][tcc_clk][%s] ret_val is not zero.\n",
+	if (ret != 0) {
+		pr_err("[ERROR][tcc_clk][%s] ret is not zero.\n",
 			__func__);
 	}
 }
