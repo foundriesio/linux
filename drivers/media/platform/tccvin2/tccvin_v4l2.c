@@ -49,7 +49,7 @@
  * V4L2 interface
  */
 
-int tccvin_get_imagesize(struct tccvin_streaming* stream,
+int tccvin_get_imagesize(struct tccvin_streaming *stream,
 	unsigned int width, unsigned int height,
 	unsigned int fcc, unsigned int (*planes)[])
 {

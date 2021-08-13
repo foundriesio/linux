@@ -370,7 +370,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 
 	dev_ptr		= tccvin_streaming_to_devptr(vdev);
 	main_node	= vdev->dev->pdev->dev.of_node;
-	if (main_node == NULL){
+	if (main_node == NULL) {
 		logd(dev_ptr,
 			"tcc_camera device node is not found.\n");
 		return -ENODEV;
@@ -383,7 +383,7 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 
 	/* VIN */
 	vioc_path->vin = -1;
-	vdev->cif.vin_irq_num   = -1;
+	vdev->cif.vin_irq_num = -1;
 	vioc_node = of_parse_phandle(main_node, "vin", 0);
 	if (vioc_node != NULL) {
 		of_property_read_u32_index(main_node,
@@ -397,7 +397,8 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 			/* VIN interrupt */
 			vdev->cif.vin_irq_num =
 				irq_of_parse_and_map(vioc_node, vioc_id);
-			logd(dev_ptr, "vin irq_num: %d\n", vdev->cif.vin_irq_num);
+			logd(dev_ptr,
+				"vin irq_num: %d\n", vdev->cif.vin_irq_num);
 		}
 	} else {
 		loge(dev_ptr,
@@ -590,8 +591,8 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 		/* pmap_viqe */
 		pmap_node = of_parse_phandle(main_node, "memory-region", 1);
 		if (pmap_node != NULL) {
-			ret = of_address_to_resource(
-				pmap_node, 0, &vdev->cif.pmap_viqe);
+			ret = of_address_to_resource(pmap_node, 0,
+				&vdev->cif.pmap_viqe);
 			if (ret == 0) {
 				logi(dev_ptr,
 					"%20s: 0x%08llx ~ 0x%08llx (0x%08llx)\n",
@@ -608,7 +609,8 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 	/* pmap_prev */
 	pmap_node = of_parse_phandle(main_node, "memory-region", 2);
 	if (pmap_node != NULL) {
-		ret = of_address_to_resource(pmap_node, 0, &vdev->cif.pmap_prev);
+		ret = of_address_to_resource(pmap_node, 0,
+			&vdev->cif.pmap_prev);
 		if (ret == 0) {
 			logi(dev_ptr,
 				"%20s: 0x%08llx ~ 0x%08llx (0x%08llx)\n",
@@ -619,7 +621,8 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 				resource_size(&vdev->cif.pmap_prev));
 
 			/*
-			 * Redirect dma memory allocations to special memory window.
+			 * Redirect dma memory allocations
+			 * to special memory window.
 			 */
 			dma_declare_coherent_memory(vdev->dev->vdev.dev,
 				vdev->cif.pmap_prev.start,
@@ -1370,7 +1373,9 @@ static irqreturn_t tccvin_vin_isr(int irq, void *data)
 		}
 
 		/* check if the incoming buffer list has only one entry */
-		// if (list_is_last(&stream->prev_buf->queue, &queue->irqqueue)) {
+		/* if (list_is_last(&stream->prev_buf->queue,
+		 *	&queue->irqqueue)) {
+		 */
 		if (list_is_singular(&queue->irqqueue)) {
 			logw(dev_ptr, "driver has only one buffer\n");
 			stream->prev_buf = NULL;
@@ -1474,9 +1479,12 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 		}
 
 		if (stream->timestamp.counter) {
-			logi(dev_ptr, "timestamp curr: %9ld.%09ld, diff: %9ld.%09ld\n",
-				stream->ts_next.tv_sec, stream->ts_next.tv_nsec,
-				stream->ts_diff.tv_sec, stream->ts_diff.tv_nsec);
+			logi(dev_ptr,
+				"ts curr: %9ld.%09ld, diff: %9ld.%09ld\n",
+				stream->ts_next.tv_sec,
+				stream->ts_next.tv_nsec,
+				stream->ts_diff.tv_sec,
+				stream->ts_diff.tv_nsec);
 		}
 
 		stream->ts_prev = stream->ts_next;
@@ -1484,6 +1492,7 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 		spin_lock_irqsave(&queue->irqlock, flags);
 
 		if (stream->skip_isr == 1) {
+			/* skip interrupt handling */
 			goto end;
 		}
 
@@ -1559,8 +1568,11 @@ static void tccvin_init_selection(struct tccvin_streaming *stream,
 				  __u32 type)
 {
 	struct device *dev_ptr = NULL;
+
 	WARN_ON(IS_ERR_OR_NULL(stream));
+
 	dev_ptr = tccvin_streaming_to_devptr(stream);
+
 	if (tccvin_is_null_rect(rect)) {
 		tccvin_get_default_rect(stream, rect, type);
 	} else {
@@ -2396,8 +2408,8 @@ static int32_t tccvin_video_subdevs_s_stream(struct tccvin_streaming *stream,
 int32_t tccvin_video_streamon(struct tccvin_streaming *stream)
 {
 	int32_t				ret		= 0;
-	unsigned long 			flags		= 0;
-	struct tccvin_video_queue 	*queue;
+	unsigned long			flags		= 0;
+	struct tccvin_video_queue	*queue;
 	struct device			*dev_ptr	= NULL;
 
 	WARN_ON(IS_ERR_OR_NULL(stream));

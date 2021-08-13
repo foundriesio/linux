@@ -236,10 +236,10 @@ struct tccvin_video_queue {
 };
 
 /* Get device instance from streaming object */
-#define tccvin_streaming_to_devptr(ptr)	\
-	&ptr->dev->pdev->dev
-#define tccvin_device_to_devptr(ptr) \
-	&ptr->pdev->dev
+#define tccvin_streaming_to_devptr(ptr)		\
+	(&ptr->dev->pdev->dev)
+#define tccvin_device_to_devptr(ptr)		\
+	(&ptr->pdev->dev)
 
 struct tccvin_streaming {
 	struct tccvin_device			*dev;
@@ -256,7 +256,7 @@ struct tccvin_streaming {
 	struct v4l2_rect			rect_crop;
 	struct v4l2_rect			rect_compose;
 
-	struct tccvin_frame 			frame;
+	struct tccvin_frame			frame;
 	struct tccvin_format			*def_format;
 	struct tccvin_format			*cur_format;
 	struct tccvin_frame			*cur_frame;
@@ -281,10 +281,12 @@ struct tccvin_streaming {
 	int					is_handover_needed;
 
 	/* A flag to skip handling buffers in wdma isr. We cannot guarantee that
-	* VIN isr is always invoked before WDMA isr since during the handover
-	* from early camera to rear camera, VIOC path wouuld be already running.
-	* To synchronize two ISR routines, we need to use extra flag so that we
-	* can avoid unexpected buffer handling with uninitialized buffers. */
+	 * VIN isr is always invoked before WDMA isr since during the handover
+	 * from early camera to rear camera, VIOC path wouuld be already
+	 * running.
+	 * To synchronize two ISR routines, we need to use extra flag so that we
+	 * can avoid unexpected buffer handling with uninitialized buffers.
+	 */
 	int					skip_isr;
 
 	atomic_t				timestamp;
@@ -353,28 +355,25 @@ extern unsigned int tccvin_timeout_param;
 
 #define LOG_TAG			"VIN"
 
-#define loge(dev_ptr, fmt, ...)							\
-	{									\
-		dev_err(dev_ptr, "[ERROR][%s] %s - " fmt, LOG_TAG, __func__,	\
-			##__VA_ARGS__);						\
+#define loge(dev_ptr, fmt, ...)					\
+	{							\
+		dev_err(dev_ptr, "[ERROR][%s] %s - " fmt,	\
+			LOG_TAG, __func__, ##__VA_ARGS__);	\
 	}
-#define logw(dev_ptr, fmt, ...)							\
-	{									\
-		dev_warn(							\
-			dev_ptr, "[WARN][%s] %s - " fmt, LOG_TAG, __func__,	\
-			##__VA_ARGS__);						\
+#define logw(dev_ptr, fmt, ...)					\
+	{							\
+		dev_warn(dev_ptr, "[WARN][%s] %s - " fmt,	\
+			LOG_TAG, __func__, ##__VA_ARGS__);	\
 	}
-#define logd(dev_ptr, fmt, ...)							\
-	{									\
-		dev_dbg(							\
-			dev_ptr, "[DEBUG][%s] %s - " fmt, LOG_TAG, __func__,	\
-			##__VA_ARGS__);						\
+#define logd(dev_ptr, fmt, ...)					\
+	{							\
+		dev_dbg(dev_ptr, "[DEBUG][%s] %s - " fmt,	\
+			LOG_TAG, __func__, ##__VA_ARGS__);	\
 	}
-#define logi(dev_ptr, fmt, ...)							\
-	{									\
-		dev_info(							\
-			dev_ptr, "[INFO][%s] %s - " fmt, LOG_TAG, __func__,	\
-			##__VA_ARGS__);						\
+#define logi(dev_ptr, fmt, ...)					\
+	{							\
+		dev_info(dev_ptr, "[INFO][%s] %s - " fmt,	\
+			LOG_TAG, __func__, ##__VA_ARGS__);	\
 	}
 
 /* --------------------------------------------------------------------------
@@ -387,7 +386,7 @@ extern struct tccvin_frame cur_frame;
 extern int tccvin_queue_init(struct tccvin_video_queue *queue,
 	enum v4l2_buf_type type, int drop_corrupted);
 extern void tccvin_queue_release(struct tccvin_video_queue *queue);
-extern int tccvin_get_imagesize(struct tccvin_streaming* stream,
+extern int tccvin_get_imagesize(struct tccvin_streaming *stream,
 				unsigned int width, unsigned int height,
 				unsigned int fcc, unsigned int (*planes)[]);
 extern int tccvin_request_buffers(struct tccvin_video_queue *queue,

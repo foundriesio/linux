@@ -117,7 +117,7 @@ static int tccvin_buffer_prepare(struct vb2_buffer *vb)
 {
 	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
 	struct tccvin_video_queue *queue = vb2_get_drv_priv(vb->vb2_queue);
-	struct tccvin_streaming* stream = tccvin_queue_to_stream(queue);
+	struct tccvin_streaming *stream = tccvin_queue_to_stream(queue);
 	struct tccvin_buffer *buf = tccvin_vbuf_to_buffer(vbuf);
 	struct device *dev_ptr = tccvin_streaming_to_devptr(stream);
 
@@ -283,7 +283,7 @@ int tccvin_query_buffer(struct tccvin_video_queue *queue,
 	struct v4l2_buffer *buf)
 {
 	int ret;
-	struct tccvin_streaming* stream;
+	struct tccvin_streaming *stream;
 	struct device *dev_ptr;
 
 	stream = tccvin_queue_to_stream(queue);
