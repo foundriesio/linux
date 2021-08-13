@@ -720,6 +720,8 @@ static long aie_part_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		return aie_part_rscmgr_rsc_check_avail(apart, argp);
 	case AIE_RSC_GET_COMMON_BROADCAST_IOCTL:
 		return aie_part_rscmgr_get_broadcast(apart, argp);
+	case AIE_RSC_GET_STAT_IOCTL:
+		return aie_part_rscmgr_get_statistics(apart, argp);
 	default:
 		dev_err(&apart->dev, "Invalid ioctl command %u.\n", cmd);
 		ret = -EINVAL;
@@ -747,7 +749,7 @@ const struct file_operations aie_part_fops = {
  */
 static void aie_tile_release_device(struct device *dev)
 {
-	put_device(dev);
+	(void)dev;
 }
 
 /**
@@ -761,9 +763,7 @@ static void aie_part_release_device(struct device *dev)
 {
 	struct aie_partition *apart = dev_to_aiepart(dev);
 	struct aie_device *adev = apart->adev;
-	struct aie_tile *atile = apart->atiles;
 	int ret;
-	u32 index;
 
 	ret = mutex_lock_interruptible(&adev->mlock);
 	if (ret) {
@@ -775,17 +775,10 @@ static void aie_part_release_device(struct device *dev)
 				apart->range.size.col);
 	aie_part_release_event_bitmap(apart);
 	aie_resource_uninitialize(&apart->l2_mask);
-
-	for (index = 0; index < apart->range.size.col * apart->range.size.row;
-	     index++, atile++)
-		put_device(&atile->dev);
-
 	list_del(&apart->node);
 	mutex_unlock(&adev->mlock);
-	aie_fpga_free_bridge(apart);
 	aie_resource_uninitialize(&apart->cores_clk_state);
 	aie_part_rscmgr_finish(apart);
-	put_device(apart->dev.parent);
 }
 
 /**
@@ -863,6 +856,14 @@ static int aie_create_tiles(struct aie_partition *apart)
 			if (ret) {
 				dev_err(tdev, "tile device_add failed: %d\n",
 					ret);
+				put_device(tdev);
+				return ret;
+			}
+			ret = aie_tile_sysfs_create_entries(atile);
+			if (ret) {
+				dev_err(tdev, "failed to create tile sysfs: %d\n",
+					ret);
+				device_del(tdev);
 				put_device(tdev);
 				return ret;
 			}
@@ -997,10 +998,9 @@ static struct aie_partition *aie_create_partition(struct aie_device *adev,
 		return ERR_PTR(ret);
 	}
 
-	/* Create sysfs interface */
-	ret = aie_part_sysfs_init(apart);
+	ret = aie_part_sysfs_create_entries(apart);
 	if (ret) {
-		dev_err(&apart->dev, "Failed to create sysfs interface.\n");
+		dev_err(&apart->dev, "Failed to create partition sysfs.\n");
 		put_device(dev);
 		return ERR_PTR(ret);
 	}
@@ -1012,7 +1012,6 @@ static struct aie_partition *aie_create_partition(struct aie_device *adev,
 	}
 	list_add_tail(&apart->node, &adev->partitions);
 	mutex_unlock(&adev->mlock);
-	get_device(&adev->dev);
 	dev_dbg(dev, "created AIE partition device.\n");
 
 	return apart;
@@ -1101,6 +1100,7 @@ of_aie_part_probe(struct aie_device *adev, struct device_node *nc)
  */
 static void aie_tile_remove(struct aie_tile *atile)
 {
+	aie_tile_sysfs_remove_entries(atile);
 	device_del(&atile->dev);
 	put_device(&atile->dev);
 }
@@ -1120,6 +1120,9 @@ void aie_part_remove(struct aie_partition *apart)
 	     index++, atile++)
 		aie_tile_remove(atile);
 
+	aie_fpga_free_bridge(apart);
+	aie_part_sysfs_remove_entries(apart);
+	of_node_clear_flag(apart->dev.of_node, OF_POPULATED);
 	device_del(&apart->dev);
 	put_device(&apart->dev);
 }

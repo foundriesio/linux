@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Xilinx DRM bridge header
  *
@@ -28,6 +28,7 @@ struct xlnx_bridge_debugfs_file;
  * @list: list node for Xilinx bridge device list
  * @of_node: OF node for the bridge
  * @owned: flag if the bridge is owned
+ * @available: flag if the bridge is available
  * @enable: callback to enable the bridge
  * @disable: callback to disable the bridge
  * @set_input: callback to set the input
@@ -42,6 +43,7 @@ struct xlnx_bridge {
 	struct list_head list;
 	struct device_node *of_node;
 	bool owned;
+	bool available;
 	int (*enable)(struct xlnx_bridge *bridge);
 	void (*disable)(struct xlnx_bridge *bridge);
 	int (*set_input)(struct xlnx_bridge *bridge,
@@ -96,7 +98,7 @@ void xlnx_bridge_unregister(struct xlnx_bridge *bridge);
 
 struct xlnx_bridge_helper;
 
-static inline inline int xlnx_bridge_helper_init(void)
+static inline int xlnx_bridge_helper_init(void)
 {
 	return 0;
 }
