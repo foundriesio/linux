@@ -728,5 +728,6 @@ source "drivers/char/tcc_aux_detect/Kconfig"
 
 source "drivers/char/displayport_v1_4/Kconfig"
 
+source "drivers/char/rpmb/Kconfig"
 endmenu
 

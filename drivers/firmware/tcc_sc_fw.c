@@ -637,6 +637,10 @@ void *tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 	xfer->tx_mssg.data_buf[2] = sc_cmd->cdb2;
 	xfer->tx_mssg.data_buf[3] = sc_cmd->cdb3;
 
+	if ((sc_cmd->dir == 0xe) || (sc_cmd->dir == 0xf))
+	{
+		sc_cmd->sg_count = 0;
+	}
 	for_each_sg((sc_cmd->sg), (sg), sc_cmd->sg_count, i) {
 		addr = sg_dma_address(sg);
 		len = sg_dma_len(sg);
@@ -649,7 +653,7 @@ void *tcc_sc_fw_cmd_request_ufs_cmd(const struct tcc_sc_fw_handle *handle,
 
 	xfer->complete = complete;
 	xfer->args = args;
-	if (sc_cmd->dir == 0xf) {
+	if ((sc_cmd->dir == 0xe) || (sc_cmd->dir == 0xf)) {
 		dev_dbg(info->dev, "[INFO][TCC_SC_FW] ufs sync msg\n");
 		ret = tcc_sc_fw_xfer_sync(info, xfer, &res_cmd);
 		if (ret != 0) {
