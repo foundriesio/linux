@@ -119,8 +119,10 @@ static int arxxxx_init(struct v4l2_subdev *sd, u32 enable)
 	mutex_lock(&dev->lock);
 
 	if (enable == 1) {
+		/* reference count-up */
 		dev->i_cnt++;
 	} else {
+		/* reference count-down */
 		dev->i_cnt--;
 	}
 
