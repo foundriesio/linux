@@ -152,8 +152,10 @@ static void __init init_mp_cpumask_set(void)
 	struct cpufreq_policy policy;
 
 	for_each_cpu(i, cpu_possible_mask) {
-		if (!cpufreq_get_policy(&policy, i))
+		if (!cpufreq_get_policy(&policy, i)) {
 			continue;
+		}
+
 		if (i > 3) {
 			cpumask_set_cpu(i, &mp_cluster_cpus[CL_ZERO]);
 			/**/
@@ -170,25 +172,31 @@ static int32_t code_to_temp(struct cal_thermal_data *data, int32_t temp_code)
 	int32_t temp;
 
 	switch (data->cal_type) {
-		case TYPE_TWO_POINT_TRIMMING:
-			temp = (temp_code - data->temp_error1) * (85 - 25) /
-				(data->temp_error2 - data->temp_error1) + 25;
-			break;
-		case TYPE_ONE_POINT_TRIMMING:
-			temp = temp_code - data->temp_error1 + 25;
-			break;
-		case TYPE_NONE:
-			temp = (int32_t)temp_code - 21;
-			break;
-		default:
-			temp = temp_code;
-			break;
+	case TYPE_TWO_POINT_TRIMMING:
+		temp = (temp_code - data->temp_error1) * (85 - 25) /
+			(data->temp_error2 - data->temp_error1) + 25;
+		break;
+	case TYPE_ONE_POINT_TRIMMING:
+		temp = temp_code - data->temp_error1 + 25;
+		break;
+	case TYPE_NONE:
+		temp = (int32_t)temp_code - 21;
+		break;
+	default:
+		temp = temp_code;
+		break;
 	}
 
-	if (temp > MAX_TEMP)
+	if (temp > MAX_TEMP) {
+		/**/
 		temp = MAX_TEMP;
-	else if (temp < MIN_TEMP)
+	} else if (temp < MIN_TEMP) {
+		/**/
 		temp = MIN_TEMP;
+	} else {
+		/**/
+		/**/
+	}
 
 	return temp;
 }
@@ -215,6 +223,7 @@ static int32_t tcc_thermal_read(struct tcc_thermal_data *data)
 static int32_t tcc_thermal_init(struct tcc_thermal_data *data)
 {
 	u32 v_temp;
+
 	v_temp = readl_relaxed(data->control);
 
 	v_temp |= 0x3;
@@ -224,11 +233,18 @@ static int32_t tcc_thermal_init(struct tcc_thermal_data *data)
 	// write VREF and SLOPE if ecid value is valid
 	// if value is not valid, use default setting.
 	v_temp = data->vref_trim;
-	if (v_temp)
+
+	if (v_temp) {
+		/**/
 		writel(v_temp, data->vref_sel);
+	}
+
 	v_temp = data->slop_trim;
-	if (v_temp)
+
+	if (v_temp) {
+		/**/
 		writel(v_temp, data->slop_sel);
+	}
 
 	v_temp = readl_relaxed(data->control);
 
@@ -240,8 +256,10 @@ static int32_t tcc_thermal_init(struct tcc_thermal_data *data)
 static int32_t tcc_get_mode(struct thermal_zone_device *thermal,
 		enum thermal_device_mode *mode)
 {
-	if ((thermal_zone != NULL) && (mode != NULL))
+	if ((thermal_zone != NULL) && (mode != NULL)) {
+		/**/
 		*mode = thermal_zone->mode;
+	}
 	return 0;
 }
 
@@ -295,11 +313,14 @@ static int32_t tcc_get_trip_type(struct thermal_zone_device *thermal,
 		.size[THERMAL_TRIP_PASSIVE];
 	if (type != NULL) {
 		if (trip < active_size) {
+			/**/
 			*type = THERMAL_TRIP_ACTIVE;
 		} else if ((trip >= active_size) &&
 				(trip < (active_size + passive_size))) {
+			/**/
 			*type = THERMAL_TRIP_PASSIVE;
 		} else if (trip >= (active_size + passive_size)) {
+			/**/
 			*type = THERMAL_TRIP_CRITICAL;
 		} else {
 			return -EINVAL;
@@ -324,9 +345,9 @@ static int32_t tcc_get_trip_temp(struct thermal_zone_device *thermal,
 		thermal_zone->sensor_conf->cooling_data
 		.size[THERMAL_TRIP_PASSIVE];
 
-	if ((trip < 0) || (trip > (active_size + passive_size)))
+	if ((trip < 0) || (trip > (active_size + passive_size))) {
 		return -EINVAL;
-
+	}
 
 	if (temp != NULL) {
 		*temp = thermal_zone->sensor_conf->trip_data.trip_val[trip];
@@ -410,18 +431,21 @@ static int32_t tcc_get_trend(struct thermal_zone_device *thermal,
 	if (trip > cur) {
 		if (trend != NULL) {
 			if ((thermal != NULL) &&
-					(thermal->temperature >= trip_temp))
+					(thermal->temperature >= trip_temp)) {
 				*trend = THERMAL_TREND_RAISING;
-			else
-				if (thermal->temperature < trip_temp_prev)
+			} else {
+				if (thermal->temperature < trip_temp_prev) {
 					*trend = THERMAL_TREND_DROPPING;
-				else
+				} else {
 					*trend = THERMAL_TREND_STABLE;
+				}
+			}
 		}
 	} else {
 		if ((thermal != NULL) &&
-				(thermal->temperature < trip_temp))
+				(thermal->temperature < trip_temp)) {
 			*trend = THERMAL_TREND_DROPPING;
+		}
 	}
 #else
 	*trend = THERMAL_TREND_STABLE;
@@ -498,29 +522,35 @@ static int32_t tcc_bind(struct thermal_zone_device *thermal,
 			if (clip_data->freq_clip_max_cluster1 >
 					policy.max) {
 				(void)pr_err(
-						"[ERROR][TSENSOR] %s: CL_ZERO throttling freq(%d) is greater than policy max(%d)\n",
-						__func__, clip_data->freq_clip_max_cluster1,
-						policy.max);
+					"[ERROR][TSENSOR] %s: CL_ZERO throttling freq(%d) is greater than policy max(%d)\n",
+					__func__,
+					clip_data->freq_clip_max_cluster1,
+					policy.max);
 				clip_data->freq_clip_max_cluster1 = policy.max;
 			} else if (clip_data->freq_clip_max_cluster1 <
 					policy.min) {
 				(void)pr_err(
-						"[ERROR][TSENSOR] %s: CL_ZERO throttling freq(%d) is less than policy min(%d)\n",
-						__func__, clip_data->freq_clip_max_cluster1,
-						policy.min);
+					"[ERROR][TSENSOR] %s: CL_ZERO throttling freq(%d) is less than policy min(%d)\n",
+					__func__,
+					clip_data->freq_clip_max_cluster1,
+					policy.min);
 				clip_data->freq_clip_max_cluster1 = policy.min;
 			}
 		} else if (cluster_idx == CL_ZERO) {
 			cpufreq_get_policy(&policy, CLUST0_POLICY_CORE);
 			if (clip_data->freq_clip_max > policy.max) {
 				(void)pr_err(
-						"[ERROR][TSENSOR] %s: CL_ONE throttling freq(%d) is greater than policy max(%d)\n",
-						__func__, clip_data->freq_clip_max, policy.max);
+					"[ERROR][TSENSOR] %s: CL_ONE throttling freq(%d) is greater than policy max(%d)\n",
+					__func__,
+					clip_data->freq_clip_max,
+					policy.max);
 				clip_data->freq_clip_max = policy.max;
 			} else if (clip_data->freq_clip_max < policy.min) {
 				(void)pr_err(
-						"[ERROR][TSENSOR] %s: CL_ONE throttling freq(%d) is less than policy min(%d)\n",
-						__func__, clip_data->freq_clip_max, policy.min);
+					"[ERROR][TSENSOR] %s: CL_ONE throttling freq(%d) is less than policy min(%d)\n",
+					__func__,
+					clip_data->freq_clip_max,
+					policy.min);
 				clip_data->freq_clip_max = policy.min;
 			}
 
@@ -533,25 +563,24 @@ static int32_t tcc_bind(struct thermal_zone_device *thermal,
 			/**/
 		} else {
 			switch (type) {
-				case THERMAL_TRIP_ACTIVE:
-				case THERMAL_TRIP_PASSIVE:
-					ret = thermal_zone_bind_cooling_device(thermal,
-							i, cdev,
-							THERMAL_NO_LIMIT,
-							0,
-							THERMAL_WEIGHT_DEFAULT);
-					if (ret != 0) {
-						(void)pr_err(
-								"[ERROR][TSENSOR] error binding cdev inst %d\n",
-								i);
-						ret = -EINVAL;
-					}
-					thermal_zone->bind = (bool)true;
-					break;
-				default:
+			case THERMAL_TRIP_ACTIVE:
+			case THERMAL_TRIP_PASSIVE:
+				ret = thermal_zone_bind_cooling_device(thermal,
+						i, cdev,
+						THERMAL_NO_LIMIT,
+						0,
+						THERMAL_WEIGHT_DEFAULT);
+				if (ret != 0) {
+					(void)pr_err(
+							"[ERROR][TSENSOR] error binding cdev inst %d\n",
+							i);
 					ret = -EINVAL;
-
-					break;
+				}
+				thermal_zone->bind = (bool)true;
+				break;
+			default:
+				ret = -EINVAL;
+				break;
 			}
 		}
 	}
@@ -567,13 +596,15 @@ static int32_t tcc_unbind(struct thermal_zone_device *thermal,
 	struct thermal_sensor_conf *data = thermal_zone->sensor_conf;
 	enum thermal_trip_type type;
 
-	if (thermal_zone->bind == (bool)false)
+	if (thermal_zone->bind == (bool)false) {
 		return 0;
+	}
 
 	tab_size = data->cooling_data.freq_clip_count;
 
-	if (tab_size == 0)
+	if (tab_size == 0) {
 		return -EINVAL;
+	}
 
 	/* find the cooling device registered*/
 	for (i = 0; i < thermal_zone->cool_dev_size; i++) {
@@ -583,8 +614,9 @@ static int32_t tcc_unbind(struct thermal_zone_device *thermal,
 		}
 	}
 	/* No matching cooling device */
-	if (i == thermal_zone->cool_dev_size)
+	if (i == thermal_zone->cool_dev_size) {
 		return 0;
+	}
 
 	/* Bind the thermal zone to the cpufreq cooling device */
 	for (i = 0; i < tab_size; i++) {
@@ -594,22 +626,22 @@ static int32_t tcc_unbind(struct thermal_zone_device *thermal,
 			/**/
 		} else {
 			switch (type) {
-				case THERMAL_TRIP_ACTIVE:
-				case THERMAL_TRIP_PASSIVE:
-					ret =
-						thermal_zone_unbind_cooling_device(thermal, i,
-								cdev);
-					if (ret != 0) {
-						(void)pr_info(
-								"[ERROR][TSENSOR] error unbinding cdev inst=%d\n",
-								i);
-						ret = -EINVAL;
-					}
-					thermal_zone->bind = (bool)false;
-					break;
-				default:
+			case THERMAL_TRIP_ACTIVE:
+			case THERMAL_TRIP_PASSIVE:
+				ret =
+					thermal_zone_unbind_cooling_device(
+						thermal, i, cdev);
+				if (ret != 0) {
+					(void)pr_info(
+							"[ERROR][TSENSOR] error unbinding cdev inst=%d\n",
+							i);
 					ret = -EINVAL;
-					break;
+				}
+				thermal_zone->bind = (bool)false;
+				break;
+			default:
+				ret = -EINVAL;
+				break;
 			}
 		}
 	}
@@ -638,8 +670,10 @@ static struct thermal_sensor_conf tcc_sensor_conf = {
 static const struct of_device_id tcc_thermal_id_table[2] = {
 	{
 		.compatible = "telechips,tcc-thermal",
-	},{}
+	},
+	{}
 };
+
 MODULE_DEVICE_TABLE(of, tcc_thermal_id_table);
 
 static int32_t tcc_register_thermal(struct thermal_sensor_conf *sensor_conf)
@@ -675,7 +709,7 @@ static int32_t tcc_register_thermal(struct thermal_sensor_conf *sensor_conf)
 	for (i = 0; i < TCC_ZONE_COUNT; i++) {
 		for (j = 0; j < CL_MAX; j++) {
 			thermal_zone->cool_dev[count] =
-				cpufreq_cooling_register(&mp_cluster_cpus[count]);
+			cpufreq_cooling_register(&mp_cluster_cpus[count]);
 			if ((int32_t)IS_ERR(thermal_zone->cool_dev[count])) {
 				(void)pr_err(
 						"Failed to register cpufreq cooling device %d %x11\n",
@@ -740,11 +774,13 @@ static void tcc_unregister_thermal(void)
 {
 	int32_t i;
 
-	if (thermal_zone == NULL)
+	if (thermal_zone == NULL) {
 		return;
+	}
 
-	if (thermal_zone->therm_dev != NULL)
+	if (thermal_zone->therm_dev != NULL) {
 		thermal_zone_device_unregister(thermal_zone->therm_dev);
+	}
 
 	for (i = 0; i < thermal_zone->cool_dev_size; i++) {
 		if (thermal_zone->cool_dev[i] != NULL) {
@@ -828,10 +864,11 @@ static void tcc_thermal_get_efuse(struct platform_device *pdev)
 
 	// ~Read ECID - USER0
 
-	if (data->temp_trim1)
+	if (data->temp_trim1) {
 		data->cal_data->cal_type = pdata->cal_type;
-	else
+	} else {
 		data->cal_data->cal_type = TYPE_NONE;
+	}
 
 	(void)pr_info("[INFO][TSENSOR] %s. trim_val: %08x\n",
 			__func__, data->temp_trim1);
@@ -839,23 +876,24 @@ static void tcc_thermal_get_efuse(struct platform_device *pdev)
 			__func__, data->cal_data->cal_type);
 
 	switch (data->cal_data->cal_type) {
-		case TYPE_TWO_POINT_TRIMMING:
-			if (data->temp_trim1)
-				data->cal_data->temp_error1 = data->temp_trim1;
+	case TYPE_TWO_POINT_TRIMMING:
+		if (data->temp_trim1) {
+			data->cal_data->temp_error1 = data->temp_trim1;
+		}
 
-			if (data->temp_trim2)
-				data->cal_data->temp_error2 = data->temp_trim2;
-
-			break;
-		case TYPE_ONE_POINT_TRIMMING:
-			if (data->temp_trim1)
-				data->cal_data->temp_error1 = data->temp_trim1;
-
-			break;
-		case TYPE_NONE:
-			break;
-		default:
-			break;
+		if (data->temp_trim2) {
+			data->cal_data->temp_error2 = data->temp_trim2;
+		}
+		break;
+	case TYPE_ONE_POINT_TRIMMING:
+		if (data->temp_trim1) {
+			data->cal_data->temp_error1 = data->temp_trim1;
+		}
+		break;
+	case TYPE_NONE:
+		break;
+	default:
+		break;
 	}
 	mutex_unlock(&data->lock);
 }
@@ -938,8 +976,9 @@ static struct tcc_thermal_platform_data *tcc_thermal_parse_dt(
 
 	pdata = devm_kzalloc(&pdev->dev,
 			sizeof(struct tcc_thermal_platform_data), GFP_KERNEL);
-	if (pdata == NULL)
+	if (pdata == NULL) {
 		goto err_parse_dt;
+	}
 
 	ret = of_property_read_s32(np, "throttle_count",
 			&pdata->freq_tab_count);
@@ -988,8 +1027,7 @@ static struct tcc_thermal_platform_data *tcc_thermal_parse_dt(
 			/**/
 		}
 	}
-	ret = of_property_read_s32(np, "polling-delay-idle",
-			&delay_idle);
+	ret = of_property_read_s32(np, "polling-delay-idle", &delay_idle);
 	if (ret != 0) {
 		(void)pr_err(
 				"[ERROR][TSENSOR]%s:failed to get polling-delay from dt\n",
@@ -1000,8 +1038,7 @@ static struct tcc_thermal_platform_data *tcc_thermal_parse_dt(
 		/**/
 	}
 
-	ret = of_property_read_s32(np, "polling-delay-passive",
-			&delay_passive);
+	ret = of_property_read_s32(np, "polling-delay-passive", &delay_passive);
 	if (ret != 0) {
 		(void)pr_err(
 				"[ERROR][TSENSOR]%s:failed to get polling-delay from dt\n",
@@ -1061,8 +1098,9 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	thermal_zone =
 		kzalloc(sizeof(struct tcc_thermal_zone), GFP_KERNEL);
 	if (thermal_zone == NULL) {
-		(void)pr_err("[ERROR][TSENSOR]%s: No thermal_zone struct device.\n",
-				__func__);
+		(void)pr_err(
+			"[ERROR][TSENSOR]%s: No thermal_zone struct device.\n",
+			__func__);
 		ret = -EINVAL;
 		goto error_einval;
 	}
@@ -1102,8 +1140,9 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	if (pdata == NULL)
+	if (pdata == NULL) {
 		pdata = tcc_thermal_parse_dt(pdev);
+	}
 
 	if (pdata == NULL) {
 		dev_err(&pdev->dev,
@@ -1124,8 +1163,9 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 		data->control = devm_ioremap_resource(&pdev->dev, data->res);
 	}
 	ret = (int32_t)IS_ERR(data->control);
-	if (ret != 0)
+	if (ret != 0) {
 		return (int32_t)PTR_ERR(data->control);
+	}
 
 	if (use_dt != NULL) {
 		data->temp_code = of_iomap(use_dt, 1);
@@ -1140,8 +1180,9 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	}
 
 	ret = (int32_t)IS_ERR(data->temp_code);
-	if (ret != 0)
+	if (ret != 0) {
 		return (int32_t)PTR_ERR(data->temp_code);
+	}
 
 	if (use_dt != NULL) {
 		data->ecid_conf = of_iomap(use_dt, 2);
@@ -1209,8 +1250,9 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 #if defined(CONFIG_ARCH_TCC898X)
 	data->tsen_power = of_clk_get(pdev->dev.of_node, 0);
 	if (data->tsen_power) {
-		if (clk_prepare_enable(data->tsen_power) != 0)
+		if (clk_prepare_enable(data->tsen_power) != 0) {
 			dev_err(&pdev->dev, "[ERROR][TSENSOR]fail to enable temp sensor power\n");
+		}
 	}
 #endif
 
@@ -1265,14 +1307,14 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_TCC_THERMAL_IRQ
 	data->irq = platform_get_irq(pdev, 0);
-	if (data->irq <= 0)
+	if (data->irq <= 0) {
 		dev_err(&pdev->dev, "no irq resource\n");
-	else {
+	} else {
 		ret = request_irq(data->irq, tcc_thermal_irq,
 				IRQF_SHARED, "tcc_thermal", data);
 		if (ret) {
 			dev_err(&pdev->dev,
-					"Failed to request irq %d\n", data->irq);
+				"Failed to request irq %d\n", data->irq);
 			ret = -ENODEV;
 			goto err_thermal;
 		}

@@ -123,11 +123,13 @@ static void tcc_unregister_thermal(void)
 {
 	int32_t i;
 
-	if (thermal_zone == NULL)
+	if (thermal_zone == NULL) {
 		return;
+	}
 
-	if (thermal_zone->therm_dev != NULL)
+	if (thermal_zone->therm_dev != NULL) {
 		thermal_zone_device_unregister(thermal_zone->therm_dev);
+	}
 
 	for (i = 0; i < thermal_zone->cool_dev_size; i++) {
 		if (thermal_zone->cool_dev[i] != NULL) {
@@ -162,10 +164,11 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 		goto error_eno;
 	}
 
-	if (pdev->dev.of_node)
+	if (pdev->dev.of_node) {
 		dev = &pdev->dev;
-	else
+	} else {
 		dev = pdev->dev.parent;
+	}
 
 	use_dt = dev->of_node;
 	id = of_match_node(tcc_thermal_id_table, use_dt);
@@ -184,7 +187,7 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 	}
 	//enable register
 
-	if(pdata == NULL) {
+	if (pdata == NULL) {
 		(void)pr_info("pdata is null\n");
 	}
 	if (use_dt != NULL) {
@@ -254,6 +257,7 @@ static int32_t tcc_thermal_probe(struct platform_device *pdev)
 		(void)pr_err("[TSENSOR]%s:thermal_zone is NULL!!\n", __func__);
 		goto error_register;
 	}
+
 	if (ret != 0) {
 		dev_err(&pdev->dev, "[ERROR][TSENSOR]Failed to register tcc_thermal\n");
 		goto error_register;
@@ -304,12 +308,12 @@ static int32_t tcc_thermal_suspend(struct device *dev)
 #if defined(CONFIG_CPU_FREQ) && defined(CONFIG_CPU_THERMAL)
 	int32_t i;
 
-	if (thermal_zone == NULL)
+	if (thermal_zone == NULL) {
 		return 0;
-
-	if (thermal_zone->therm_dev != NULL)
+	}
+	if (thermal_zone->therm_dev != NULL) {
 		thermal_zone_device_unregister(thermal_zone->therm_dev);
-
+	}
 	for (i = 0; i < thermal_zone->cool_dev_size; i++) {
 		if (thermal_zone->cool_dev[i] != NULL) {
 			/**/

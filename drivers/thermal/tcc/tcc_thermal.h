@@ -81,7 +81,7 @@ struct thermal_ops {
 	struct thermal_zone_device_ops *t_ops;
 };
 
-#if defined (CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X)
 struct tcc_thermal_platform_data {
 	uint32_t core;
 	struct resource *res;
