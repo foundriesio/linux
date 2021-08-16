@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2389,6 +2389,8 @@ static void unfreeze_partials(struct kme
+@@ -2392,6 +2392,8 @@ static void unfreeze_partials(struct kme
  	if (n)
  		spin_unlock(&n->list_lock);
  
@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	while (discard_page) {
  		page = discard_page;
  		discard_page = discard_page->next;
-@@ -2398,7 +2400,6 @@ static void unfreeze_partials(struct kme
+@@ -2401,7 +2403,6 @@ static void unfreeze_partials(struct kme
  		stat(s, FREE_SLAB);
  	}
  

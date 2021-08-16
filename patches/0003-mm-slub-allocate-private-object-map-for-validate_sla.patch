@@ -18,7 +18,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -4676,11 +4676,11 @@ static int count_total(struct page *page
+@@ -4679,11 +4679,11 @@ static int count_total(struct page *page
  #endif
  
  #ifdef CONFIG_SLUB_DEBUG
@@ -32,7 +32,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	slab_lock(page);
  
-@@ -4688,21 +4688,20 @@ static void validate_slab(struct kmem_ca
+@@ -4691,21 +4691,20 @@ static void validate_slab(struct kmem_ca
  		goto unlock;
  
  	/* Now we know that a valid freelist exists */
@@ -57,7 +57,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	unsigned long count = 0;
  	struct page *page;
-@@ -4711,7 +4710,7 @@ static int validate_slab_node(struct kme
+@@ -4714,7 +4713,7 @@ static int validate_slab_node(struct kme
  	spin_lock_irqsave(&n->list_lock, flags);
  
  	list_for_each_entry(page, &n->partial, slab_list) {
@@ -66,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		count++;
  	}
  	if (count != n->nr_partial) {
-@@ -4724,7 +4723,7 @@ static int validate_slab_node(struct kme
+@@ -4727,7 +4726,7 @@ static int validate_slab_node(struct kme
  		goto out;
  
  	list_for_each_entry(page, &n->full, slab_list) {
@@ -75,7 +75,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		count++;
  	}
  	if (count != atomic_long_read(&n->nr_slabs)) {
-@@ -4743,10 +4742,17 @@ long validate_slab_cache(struct kmem_cac
+@@ -4746,10 +4745,17 @@ long validate_slab_cache(struct kmem_cac
  	int node;
  	unsigned long count = 0;
  	struct kmem_cache_node *n;

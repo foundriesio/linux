@@ -44,22 +44,49 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 V2: Fix indent fail (Peter Z)
 ---
- include/linux/rwsem.h  |   58 ++++++++++++++++++++++++++
+ include/linux/rwsem.h  |   78 ++++++++++++++++++++++++++++++-----
  kernel/locking/rwsem.c |  108 +++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 166 insertions(+)
+ 2 files changed, 176 insertions(+), 10 deletions(-)
 ---
 --- a/include/linux/rwsem.h
 +++ b/include/linux/rwsem.h
-@@ -16,6 +16,9 @@
+@@ -16,6 +16,19 @@
  #include <linux/spinlock.h>
  #include <linux/atomic.h>
  #include <linux/err.h>
++
++#ifdef CONFIG_DEBUG_LOCK_ALLOC
++# define __RWSEM_DEP_MAP_INIT(lockname)			\
++	.dep_map = {					\
++		.name = #lockname,			\
++		.wait_type_inner = LD_WAIT_SLEEP,	\
++	},
++#else
++# define __RWSEM_DEP_MAP_INIT(lockname)
++#endif
 +
 +#ifndef CONFIG_PREEMPT_RT
 +
  #ifdef CONFIG_RWSEM_SPIN_ON_OWNER
  #include <linux/osq_lock.h>
  #endif
+@@ -64,16 +77,6 @@ static inline int rwsem_is_locked(struct
+ 
+ /* Common initializer macros and functions */
+ 
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
+-# define __RWSEM_DEP_MAP_INIT(lockname)			\
+-	.dep_map = {					\
+-		.name = #lockname,			\
+-		.wait_type_inner = LD_WAIT_SLEEP,	\
+-	},
+-#else
+-# define __RWSEM_DEP_MAP_INIT(lockname)
+-#endif
+-
+ #ifdef CONFIG_DEBUG_RWSEMS
+ # define __RWSEM_DEBUG_INIT(lockname) .magic = &lockname,
+ #else
 @@ -119,6 +122,61 @@ static inline int rwsem_is_contended(str
  	return !list_empty(&sem->wait_list);
  }
@@ -78,7 +105,7 @@ V2: Fix indent fail (Peter Z)
 +#define __RWSEM_INITIALIZER(name)				\
 +	{							\
 +		.rwbase = __RWBASE_INITIALIZER(name),		\
-+		RW_DEP_MAP_INIT(name)				\
++		__RWSEM_DEP_MAP_INIT(name)			\
 +	}
 +
 +#define DECLARE_RWSEM(lockname) \
@@ -171,7 +198,7 @@ V2: Fix indent fail (Peter Z)
 +		  struct lock_class_key *key)
 +{
 +	debug_check_no_locks_freed((void *)sem, sizeof(*sem));
-+	lockdep_init_map(&sem->dep_map, name, key, 0);
++	lockdep_init_map_wait(&sem->dep_map, name, key, 0, LD_WAIT_SLEEP);
 +}
 +EXPORT_SYMBOL(__rwsem_init);
 +#endif

@@ -10,7 +10,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/fs/io-wq.c
 +++ b/fs/io-wq.c
-@@ -414,7 +414,7 @@ static void io_wait_on_hash(struct io_wq
+@@ -413,7 +413,7 @@ static void io_wait_on_hash(struct io_wq
  {
  	struct io_wq *wq = wqe->wq;
  
@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (list_empty(&wqe->wait.entry)) {
  		__add_wait_queue(&wq->hash->wait, &wqe->wait);
  		if (!test_bit(hash, &wq->hash->map)) {
-@@ -422,7 +422,7 @@ static void io_wait_on_hash(struct io_wq
+@@ -421,7 +421,7 @@ static void io_wait_on_hash(struct io_wq
  			list_del_init(&wqe->wait.entry);
  		}
  	}
@@ -28,7 +28,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static struct io_wq_work *io_get_next_work(struct io_wqe *wqe)
-@@ -460,9 +460,9 @@ static struct io_wq_work *io_get_next_wo
+@@ -459,9 +459,9 @@ static struct io_wq_work *io_get_next_wo
  	}
  
  	if (stall_hash != -1U) {

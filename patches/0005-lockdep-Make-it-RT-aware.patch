@@ -1,19 +1,25 @@
-Subject: lockdep: Make it RT aware
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Sun Jul 17 18:51:23 2011 +0200
+Date: Sun, 17 Jul 2011 18:51:23 +0200
+Subject: [PATCH 05/10] lockdep: Make it RT aware
 
-From: Thomas Gleixner <tglx@linutronix.de>
+There is not really a softirq context on PREEMPT_RT.
+Softirqs on PREEMPT_RT are always invoked within the context of a threaded
+interrupt handler or within ksoftirqd. The "in-softirq" context is preemptible
+and is protected by a per-CPU lock to ensure mutual exclusion.
 
-teach lockdep that we don't really do softirqs on -RT.
+There is no difference on PREEMPT_RT between spin_lock_irq() and spin_lock()
+because the former does not disable interrupts. Therefore if lock is used
+in_softirq() and locked once with spin_lock_irq() then lockdep will report this
+with "inconsistent {SOFTIRQ-ON-W} -> {IN-SOFTIRQ-W} usage".
+
+Teach lockdep that we don't really do softirqs on -RT.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
 ---
  include/linux/irqflags.h |   23 +++++++++++++++--------
  kernel/locking/lockdep.c |    2 ++
  2 files changed, 17 insertions(+), 8 deletions(-)
----
+
 --- a/include/linux/irqflags.h
 +++ b/include/linux/irqflags.h
 @@ -71,14 +71,6 @@ do {						\

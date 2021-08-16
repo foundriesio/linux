@@ -58,7 +58,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	task_numa_free(tsk, true);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -4636,15 +4636,6 @@ static struct rq *finish_task_switch(str
+@@ -4638,15 +4638,6 @@ static struct rq *finish_task_switch(str
  		if (prev->sched_class->task_dead)
  			prev->sched_class->task_dead(prev);
  

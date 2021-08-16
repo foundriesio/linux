@@ -16,7 +16,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2477,16 +2477,28 @@ static void put_cpu_partial(struct kmem_
+@@ -2480,16 +2480,28 @@ static void put_cpu_partial(struct kmem_
  #endif	/* CONFIG_SLUB_CPU_PARTIAL */
  }
  
@@ -49,7 +49,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	stat(s, CPUSLAB_FLUSH);
  }
-@@ -2496,7 +2508,7 @@ static inline void __flush_cpu_slab(stru
+@@ -2499,7 +2511,7 @@ static inline void __flush_cpu_slab(stru
  	struct kmem_cache_cpu *c = per_cpu_ptr(s->cpu_slab, cpu);
  
  	if (c->page)
@@ -58,7 +58,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	unfreeze_partials_cpu(s, c);
  }
-@@ -2512,7 +2524,7 @@ static void flush_cpu_slab(void *d)
+@@ -2515,7 +2527,7 @@ static void flush_cpu_slab(void *d)
  	struct kmem_cache_cpu *c = this_cpu_ptr(s->cpu_slab);
  
  	if (c->page)

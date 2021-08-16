@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2341,16 +2341,20 @@ static void unfreeze_partials(struct kme
+@@ -2344,16 +2344,20 @@ static void unfreeze_partials(struct kme
  {
  #ifdef CONFIG_SLUB_CPU_PARTIAL
  	struct kmem_cache_node *n = NULL, *n2 = NULL;

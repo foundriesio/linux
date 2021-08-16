@@ -12,14 +12,16 @@ across the slow lock operations (contended case).
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
+V5: Add missing might_sleep() and fix lockdep init (Sebastian)
+---
  include/linux/rwlock_rt.h       |  140 ++++++++++++++++++++++++++++++++++++++++
- include/linux/rwlock_types.h    |   35 +++++++++-
+ include/linux/rwlock_types.h    |   49 ++++++++++----
  include/linux/spinlock_rt.h     |    2 
  kernel/Kconfig.locks            |    2 
  kernel/locking/spinlock.c       |    7 ++
  kernel/locking/spinlock_debug.c |    5 +
- kernel/locking/spinlock_rt.c    |  129 ++++++++++++++++++++++++++++++++++++
- 7 files changed, 317 insertions(+), 3 deletions(-)
+ kernel/locking/spinlock_rt.c    |  131 +++++++++++++++++++++++++++++++++++++
+ 7 files changed, 323 insertions(+), 13 deletions(-)
  create mode 100644 include/linux/rwlock_rt.h
 ---
 --- /dev/null
@@ -167,10 +169,20 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#endif
 --- a/include/linux/rwlock_types.h
 +++ b/include/linux/rwlock_types.h
-@@ -5,9 +5,9 @@
+@@ -5,9 +5,19 @@
  # error "Do not include directly, include spinlock_types.h"
  #endif
  
++#ifdef CONFIG_DEBUG_LOCK_ALLOC
++# define RW_DEP_MAP_INIT(lockname)					\
++	.dep_map = {							\
++		.name = #lockname,					\
++		.wait_type_inner = LD_WAIT_CONFIG,			\
++	}
++#else
++# define RW_DEP_MAP_INIT(lockname)
++#endif
++
 +#ifndef CONFIG_PREEMPT_RT
  /*
 - * include/linux/rwlock_types.h - generic rwlock type definitions
@@ -179,7 +191,24 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   *
   * portions Copyright 2005, Red Hat, Inc., Ingo Molnar
   * Released under the General Public License (GPL).
-@@ -50,4 +50,35 @@ typedef struct {
+@@ -25,16 +35,6 @@ typedef struct {
+ 
+ #define RWLOCK_MAGIC		0xdeaf1eed
+ 
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
+-# define RW_DEP_MAP_INIT(lockname)					\
+-	.dep_map = {							\
+-		.name = #lockname,					\
+-		.wait_type_inner = LD_WAIT_CONFIG,			\
+-	}
+-#else
+-# define RW_DEP_MAP_INIT(lockname)
+-#endif
+-
+ #ifdef CONFIG_DEBUG_SPINLOCK
+ #define __RW_LOCK_UNLOCKED(lockname)					\
+ 	(rwlock_t)	{	.raw_lock = __ARCH_RW_LOCK_UNLOCKED,	\
+@@ -50,4 +50,29 @@ typedef struct {
  
  #define DEFINE_RWLOCK(x)	rwlock_t x = __RW_LOCK_UNLOCKED(x)
  
@@ -195,22 +224,16 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#endif
 +} rwlock_t;
 +
-+#ifdef CONFIG_DEBUG_LOCK_ALLOC
-+# define RW_DEP_MAP_INIT(lockname)	.dep_map = { .name = #lockname }
-+#else
-+# define RW_DEP_MAP_INIT(lockname)
-+#endif
-+
-+#define __RW_LOCK_UNLOCKED(name) __RWLOCK_RT_INITIALIZER(name)
-+
-+#define DEFINE_RWLOCK(name) \
-+	rwlock_t name = __RW_LOCK_UNLOCKED(name)
-+
 +#define __RWLOCK_RT_INITIALIZER(name)					\
 +{									\
 +	.rwbase = __RWBASE_INITIALIZER(name),				\
 +	RW_DEP_MAP_INIT(name)						\
 +}
++
++#define __RW_LOCK_UNLOCKED(name) __RWLOCK_RT_INITIALIZER(name)
++
++#define DEFINE_RWLOCK(name)						\
++	rwlock_t name = __RW_LOCK_UNLOCKED(name)
 +
 +#endif /* CONFIG_PREEMPT_RT */
 +
@@ -301,7 +324,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#endif /* !CONFIG_PREEMPT_RT */
 --- a/kernel/locking/spinlock_rt.c
 +++ b/kernel/locking/spinlock_rt.c
-@@ -126,3 +126,132 @@ void __rt_spin_lock_init(spinlock_t *loc
+@@ -127,3 +127,134 @@ void __rt_spin_lock_init(spinlock_t *loc
  }
  EXPORT_SYMBOL(__rt_spin_lock_init);
  #endif
@@ -385,6 +408,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +
 +void __sched rt_read_lock(rwlock_t *rwlock)
 +{
++	___might_sleep(__FILE__, __LINE__, 0);
 +	rwlock_acquire_read(&rwlock->dep_map, 0, 0, _RET_IP_);
 +	rwbase_read_lock(&rwlock->rwbase, TASK_RTLOCK_WAIT);
 +	rcu_read_lock();
@@ -394,6 +418,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +
 +void __sched rt_write_lock(rwlock_t *rwlock)
 +{
++	___might_sleep(__FILE__, __LINE__, 0);
 +	rwlock_acquire(&rwlock->dep_map, 0, 0, _RET_IP_);
 +	rwbase_write_lock(&rwlock->rwbase, TASK_RTLOCK_WAIT);
 +	rcu_read_lock();
@@ -430,7 +455,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +		      struct lock_class_key *key)
 +{
 +	debug_check_no_locks_freed((void *)rwlock, sizeof(*rwlock));
-+	lockdep_init_map(&rwlock->dep_map, name, key, 0);
++	lockdep_init_map_wait(&rwlock->dep_map, name, key, 0, LD_WAIT_CONFIG);
 +}
 +EXPORT_SYMBOL(__rt_rwlock_init);
 +#endif

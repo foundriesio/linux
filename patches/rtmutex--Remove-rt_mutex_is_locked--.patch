@@ -14,7 +14,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/include/linux/rtmutex.h
 +++ b/include/linux/rtmutex.h
-@@ -67,17 +67,6 @@ do { \
+@@ -72,17 +72,6 @@ do { \
  #define DEFINE_RT_MUTEX(mutexname) \
  	struct rt_mutex mutexname = __RT_MUTEX_INITIALIZER(mutexname)
  

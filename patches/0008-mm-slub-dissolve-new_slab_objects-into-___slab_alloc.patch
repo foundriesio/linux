@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -1868,6 +1868,8 @@ static struct page *new_slab(struct kmem
+@@ -1871,6 +1871,8 @@ static struct page *new_slab(struct kmem
  	if (unlikely(flags & GFP_SLAB_BUG_MASK))
  		flags = kmalloc_fix_flags(flags);
  
@@ -30,7 +30,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return allocate_slab(s,
  		flags & (GFP_RECLAIM_MASK | GFP_CONSTRAINT_MASK), node);
  }
-@@ -2593,36 +2595,6 @@ slab_out_of_memory(struct kmem_cache *s,
+@@ -2596,36 +2598,6 @@ slab_out_of_memory(struct kmem_cache *s,
  #endif
  }
  
@@ -67,7 +67,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline bool pfmemalloc_match(struct page *page, gfp_t gfpflags)
  {
  	if (unlikely(PageSlabPfmemalloc(page)))
-@@ -2769,13 +2741,27 @@ static void *___slab_alloc(struct kmem_c
+@@ -2772,13 +2744,27 @@ static void *___slab_alloc(struct kmem_c
  	if (freelist)
  		goto check_new_page;
  

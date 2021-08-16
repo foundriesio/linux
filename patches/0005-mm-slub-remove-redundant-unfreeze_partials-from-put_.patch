@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2463,13 +2463,6 @@ static void put_cpu_partial(struct kmem_
+@@ -2466,13 +2466,6 @@ static void put_cpu_partial(struct kmem_
  
  	} while (this_cpu_cmpxchg(s->cpu_slab->partial, oldpage, page)
  								!= oldpage);

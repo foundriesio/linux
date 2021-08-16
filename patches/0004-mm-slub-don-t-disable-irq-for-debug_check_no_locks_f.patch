@@ -20,7 +20,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -1588,20 +1588,8 @@ static __always_inline bool slab_free_ho
+@@ -1591,20 +1591,8 @@ static __always_inline bool slab_free_ho
  {
  	kmemleak_free_recursive(x, s->flags);
  

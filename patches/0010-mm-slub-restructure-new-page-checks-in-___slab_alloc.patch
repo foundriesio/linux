@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2765,13 +2765,29 @@ static void *___slab_alloc(struct kmem_c
+@@ -2768,13 +2768,29 @@ static void *___slab_alloc(struct kmem_c
  	c->page = page;
  
  check_new_page:

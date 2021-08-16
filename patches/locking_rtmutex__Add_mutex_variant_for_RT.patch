@@ -11,11 +11,11 @@ No functional change when CONFIG_PREEMPT_RT=n
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
- include/linux/mutex.h        |   67 ++++++++++++++++++++---
+ include/linux/mutex.h        |   66 +++++++++++++++++++----
  kernel/locking/mutex.c       |    4 +
  kernel/locking/rtmutex_api.c |  122 +++++++++++++++++++++++++++++++++++++++++++
  lib/Kconfig.debug            |   11 ++-
- 4 files changed, 188 insertions(+), 16 deletions(-)
+ 4 files changed, 187 insertions(+), 16 deletions(-)
 ---
 --- a/include/linux/mutex.h
 +++ b/include/linux/mutex.h
@@ -55,7 +55,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define __MUTEX_INITIALIZER(lockname) \
  		{ .owner = ATOMIC_LONG_INIT(0) \
  		, .wait_lock = __RAW_SPIN_LOCK_UNLOCKED(lockname.wait_lock) \
-@@ -124,6 +126,51 @@ extern void __mutex_init(struct mutex *l
+@@ -124,6 +126,50 @@ extern void __mutex_init(struct mutex *l
   */
  extern bool mutex_is_locked(struct mutex *lock);
  
@@ -89,18 +89,17 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +
 +#define mutex_is_locked(l)	rt_mutex_base_is_locked(&(l)->rtmutex)
 +
-+#define mutex_init(mutex)				\
-+do {							\
-+	static struct lock_class_key __key;		\
-+							\
-+	rt_mutex_base_init(&(mutex)->rtmutex);		\
-+	__mutex_rt_init((mutex), #mutex, &__key);	\
-+} while (0)
-+
 +#define __mutex_init(mutex, name, key)			\
 +do {							\
 +	rt_mutex_base_init(&(mutex)->rtmutex);		\
 +	__mutex_rt_init((mutex), name, key);		\
++} while (0)
++
++#define mutex_init(mutex)				\
++do {							\
++	static struct lock_class_key __key;		\
++							\
++	__mutex_init((mutex), #mutex, &__key);		\
 +} while (0)
 +#endif /* CONFIG_PREEMPT_RT */
 +
@@ -140,7 +139,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +		     struct lock_class_key *key)
 +{
 +	debug_check_no_locks_freed((void *)mutex, sizeof(*mutex));
-+	lockdep_init_map(&mutex->dep_map, name, key, 0);
++	lockdep_init_map_wait(&mutex->dep_map, name, key, 0, LD_WAIT_SLEEP);
 +}
 +EXPORT_SYMBOL(__mutex_rt_init);
 +

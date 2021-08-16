@@ -14,14 +14,14 @@ V4: Use READ_ONCE() - Davidlohr
 
 --- a/include/linux/rtmutex.h
 +++ b/include/linux/rtmutex.h
-@@ -16,6 +16,7 @@
+@@ -13,6 +13,7 @@
+ #ifndef __LINUX_RT_MUTEX_H
+ #define __LINUX_RT_MUTEX_H
+ 
++#include <linux/compiler.h>
  #include <linux/linkage.h>
  #include <linux/rbtree.h>
  #include <linux/spinlock_types.h>
-+#include <linux/compiler.h>
- 
- extern int max_lock_depth; /* for sysctl */
- 
 @@ -32,6 +33,17 @@ struct rt_mutex_base {
  	.owner = NULL							\
  }

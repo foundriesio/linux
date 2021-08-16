@@ -44,7 +44,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2653,7 +2653,7 @@ static inline void *get_freelist(struct
+@@ -2656,7 +2656,7 @@ static inline void *get_freelist(struct
   * we need to allocate a new slab. This is the slowest path since it involves
   * a call to the page allocator and the setup of a new slab.
   *
@@ -53,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * already disabled (which is the case for bulk allocation).
   */
  static void *___slab_alloc(struct kmem_cache *s, gfp_t gfpflags, int node,
-@@ -2661,9 +2661,11 @@ static void *___slab_alloc(struct kmem_c
+@@ -2664,9 +2664,11 @@ static void *___slab_alloc(struct kmem_c
  {
  	void *freelist;
  	struct page *page;
@@ -65,7 +65,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	page = c->page;
  	if (!page) {
  		/*
-@@ -2726,6 +2728,7 @@ static void *___slab_alloc(struct kmem_c
+@@ -2729,6 +2731,7 @@ static void *___slab_alloc(struct kmem_c
  	VM_BUG_ON(!c->page->frozen);
  	c->freelist = get_freepointer(s, freelist);
  	c->tid = next_tid(c->tid);
@@ -73,7 +73,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return freelist;
  
  new_slab:
-@@ -2743,14 +2746,16 @@ static void *___slab_alloc(struct kmem_c
+@@ -2746,14 +2749,16 @@ static void *___slab_alloc(struct kmem_c
  		goto check_new_page;
  	}
  
@@ -91,7 +91,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (c->page)
  		flush_slab(s, c);
  
-@@ -2790,31 +2795,33 @@ static void *___slab_alloc(struct kmem_c
+@@ -2793,31 +2798,33 @@ static void *___slab_alloc(struct kmem_c
  return_single:
  
  	deactivate_slab(s, page, get_freepointer(s, freelist), c);
@@ -133,7 +133,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return p;
  }
  
-@@ -3342,8 +3349,8 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3345,8 +3352,8 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  	 * IRQs, which protects against PREEMPT and interrupts
  	 * handlers invoking normal fastpath.
  	 */
@@ -143,7 +143,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	for (i = 0; i < size; i++) {
  		void *object = kfence_alloc(s, s->object_size, flags);
-@@ -3364,6 +3371,8 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3367,6 +3374,8 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  			 */
  			c->tid = next_tid(c->tid);
  
@@ -152,7 +152,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			/*
  			 * Invoking slow path likely have side-effect
  			 * of re-populating per CPU c->freelist
-@@ -3376,6 +3385,8 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3379,6 +3388,8 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  			c = this_cpu_ptr(s->cpu_slab);
  			maybe_wipe_obj_freeptr(s, p[i]);
  
@@ -161,7 +161,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			continue; /* goto for-loop */
  		}
  		c->freelist = get_freepointer(s, object);
-@@ -3384,6 +3395,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3387,6 +3398,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  	}
  	c->tid = next_tid(c->tid);
  	local_irq_enable();
@@ -169,7 +169,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * memcg and kmem_cache debug support and memory initialization.
-@@ -3393,7 +3405,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3396,7 +3408,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  				slab_want_init_on_alloc(flags, s));
  	return i;
  error:

@@ -126,6 +126,8 @@ debugobjects__Make_RT_aware.patch
 ###########################################################################
 # Locking core
 ###########################################################################
+locking-local_lock--Add-missing-owner-initialization.patch
+locking-rtmutex--Set-proper-wait-context-for-lockdep.patch
 sched__Split_out_the_wakeup_state_check.patch
 sched__Introduce_TASK_RTLOCK_WAIT.patch
 sched--Reorganize-current--state-helpers.patch
@@ -194,20 +196,22 @@ rtmutex__Prevent_lockdep_false_positive_with_PI_futexes.patch
 preempt__Adjust_PREEMPT_LOCK_OFFSET_for_RT.patch
 locking_rtmutex__Implement_equal_priority_lock_stealing.patch
 locking_rtmutex__Add_adaptive_spinwait_mechanism.patch
+locking-spinlock-rt--Prepare-for-RT-local_lock.patch
+locking-local_lock--Add-PREEMPT_RT-support.patch
 
 ###########################################################################
 # Locking: RT bits. Need review
 ###########################################################################
-locking_local_lock__Prepare_for_RT_support.patch
-locking_local_lock__Add_RT_support.patch
-locking_RT__Add_might_sleeping_annotation..patch
-locking__dont_check_for___LINUX_SPINLOCK_TYPES_H_on_-RT_archs.patch
-
-lockdep__Make_it_RT_aware.patch
-lockdep__selftest__Only_do_hardirq_context_test_for_raw_spinlock.patch
-lockdep__selftest__fix_warnings_due_to_missing_PREEMPT_RT_conditionals.patch
-lockdep__disable_self-test.patch
-
+lockdep-selftests-Avoid-using-local_lock_-acquire-re.patch
+0001-sched-Trigger-warning-if-migration_disabled-counter-.patch
+0003-rtmutex-Add-a-special-case-for-ww-mutex-handling.patch
+0004-rtmutex-Add-rt_mutex_lock_nest_lock-and-rt_mutex_loc.patch
+0005-lockdep-Make-it-RT-aware.patch
+0006-lockdep-selftests-Add-rtmutex-to-the-last-column.patch
+0007-lockdep-selftests-Unbalanced-migrate_disable-rcu_rea.patch
+0008-lockdep-selftests-Skip-the-softirq-related-tests-on-.patch
+0009-lockdep-selftests-Use-correct-depmap-for-local_lock-.patch
+0010-lockdep-selftests-Adapt-ww-tests-for-PREEMPT_RT.patch
 
 ###########################################################################
 # preempt: Conditional variants

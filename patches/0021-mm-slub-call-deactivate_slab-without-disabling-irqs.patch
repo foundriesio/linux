@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2749,8 +2749,8 @@ static void *___slab_alloc(struct kmem_c
+@@ -2752,8 +2752,8 @@ static void *___slab_alloc(struct kmem_c
  	freelist = c->freelist;
  	c->page = NULL;
  	c->freelist = NULL;
@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  new_slab:
  
-@@ -2818,18 +2818,32 @@ static void *___slab_alloc(struct kmem_c
+@@ -2821,18 +2821,32 @@ static void *___slab_alloc(struct kmem_c
  		 */
  		goto return_single;
  

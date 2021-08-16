@@ -20,12 +20,12 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/include/linux/rtmutex.h
 +++ b/include/linux/rtmutex.h
-@@ -14,7 +14,7 @@
- #define __LINUX_RT_MUTEX_H
+@@ -15,7 +15,7 @@
  
+ #include <linux/compiler.h>
  #include <linux/linkage.h>
 -#include <linux/rbtree.h>
 +#include <linux/rbtree_types.h>
  #include <linux/spinlock_types_raw.h>
- #include <linux/compiler.h>
  
+ extern int max_lock_depth; /* for sysctl */

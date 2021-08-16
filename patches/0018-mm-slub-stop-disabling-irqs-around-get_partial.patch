@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -1993,11 +1993,12 @@ static inline bool pfmemalloc_match(stru
+@@ -1996,11 +1996,12 @@ static inline bool pfmemalloc_match(stru
   * Try to allocate a partial slab from a specific node.
   */
  static void *get_partial_node(struct kmem_cache *s, struct kmem_cache_node *n,
@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int objects;
  
  	/*
-@@ -2009,11 +2010,11 @@ static void *get_partial_node(struct kme
+@@ -2012,11 +2013,11 @@ static void *get_partial_node(struct kme
  	if (!n || !n->nr_partial)
  		return NULL;
  
@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			continue;
  
  		t = acquire_slab(s, n, page, object == NULL, &objects);
-@@ -2034,7 +2035,7 @@ static void *get_partial_node(struct kme
+@@ -2037,7 +2038,7 @@ static void *get_partial_node(struct kme
  			break;
  
  	}
@@ -54,7 +54,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return object;
  }
  
-@@ -2749,8 +2750,10 @@ static void *___slab_alloc(struct kmem_c
+@@ -2752,8 +2753,10 @@ static void *___slab_alloc(struct kmem_c
  			local_irq_restore(flags);
  			goto reread_page;
  		}
@@ -66,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		page = c->page = slub_percpu_partial(c);
  		slub_set_percpu_partial(c, page);
-@@ -2759,18 +2762,9 @@ static void *___slab_alloc(struct kmem_c
+@@ -2762,18 +2765,9 @@ static void *___slab_alloc(struct kmem_c
  		goto redo;
  	}
  

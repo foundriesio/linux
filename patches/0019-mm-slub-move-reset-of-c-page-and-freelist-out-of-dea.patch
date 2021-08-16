@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2192,10 +2192,13 @@ static void init_kmem_cache_cpus(struct
+@@ -2195,10 +2195,13 @@ static void init_kmem_cache_cpus(struct
  }
  
  /*
@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	enum slab_modes { M_NONE, M_PARTIAL, M_FULL, M_FREE };
  	struct kmem_cache_node *n = get_node(s, page_to_nid(page));
-@@ -2324,9 +2327,6 @@ static void deactivate_slab(struct kmem_
+@@ -2327,9 +2330,6 @@ static void deactivate_slab(struct kmem_
  		discard_slab(s, page);
  		stat(s, FREE_SLAB);
  	}
@@ -48,7 +48,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -2451,10 +2451,16 @@ static void put_cpu_partial(struct kmem_
+@@ -2454,10 +2454,16 @@ static void put_cpu_partial(struct kmem_
  
  static inline void flush_slab(struct kmem_cache *s, struct kmem_cache_cpu *c)
  {
@@ -67,7 +67,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -2739,7 +2745,10 @@ static void *___slab_alloc(struct kmem_c
+@@ -2742,7 +2748,10 @@ static void *___slab_alloc(struct kmem_c
  		local_irq_restore(flags);
  		goto reread_page;
  	}
@@ -79,7 +79,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	local_irq_restore(flags);
  
  new_slab:
-@@ -2818,11 +2827,7 @@ static void *___slab_alloc(struct kmem_c
+@@ -2821,11 +2830,7 @@ static void *___slab_alloc(struct kmem_c
  return_single:
  
  	local_irq_save(flags);

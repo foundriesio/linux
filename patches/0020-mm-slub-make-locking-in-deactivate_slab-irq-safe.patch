@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2206,6 +2206,7 @@ static void deactivate_slab(struct kmem_
+@@ -2209,6 +2209,7 @@ static void deactivate_slab(struct kmem_
  	enum slab_modes l = M_NONE, m = M_NONE;
  	void *nextfree, *freelist_iter, *freelist_tail;
  	int tail = DEACTIVATE_TO_HEAD;
@@ -25,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct page new;
  	struct page old;
  
-@@ -2281,7 +2282,7 @@ static void deactivate_slab(struct kmem_
+@@ -2284,7 +2285,7 @@ static void deactivate_slab(struct kmem_
  			 * that acquire_slab() will see a slab page that
  			 * is frozen
  			 */
@@ -34,7 +34,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	} else {
  		m = M_FULL;
-@@ -2292,7 +2293,7 @@ static void deactivate_slab(struct kmem_
+@@ -2295,7 +2296,7 @@ static void deactivate_slab(struct kmem_
  			 * slabs from diagnostic functions will not see
  			 * any frozen slabs.
  			 */
@@ -43,7 +43,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	}
  
-@@ -2309,14 +2310,14 @@ static void deactivate_slab(struct kmem_
+@@ -2312,14 +2313,14 @@ static void deactivate_slab(struct kmem_
  	}
  
  	l = m;

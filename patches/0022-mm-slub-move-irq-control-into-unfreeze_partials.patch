@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2333,9 +2333,8 @@ static void deactivate_slab(struct kmem_
+@@ -2336,9 +2336,8 @@ static void deactivate_slab(struct kmem_
  /*
   * Unfreeze all the cpu partial slabs.
   *
@@ -26,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
  static void unfreeze_partials(struct kmem_cache *s,
  		struct kmem_cache_cpu *c)
-@@ -2343,6 +2342,9 @@ static void unfreeze_partials(struct kme
+@@ -2346,6 +2345,9 @@ static void unfreeze_partials(struct kme
  #ifdef CONFIG_SLUB_CPU_PARTIAL
  	struct kmem_cache_node *n = NULL, *n2 = NULL;
  	struct page *page, *discard_page = NULL;
@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	while ((page = slub_percpu_partial(c))) {
  		struct page new;
-@@ -2395,6 +2397,8 @@ static void unfreeze_partials(struct kme
+@@ -2398,6 +2400,8 @@ static void unfreeze_partials(struct kme
  		discard_slab(s, page);
  		stat(s, FREE_SLAB);
  	}
@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif	/* CONFIG_SLUB_CPU_PARTIAL */
  }
  
-@@ -2422,14 +2426,11 @@ static void put_cpu_partial(struct kmem_
+@@ -2425,14 +2429,11 @@ static void put_cpu_partial(struct kmem_
  			pobjects = oldpage->pobjects;
  			pages = oldpage->pages;
  			if (drain && pobjects > slub_cpu_partial(s)) {

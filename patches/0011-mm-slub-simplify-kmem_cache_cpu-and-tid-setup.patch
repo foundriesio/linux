@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2865,15 +2865,14 @@ static __always_inline void *slab_alloc_
+@@ -2868,15 +2868,14 @@ static __always_inline void *slab_alloc_
  	 * reading from one cpu area. That does not matter as long
  	 * as we end up on the original cpu again when doing the cmpxchg.
  	 *
@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Irqless object alloc/free algorithm used here depends on sequence
-@@ -3147,11 +3146,8 @@ static __always_inline void do_slab_free
+@@ -3150,11 +3149,8 @@ static __always_inline void do_slab_free
  	 * data is retrieved via this pointer. If we are on the same cpu
  	 * during the cmpxchg then the free will succeed.
  	 */

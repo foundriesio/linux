@@ -61,7 +61,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return object_map;
  }
-@@ -4876,17 +4882,17 @@ static int add_location(struct loc_track
+@@ -4879,17 +4885,17 @@ static int add_location(struct loc_track
  }
  
  static void process_slab(struct loc_track *t, struct kmem_cache *s,
@@ -84,7 +84,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  #endif  /* CONFIG_DEBUG_FS   */
  #endif	/* CONFIG_SLUB_DEBUG */
-@@ -5813,14 +5819,21 @@ static int slab_debug_trace_open(struct
+@@ -5816,14 +5822,21 @@ static int slab_debug_trace_open(struct
  	struct loc_track *t = __seq_open_private(filep, &slab_debugfs_sops,
  						sizeof(struct loc_track));
  	struct kmem_cache *s = file_inode(filep)->i_private;
@@ -107,7 +107,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	for_each_kmem_cache_node(s, node, n) {
  		unsigned long flags;
-@@ -5831,12 +5844,13 @@ static int slab_debug_trace_open(struct
+@@ -5834,12 +5847,13 @@ static int slab_debug_trace_open(struct
  
  		spin_lock_irqsave(&n->list_lock, flags);
  		list_for_each_entry(page, &n->partial, slab_list)

@@ -9,9 +9,11 @@ spinlock specific rtmutex code.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
+V5: Add missing might_sleep() and fix lockdep init (Sebastian)
+---
  kernel/locking/Makefile      |    1 
- kernel/locking/spinlock_rt.c |  128 +++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 129 insertions(+)
+ kernel/locking/spinlock_rt.c |  129 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 130 insertions(+)
  create mode 100644 kernel/locking/spinlock_rt.c
 ---
 --- a/kernel/locking/Makefile
@@ -26,7 +28,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  obj-$(CONFIG_QUEUED_RWLOCKS) += qrwlock.o
 --- /dev/null
 +++ b/kernel/locking/spinlock_rt.c
-@@ -0,0 +1,128 @@
+@@ -0,0 +1,129 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * PREEMPT_RT substitution for spin/rw_locks
@@ -61,6 +63,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +
 +static __always_inline void __rt_spin_lock(spinlock_t *lock)
 +{
++	___might_sleep(__FILE__, __LINE__, 0);
 +	rtlock_lock(&lock->lock);
 +	rcu_read_lock();
 +	migrate_disable();
@@ -151,7 +154,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +			 struct lock_class_key *key)
 +{
 +	debug_check_no_locks_freed((void *)lock, sizeof(*lock));
-+	lockdep_init_map(&lock->dep_map, name, key, 0);
++	lockdep_init_map_wait(&lock->dep_map, name, key, 0, LD_WAIT_CONFIG);
 +}
 +EXPORT_SYMBOL(__rt_spin_lock_init);
 +#endif

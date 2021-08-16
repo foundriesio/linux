@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2537,14 +2537,10 @@ static void flush_all(struct kmem_cache
+@@ -2540,14 +2540,10 @@ static void flush_all(struct kmem_cache
  static int slub_cpu_dead(unsigned int cpu)
  {
  	struct kmem_cache *s;

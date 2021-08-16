@@ -16,7 +16,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -5822,9 +5822,6 @@ static int slab_debug_trace_open(struct
+@@ -5825,9 +5825,6 @@ static int slab_debug_trace_open(struct
  	if (!alloc_loc_track(t, PAGE_SIZE / sizeof(struct location), GFP_KERNEL))
  		return -ENOMEM;
  

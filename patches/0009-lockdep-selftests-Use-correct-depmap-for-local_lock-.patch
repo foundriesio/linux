@@ -1,0 +1,30 @@
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Thu, 12 Aug 2021 16:28:28 +0200
+Subject: [PATCH 09/10] lockdep/selftests: Use correct depmap for local_lock on
+ RT
+
+The local_lock_t structure on PREEMPT_RT does not provide a dep_map
+member. The dep_map is available in the inner lock member.
+
+Use the lock.dep_map for local_lock on PREEMPT_RT.
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ lib/locking-selftest.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+--- a/lib/locking-selftest.c
++++ b/lib/locking-selftest.c
+@@ -1351,7 +1351,11 @@ GENERATE_PERMUTATIONS_3_EVENTS(irq_read_
+ # define I_MUTEX(x)	lockdep_reset_lock(&mutex_##x.dep_map)
+ # define I_RWSEM(x)	lockdep_reset_lock(&rwsem_##x.dep_map)
+ # define I_WW(x)	lockdep_reset_lock(&x.dep_map)
+-# define I_LOCAL_LOCK(x) lockdep_reset_lock(this_cpu_ptr(&local_##x.dep_map))
++# ifdef CONFIG_PREEMPT_RT
++#  define I_LOCAL_LOCK(x) lockdep_reset_lock(this_cpu_ptr(&local_##x.lock.dep_map))
++# else
++#  define I_LOCAL_LOCK(x) lockdep_reset_lock(this_cpu_ptr(&local_##x.dep_map))
++# endif
+ #ifdef CONFIG_RT_MUTEXES
+ # define I_RTMUTEX(x)	lockdep_reset_lock(&rtmutex_##x.dep_map)
+ #endif
