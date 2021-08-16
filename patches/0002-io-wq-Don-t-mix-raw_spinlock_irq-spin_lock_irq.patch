@@ -5,21 +5,12 @@ Subject: [PATCH] io-wq: Don't mix raw_spinlock_irq() & spin_lock_irq().
 https://lkml.kernel.org/r/7c946918-ae0d-6195-6a78-b019f9bc1fd3@kernel.dk
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- fs/io-wq.c |   10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ fs/io-wq.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 --- a/fs/io-wq.c
 +++ b/fs/io-wq.c
-@@ -283,7 +283,7 @@ static void create_worker_cb(struct call
- 
- 	worker = container_of(cb, struct io_worker, create_work);
- 	wqe = worker->wqe;
--	wq = worker->wq;
-+	wq = worker->wqe->wq;
- 	acct = &wqe->acct[worker->create_index];
- 	raw_spin_lock_irq(&wqe->lock);
- 	if (acct->nr_workers < acct->max_workers)
-@@ -401,7 +401,7 @@ static void io_wait_on_hash(struct io_wq
+@@ -414,7 +414,7 @@ static void io_wait_on_hash(struct io_wq
  {
  	struct io_wq *wq = wqe->wq;
  
@@ -28,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (list_empty(&wqe->wait.entry)) {
  		__add_wait_queue(&wq->hash->wait, &wqe->wait);
  		if (!test_bit(hash, &wq->hash->map)) {
-@@ -409,7 +409,7 @@ static void io_wait_on_hash(struct io_wq
+@@ -422,7 +422,7 @@ static void io_wait_on_hash(struct io_wq
  			list_del_init(&wqe->wait.entry);
  		}
  	}
@@ -37,7 +28,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static struct io_wq_work *io_get_next_work(struct io_wqe *wqe)
-@@ -447,9 +447,9 @@ static struct io_wq_work *io_get_next_wo
+@@ -460,9 +460,9 @@ static struct io_wq_work *io_get_next_wo
  	}
  
  	if (stall_hash != -1U) {
