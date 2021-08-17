@@ -162,7 +162,7 @@
 		port@1 {
 			reg = <1>;
 			mipi_csi2_0_out0: endpoint {
-				remote-endpoint = <&videoinput3_in>;
+				remote-endpoint = <&videoinput1_in>;
 				io-direction	= "output";
 				channel		= <0>;
 				/*
@@ -208,7 +208,10 @@
 	status		= "okay";
 	cifport		= <&cifport		0>;
 	use_pgl		= <0>;
-	memory-region	= <&pmap_parking_gui &pmap_rearcamera_viqe &pmap_rearcamera &pmap_vin_lastframe>;
+	memory-region	= <&pmap_parking_gui
+			   &pmap_rearcamera_viqe
+			   &pmap_rearcamera
+			   &pmap_vin_lastframe>;
 	port {
 		videoinput0_in: endpoint {
 			remote-endpoint	= <&adv7182_out>;
@@ -222,10 +225,20 @@
 };
 
 &videoinput1 {
-	status		= "disabled";
-	cifport		= <&cifport 1>;
+	status		= "okay";
+	cifport		= <&cifport		5>;
 	use_pgl		= <0>;
 	memory-region	= <0 0 &pmap_rearcamera1>;
+	port {
+		videoinput1_in: endpoint {
+			remote-endpoint	= <&mipi_csi2_0_out0>;
+			io-direction	= "input";
+			bus-type	= <0>;
+			bus-with	= <8>;
+			stream-enable	= <1>;	// VIN_CTRL.SE
+			flush-vsync	= <1>;	// VIN_MISC.FVS
+		};
+	};
 };
 
 &videoinput2 {
@@ -236,20 +249,10 @@
 };
 
 &videoinput3 {
-	status		= "okay";
-	cifport		= <&cifport		5>;
+	status		= "disabled";
+	cifport		= <&cifport 5>;
 	use_pgl		= <0>;
 	memory-region	= <0 0 &pmap_rearcamera3>;
-	port {
-		videoinput3_in: endpoint {
-			remote-endpoint	= <&mipi_csi2_0_out0>;
-			io-direction	= "input";
-			bus-type	= <0>;
-			bus-with	= <8>;
-			stream-enable	= <1>;	// VIN_CTRL.SE
-			flush-vsync	= <1>;	// VIN_MISC.FVS
-		};
-	};
 };
 
 &videoinput4 {

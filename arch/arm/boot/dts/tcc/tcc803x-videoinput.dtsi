@@ -22,6 +22,7 @@
 			<0x123c0200 0x5c>;
 		reg-names = "csi", "gdb";
 		clocks = <&clk_peri PERI_MIPI_CSI>;
+		clock-names = "mipi-csi-clk";
 		clock-frequency = <300000000>;
 
 		interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>,

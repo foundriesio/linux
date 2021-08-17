@@ -5,24 +5,23 @@
 
 #include "tcc803x-videoinput.dtsi"
 
-&i2c7 {
+&i2c0 {
 	status = "okay";
 	port-mux = <12>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c12_bus>;
 
 	/* video decoder using parallel interface output */
-	adv7182: adv7182 {
+	isl79988: isl79988 {
 		status		= "okay";
-		compatible	= "adi,adv7182";
+		compatible	= "intersil,isl79988";
 		pinctrl-names	= "default";
 		pinctrl-0	= <&cam0_clk &cam0_data_8bit>;
 		cifport		= <0>;
 		rst-gpios	= <&gpb 14 0>;
-		reg		= <0x21>;	// 0x42 >> 1
-
+		reg		= <0x44>;	// 0x88 >> 1
 		port {
-			adv7182_out: endpoint {
+			isl79988_out: endpoint {
 				remote-endpoint = <&videoinput0_in>;
 				io-direction	= "output";
 				bus-width	= <8>;
@@ -131,6 +130,7 @@
 
 &mipi_csi2_0 {
 	status = "okay";
+
 	ports {
 		/*
 		 * 0
@@ -162,7 +162,7 @@
 		port@1 {
 			reg = <1>;
 			mipi_csi2_0_out0: endpoint {
-				remote-endpoint = <&videoinput3_in>;
+				remote-endpoint = <&videoinput1_in>;
 				io-direction	= "output";
 				channel		= <0>;
 				/*
@@ -208,10 +208,12 @@
 	status		= "okay";
 	cifport		= <&cifport		0>;
 	use_pgl		= <0>;
-	memory-region	= <&pmap_parking_gui &pmap_rearcamera_viqe &pmap_rearcamera>;
+	memory-region	= <&pmap_parking_gui
+			   &pmap_rearcamera_viqe
+			   &pmap_rearcamera>;
 	port {
 		videoinput0_in: endpoint {
-			remote-endpoint	= <&adv7182_out>;
+			remote-endpoint	= <&isl79988_out>;
 			io-direction	= "input";
 			bus-type	= <0>;
 			bus-with	= <8>;
@@ -222,10 +224,20 @@
 };
 
 &videoinput1 {
-	status		= "disabled";
-	cifport		= <&cifport 1>;
+	status		= "okay";
+	cifport		= <&cifport		5>;
 	use_pgl		= <0>;
 	memory-region	= <0 0 &pmap_rearcamera1>;
+        port {
+                videoinput1_in: endpoint {
+                        remote-endpoint = <&mipi_csi2_0_out0>;
+                        io-direction    = "input";
+                        bus-type        = <0>;
+                        bus-with        = <8>;
+                        stream-enable   = <1>;  // VIN_CTRL.SE
+                        flush-vsync     = <1>;  // VIN_MISC.FVS
+                };
+        };
 };
 
 &videoinput2 {
@@ -236,20 +248,10 @@
 };
 
 &videoinput3 {
-	status		= "okay";
-	cifport		= <&cifport		5>;
+	status		= "disabled";
+	cifport		= <&cifport 3>;
 	use_pgl		= <0>;
 	memory-region	= <0 0 &pmap_rearcamera3>;
-	port {
-		videoinput3_in: endpoint {
-			remote-endpoint	= <&mipi_csi2_0_out0>;
-			io-direction	= "input";
-			bus-type	= <0>;
-			bus-with	= <8>;
-			stream-enable	= <1>;	// VIN_CTRL.SE
-			flush-vsync	= <1>;	// VIN_MISC.FVS
-		};
-	};
 };
 
 &videoinput4 {

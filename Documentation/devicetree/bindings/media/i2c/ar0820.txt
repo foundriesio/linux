@@ -1,6 +1,6 @@
 * Device Tree Bindings for AR0820
 
-AR0820 is camera image sensor. 
+AR0820 is camera image sensor.
 Basically, it is disabled by default for Telechips EVB.
 
 Required properties:
