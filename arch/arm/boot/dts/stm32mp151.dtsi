@@ -1266,6 +1266,7 @@
 				 <&scmi0_clk CK_SCMI0_CSI>,
 				 <&scmi0_clk CK_SCMI0_LSE>,
 				 <&scmi0_clk CK_SCMI0_LSI>;
+			clocks-boot-on = <LTDC_PX>;
 		};
 
 		pwr_regulators: pwr@50001000 {
