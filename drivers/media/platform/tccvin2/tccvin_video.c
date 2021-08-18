@@ -341,6 +341,257 @@ struct tccvin_format *tccvin_format_by_fcc(const __u32 fcc)
 	return NULL;
 }
 
+static void initialize_vioc_path(struct vioc_path *t)
+{
+	t->vin		= -1;
+	t->viqe		= -1;
+	t->deintls	= -1;
+	t->scaler	= -1;
+	t->pgl		= -1;
+	t->wmixer	= -1;
+	t->wdma		= -1;
+	t->fifo		= -1;
+	t->rdma		= -1;
+	t->wmixer_out	= -1;
+	t->disp		= -1;
+}
+
+/**
+ * @brief parse VIOC dt node and set corresponding value in vioc_path
+ *
+ * @param stream	stream object
+ * @param component	VIOC component name
+ * @param idx		property index of device node
+ * @param target	corresponding value in vioc_path
+ * @return int32_t	0 on success, -1 on failure
+ */
+struct device_node *parse_dt_vioc_and_set(struct tccvin_streaming *stream,
+	const char *component, uint32_t idx, int32_t *target)
+{
+	struct device_node 		*vioc_node	= NULL;
+	struct device_node 		*main_node	= NULL;
+	struct device			*dev_ptr	= NULL;
+
+	int tret;
+
+	main_node	= tccvin_streaming_to_ofnode(stream);
+	dev_ptr		= tccvin_streaming_to_devptr(stream);
+	vioc_node	= of_parse_phandle(main_node, component, 0);
+
+	if (vioc_node == (struct device_node *)0) {
+		logw(dev_ptr, "%s node is not found in fdt\n", component);
+		return vioc_node;
+	}
+
+	tret = of_property_read_u32_index(main_node, component, idx, target);
+	if (tret != 0) {
+		logd(dev_ptr, "%s node is not found.\n", component);
+	}
+
+	return vioc_node;
+}
+
+#define parse_dt_vioc(comp, stream)	\
+	parse_dt_vioc_and_set(stream, #comp, 1, &stream->cif.vioc_path.comp)
+
+#define parse_dt_cif(comp, stream)	\
+	parse_dt_vioc_and_set(stream, #comp, 1, &stream->cif.comp)
+
+#define parse_pgl_vioc(comp, stream)	\
+	parse_dt_vioc_and_set(stream, #comp, 1, &stream->cif.vioc_path.pgl)
+
+#define parse_pgl_cif(comp, stream)	\
+	parse_dt_vioc_and_set(stream, #comp, 0, &stream->cif.use_pgl)
+
+static inline void log_vioc_comp(struct device *ptr,
+	const char *comp, int32_t vp_idx, int32_t vioc_id,
+	void * __iomem (*get_addr)(unsigned int))
+{
+	logd(ptr, "%10s[%2d]: 0x%px\n", comp, vioc_id, get_addr(vp_idx));
+}
+
+static inline void log_vioc_path(struct tccvin_streaming *stream,
+	struct vioc_path *vp)
+{
+	struct device *dev_ptr = tccvin_streaming_to_devptr(stream);
+	unsigned int vioc_id = 0;
+	void __iomem *address = NULL;
+
+	log_vioc_comp(dev_ptr, "VIN", vp->vin,
+		get_vioc_index(vp->vin) / 2, VIOC_VIN_GetAddress);
+	log_vioc_comp(dev_ptr, "VIQE", vp->viqe,
+		get_vioc_index(vp->viqe), VIOC_VIQE_GetAddress);
+	log_vioc_comp(dev_ptr, "SCALER", vp->scaler,
+		get_vioc_index(vp->scaler), VIOC_SC_GetAddress);
+	log_vioc_comp(dev_ptr, "PGL", vp->pgl,
+		get_vioc_index(vp->pgl), VIOC_RDMA_GetAddress);
+	log_vioc_comp(dev_ptr, "WMIXER", vp->wmixer,
+		get_vioc_index(vp->wmixer), VIOC_WMIX_GetAddress);
+	log_vioc_comp(dev_ptr, "WDMA", vp->wdma,
+		get_vioc_index(vp->wdma), VIOC_WDMA_GetAddress);
+}
+
+static inline void log_cif_port(struct tccvin_streaming *stream,
+	struct tccvin_cif *cif)
+{
+	struct device *dev_ptr = tccvin_streaming_to_devptr(stream);
+	logd(dev_ptr, "%10s[%2d]: 0x%px\n",
+		"CIF Port", cif->cifport, cif->cifport_addr);
+	logd(dev_ptr, "Use of PGL:	%d\n", stream->cif.use_pgl);
+	loge(dev_ptr, "vin_irq_num:	%d\n", cif->vin_irq_num);
+	loge(dev_ptr, "wdma_irq_num:	%d\n", cif->wdma_irq_num);
+}
+
+static inline void set_cifport_addr(struct device_node *dnode,
+	struct tccvin_streaming *stream)
+{
+	stream->cif.cifport_addr = of_iomap(dnode, 0);
+	logd(tccvin_streaming_to_devptr(stream),
+		"%10s[%2d]: 0x%px\n", "CIF Port",
+		stream->cif.cifport, stream->cif.cifport_addr);
+}
+
+static void parse_dt_vioc_path(struct tccvin_streaming *stream)
+{
+	struct vioc_path *path = &stream->cif.vioc_path;
+	struct device_node *dnode;
+
+	initialize_vioc_path(path);
+
+	parse_dt_vioc(vin, stream);
+	parse_dt_vioc(viqe, stream);
+	if (parse_dt_vioc(viqe, stream) < 0) {
+		/*
+		 * If viqe is not described in device tree, use simple
+		 * deinterlacer as an alternative.
+		 */
+		parse_dt_vioc(deintls, stream);
+	}
+	parse_dt_vioc(scaler, stream);
+	parse_dt_vioc(wmixer, stream);
+	parse_dt_vioc(wdma, stream);
+
+	dnode = parse_dt_cif(cifport, stream);
+	set_cifport_addr(dnode, stream);
+}
+
+#if IS_ENABLED(CONFIG_ARCH_TCC803X)
+static inline int32_t is_vin_idx_available(int32_t vin_idx)
+{
+	return (vin_idx >= VIOC_VIN00) && (vin_idx <= VIOC_VIN20);
+}
+#elif IS_ENABLED(CONFIG_ARCH_TCC805X)
+static inline int32_t is_vin_idx_available(int32_t vin_idx)
+{
+	return (vin_idx >= VIOC_VIN00) && (vin_idx <= VIOC_VIN30);
+}
+#else
+static inline int32_t is_vin_idx_available(int32_t vin_idx)
+{
+	return 1;
+}
+#endif
+
+static void parse_dt_pgl(struct tccvin_streaming *stream)
+{
+	struct vioc_path *path = &stream->cif.vioc_path;
+
+	if (IS_ENABLED(CONFIG_OVERLAY_PGL) == 0) {
+		return;
+	}
+
+	if (is_vin_idx_available(path->vin)) {
+		parse_pgl_vioc(rdma, stream);
+		parse_pgl_cif(use_pgl, stream);
+	}
+}
+
+#define parse_dt_intr_of(comp, stream)		\
+	parse_dt_intr_and_set(stream, #comp,	\
+		&stream->cif.vioc_path.comp, &stream->cif.comp##_irq_num)
+
+static void parse_dt_intr_and_set(struct tccvin_streaming *stream,
+	const char *component, int32_t *idx, int32_t *irq_num)
+{
+	struct device_node *vioc_node;
+	struct device *dev_ptr;
+
+	unsigned int vioc_id, address;
+
+	dev_ptr		= tccvin_streaming_to_devptr(stream);
+	vioc_node	= of_parse_phandle(
+		tccvin_streaming_to_ofnode(stream),
+		component, 0);
+
+	if (strcmp(component, "vin") == 0) {
+		vioc_id = get_vioc_index(*idx) / 2;
+		address = VIOC_VIN_GetAddress(*idx);
+	} else if (strcmp(component, "wdma") == 0) {
+		vioc_id = get_vioc_index(*idx);
+		address = VIOC_WDMA_GetAddress(*idx);
+	}
+
+	*irq_num = irq_of_parse_and_map(vioc_node, vioc_id);
+
+	logd(dev_ptr, "%s irq_num: %d\n", component, *irq_num);
+}
+
+static inline void initialize_vioc_intr(struct tccvin_cif *t)
+{
+	t->wdma_irq_num	= -1;
+	t->vin_irq_num	= -1;
+}
+
+static void parse_dt_interrupt(struct tccvin_streaming *stream)
+{
+	struct device *dev_ptr = tccvin_streaming_to_devptr(stream);
+
+	initialize_vioc_intr(&stream->cif);
+
+	parse_dt_intr_of(vin, stream);
+	parse_dt_intr_of(wdma, stream);
+}
+
+#define parse_dt_reserved_mem_of(mem, idx, stream)	\
+	parse_dt_reserved_mem_and_set(stream, &stream->cif.mem, idx)
+
+static void parse_dt_reserved_mem_and_set(struct tccvin_streaming *stream,
+	struct resource *res, unsigned int idx)
+{
+	struct device_node		*main_node	= NULL;
+	struct device_node		*pmap_node	= NULL;
+
+	main_node	= stream->dev->pdev->dev.of_node;
+	pmap_node	= of_parse_phandle(main_node, "memory-region", idx);
+
+	if (pmap_node == NULL) {
+		return;
+	}
+
+	of_address_to_resource(pmap_node, 0, res);
+	of_node_put(pmap_node);
+}
+
+static void parse_dt_reserved_mem(struct tccvin_streaming *stream)
+{
+	struct vioc_path		*vioc_path	= NULL;
+	struct device_node		*main_node	= NULL;
+	unsigned int vioc_id;
+
+	vioc_path	= &stream->cif.vioc_path;
+	main_node	= stream->dev->pdev->dev.of_node;
+
+	if (is_vin_idx_available(vioc_path->vin)) {
+		if (IS_ENABLED(CONFIG_OVERLAY_PGL)) {
+			parse_dt_reserved_mem_of(pmap_pgl, 0, stream);
+		}
+		parse_dt_reserved_mem_of(pmap_viqe, 1, stream);
+	}
+
+	parse_dt_reserved_mem_of(pmap_prev, 2, stream);
+	parse_dt_reserved_mem_of(pmap_lframe, 3, stream);
+}
+
 /*
  * tccvin_parse_device_tree
  *
@@ -354,7 +605,7 @@ struct tccvin_format *tccvin_format_by_fcc(const __u32 fcc)
  *	0:			Success
  *	-ENODEV:	a certain device node is not found.
  */
-static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
+static int32_t tccvin_parse_device_tree(struct tccvin_streaming *stream)
 {
 	struct device_node		*main_node	= NULL;
 	struct device_node		*vioc_node	= NULL;
@@ -366,283 +617,22 @@ static int32_t tccvin_parse_device_tree(struct tccvin_streaming *vdev)
 	unsigned int			vioc_id		= 0;
 	int				ret		= 0;
 
-	WARN_ON(IS_ERR_OR_NULL(vdev));
+	WARN_ON(IS_ERR_OR_NULL(stream));
 
-	dev_ptr		= tccvin_streaming_to_devptr(vdev);
-	main_node	= vdev->dev->pdev->dev.of_node;
-	if (main_node == NULL) {
-		logd(dev_ptr,
-			"tcc_camera device node is not found.\n");
+	dev_ptr		= tccvin_streaming_to_devptr(stream);
+	main_node	= tccvin_streaming_to_ofnode(stream);
+	if (main_node == (struct device_node *)0) {
+		logd(dev_ptr, "tcc_camera device node is not found.\n");
 		return -ENODEV;
 	}
 
-	/* get video-input path id */
-	vin_id		= vdev->dev->pdev->id;
+	parse_dt_vioc_path(stream);
+	parse_dt_pgl(stream);
+	parse_dt_interrupt(stream);
+	parse_dt_reserved_mem(stream);
 
-	vioc_path = &vdev->cif.vioc_path;
-
-	/* VIN */
-	vioc_path->vin = -1;
-	vdev->cif.vin_irq_num = -1;
-	vioc_node = of_parse_phandle(main_node, "vin", 0);
-	if (vioc_node != NULL) {
-		of_property_read_u32_index(main_node,
-			"vin", 1, &vioc_path->vin);
-		if (vioc_path->vin != -1) {
-			vioc_id	= get_vioc_index(vioc_path->vin) / 2;
-			address	= VIOC_VIN_GetAddress(vioc_path->vin);
-			logd(dev_ptr,
-				"%10s[%2d]: 0x%px\n", "VIN", vioc_id, address);
-
-			/* VIN interrupt */
-			vdev->cif.vin_irq_num =
-				irq_of_parse_and_map(vioc_node, vioc_id);
-			logd(dev_ptr,
-				"vin irq_num: %d\n", vdev->cif.vin_irq_num);
-		}
-	} else {
-		loge(dev_ptr,
-			"\"vin\" node is not found.\n");
-		return -ENODEV;
-	}
-
-	/* cif port */
-	vdev->cif.cif_port = -1;
-	vioc_node = of_parse_phandle(main_node, "cifport", 0);
-	if (vioc_node != NULL) {
-		of_property_read_u32_index(main_node,
-			"cifport", 1, &vdev->cif.cif_port);
-		if (vdev->cif.cif_port != -1) {
-			vdev->cif.cifport_addr = of_iomap(vioc_node, 0);
-			logd(dev_ptr, "%10s[%2d]: 0x%px\n", "CIF Port",
-				vdev->cif.cif_port, vdev->cif.cifport_addr);
-		}
-	} else {
-		loge(dev_ptr,
-			"The CIF port node is NULL\n");
-	}
-
-#if defined(CONFIG_OVERLAY_PGL)
-	vioc_path->pgl = -1;
-	vdev->cif.use_pgl = -1;
-	/* VIDEO_IN00~03 have RDMA */
-	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN30)) {
-		vioc_node = of_parse_phandle(main_node, "rdma", 0);
-		if (vioc_node != NULL) {
-			of_property_read_u32_index(main_node,
-				"rdma", 1, &vioc_path->pgl);
-			if (vioc_path->pgl != -1) {
-				vioc_id	= get_vioc_index(vioc_path->pgl);
-				address	= VIOC_RDMA_GetAddress(vioc_path->pgl);
-				logd(dev_ptr,
-					"%10s[%2d]: 0x%px\n", "RDMA(PGL)",
-					vioc_id, address);
-			}
-
-			/* Parking Guide Line */
-			of_property_read_u32_index(main_node, "use_pgl", 0,
-				&vdev->cif.use_pgl);
-			logd(dev_ptr,
-				"Use of PGL: %d\n", vdev->cif.use_pgl);
-		} else {
-			logw(dev_ptr,
-				"\"rdma\" node is not found.\n");
-			return -ENODEV;
-		}
-	}
-#endif/* defined(CONFIG_OVERLAY_PGL) */
-
-	/* VIQE */
-	vioc_path->viqe = -1;
-	vioc_path->deintl_s = -1;
-	vioc_node = of_parse_phandle(main_node, "viqe", 0);
-	if (vioc_node != NULL) {
-		of_property_read_u32_index(main_node,
-			"viqe", 1, &vioc_path->viqe);
-		if (vioc_path->viqe != -1) {
-			vioc_id	= get_vioc_index(vioc_path->viqe);
-			address	= VIOC_VIQE_GetAddress(vioc_path->viqe);
-			logd(dev_ptr,
-				"%10s[%2d]: 0x%px\n", "VIQE", vioc_id, address);
-		}
-	} else {
-		logw(dev_ptr,
-			"\"viqe\" node is not found.\n");
-
-		/* DEINTL_S */
-		vioc_node = of_parse_phandle(main_node, "deintls", 0);
-		if (vioc_node != NULL) {
-			of_property_read_u32_index(main_node,
-				"deintls", 1, &vioc_path->deintl_s);
-			if (vioc_path->deintl_s != -1) {
-				vioc_id	= get_vioc_index(vioc_path->deintl_s);
-				address	= VIOC_DEINTLS_GetAddress(
-					/*vioc_path->deintl_s*/);
-				logd(dev_ptr,
-					"%10s[%2d]: 0x%px\n", "DEINTL_S",
-					vioc_id, address);
-			}
-		} else {
-			logw(dev_ptr,
-				"\"deintls\" node is not found.\n");
-		}
-	}
-
-	/* SCALER */
-	vioc_path->scaler = -1;
-	vioc_node = of_parse_phandle(main_node, "scaler", 0);
-	if (vioc_node != NULL) {
-		of_property_read_u32_index(main_node,
-			"scaler", 1, &vioc_path->scaler);
-		if (vioc_path->scaler != -1) {
-			vioc_id	= get_vioc_index(vioc_path->scaler);
-			address	= VIOC_SC_GetAddress(vioc_path->scaler);
-			logd(dev_ptr,
-				"%10s[%2d]: 0x%px\n", "SCALER",
-				vioc_id, address);
-		}
-	} else {
-		logw(dev_ptr,
-			"\"scaler\" node is not found.\n");
-	}
-
-	/* WMIXER */
-	vioc_path->wmixer = -1;
-	vioc_node = of_parse_phandle(main_node, "wmixer", 0);
-	if (vioc_node != NULL) {
-		of_property_read_u32_index(main_node,
-			"wmixer", 1, &vioc_path->wmixer);
-		if (vioc_path->wmixer != -1) {
-			vioc_id	= get_vioc_index(vioc_path->wmixer);
-			address	= VIOC_WMIX_GetAddress(vioc_path->wmixer);
-			logd(dev_ptr,
-				"%10s[%2d]: 0x%px\n", "WMIXER",
-				vioc_id, address);
-		}
-	} else {
-		logw(dev_ptr,
-			"\"wmixer\" node is not found.\n");
-	}
-
-	/* WDMA */
-	vioc_path->wdma = -1;
-	vdev->cif.vioc_irq_num   = -1;
-	vioc_node = of_parse_phandle(main_node, "wdma", 0);
-	if (vioc_node != NULL) {
-		of_property_read_u32_index(main_node,
-			 "wdma", 1, &vioc_path->wdma);
-		if (vioc_path->wdma != -1) {
-			vioc_id	= get_vioc_index(vioc_path->wdma);
-			address = VIOC_WDMA_GetAddress(vioc_path->wdma);
-			logd(dev_ptr,
-				"%10s[%2d]: 0x%px\n", "WDMA", vioc_id, address);
-
-			/* WDMA interrupt */
-			vdev->cif.vioc_irq_num =
-				irq_of_parse_and_map(vioc_node, vioc_id);
-			logd(dev_ptr,
-				"irq_num: %d\n", vdev->cif.vioc_irq_num);
-		}
-	} else {
-		loge(dev_ptr,
-			"\"wdma\" node is not found.\n");
-		return -ENODEV;
-	}
-
-#if defined(CONFIG_OVERLAY_PGL)
-	if (vdev->cif.use_pgl &&
-	    (vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN30)) {
-		/* pmap_pgl */
-		pmap_node = of_parse_phandle(main_node, "memory-region", 0);
-		if (pmap_node != NULL) {
-			ret = of_address_to_resource(pmap_node, 0,
-				&vdev->cif.pmap_pgl);
-			if (ret == 0) {
-				logi(dev_ptr,
-					"%20s: 0x%08llx ~ 0x%08llx (0x%08llx)\n",
-					"pmap_pgl",
-					vdev->cif.pmap_pgl.start,
-					vdev->cif.pmap_pgl.start +
-					resource_size(&vdev->cif.pmap_pgl),
-					resource_size(&vdev->cif.pmap_pgl));
-			}
-		} else {
-			loge(dev_ptr,
-				"\"pmap_pgl\" node is not found.\n");
-			return -ENODEV;
-		}
-		of_node_put(pmap_node);
-	}
-#endif/* defined(CONFIG_OVERLAY_PGL) */
-
-	if ((vioc_path->vin >= VIOC_VIN00) && (vioc_path->vin <= VIOC_VIN30)) {
-		/* pmap_viqe */
-		pmap_node = of_parse_phandle(main_node, "memory-region", 1);
-		if (pmap_node != NULL) {
-			ret = of_address_to_resource(pmap_node, 0,
-				&vdev->cif.pmap_viqe);
-			if (ret == 0) {
-				logi(dev_ptr,
-					"%20s: 0x%08llx ~ 0x%08llx (0x%08llx)\n",
-					"pmap_viqe",
-					vdev->cif.pmap_viqe.start,
-					vdev->cif.pmap_viqe.start +
-					resource_size(&vdev->cif.pmap_viqe),
-					resource_size(&vdev->cif.pmap_viqe));
-			}
-		}
-		of_node_put(pmap_node);
-	}
-
-	/* pmap_prev */
-	pmap_node = of_parse_phandle(main_node, "memory-region", 2);
-	if (pmap_node != NULL) {
-		ret = of_address_to_resource(pmap_node, 0,
-			&vdev->cif.pmap_prev);
-		if (ret == 0) {
-			logi(dev_ptr,
-				"%20s: 0x%08llx ~ 0x%08llx (0x%08llx)\n",
-				"pmap_prev",
-				vdev->cif.pmap_prev.start,
-				vdev->cif.pmap_prev.start +
-				resource_size(&vdev->cif.pmap_prev),
-				resource_size(&vdev->cif.pmap_prev));
-
-			/*
-			 * Redirect dma memory allocations
-			 * to special memory window.
-			 */
-			dma_declare_coherent_memory(vdev->dev->vdev.dev,
-				vdev->cif.pmap_prev.start,
-				vdev->cif.pmap_prev.start,
-				resource_size(&vdev->cif.pmap_prev),
-				0);
-		}
-	}
-	of_node_put(pmap_node);
-
-	/* lastframe */
-	pmap_node = of_parse_phandle(main_node, "memory-region", 3);
-	if (pmap_node != NULL) {
-		ret = of_address_to_resource(pmap_node, 0,
-			&vdev->cif.pmap_lframe);
-		if (ret == 0) {
-			logi(dev_ptr,
-				"%20s: 0x%08llx ~ 0x%08llx (0x%08llx)\n",
-				"last frame",
-				vdev->cif.pmap_lframe.start,
-				vdev->cif.pmap_lframe.start +
-				resource_size(&vdev->cif.pmap_lframe),
-				resource_size(&vdev->cif.pmap_lframe));
-		}
-	} else {
-		loge(dev_ptr,
-			"\"pmap_lframe\" node is not found.\n");
-		return -ENODEV;
-	}
-	of_node_put(pmap_node);
-
-	return 0;
+	log_vioc_path(stream, &stream->cif.vioc_path);
+	log_cif_port(stream, &stream->cif);
 }
 
 /*
@@ -669,7 +659,7 @@ static int32_t tccvin_reset_vioc_path(struct tccvin_streaming *vdev)
 #endif/* defined(CONFIG_OVERLAY_PGL) */
 		vioc->vin,
 		vioc->viqe,
-		vioc->deintl_s,
+		vioc->deintls,
 		vioc->scaler,
 		vioc->wmixer,
 		vioc->wdma,
@@ -727,13 +717,13 @@ static int32_t tccvin_map_cif_port(struct tccvin_streaming *vdev)
 	vin_index = (get_vioc_index(vdev->cif.vioc_path.vin) / 2);
 	value = ((__raw_readl(vdev->cif.cifport_addr) &
 		~(0xF << (vin_index * 4))) |
-		(vdev->cif.cif_port << (vin_index * 4)));
+		(vdev->cif.cifport << (vin_index * 4)));
 	__raw_writel(value, vdev->cif.cifport_addr);
 
 	value = __raw_readl(vdev->cif.cifport_addr);
 	logd(tccvin_streaming_to_devptr(vdev),
 		"CIF Port: %d, VIN Index: %d, Register Value: 0x%08x\n",
-		vdev->cif.cif_port, vin_index, value);
+		vdev->cif.cifport, vin_index, value);
 
 	return 0;
 }
@@ -756,21 +746,21 @@ static int tccvin_check_cif_port_mapping(struct tccvin_streaming *vdev)
 {
 	struct device			*dev_ptr	= NULL;
 	unsigned int			vin_index	= 0;
-	unsigned int			cif_port	= 0;
+	unsigned int			cifport	= 0;
 	int				ret		= 0;
 
 	WARN_ON(IS_ERR_OR_NULL(vdev));
 
 	dev_ptr = tccvin_streaming_to_devptr(vdev);
 	vin_index = (get_vioc_index(vdev->cif.vioc_path.vin) / 2);
-	cif_port = ((__raw_readl(vdev->cif.cifport_addr) >>
+	cifport = ((__raw_readl(vdev->cif.cifport_addr) >>
 		(vin_index * 4)) & (0xF));
 	logi(dev_ptr,
 		"**** cif port mapping: %d -> %d\n",
-		vdev->cif.cif_port, cif_port);
-	if (cif_port != vdev->cif.cif_port) {
+		vdev->cif.cifport, cifport);
+	if (cifport != vdev->cif.cifport) {
 		loge(dev_ptr, "**** cif port mapping: %d -> %d\n",
-			dev->cif.cif_port, cif_port);
+			dev->cif.cifport, cifport);
 		ret = -1;
 	}
 
@@ -1050,10 +1040,10 @@ static int32_t tccvin_set_deinterlacer(struct tccvin_streaming *vdev)
 			VIOC_VIQE_SetDeintlModeWeave(viqe);
 			VIOC_VIQE_IgnoreDecError(viqe, ON, ON, ON);
 		}
-	} else if (vioc->deintl_s != -1) {
+	} else if (vioc->deintls != -1) {
 		if (vioc->vin <= VIOC_VIN30) {
 			/* can be pluged in */
-			VIOC_CONFIG_PlugIn(vioc->deintl_s, vioc->vin);
+			VIOC_CONFIG_PlugIn(vioc->deintls, vioc->vin);
 		}
 	} else {
 		logi(dev_ptr, "There is no available deinterlacer\n");
@@ -1437,8 +1427,8 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 	wdma		= VIOC_WDMA_GetAddress(stream->cif.vioc_path.wdma);
 	dev_ptr		= tccvin_streaming_to_devptr(stream);
 
-	ret = is_vioc_intr_activatied(stream->cif.vioc_intr.id,
-		stream->cif.vioc_intr.bits);
+	ret = is_vioc_intr_activatied(stream->cif.wdma_intr.id,
+		stream->cif.wdma_intr.bits);
 	if (ret == false) {
 		/* interrupt is not activated */
 		return IRQ_NONE;
@@ -1447,7 +1437,7 @@ static irqreturn_t tccvin_wdma_isr(int irq, void *data)
 	/* preview operation */
 	VIOC_WDMA_GetStatus(wdma, &status);
 	if (status & VIOC_WDMA_IREQ_EOFR_MASK) {
-		vioc_intr_clear(stream->cif.vioc_intr.id,
+		vioc_intr_clear(stream->cif.wdma_intr.id,
 			VIOC_WDMA_IREQ_EOFR_MASK);
 
 		getrawmonotonic(&stream->ts_next);
@@ -1734,11 +1724,11 @@ static int32_t tccvin_stop_stream(struct tccvin_streaming *vdev)
 				(state.connect_statue == VIOC_PATH_CONNECTED)) {
 				VIOC_CONFIG_PlugOut(vioc->viqe);
 			}
-		} else if (vioc->deintl_s != -1) {
-			VIOC_CONFIG_Device_PlugState(vioc->deintl_s, &state);
+		} else if (vioc->deintls != -1) {
+			VIOC_CONFIG_Device_PlugState(vioc->deintls, &state);
 			if (state.enable &&
 				(state.connect_statue == VIOC_PATH_CONNECTED)) {
-				VIOC_CONFIG_PlugOut(vioc->deintl_s);
+				VIOC_CONFIG_PlugOut(vioc->deintls);
 			}
 		} else {
 			/* no available de-interlacer */
@@ -1832,9 +1822,9 @@ static int32_t tccvin_request_irq(struct tccvin_streaming *vdev)
 
 	/* wdma interrupt */
 	vioc_path	= &vdev->cif.vioc_path;
-	vioc_intr	= &vdev->cif.vioc_intr;
+	vioc_intr	= &vdev->cif.wdma_intr;
 
-	if ((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == 0)) {
+	if ((vdev->cif.wdma_irq_num != -1) && (vdev->cif.wdma_irq_reg == 0)) {
 		vioc_intr->id   = -1;
 		vioc_intr->bits = -1;
 
@@ -1857,24 +1847,24 @@ static int32_t tccvin_request_irq(struct tccvin_streaming *vdev)
 			"wdma - vioc_base_id: %d, vioc_wdma_id: %d, vioc_intr->id: %d\n",
 			vioc_base_id, vioc_wdma_id, vioc_intr->id);
 
-		if (vdev->cif.vioc_irq_reg == 0) {
-			vioc_intr_disable(vdev->cif.vioc_irq_num,
+		if (vdev->cif.wdma_irq_reg == 0) {
+			vioc_intr_disable(vdev->cif.wdma_irq_num,
 				vioc_intr->id, VIOC_WDMA_IREQ_ALL_MASK);
 			vioc_intr_clear(vioc_intr->id,
 				VIOC_WDMA_IREQ_ALL_MASK);
-			ret = request_irq(vdev->cif.vioc_irq_num,
+			ret = request_irq(vdev->cif.wdma_irq_num,
 				tccvin_wdma_isr, IRQF_SHARED,
 				vdev->vdev.name, vdev);
 			logd(dev_ptr,
 				"wdma irq num: %d, id: %d, bits: 0x%08x\n",
-				vdev->cif.vioc_irq_num,
+				vdev->cif.wdma_irq_num,
 				vioc_intr->id, vioc_intr->bits);
-			vioc_intr_enable(vdev->cif.vioc_irq_num,
+			vioc_intr_enable(vdev->cif.wdma_irq_num,
 				vioc_intr->id, vioc_intr->bits);
-			vdev->cif.vioc_irq_reg = 1;
+			vdev->cif.wdma_irq_reg = 1;
 		} else {
 			loge(dev_ptr, "The irq(%d) is already registered.\n",
-				vdev->cif.vioc_irq_num);
+				vdev->cif.wdma_irq_num);
 			return -1;
 		}
 	} else {
@@ -1894,19 +1884,19 @@ static int32_t tccvin_free_irq(struct tccvin_streaming *vdev)
 	WARN_ON(IS_ERR_OR_NULL(vdev));
 
 	dev_ptr = tccvin_streaming_to_devptr(vdev);
-	vioc_intr	= &vdev->cif.vioc_intr;
+	vioc_intr	= &vdev->cif.wdma_intr;
 
-	if ((vdev->cif.vioc_irq_num != -1) && (vdev->cif.vioc_irq_reg == 1)) {
-		if (vdev->cif.vioc_irq_reg == 1) {
+	if ((vdev->cif.wdma_irq_num != -1) && (vdev->cif.wdma_irq_reg == 1)) {
+		if (vdev->cif.wdma_irq_reg == 1) {
 			vioc_intr_clear(vioc_intr->id, vioc_intr->bits);
-			vioc_intr_disable(vdev->cif.vioc_irq_num,
+			vioc_intr_disable(vdev->cif.wdma_irq_num,
 				vioc_intr->id, vioc_intr->bits);
-			free_irq(vdev->cif.vioc_irq_num, vdev);
-			vdev->cif.vioc_irq_reg = 0;
+			free_irq(vdev->cif.wdma_irq_num, vdev);
+			vdev->cif.wdma_irq_reg = 0;
 		} else {
 			loge(dev_ptr,
 				"The irq(%d) is NOT registered.\n",
-				vdev->cif.vioc_irq_num);
+				vdev->cif.wdma_irq_num);
 			return -1;
 		}
 	} else {
@@ -1998,6 +1988,15 @@ static void tccvin_disable_clock(struct tccvin_streaming *vdev)
 	}
 }
 
+void prep_dma_coherent_mem(struct tccvin_streaming *stream)
+{
+	dma_declare_coherent_memory(stream->dev->vdev.dev,
+		stream->cif.pmap_prev.start,
+		stream->cif.pmap_prev.start,
+		resource_size(&stream->cif.pmap_prev),
+		0);
+}
+
 int tccvin_video_init(struct tccvin_streaming *stream)
 {
 	struct device			*dev_ptr	= NULL;
@@ -2007,11 +2006,8 @@ int tccvin_video_init(struct tccvin_streaming *stream)
 
 	dev_ptr = tccvin_streaming_to_devptr(stream);
 	/* parse device tree */
-	ret = tccvin_parse_device_tree(stream);
-	if (ret != 0) {
-		loge(dev_ptr, "Parse the device tree.\n");
-		return -ENODEV;
-	}
+	tccvin_parse_device_tree(stream);
+	prep_dma_coherent_mem(stream);
 
 	/* get the vioc's clock */
 	ret = tccvin_get_clock(stream);

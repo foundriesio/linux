@@ -74,7 +74,7 @@ struct tccvin_device;
 struct vioc_path {
 	int32_t				vin;
 	int32_t				viqe;
-	int32_t				deintl_s;
+	int32_t				deintls;
 	int32_t				scaler;
 	int32_t				pgl;
 	int32_t				wmixer;
@@ -93,7 +93,7 @@ struct buf_addr {
 
 struct tccvin_cif {
 	/* cif port */
-	int32_t				cif_port;
+	int32_t				cifport;
 
 	void __iomem			*cifport_addr;
 
@@ -105,9 +105,9 @@ struct tccvin_cif {
 	unsigned int			vin_irq_num;
 	struct vioc_intr_type		vin_intr;
 
-	unsigned int			vioc_irq_reg;
-	unsigned int			vioc_irq_num;
-	struct vioc_intr_type		vioc_intr;
+	unsigned int			wdma_irq_reg;
+	unsigned int			wdma_irq_num;
+	struct vioc_intr_type		wdma_intr;
 
 	/* usage status pgl */
 	unsigned int			use_pgl;
@@ -238,6 +238,8 @@ struct tccvin_video_queue {
 /* Get device instance from streaming object */
 #define tccvin_streaming_to_devptr(ptr)		\
 	(&ptr->dev->pdev->dev)
+#define tccvin_streaming_to_ofnode(ptr)		\
+	(ptr->dev->pdev->dev.of_node)
 #define tccvin_device_to_devptr(ptr)		\
 	(&ptr->pdev->dev)
 
