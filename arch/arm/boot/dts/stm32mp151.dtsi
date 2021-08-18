@@ -1637,12 +1637,14 @@
 				      "mac-clk-tx",
 				      "mac-clk-rx",
 				      "eth-ck",
-				      "ethstp";
+				      "ethstp",
+				      "ptp_ref";
 			clocks = <&rcc ETHMAC>,
 				 <&rcc ETHTX>,
 				 <&rcc ETHRX>,
 				 <&rcc ETHCK_K>,
-				 <&rcc ETHSTP>;
+				 <&rcc ETHSTP>,
+				 <&rcc ETHPTP_K>;
 			st,syscon = <&syscfg 0x4>;
 			snps,mixed-burst;
 			snps,pbl = <2>;
