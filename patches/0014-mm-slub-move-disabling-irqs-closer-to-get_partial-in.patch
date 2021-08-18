@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2679,11 +2679,6 @@ static void *___slab_alloc(struct kmem_c
+@@ -2692,11 +2692,6 @@ static void *___slab_alloc(struct kmem_c
  		if (unlikely(node != NUMA_NO_NODE &&
  			     !node_isset(node, slab_nodes)))
  			node = NUMA_NO_NODE;
@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		goto new_slab;
  	}
  redo:
-@@ -2724,6 +2719,7 @@ static void *___slab_alloc(struct kmem_c
+@@ -2737,6 +2732,7 @@ static void *___slab_alloc(struct kmem_c
  
  	if (!freelist) {
  		c->page = NULL;
@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		stat(s, DEACTIVATE_BYPASS);
  		goto new_slab;
  	}
-@@ -2753,12 +2749,19 @@ static void *___slab_alloc(struct kmem_c
+@@ -2766,12 +2762,19 @@ static void *___slab_alloc(struct kmem_c
  		goto reread_page;
  	}
  	deactivate_slab(s, page, c->freelist, c);
@@ -57,7 +57,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		page = c->page = slub_percpu_partial(c);
  		slub_set_percpu_partial(c, page);
  		local_irq_restore(flags);
-@@ -2766,6 +2769,16 @@ static void *___slab_alloc(struct kmem_c
+@@ -2779,6 +2782,16 @@ static void *___slab_alloc(struct kmem_c
  		goto redo;
  	}
  
@@ -74,7 +74,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	freelist = get_partial(s, gfpflags, node, &page);
  	if (freelist) {
  		c->page = page;
-@@ -2798,15 +2811,18 @@ static void *___slab_alloc(struct kmem_c
+@@ -2811,15 +2824,18 @@ static void *___slab_alloc(struct kmem_c
  check_new_page:
  
  	if (kmem_cache_debug(s)) {

@@ -19,7 +19,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/lib/locking-selftest.c
 +++ b/lib/locking-selftest.c
-@@ -1704,6 +1704,20 @@ static void ww_test_fail_acquire(void)
+@@ -1700,6 +1700,20 @@ static void ww_test_fail_acquire(void)
  #endif
  }
  
@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void ww_test_normal(void)
  {
  	int ret;
-@@ -1718,50 +1732,50 @@ static void ww_test_normal(void)
+@@ -1714,50 +1728,50 @@ static void ww_test_normal(void)
  
  	/* mutex_lock (and indirectly, mutex_lock_nested) */
  	o.ctx = (void *)~0UL;
@@ -104,7 +104,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	WARN_ON(o.ctx != (void *)~0UL);
  }
  
-@@ -1774,7 +1788,7 @@ static void ww_test_two_contexts(void)
+@@ -1770,7 +1784,7 @@ static void ww_test_two_contexts(void)
  static void ww_test_diff_class(void)
  {
  	WWAI(&t);
@@ -113,7 +113,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	t.ww_class = NULL;
  #endif
  	WWL(&o, &t);
-@@ -1838,7 +1852,7 @@ static void ww_test_edeadlk_normal(void)
+@@ -1834,7 +1848,7 @@ static void ww_test_edeadlk_normal(void)
  {
  	int ret;
  
@@ -122,7 +122,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	o2.ctx = &t2;
  	mutex_release(&o2.base.dep_map, _THIS_IP_);
  
-@@ -1854,7 +1868,7 @@ static void ww_test_edeadlk_normal(void)
+@@ -1850,7 +1864,7 @@ static void ww_test_edeadlk_normal(void)
  
  	o2.ctx = NULL;
  	mutex_acquire(&o2.base.dep_map, 0, 1, _THIS_IP_);
@@ -131,7 +131,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	WWU(&o);
  
  	WWL(&o2, &t);
-@@ -1864,7 +1878,7 @@ static void ww_test_edeadlk_normal_slow(
+@@ -1860,7 +1874,7 @@ static void ww_test_edeadlk_normal_slow(
  {
  	int ret;
  
@@ -140,7 +140,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_release(&o2.base.dep_map, _THIS_IP_);
  	o2.ctx = &t2;
  
-@@ -1880,7 +1894,7 @@ static void ww_test_edeadlk_normal_slow(
+@@ -1876,7 +1890,7 @@ static void ww_test_edeadlk_normal_slow(
  
  	o2.ctx = NULL;
  	mutex_acquire(&o2.base.dep_map, 0, 1, _THIS_IP_);
@@ -149,7 +149,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	WWU(&o);
  
  	ww_mutex_lock_slow(&o2, &t);
-@@ -1890,7 +1904,7 @@ static void ww_test_edeadlk_no_unlock(vo
+@@ -1886,7 +1900,7 @@ static void ww_test_edeadlk_no_unlock(vo
  {
  	int ret;
  
@@ -158,7 +158,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	o2.ctx = &t2;
  	mutex_release(&o2.base.dep_map, _THIS_IP_);
  
-@@ -1906,7 +1920,7 @@ static void ww_test_edeadlk_no_unlock(vo
+@@ -1902,7 +1916,7 @@ static void ww_test_edeadlk_no_unlock(vo
  
  	o2.ctx = NULL;
  	mutex_acquire(&o2.base.dep_map, 0, 1, _THIS_IP_);
@@ -167,7 +167,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	WWL(&o2, &t);
  }
-@@ -1915,7 +1929,7 @@ static void ww_test_edeadlk_no_unlock_sl
+@@ -1911,7 +1925,7 @@ static void ww_test_edeadlk_no_unlock_sl
  {
  	int ret;
  
@@ -176,7 +176,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_release(&o2.base.dep_map, _THIS_IP_);
  	o2.ctx = &t2;
  
-@@ -1931,7 +1945,7 @@ static void ww_test_edeadlk_no_unlock_sl
+@@ -1927,7 +1941,7 @@ static void ww_test_edeadlk_no_unlock_sl
  
  	o2.ctx = NULL;
  	mutex_acquire(&o2.base.dep_map, 0, 1, _THIS_IP_);
@@ -185,7 +185,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	ww_mutex_lock_slow(&o2, &t);
  }
-@@ -1940,7 +1954,7 @@ static void ww_test_edeadlk_acquire_more
+@@ -1936,7 +1950,7 @@ static void ww_test_edeadlk_acquire_more
  {
  	int ret;
  
@@ -194,7 +194,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_release(&o2.base.dep_map, _THIS_IP_);
  	o2.ctx = &t2;
  
-@@ -1961,7 +1975,7 @@ static void ww_test_edeadlk_acquire_more
+@@ -1957,7 +1971,7 @@ static void ww_test_edeadlk_acquire_more
  {
  	int ret;
  
@@ -203,7 +203,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_release(&o2.base.dep_map, _THIS_IP_);
  	o2.ctx = &t2;
  
-@@ -1982,11 +1996,11 @@ static void ww_test_edeadlk_acquire_more
+@@ -1978,11 +1992,11 @@ static void ww_test_edeadlk_acquire_more
  {
  	int ret;
  
@@ -217,7 +217,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_release(&o3.base.dep_map, _THIS_IP_);
  	o3.ctx = &t2;
  
-@@ -2008,11 +2022,11 @@ static void ww_test_edeadlk_acquire_more
+@@ -2004,11 +2018,11 @@ static void ww_test_edeadlk_acquire_more
  {
  	int ret;
  
@@ -231,7 +231,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_release(&o3.base.dep_map, _THIS_IP_);
  	o3.ctx = &t2;
  
-@@ -2033,7 +2047,7 @@ static void ww_test_edeadlk_acquire_wron
+@@ -2029,7 +2043,7 @@ static void ww_test_edeadlk_acquire_wron
  {
  	int ret;
  
@@ -240,7 +240,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	mutex_release(&o2.base.dep_map, _THIS_IP_);
  	o2.ctx = &t2;
  
-@@ -2058,7 +2072,7 @@ static void ww_test_edeadlk_acquire_wron
+@@ -2054,7 +2068,7 @@ static void ww_test_edeadlk_acquire_wron
  {
  	int ret;
  

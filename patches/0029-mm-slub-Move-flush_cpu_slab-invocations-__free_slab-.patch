@@ -127,7 +127,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -4074,7 +4120,7 @@ int __kmem_cache_shutdown(struct kmem_ca
+@@ -4087,7 +4133,7 @@ int __kmem_cache_shutdown(struct kmem_ca
  	int node;
  	struct kmem_cache_node *n;
  
@@ -136,16 +136,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* Attempt to free all objects */
  	for_each_kmem_cache_node(s, node, n) {
  		free_partial(s, n);
-@@ -4350,7 +4396,7 @@ EXPORT_SYMBOL(kfree);
+@@ -4363,7 +4409,7 @@ EXPORT_SYMBOL(kfree);
   * being allocated from last increasing the chance that the last objects
   * are freed in them.
   */
 -int __kmem_cache_shrink(struct kmem_cache *s)
-+int __kmem_cache_do_shrink(struct kmem_cache *s)
++static int __kmem_cache_do_shrink(struct kmem_cache *s)
  {
  	int node;
  	int i;
-@@ -4362,7 +4408,6 @@ int __kmem_cache_shrink(struct kmem_cach
+@@ -4375,7 +4421,6 @@ int __kmem_cache_shrink(struct kmem_cach
  	unsigned long flags;
  	int ret = 0;
  
@@ -153,7 +153,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	for_each_kmem_cache_node(s, node, n) {
  		INIT_LIST_HEAD(&discard);
  		for (i = 0; i < SHRINK_PROMOTE_MAX; i++)
-@@ -4412,13 +4457,21 @@ int __kmem_cache_shrink(struct kmem_cach
+@@ -4425,13 +4470,21 @@ int __kmem_cache_shrink(struct kmem_cach
  	return ret;
  }
  

@@ -34,7 +34,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (!page)
  		return NULL;
  
-@@ -2785,16 +2780,17 @@ static void *___slab_alloc(struct kmem_c
+@@ -2798,16 +2793,17 @@ static void *___slab_alloc(struct kmem_c
  		goto check_new_page;
  	}
  

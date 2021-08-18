@@ -1,10 +1,15 @@
+# Applied upstream
+# PM-Tree, v5.15
+0001_cpu_pm_make_notifier_chain_use_a_raw_spinlock_t.patch
+0002_notifier_remove_atomic_notifier_call_chain_robust.patch
+
 ###########################################################################
 # Valentin's PCP fixes
 ###########################################################################
 eventfd-Make-signal-recursion-protection-a-task-bit.patch
-sched_Introduce_is_pcpu_safe_.patch
-rcu_nocb_Check_for_migratability_rather_than_pure_preemptability.patch
-arm64_mm_Make_arch_faults_on_old_pte_check_for_migratability.patch
+sched_introduce_migratable.patch
+rcu_nocb_protect_nocb_state_via_local_lock_under_preempt_rt.patch
+arm64_mm_make_arch_faults_on_old_pte_check_for_migratability.patch
 
 ###########################################################################
 # John's printk queue
@@ -32,7 +37,7 @@ printk__Enhance_the_condition_check_of_msleep_in_pr_flush.patch
 
 ###########################################################################
 # mm bits polished by Mel and Vlastimil
-# slub-local-lock-v4r1
+# slub-local-lock-v4r3
 ###########################################################################
 0001-mm-slub-don-t-call-flush_all-from-slab_debug_trace_o.patch
 0002-mm-slub-allocate-private-object-map-for-debugfs-list.patch
@@ -80,7 +85,6 @@ highmem-Don-t-disable-preemption-on-RT-in-kmap_atomi.patch
 ###########################################################################
 kthread__Move_prio_affinite_change_into_the_newly_created_thread.patch
 genirq__Move_prio_assignment_into_the_newly_created_thread.patch
-notifier__Make_atomic_notifiers_use_raw_spinlock.patch
 cgroup__use_irqsave_in_cgroup_rstat_flush_locked.patch
 mm__workingset__replace_IRQ-off_check_with_a_lockdep_assert..patch
 shmem__Use_raw_spinlock_t_for_-stat_lock.patch
@@ -126,78 +130,78 @@ debugobjects__Make_RT_aware.patch
 ###########################################################################
 # Locking core
 ###########################################################################
-locking-local_lock--Add-missing-owner-initialization.patch
-locking-rtmutex--Set-proper-wait-context-for-lockdep.patch
-sched__Split_out_the_wakeup_state_check.patch
-sched__Introduce_TASK_RTLOCK_WAIT.patch
-sched--Reorganize-current--state-helpers.patch
-sched__Prepare_for_RT_sleeping_spin_rwlocks.patch
-sched__Rework_the___schedule_preempt_argument.patch
-sched__Provide_schedule_point_for_RT_locks.patch
-sched_wake_q__Provide_WAKE_Q_HEAD_INITIALIZER.patch
-media_atomisp_Use_lockdep_instead_of_mutex_is_locked_.patch
-rtmutex--Remove-rt_mutex_is_locked--.patch
-rtmutex__Convert_macros_to_inlines.patch
-rtmutex--Switch-to-try_cmpxchg--.patch
-rtmutex__Split_API_and_implementation.patch
-rtmutex--Split-out-the-inner-parts-of-struct-rtmutex.patch
-locking_rtmutex__Provide_rt_mutex_slowlock_locked.patch
-rtmutex--Provide-rt_mutex_base_is_locked--.patch
-locking__Add_base_code_for_RT_rw_semaphore_and_rwlock.patch
-locking_rwsem__Add_rtmutex_based_R_W_semaphore_implementation.patch
-locking_rtmutex__Add_wake_state_to_rt_mutex_waiter.patch
-locking_rtmutex__Provide_rt_mutex_wake_q_and_helpers.patch
-locking_rtmutex__Use_rt_mutex_wake_q_head.patch
-locking_rtmutex__Prepare_RT_rt_mutex_wake_q_for_RT_locks.patch
-locking_rtmutex__Guard_regular_sleeping_locks_specific_functions.patch
-locking_spinlock__Split_the_lock_types_header.patch
-locking_rtmutex__Prevent_future_include_recursion_hell.patch
-locking_lockdep__Reduce_includes_in_debug_locks.h.patch
-rbtree__Split_out_the_rbtree_type_definitions.patch
-locking_rtmutex__Include_only_rbtree_types.patch
-locking_spinlock__Provide_RT_specific_spinlock_type.patch
-locking_spinlock__Provide_RT_variant_header.patch
-locking_rtmutex__Provide_the_spin_rwlock_core_lock_function.patch
-locking_spinlock__Provide_RT_variant.patch
-locking_rwlock__Provide_RT_variant.patch
-rtmutex--Exclude-!RT-tasks-from-PI-boosting.patch
-locking_mutex__Consolidate_core_headers.patch
-locking_mutex__Move_waiter_to_core_header.patch
-locking_ww_mutex__Move_ww_mutex_declarations_into_ww_mutex.h.patch
-locking_mutex__Make_mutex__wait_lock_raw.patch
-locking_ww_mutex__Simplify_lockdep_annotation.patch
-locking_ww_mutex__Gather_mutex_waiter_initialization.patch
-locking_ww_mutex__Split_up_ww_mutex_unlock.patch
-locking_ww_mutex__Split_W_W_implementation_logic.patch
-locking_ww_mutex__Remove___sched_annotation.patch
-locking_ww_mutex__Abstract_waiter_iteration.patch
-locking_ww_mutex__Abstract_waiter_enqueue.patch
-locking_ww_mutex__Abstract_mutex_accessors.patch
-locking_ww_mutex__Abstract_mutex_types.patch
-locking-ww_mutex--Abstract-internal-lock-access.patch
-locking_ww_mutex__Implement_rt_mutex_accessors.patch
-locking_ww_mutex__Add_RT_priority_to_W_W_order.patch
-locking_ww_mutex__Add_ww_rt_mutex_interface.patch
-locking-rtmutex--Extend-the-rtmutex-core-to-support-ww_mutex.patch
-locking_ww_mutex__Implement_ww_rt_mutex.patch
-locking_rtmutex__Add_mutex_variant_for_RT.patch
-lib_test_lockup__Adapt_to_changed_variables..patch
-futex__Validate_waiter_correctly_in_futex_proxy_trylock_atomic.patch
-futex__Cleanup_stale_comments.patch
-futex--Clarify-futex_requeue---PI-handling.patch
-futex--Remove-bogus-condition-for-requeue-PI.patch
-futex__Correct_the_number_of_requeued_waiters_for_PI.patch
-futex__Restructure_futex_requeue.patch
-futex__Clarify_comment_in_futex_requeue.patch
-futex--Reorder-sanity-checks-in-futex_requeue--.patch
-futex--Simplify-handle_early_requeue_pi_wakeup--.patch
-futex__Prevent_requeue_pi_lock_nesting_issue_on_RT.patch
-rtmutex__Prevent_lockdep_false_positive_with_PI_futexes.patch
-preempt__Adjust_PREEMPT_LOCK_OFFSET_for_RT.patch
-locking_rtmutex__Implement_equal_priority_lock_stealing.patch
-locking_rtmutex__Add_adaptive_spinwait_mechanism.patch
-locking-spinlock-rt--Prepare-for-RT-local_lock.patch
-locking-local_lock--Add-PREEMPT_RT-support.patch
+0001-locking-local_lock-Add-missing-owner-initialization.patch
+0002-locking-rtmutex-Set-proper-wait-context-for-lockdep.patch
+0003-sched-wakeup-Split-out-the-wakeup-__state-check.patch
+0004-sched-wakeup-Introduce-the-TASK_RTLOCK_WAIT-state-bi.patch
+0005-sched-wakeup-Reorganize-the-current-__state-helpers.patch
+0006-sched-wakeup-Prepare-for-RT-sleeping-spin-rwlocks.patch
+0007-sched-core-Rework-the-__schedule-preempt-argument.patch
+0008-sched-core-Provide-a-scheduling-point-for-RT-locks.patch
+0009-sched-wake_q-Provide-WAKE_Q_HEAD_INITIALIZER.patch
+0010-media-atomisp-Use-lockdep-instead-of-mutex_is_locked.patch
+0011-locking-rtmutex-Remove-rt_mutex_is_locked.patch
+0012-locking-rtmutex-Convert-macros-to-inlines.patch
+0013-locking-rtmutex-Switch-to-from-cmpxchg_-to-try_cmpxc.patch
+0014-locking-rtmutex-Split-API-from-implementation.patch
+0015-locking-rtmutex-Split-out-the-inner-parts-of-struct-.patch
+0016-locking-rtmutex-Provide-rt_mutex_slowlock_locked.patch
+0017-locking-rtmutex-Provide-rt_mutex_base_is_locked.patch
+0018-locking-rt-Add-base-code-for-RT-rw_semaphore-and-rwl.patch
+0019-locking-rwsem-Add-rtmutex-based-R-W-semaphore-implem.patch
+0020-locking-rtmutex-Add-wake_state-to-rt_mutex_waiter.patch
+0021-locking-rtmutex-Provide-rt_wake_q_head-and-helpers.patch
+0022-locking-rtmutex-Use-rt_mutex_wake_q_head.patch
+0023-locking-rtmutex-Prepare-RT-rt_mutex_wake_q-for-RT-lo.patch
+0024-locking-rtmutex-Guard-regular-sleeping-locks-specifi.patch
+0025-locking-spinlock-Split-the-lock-types-header-and-mov.patch
+0026-locking-rtmutex-Prevent-future-include-recursion-hel.patch
+0027-locking-lockdep-Reduce-header-dependencies-in-linux-.patch
+0028-rbtree-Split-out-the-rbtree-type-definitions-into-li.patch
+0029-locking-rtmutex-Reduce-linux-rtmutex.h-header-depend.patch
+0030-locking-spinlock-Provide-RT-specific-spinlock_t.patch
+0031-locking-spinlock-Provide-RT-variant-header-linux-spi.patch
+0032-locking-rtmutex-Provide-the-spin-rwlock-core-lock-fu.patch
+0033-locking-spinlock-Provide-RT-variant.patch
+0034-locking-rwlock-Provide-RT-variant.patch
+0035-locking-rtmutex-Squash-RT-tasks-to-DEFAULT_PRIO.patch
+0036-locking-mutex-Consolidate-core-headers-remove-kernel.patch
+0037-locking-mutex-Move-the-struct-mutex_waiter-definitio.patch
+0038-locking-ww_mutex-Move-the-ww_mutex-definitions-from-.patch
+0039-locking-mutex-Make-mutex-wait_lock-raw.patch
+0040-locking-ww_mutex-Simplify-lockdep-annotations.patch
+0041-locking-ww_mutex-Gather-mutex_waiter-initialization.patch
+0042-locking-ww_mutex-Split-up-ww_mutex_unlock.patch
+0043-locking-ww_mutex-Split-out-the-W-W-implementation-lo.patch
+0044-locking-ww_mutex-Remove-the-__sched-annotation-from-.patch
+0045-locking-ww_mutex-Abstract-out-the-waiter-iteration.patch
+0046-locking-ww_mutex-Abstract-out-waiter-enqueueing.patch
+0047-locking-ww_mutex-Abstract-out-mutex-accessors.patch
+0048-locking-ww_mutex-Abstract-out-mutex-types.patch
+0049-locking-ww_mutex-Abstract-out-internal-lock-accesses.patch
+0050-locking-ww_mutex-Implement-rt_mutex-accessors.patch
+0051-locking-ww_mutex-Add-RT-priority-to-W-W-order.patch
+0052-locking-ww_mutex-Add-rt_mutex-based-lock-type-and-ac.patch
+0053-locking-rtmutex-Extend-the-rtmutex-core-to-support-w.patch
+0054-locking-ww_mutex-Implement-rtmutex-based-ww_mutex-AP.patch
+0055-locking-rtmutex-Add-mutex-variant-for-RT.patch
+0056-lib-test_lockup-Adapt-to-changed-variables.patch
+0057-futex-Validate-waiter-correctly-in-futex_proxy_trylo.patch
+0058-futex-Clean-up-stale-comments.patch
+0059-futex-Clarify-futex_requeue-PI-handling.patch
+0060-futex-Remove-bogus-condition-for-requeue-PI.patch
+0061-futex-Correct-the-number-of-requeued-waiters-for-PI.patch
+0062-futex-Restructure-futex_requeue.patch
+0063-futex-Clarify-comment-in-futex_requeue.patch
+0064-futex-Reorder-sanity-checks-in-futex_requeue.patch
+0065-futex-Simplify-handle_early_requeue_pi_wakeup.patch
+0066-futex-Prevent-requeue_pi-lock-nesting-issue-on-RT.patch
+0067-locking-rtmutex-Prevent-lockdep-false-positive-with-.patch
+0068-preempt-Adjust-PREEMPT_LOCK_OFFSET-for-RT.patch
+0069-locking-rtmutex-Implement-equal-priority-lock-steali.patch
+0070-locking-rtmutex-Add-adaptive-spinwait-mechanism.patch
+0071-locking-spinlock-rt-Prepare-for-RT-local_lock.patch
+0072-locking-local_lock-Add-PREEMPT_RT-support.patch
 
 ###########################################################################
 # Locking: RT bits. Need review
@@ -210,8 +214,10 @@ lockdep-selftests-Avoid-using-local_lock_-acquire-re.patch
 0006-lockdep-selftests-Add-rtmutex-to-the-last-column.patch
 0007-lockdep-selftests-Unbalanced-migrate_disable-rcu_rea.patch
 0008-lockdep-selftests-Skip-the-softirq-related-tests-on-.patch
-0009-lockdep-selftests-Use-correct-depmap-for-local_lock-.patch
 0010-lockdep-selftests-Adapt-ww-tests-for-PREEMPT_RT.patch
+
+# Unbreaks powerpc
+locking-Allow-to-include-asm-spinlock_types.h-from-l.patch
 
 ###########################################################################
 # preempt: Conditional variants
@@ -376,7 +382,6 @@ powerpc__traps__Use_PREEMPT_RT.patch
 powerpc_pseries_iommu__Use_a_locallock_instead_local_irq_save.patch
 powerpc_kvm__Disable_in-kernel_MPIC_emulation_for_PREEMPT_RT.patch
 powerpc_stackprotector__work_around_stack-guard_init_from_atomic.patch
-powerpc__Avoid_recursive_header_includes.patch
 POWERPC__Allow_to_enable_RT.patch
 
 ###########################################################################

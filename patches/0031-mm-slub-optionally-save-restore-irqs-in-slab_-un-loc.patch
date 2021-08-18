@@ -107,7 +107,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_unlock_irqrestore(&n->list_lock, flags);
  	if (!ret)
  		slab_fix(s, "Object at 0x%p not freed", object);
-@@ -4057,9 +4069,10 @@ static void list_slab_objects(struct kme
+@@ -4070,9 +4082,10 @@ static void list_slab_objects(struct kme
  	void *addr = page_address(page);
  	unsigned long *map;
  	void *p;
@@ -119,7 +119,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	map = get_map(s, page);
  	for_each_object(p, s, addr, page->objects) {
-@@ -4070,7 +4083,7 @@ static void list_slab_objects(struct kme
+@@ -4083,7 +4096,7 @@ static void list_slab_objects(struct kme
  		}
  	}
  	put_map(map);
@@ -128,7 +128,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #endif
  }
  
-@@ -4802,8 +4815,9 @@ static void validate_slab(struct kmem_ca
+@@ -4815,8 +4828,9 @@ static void validate_slab(struct kmem_ca
  {
  	void *p;
  	void *addr = page_address(page);
@@ -139,7 +139,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (!check_slab(s, page) || !on_freelist(s, page, NULL))
  		goto unlock;
-@@ -4818,7 +4832,7 @@ static void validate_slab(struct kmem_ca
+@@ -4831,7 +4845,7 @@ static void validate_slab(struct kmem_ca
  			break;
  	}
  unlock:

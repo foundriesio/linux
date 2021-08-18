@@ -29,8 +29,8 @@ by this series.
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/slub_def.h |    2 
- mm/slub.c                |  146 ++++++++++++++++++++++++++++++++++++-----------
+ include/linux/slub_def.h |    6 +
+ mm/slub.c                |  142 ++++++++++++++++++++++++++++++++++++-----------
  2 files changed, 115 insertions(+), 33 deletions(-)
 
 --- a/include/linux/slub_def.h
@@ -43,14 +43,25 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  enum stat_item {
  	ALLOC_FASTPATH,		/* Allocation from cpu slab */
-@@ -41,6 +42,7 @@ enum stat_item {
+@@ -40,6 +41,10 @@ enum stat_item {
+ 	CPU_PARTIAL_DRAIN,	/* Drain cpu partial to node partial */
  	NR_SLUB_STAT_ITEMS };
  
++/*
++ * When changing the layout, make sure freelist and tid are still compatible
++ * with this_cpu_cmpxchg_double() alignment requirements.
++ */
  struct kmem_cache_cpu {
-+	local_lock_t lock;	/* Protects the fields below except stat */
  	void **freelist;	/* Pointer to next available object */
  	unsigned long tid;	/* Globally unique transaction id */
- 	struct page *page;	/* The slab from which we are allocating */
+@@ -47,6 +52,7 @@ struct kmem_cache_cpu {
+ #ifdef CONFIG_SLUB_CPU_PARTIAL
+ 	struct page *partial;	/* Partially allocated frozen slabs */
+ #endif
++	local_lock_t lock;	/* Protects the fields above */
+ #ifdef CONFIG_SLUB_STATS
+ 	unsigned stat[NR_SLUB_STAT_ITEMS];
+ #endif
 --- a/mm/slub.c
 +++ b/mm/slub.c
 @@ -46,13 +46,21 @@
@@ -201,7 +212,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (page)
  		deactivate_slab(s, page, freelist);
-@@ -2836,9 +2878,9 @@ static void *___slab_alloc(struct kmem_c
+@@ -2849,9 +2891,9 @@ static void *___slab_alloc(struct kmem_c
  		goto deactivate_slab;
  
  	/* must check again c->page in case we got preempted and it changed */
@@ -213,7 +224,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		goto reread_page;
  	}
  	freelist = c->freelist;
-@@ -2849,7 +2891,7 @@ static void *___slab_alloc(struct kmem_c
+@@ -2862,7 +2904,7 @@ static void *___slab_alloc(struct kmem_c
  
  	if (!freelist) {
  		c->page = NULL;
@@ -222,20 +233,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		stat(s, DEACTIVATE_BYPASS);
  		goto new_slab;
  	}
-@@ -2858,7 +2900,11 @@ static void *___slab_alloc(struct kmem_c
+@@ -2871,7 +2913,7 @@ static void *___slab_alloc(struct kmem_c
  
  load_freelist:
  
 -	lockdep_assert_irqs_disabled();
-+#ifdef CONFIG_PREEMPT_RT
-+	lockdep_assert_held(this_cpu_ptr(&s->cpu_slab->lock.lock));
-+#else
 +	lockdep_assert_held(this_cpu_ptr(&s->cpu_slab->lock));
-+#endif
  
  	/*
  	 * freelist is pointing to the list of objects to be used.
-@@ -2868,39 +2914,39 @@ static void *___slab_alloc(struct kmem_c
+@@ -2881,39 +2923,39 @@ static void *___slab_alloc(struct kmem_c
  	VM_BUG_ON(!c->page->frozen);
  	c->freelist = get_freepointer(s, freelist);
  	c->tid = next_tid(c->tid);
@@ -283,7 +290,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		stat(s, CPU_PARTIAL_ALLOC);
  		goto redo;
  	}
-@@ -2953,7 +2999,7 @@ static void *___slab_alloc(struct kmem_c
+@@ -2966,7 +3008,7 @@ static void *___slab_alloc(struct kmem_c
  
  retry_load_page:
  
@@ -292,7 +299,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (unlikely(c->page)) {
  		void *flush_freelist = c->freelist;
  		struct page *flush_page = c->page;
-@@ -2962,7 +3008,7 @@ static void *___slab_alloc(struct kmem_c
+@@ -2975,7 +3017,7 @@ static void *___slab_alloc(struct kmem_c
  		c->freelist = NULL;
  		c->tid = next_tid(c->tid);
  
@@ -301,7 +308,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		deactivate_slab(s, flush_page, flush_freelist);
  
-@@ -3081,7 +3127,15 @@ static __always_inline void *slab_alloc_
+@@ -3094,7 +3136,15 @@ static __always_inline void *slab_alloc_
  
  	object = c->freelist;
  	page = c->page;
@@ -318,7 +325,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		object = __slab_alloc(s, gfpflags, node, addr, c);
  	} else {
  		void *next_object = get_freepointer_safe(s, object);
-@@ -3341,6 +3395,7 @@ static __always_inline void do_slab_free
+@@ -3354,6 +3404,7 @@ static __always_inline void do_slab_free
  	barrier();
  
  	if (likely(page == c->page)) {
@@ -326,7 +333,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		void **freelist = READ_ONCE(c->freelist);
  
  		set_freepointer(s, tail_obj, freelist);
-@@ -3353,6 +3408,31 @@ static __always_inline void do_slab_free
+@@ -3366,6 +3417,31 @@ static __always_inline void do_slab_free
  			note_cmpxchg_failure("slab_free", s, tid);
  			goto redo;
  		}
@@ -358,7 +365,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		stat(s, FREE_FASTPATH);
  	} else
  		__slab_free(s, page, head, tail_obj, cnt, addr);
-@@ -3531,7 +3611,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3544,7 +3620,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  	 * handlers invoking normal fastpath.
  	 */
  	c = slub_get_cpu_ptr(s->cpu_slab);
@@ -367,7 +374,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	for (i = 0; i < size; i++) {
  		void *object = kfence_alloc(s, s->object_size, flags);
-@@ -3552,7 +3632,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3565,7 +3641,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  			 */
  			c->tid = next_tid(c->tid);
  
@@ -376,7 +383,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  			/*
  			 * Invoking slow path likely have side-effect
-@@ -3566,7 +3646,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3579,7 +3655,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  			c = this_cpu_ptr(s->cpu_slab);
  			maybe_wipe_obj_freeptr(s, p[i]);
  
@@ -385,7 +392,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  			continue; /* goto for-loop */
  		}
-@@ -3575,7 +3655,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
+@@ -3588,7 +3664,7 @@ int kmem_cache_alloc_bulk(struct kmem_ca
  		maybe_wipe_obj_freeptr(s, p[i]);
  	}
  	c->tid = next_tid(c->tid);
