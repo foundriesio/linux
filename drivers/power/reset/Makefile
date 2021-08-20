@@ -29,4 +29,4 @@ obj-$(CONFIG_POWER_RESET_TCC) += tcc-poweroff.o
 obj-$(CONFIG_POWER_RESET_TCC_MBOX) += tcc-mbox-reboot.o
 obj-$(CONFIG_REBOOT_MODE) += reboot-mode.o
 obj-$(CONFIG_SYSCON_REBOOT_MODE) += syscon-reboot-mode.o
-obj-$(CONFIG_REBOOT_MODE_TCC) += tcc-reboot-mode.o
+obj-$(CONFIG_TCC_REBOOT_MODE) += tcc-reboot-mode.o

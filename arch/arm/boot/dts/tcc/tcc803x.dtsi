@@ -930,6 +930,7 @@
 		mode-normal = <BOOT_NORMAL>;
 		mode-bootloader = <BOOT_FASTBOOT>;
 		mode-recovery = <BOOT_RECOVERY>;
+		record-panic = <BOOT_PANIC>;
 	};
 
 	pinctrl: pinctrl {

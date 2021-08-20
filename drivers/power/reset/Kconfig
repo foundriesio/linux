@@ -244,12 +244,17 @@ config SYSCON_REBOOT_MODE
 	  register, then the bootloader can read it to take different
 	  action according to the mode.
 
-config REBOOT_MODE_TCC
-	bool "Telechips reboot mode driver"
+config TCC_REBOOT_MODE
+	tristate "Telechips reboot mode driver"
 	depends on ARCH_TCC
 	select REBOOT_MODE
+	default y
 	help
-	  Reboot mode support for Telechips SoCs.
+	  Reboot mode support for Telechips SoCs with related SiP service
+	  providen.  For more information, see `Documentation/devicetree/
+	  bindings/power/reset/telechips,reboot-mode.txt`.
+
+	  If unsure, say Y.
 
 endif
 

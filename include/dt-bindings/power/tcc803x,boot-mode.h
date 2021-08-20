@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: (GPL-2.0+ OR MIT) */
 /*
  * Copyright (C) Telechips Inc.
  */
@@ -10,6 +10,10 @@
 
 #define BOOT_COLD		(BOOT_MODE_PREFIX + 0x000UL)
 
+/* Reboot by issue */
+#define BOOT_WATCHDOG		(BOOT_MODE_PREFIX + 0x001UL)
+#define BOOT_PANIC		(BOOT_MODE_PREFIX + 0x002UL)
+
 /* Reboot by user request */
 #define BOOT_FASTBOOT		(BOOT_MODE_PREFIX + 0x500UL)
 #define BOOT_NORMAL		(BOOT_MODE_PREFIX + 0x501UL)
@@ -17,5 +21,8 @@
 #define BOOT_TCUPDATE		(BOOT_MODE_PREFIX + 0x503UL)
 #define BOOT_FASTBOOTD		(BOOT_MODE_PREFIX + 0x504UL)
 #define BOOT_SECUREBOOT_ENABLE	(BOOT_MODE_PREFIX + 0x505UL)
+
+/* Blunt set */
+#define BOOT_HARD		(BOOT_MODE_PREFIX + 0x700UL)
 
 #endif /* DT_BINDINGS_TCC803X_BOOT_MODE_H */

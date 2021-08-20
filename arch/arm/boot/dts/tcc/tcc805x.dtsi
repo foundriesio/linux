@@ -1004,6 +1004,7 @@
 		mode-bootloader = <BOOT_FASTBOOT>;
 		mode-recovery = <BOOT_RECOVERY>;
 		mode-ddrcheck = <BOOT_DDR_CHECK>;
+		record-panic = <BOOT_PANIC>;
 	};
 
 
