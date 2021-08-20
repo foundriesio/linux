@@ -4,8 +4,12 @@
 
 menuconfig SOC_TCC
 	bool "Telechips SOC drivers support"
+	depends on ARCH_TCC
 
 if SOC_TCC
+
+config HAVE_TCC_SIP_SERVICE
+	bool
 
 config TCC_ECID_SUPPORT
 	bool "TCC ECID(CPU ID) SUPPORT"
@@ -84,6 +88,19 @@ config TCC_BOOTSTAGE
 	  passing boot time information per each bootstage.
 
 	  If unsure, say N.
+
+config TCC_CHIPINFO
+	bool "Telechips chipinfo driver"
+	depends on HAVE_TCC_SIP_SERVICE
+	default y
+	help
+	  Select this option to enable Telechips chipinfo driver.
+
+	  Telechips chipinfo driver offers various generic functions which
+	  provide the chip information (such as revision number) and the boot
+	  information (such as boot config selection).
+
+	  If unsure, say Y.
 
 config PM_TCC805X
 	bool "Power management driver for TCC805x"

@@ -29,6 +29,7 @@ menuconfig ARCH_TCC805X
 	select SOC_TCC
 	select MIGHT_HAVE_PCI
 	select PCI_DOMAINS if PCI
+	select HAVE_TCC_SIP_SERVICE
 
 config TCC805X_CA53Q
 	bool "Build for TCC805X Cortex-A53 Subcore"

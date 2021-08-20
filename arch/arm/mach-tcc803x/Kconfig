@@ -29,6 +29,7 @@ menuconfig ARCH_TCC803X
 	select SOC_TCC
 	select MIGHT_HAVE_PCI
 	select PCI_DOMAINS if PCI
+	select HAVE_TCC_SIP_SERVICE if !TCC803X_CA7S
 
 config TCC803X_CA7S
 	bool "Build for TCC803X Cortex-A7 Single Core"

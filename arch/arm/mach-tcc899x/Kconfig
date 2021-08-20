@@ -26,3 +26,4 @@ menuconfig ARCH_TCC899X
 	select SOC_TCC
 	select MIGHT_HAVE_PCI
 	select PCI_DOMAINS if PCI
+	select HAVE_TCC_SIP_SERVICE
