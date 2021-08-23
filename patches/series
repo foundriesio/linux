@@ -202,6 +202,7 @@ debugobjects__Make_RT_aware.patch
 0070-locking-rtmutex-Add-adaptive-spinwait-mechanism.patch
 0071-locking-spinlock-rt-Prepare-for-RT-local_lock.patch
 0072-locking-local_lock-Add-PREEMPT_RT-support.patch
+locking-ww_mutex-Initialize-waiter.ww_ctx-properly.patch
 
 ###########################################################################
 # Locking: RT bits. Need review
@@ -285,7 +286,7 @@ fs__namespace__Use_cpu_chill_in_trylock_loops.patch
 # RCU
 ###########################################################################
 rcu__Delay_RCU-selftests.patch
-rcutorture__Avoid_problematic_critical_section_nesting_on_RT.patch
+rcutorture-Avoid-problematic-critical-section-nestin.patch
 
 ###########################################################################
 # net:
