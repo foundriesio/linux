@@ -210,7 +210,8 @@
 	use_pgl		= <0>;
 	memory-region	= <&pmap_parking_gui
 			   &pmap_rearcamera_viqe
-			   &pmap_rearcamera>;
+			   &pmap_rearcamera
+			   &pmap_vin_lastframe>;
 	port {
 		videoinput0_in: endpoint {
 			remote-endpoint	= <&isl79988_out>;

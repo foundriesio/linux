@@ -438,8 +438,8 @@ static inline void log_cif_port(struct tccvin_streaming *stream,
 	logd(dev_ptr, "%10s[%2d]: 0x%px\n",
 		"CIF Port", cif->cifport, cif->cifport_addr);
 	logd(dev_ptr, "Use of PGL:	%d\n", stream->cif.use_pgl);
-	loge(dev_ptr, "vin_irq_num:	%d\n", cif->vin_irq_num);
-	loge(dev_ptr, "wdma_irq_num:	%d\n", cif->wdma_irq_num);
+	logd(dev_ptr, "vin_irq_num:	%d\n", cif->vin_irq_num);
+	logd(dev_ptr, "wdma_irq_num:	%d\n", cif->wdma_irq_num);
 }
 
 static inline void set_cifport_addr(struct device_node *dnode,

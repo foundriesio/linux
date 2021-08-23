@@ -309,12 +309,22 @@
 	 * Camera Memory
 	 *-----------------------------------------------------------
 	 */
+	pmap_parking_gui: parking_gui {
+		compatible = "telechips,pmap";
+		telechips,pmap-name = "parking_gui";
+		alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
+		size = <PMAP_SIZE_CAMERA_PGL>;
+		no-map;
+		status = "disabled";
+	};
+
 	pmap_rearcamera_viqe: rearcamera_viqe {
 		compatible = "telechips,pmap";
 		telechips,pmap-name = "rearcamera_viqe";
 		alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
 		size = <PMAP_SIZE_CAMERA_VIQE>;
 		no-map;
+		status = "disabled";
 	};
 
 	pmap_rearcamera: rearcamera {
@@ -323,6 +333,7 @@
 		alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
 		size = <PMAP_SIZE_CAMERA_PREVIEW0>;
 		no-map;
+		status = "disabled";
 	};
 
 	pmap_rearcamera1: rearcamera1 {
@@ -331,6 +342,7 @@
 		alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
 		size = <PMAP_SIZE_CAMERA_PREVIEW1>;
 		no-map;
+		status = "disabled";
 	};
 
 	pmap_rearcamera2: rearcamera2 {
@@ -339,6 +351,7 @@
 		alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
 		size = <PMAP_SIZE_CAMERA_PREVIEW2>;
 		no-map;
+		status = "disabled";
 	};
 
 	pmap_rearcamera3: rearcamera3 {
@@ -347,6 +360,7 @@
 		alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
 		size = <PMAP_SIZE_CAMERA_PREVIEW3>;
 		no-map;
+		status = "disabled";
 	};
 
 	pmap_rearcamera4: rearcamera4 {
@@ -355,6 +369,7 @@
 		alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
 		size = <PMAP_SIZE_CAMERA_PREVIEW4>;
 		no-map;
+		status = "disabled";
 	};
 
 	pmap_rearcamera5: rearcamera5 {
@@ -363,6 +378,7 @@
 		alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
 		size = <PMAP_SIZE_CAMERA_PREVIEW5>;
 		no-map;
+		status = "disabled";
 	};
 
 	pmap_rearcamera6: rearcamera6 {
@@ -371,14 +387,7 @@
 		alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
 		size = <PMAP_SIZE_CAMERA_PREVIEW6>;
 		no-map;
-	};
-
-	pmap_parking_gui: parking_gui {
-		compatible = "telechips,pmap";
-		telechips,pmap-name = "parking_gui";
-		alloc-ranges = <EARLY_REARCAM_BASE EARLY_REARCAM_SIZE>;
-		size = <PMAP_SIZE_CAMERA_PGL>;
-		no-map;
+		status = "disabled";
 	};
 
 	/*-----------------------------------------------------------

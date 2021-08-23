@@ -276,6 +276,7 @@
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
 			size = <0x0 PMAP_SIZE_CAMERA_PGL>;
 			no-map;
+			status = "disabled";
 		};
 
 		pmap_rearcamera_viqe: rearcamera_viqe {
@@ -284,6 +285,7 @@
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
 			size = <0x0 PMAP_SIZE_CAMERA_VIQE>;
 			no-map;
+			status = "disabled";
 		};
 
 		pmap_rearcamera: rearcamera {
@@ -292,6 +294,7 @@
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
 			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW0>;
 			no-map;
+			status = "disabled";
 		};
 
 		pmap_rearcamera1: rearcamera1 {
@@ -300,6 +303,7 @@
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
 			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW1>;
 			no-map;
+			status = "disabled";
 		};
 
 		pmap_rearcamera2: rearcamera2 {
@@ -308,6 +312,7 @@
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
 			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW2>;
 			no-map;
+			status = "disabled";
 		};
 
 		pmap_rearcamera3: rearcamera3 {
@@ -316,6 +321,7 @@
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
 			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW3>;
 			no-map;
+			status = "disabled";
 		};
 
 		pmap_rearcamera4: rearcamera4 {
@@ -324,6 +330,7 @@
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
 			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW4>;
 			no-map;
+			status = "disabled";
 		};
 
 		pmap_rearcamera5: rearcamera5 {
@@ -332,6 +339,7 @@
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
 			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW5>;
 			no-map;
+			status = "disabled";
 		};
 
 		pmap_rearcamera6: rearcamera6 {
@@ -340,6 +348,7 @@
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
 			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW6>;
 			no-map;
+			status = "disabled";
 		};
 
 		pmap_rearcamera7: rearcamera7 {
@@ -348,6 +357,7 @@
 			alloc-ranges = <0x0 EARLY_REARCAM_BASE 0x0 EARLY_REARCAM_SIZE>;
 			size = <0x0 PMAP_SIZE_CAMERA_PREVIEW7>;
 			no-map;
+			status = "disabled";
 		};
 
 		/*-----------------------------------------------------------
