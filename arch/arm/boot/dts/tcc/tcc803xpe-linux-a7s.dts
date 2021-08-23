@@ -157,6 +157,7 @@
 			reg = <CAMERA_PGL_BASE PMAP_SIZE_CAMERA_PGL>;
 			alignment = <0x1000>;
 			no-map;
+			status = "okay";
 		};
 
 		pmap_rearcamera_viqe: pmap_rearcamera_viqe {
@@ -164,6 +165,7 @@
 			reg = <CAMERA_VIQE_BASE PMAP_SIZE_CAMERA_VIQE>;
 			alignment = <0x1000>;
 			no-map;
+			status = "okay";
 		};
 
 		pmap_rearcamera: pmap_rearcamera {
@@ -171,6 +173,7 @@
 			reg = <CAMERA_PREVIEW_BASE PMAP_SIZE_CAMERA_PREVIEW0>;
 			alignment = <0x1000>;
 			no-map;
+			status = "okay";
 		};
 
 		pmap_rearcamera1: pmap_rearcamera1 {
@@ -178,6 +181,7 @@
 			reg = <CAMERA_PREVIEW1_BASE PMAP_SIZE_CAMERA_PREVIEW1>;
 			alignment = <0x1000>;
 			no-map;
+			status = "okay";
 		};
 
 		pmap_rearcamera2: pmap_rearcamera2 {
@@ -185,6 +189,7 @@
 			reg = <CAMERA_PREVIEW2_BASE PMAP_SIZE_CAMERA_PREVIEW2>;
 			alignment = <0x1000>;
 			no-map;
+			status = "disabled";
 		};
 
 		pmap_rearcamera3: pmap_rearcamera3 {
@@ -192,6 +197,7 @@
 			reg = <CAMERA_PREVIEW3_BASE PMAP_SIZE_CAMERA_PREVIEW3>;
 			alignment = <0x1000>;
 			no-map;
+			status = "disabled";
 		};
 
 		pmap_rearcamera4: pmap_rearcamera4 {
@@ -199,6 +205,7 @@
 			reg = <CAMERA_PREVIEW4_BASE PMAP_SIZE_CAMERA_PREVIEW4>;
 			alignment = <0x1000>;
 			no-map;
+			status = "okay";
 		};
 
 		pmap_rearcamera5: pmap_rearcamera5 {
@@ -206,6 +213,7 @@
 			reg = <CAMERA_PREVIEW5_BASE PMAP_SIZE_CAMERA_PREVIEW5>;
 			alignment = <0x1000>;
 			no-map;
+			status = "okay";
 		};
 
 		pmap_rearcamera6: pmap_rearcamera6 {
@@ -213,6 +221,7 @@
 			reg = <CAMERA_PREVIEW6_BASE PMAP_SIZE_CAMERA_PREVIEW6>;
 			alignment = <0x1000>;
 			no-map;
+			status = "okay";
 		};
 
 		pmap_vin_lastframe: pmap_vin_lastframe {
@@ -220,6 +229,7 @@
 			reg = <CAMERA_LASTFRAME_BASE PMAP_SIZE_CAMERA_LASTFRAME>;
 			alignment = <0x1000>;
 			no-map;
+			status = "okay";
 		};
 	};
 
