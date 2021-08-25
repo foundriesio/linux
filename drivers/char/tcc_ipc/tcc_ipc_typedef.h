@@ -223,7 +223,7 @@ struct ipc_device {
 	const IPC_CHAR *mbox_name;
 	struct mbox_chan *mbox_ch;
 	struct IpcHandler ipc_handler;
-	IPC_INT32 ipc_available;
+	atomic_t ipc_available;
 	IPC_INT32       debug_level;
 };
 

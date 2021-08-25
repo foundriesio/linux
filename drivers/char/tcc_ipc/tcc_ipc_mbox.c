@@ -38,20 +38,25 @@ IPC_INT32 ipc_mailbox_send(
 
 		mutex_lock(&ipc_handle->mboxMutex);
 
+		if (ipc_dev->mbox_ch != NULL) {
 #ifdef CONFIG_ARCH_TCC803X
-		(void)mbox_send_message(ipc_dev->mbox_ch, ipc_msg);
-		mbox_client_txdone(ipc_dev->mbox_ch, 0);
-		ret = IPC_SUCCESS;
-#else
-		ret = mbox_send_message(ipc_dev->mbox_ch, ipc_msg);
-		if (ret < 0) {
-			d2printk((ipc_dev), ipc_dev->dev,
-			"mbox send error(%d)\n", ret);
-			ret = IPC_ERR_TIMEOUT;
-		} else {
+			(void)mbox_send_message(ipc_dev->mbox_ch, ipc_msg);
+			mbox_client_txdone(ipc_dev->mbox_ch, 0);
 			ret = IPC_SUCCESS;
-		}
+#else
+			ret = mbox_send_message(ipc_dev->mbox_ch, ipc_msg);
+			if (ret < 0) {
+				d2printk((ipc_dev), ipc_dev->dev,
+						"mbox send error(%d)\n", ret);
+				ret = IPC_ERR_TIMEOUT;
+			} else {
+				ret = IPC_SUCCESS;
+			}
 #endif
+		} else {
+			ret = IPC_ERR_COMMON;
+		}
+
 		mutex_unlock(&ipc_handle->mboxMutex);
 	} else {
 		(void)pr_err("[ERROR][%s]%s: Invalid Arguements\n",

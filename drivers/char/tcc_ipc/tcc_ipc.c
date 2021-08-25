@@ -61,6 +61,9 @@ static ssize_t debug_level_show(struct device *dev,
 static ssize_t debug_level_store(struct device *dev,
 	struct device_attribute *attr, const IPC_CHAR *buf,	size_t count);
 
+static IPC_INT32 ipc_dev_init(struct ipc_device *ipc_dev);
+static IPC_INT32 ipc_dev_deinit(struct ipc_device *ipc_dev);
+
 static ssize_t debug_level_show(struct device *dev,
 				struct device_attribute *attr, IPC_CHAR *buf)
 {
@@ -101,6 +104,72 @@ static ssize_t debug_level_store(struct device *dev,
 }
 
 static DEVICE_ATTR(debug_level, 0644, debug_level_show, debug_level_store);
+
+static IPC_INT32 ipc_dev_init(struct ipc_device *ipc_dev)
+{
+	IPC_INT32 ret = 0;
+
+	if (ipc_dev != NULL) {
+		iprintk(ipc_dev->dev, "In\n");
+
+		ret = ipc_workqueue_initialize(ipc_dev);
+		if (ret != IPC_SUCCESS)	{
+			ret = -EBADSLT;
+		} else {
+			ret = (IPC_INT32)ipc_initialize(ipc_dev);
+			if (ret != 0) {
+				eprintk(ipc_dev->dev,
+					"ipc init fail\n");
+				ipc_workqueue_release(ipc_dev);
+			} else {
+				ipc_dev->mbox_ch =
+					ipc_request_channel(
+					ipc_dev->pdev,
+					ipc_dev->mbox_name,
+					&receive_message);
+			}
+
+			if (ipc_dev->mbox_ch == NULL) {
+				eprintk(ipc_dev->dev,
+					"ipc_request_channel error");
+
+				ret = -EPROBE_DEFER;
+				ipc_release(ipc_dev);
+				ipc_workqueue_release(ipc_dev);
+			}
+		}
+	} else {
+		ret = -EINVAL;
+	}
+	return ret;
+}
+
+static IPC_INT32 ipc_dev_deinit(struct ipc_device *ipc_dev)
+{
+	IPC_INT32 ret = -1;
+
+	if (ipc_dev != NULL) {
+		iprintk(ipc_dev->dev,  "In\n");
+
+		mutex_lock(&ipc_dev->ipc_handler.mboxMutex);
+
+		if (ipc_dev->mbox_ch != NULL) {
+			mbox_free_channel(ipc_dev->mbox_ch);
+			ipc_dev->mbox_ch = NULL;
+		}
+
+		mutex_unlock(&ipc_dev->ipc_handler.mboxMutex);
+
+		ipc_workqueue_release(ipc_dev);
+		ipc_release(ipc_dev);
+
+		iprintk(ipc_dev->dev,  "out\n");
+
+		ret = 0;
+	}
+	return ret;
+}
+
 
 static ssize_t tcc_ipc_read(struct file *filp,
 						IPC_CHAR __user *buf,
@@ -229,73 +298,26 @@ static IPC_INT32 tcc_ipc_open(struct inode *inode, struct file *filp)
 						cdev);
 
 		if (ipc_dev != NULL) {
-			struct IpcHandler *handler = &ipc_dev->ipc_handler;
 
 			iprintk(ipc_dev->dev, "In\n");
 
-			spin_lock(&handler->spinLock);
-
-			if (ipc_dev->ipc_available != 0) {
-				spin_unlock(&handler->spinLock);
+			if (atomic_read(&ipc_dev->ipc_available) != 0) {
 				eprintk(ipc_dev->dev,
 					"ipc open fail-already open\n");
 				ret = -EBUSY;
-			} else {
-				spin_unlock(&handler->spinLock);
 			}
 
 			if (ret == 0) {
-				ret = ipc_workqueue_initialize(ipc_dev);
-				if (ret != IPC_SUCCESS)	{
-					ret = -EBADSLT;
-				} else {
-					ret = (IPC_INT32)ipc_initialize
-						(ipc_dev);
+				filp->private_data = ipc_dev;
 
-					if (ret != 0) {
-						eprintk(ipc_dev->dev,
-							"ipc init fail\n");
-						ipc_workqueue_release(ipc_dev);
-					} else {
-						ipc_dev->mbox_ch =
-							ipc_request_channel(
-							ipc_dev->pdev,
-							ipc_dev->mbox_name,
-							&receive_message);
-						}
+				iprintk(ipc_dev->dev,
+					"open(%s),mbox(%s)\n",
+					ipc_dev->name,
+					ipc_dev->mbox_name);
 
-					if ((ret == 0) &&
-						(ipc_dev->mbox_ch == NULL)) {
+				atomic_set(&ipc_dev->ipc_available, 1);
 
-						eprintk(ipc_dev->dev,
-							"ipc_request_channel error");
-
-						ret = -EPROBE_DEFER;
-						ipc_release(ipc_dev);
-						ipc_workqueue_release(ipc_dev);
-					} else {
-						filp->private_data =
-							ipc_dev;
-
-						iprintk(ipc_dev->dev,
-							"open(%s),mbox(%s)\n",
-							ipc_dev->name,
-							ipc_dev->mbox_name);
-
-						spin_lock(
-							&handler->spinLock);
-
-						ipc_dev->ipc_available = 1;
-
-						spin_unlock(
-							&handler->spinLock);
-
-						(void)ipc_send_open(
-							ipc_dev);
-						ret = 0;
-					}
-
-				}
+				(void)ipc_send_open(ipc_dev);
 			}
 		} else {
 			(void)pr_err("[ERROR][%s][%s]device not init\n",
@@ -320,17 +342,9 @@ static IPC_INT32 tcc_ipc_release(struct inode *inode, struct file *filp)
 			iprintk(ipc_dev->dev,  "In\n");
 			(void)ipc_send_close(ipc_dev);
 
-			if (ipc_dev->mbox_ch != NULL) {
-				mbox_free_channel(ipc_dev->mbox_ch);
-				ipc_dev->mbox_ch = NULL;
-			}
+			atomic_set(&ipc_dev->ipc_available, 0);
 
-			ipc_workqueue_release(ipc_dev);
-			ipc_release(ipc_dev);
-
-			spin_lock(&ipc_dev->ipc_handler.spinLock);
-			ipc_dev->ipc_available = 0;
-			spin_unlock(&ipc_dev->ipc_handler.spinLock);
+			iprintk(ipc_dev->dev,  "out\n");
 
 			ret = 0;
 		}
@@ -637,7 +651,7 @@ static IPC_INT32 tcc_ipc_probe(struct platform_device *pdev)
 			if (result == 0) {
 				ipc_dev->pdev =  pdev;
 				ipc_struct_init(ipc_dev);
-				ipc_dev->ipc_available = 0;
+				atomic_set(&ipc_dev->ipc_available, 0);
 				//ret = 0; already 0
 				iprintk(ipc_dev->dev,
 					"Successfully registered\n");
@@ -645,6 +659,14 @@ static IPC_INT32 tcc_ipc_probe(struct platform_device *pdev)
 				unregister_chrdev_region(
 					ipc_dev->devnum, 1);
 				ret = result;
+			}
+
+			if (result == 0) {
+				ret = ipc_dev_init(ipc_dev);
+				if (ret != 0) {
+					eprintk(&pdev->dev,
+						"failed ipc_dev_init\n");
+				}
 			}
 		}
 
@@ -658,16 +680,20 @@ static IPC_INT32 tcc_ipc_probe(struct platform_device *pdev)
 static IPC_INT32 tcc_ipc_remove(struct platform_device *pdev)
 {
 	struct ipc_device *ipc_dev = platform_get_drvdata(pdev);
+	IPC_INT32 ret = -1;
 
 	if (ipc_dev != NULL) {
-		device_remove_file(&pdev->dev, &dev_attr_debug_level);
-		device_destroy(ipc_dev->class, ipc_dev->devnum);
-		class_destroy(ipc_dev->class);
-		cdev_del(&ipc_dev->cdev);
-		unregister_chrdev_region(ipc_dev->devnum, 1);
+		ret = ipc_dev_deinit(ipc_dev);
+		if (ret == 0) {
+			device_remove_file(&pdev->dev, &dev_attr_debug_level);
+			device_destroy(ipc_dev->class, ipc_dev->devnum);
+			class_destroy(ipc_dev->class);
+			cdev_del(&ipc_dev->cdev);
+			unregister_chrdev_region(ipc_dev->devnum, 1);
+		}
 	}
 
-	return 0;
+	return ret;
 }
 
 #if defined(CONFIG_PM)
@@ -679,17 +705,9 @@ static IPC_INT32 tcc_ipc_suspend(struct platform_device *pdev,
 	(void)state;
 	if (ipc_dev != NULL) {
 		spin_lock(&ipc_dev->ipc_handler.spinLock);
-		if (ipc_dev->ipc_available == 1) {
+		if (atomic_read(&ipc_dev->ipc_available) == 1) {
 			spin_unlock(&ipc_dev->ipc_handler.spinLock);
-
 			(void)ipc_send_close(ipc_dev);
-			if (ipc_dev->mbox_ch != NULL) {
-				mbox_free_channel(ipc_dev->mbox_ch);
-				ipc_dev->mbox_ch = NULL;
-			}
-
-			ipc_workqueue_release(ipc_dev);
-			ipc_release(ipc_dev);
 		} else {
 			spin_unlock(&ipc_dev->ipc_handler.spinLock);
 		}
@@ -704,38 +722,9 @@ static IPC_INT32 tcc_ipc_resume(struct platform_device *pdev)
 
 	if (ipc_dev != NULL) {
 		spin_lock(&ipc_dev->ipc_handler.spinLock);
-		if (ipc_dev->ipc_available == 1) {
+		if (atomic_read(&ipc_dev->ipc_available) == 1) {
 			spin_unlock(&ipc_dev->ipc_handler.spinLock);
-			ret = ipc_workqueue_initialize(ipc_dev);
-			if (ret != IPC_SUCCESS)	{
-				ret = -EBADSLT;
-			} else	{
-				ret = (IPC_INT32)ipc_initialize(ipc_dev);
-
-				if (ret != 0) {
-					eprintk(ipc_dev->dev,
-						"ipc init fail\n");
-				} else {
-					ipc_dev->mbox_ch =
-						ipc_request_channel(
-							ipc_dev->pdev,
-							ipc_dev->mbox_name,
-							&receive_message);
-
-					if (ipc_dev->mbox_ch == NULL) {
-						eprintk(ipc_dev->dev,
-							"ipc_request_channel errorn");
-						ipc_release(ipc_dev);
-						ret = -EPROBE_DEFER;
-					}
-				}
-
-				if (ret != 0) {
-					ipc_workqueue_release(ipc_dev);
-				} else {
-					(void)ipc_send_open(ipc_dev);
-				}
-			}
+			(void)ipc_send_open(ipc_dev);
 		} else {
 			spin_unlock(&ipc_dev->ipc_handler.spinLock);
 		}

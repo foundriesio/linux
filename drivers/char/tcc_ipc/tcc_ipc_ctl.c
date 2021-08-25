@@ -21,6 +21,7 @@
 #include <linux/mailbox/tcc_multi_mbox.h>
 #include <linux/mailbox_client.h>
 #include <linux/cdev.h>
+#include <linux/atomic.h>
 
 #include <linux/tcc_ipc.h>
 #include "tcc_ipc_typedef.h"
@@ -251,31 +252,36 @@ void receive_message(struct mbox_client *client, void *message)
 		IpcCmdID cmdID;
 		IPC_INT32 i;
 		IPC_UINT32 maskedID;
+		int isReceivedata = 0;
 
-		for (i = 0; i < 7; i++) {
-			dprintk(ipc_dev->dev,
-				"cmd[%d] = [0x%08x]\n",
-				i, msg->cmd[i]);
-		}
+		if (atomic_read(&ipc_dev->ipc_available) == 1)	{
 
-		dprintk(ipc_dev->dev,
-				"data size (%d)\n",
-				msg->data_len);
+			maskedID = ((msg->cmd[1] & (IPC_UINT32)CMD_TYPE_MASK)
+				>> (IPC_UINT32)16);
+			cmdType = (IpcCmdType)maskedID;
 
-		maskedID = ((msg->cmd[1] & (IPC_UINT32)CMD_TYPE_MASK)
-			>> (IPC_UINT32)16);
-		cmdType = (IpcCmdType)maskedID;
+			maskedID = msg->cmd[1] & (IPC_UINT32)CMD_ID_MASK;
+			cmdID = (IpcCmdID)maskedID;
 
-		maskedID = msg->cmd[1] & (IPC_UINT32)CMD_ID_MASK;
-		cmdID = (IpcCmdID)maskedID;
+			if (cmdType < MAX_CMD_TYPE) {
+				if (cmdID == IPC_ACK) {
+					do_process_ack_cmd(
+							ipc_dev, cmdType, msg);
 
-		if (cmdType < MAX_CMD_TYPE) {
-			if (cmdID == IPC_ACK) {
-				do_process_ack_cmd(ipc_dev, cmdType, msg);
+				} else if (cmdID == IPC_NACK) {
+					do_process_nack_cmd(
+							ipc_dev, cmdType, msg);
+				} else {
 
-			} else if (cmdID == IPC_NACK) {
-				do_process_nack_cmd(ipc_dev, cmdType, msg);
+					isReceivedata = 1;
+				}
 			} else {
+				eprintk(ipc_dev->dev,
+					"receive unknown cmd [%d]\n",
+					cmdType);
+			}
+
+			if (isReceivedata == 1) {
 				struct ipc_receive_list *ipc_list =
 					kzalloc(sizeof(struct ipc_receive_list),
 							GFP_ATOMIC);
@@ -285,8 +291,8 @@ void receive_message(struct mbox_client *client, void *message)
 					ipc_list->ipc_dev = ipc_dev;
 
 					for (i = 0;
-						i < MBOX_CMD_FIFO_SIZE;
-						i++) {
+							i < MBOX_CMD_FIFO_SIZE;
+							i++) {
 
 						ipc_list->data.cmd[i] =
 							msg->cmd[i];
@@ -312,13 +318,9 @@ void receive_message(struct mbox_client *client, void *message)
 						ipc_list);
 				} else {
 					eprintk(ipc_dev->dev,
-						"memory allocation failed\n");
+							"memory allocation failed\n");
 				}
 			}
-		} else {
-			eprintk(ipc_dev->dev,
-				"receive unknown cmd [%d]\n",
-				cmdType);
 		}
 	}
 }

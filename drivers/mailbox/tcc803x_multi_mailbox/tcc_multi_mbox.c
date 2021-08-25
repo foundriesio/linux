@@ -20,6 +20,7 @@
 #include <linux/sched.h>
 #include <linux/sched/rt.h>
 #include <uapi/linux/sched/types.h>
+#include <linux/atomic.h>
 #include "../mailbox.h"
 
 #define Hw37		(1LL << 37)
@@ -106,23 +107,19 @@
 
 static int32_t mbox_verbose_mode;
 
-#ifndef char_t
-typedef char char_t;
-#endif
-
 #define eprintk(dev, msg, ...)	\
 	((void)dev_err(dev, "[ERROR][%s]%s: " pr_fmt(msg), \
-	(const char_t *)LOG_TAG, __func__, ##__VA_ARGS__))
+	(const char *)LOG_TAG, __func__, ##__VA_ARGS__))
 #define wprintk(dev, msg, ...)	\
 	((void)dev_warn(dev, "[WARN][%s]%s: " pr_fmt(msg), \
-	(const char_t *)LOG_TAG, __func__, ##__VA_ARGS__))
+	(const char *)LOG_TAG, __func__, ##__VA_ARGS__))
 #define iprintk(dev, msg, ...)	\
 	((void)dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), \
-	(const char_t *)LOG_TAG, __func__, ##__VA_ARGS__))
+	(const char *)LOG_TAG, __func__, ##__VA_ARGS__))
 #define dprintk(dev, msg, ...)	\
 	{ if (mbox_verbose_mode == 1) { \
 	(void)dev_info(dev, "[INFO][%s]%s: " pr_fmt(msg), \
-	(const char_t *)LOG_TAG, __func__, ##__VA_ARGS__); } }
+	(const char *)LOG_TAG, __func__, ##__VA_ARGS__); } }
 
 struct tcc_mbox_device {
 	struct mbox_controller mbox;
@@ -165,6 +162,7 @@ struct tcc_channel {
 	uint32_t channel;
 	struct tcc_mbox_data *msg;
 	struct mbox_receiveQueue *receiveQueue;
+	atomic_t rx_remain_count;
 };
 
 static void tcc_received_msg(void *dev_id,
@@ -174,7 +172,7 @@ static int32_t mbox_receive_queue_init(
 			struct mbox_receiveQueue *mbox_queue,
 			mbox_receive_queue_t handler,
 			void *handler_pdata,
-			const char_t *name);
+			const char *name);
 static int32_t deregister_receive_queue(
 			struct mbox_receiveQueue *mbox_queue);
 static int32_t mbox_add_queue_and_work(
@@ -221,7 +219,7 @@ static void mbox_pump_messages(struct kthread_work *work)
 static int32_t mbox_receive_queue_init(
 			struct mbox_receiveQueue *mbox_queue,
 			mbox_receive_queue_t handler,
-			void *handler_pdata, const char_t *name)
+			void *handler_pdata, const char *name)
 {
 	int32_t ret;
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
@@ -414,7 +412,7 @@ static int32_t tcc_multich_mbox_send(struct mbox_chan *chan, void *mbox_msg)
 		}
 	} else {
 		(void)pr_err("[ERROR][%s]%s: Parameter Error",
-			(const char_t *)LOG_TAG, __func__);
+			(const char *)LOG_TAG, __func__);
 	}
 
 	return 0;
@@ -435,6 +433,7 @@ static int32_t tcc_multich_mbox_startup(struct mbox_chan *chan)
 
 			iprintk(mdev->mbox.dev, "In\n");
 
+			atomic_set(&chan_info->rx_remain_count, 0);
 			mdev->ch_enable[chan_info->channel] =
 				TCC_MBOX_CH_ENALBE;
 
@@ -472,12 +471,33 @@ static void tcc_multich_mbox_shutdown(struct mbox_chan *chan)
 	if (chan != NULL) {
 		struct tcc_mbox_device *mdev = dev_get_drvdata(chan->mbox->dev);
 		struct tcc_channel *chan_info = chan->con_priv;
+		unsigned long flags;
 
 		if ((mdev != NULL) && (chan_info != NULL)) {
+			bool irq_state;
+			int ret;
+
 			dprintk(mdev->mbox.dev, "In\n");
 
 			mdev->ch_enable[chan_info->channel] =
 				TCC_MBOX_CH_DISALBE;
+
+			spin_lock_irqsave(&chan->lock, flags);
+			ret = irq_get_irqchip_state(mdev->irq,
+				IRQCHIP_STATE_ACTIVE, &irq_state);
+
+			while ((atomic_read(&chan_info->rx_remain_count) > 0)
+							|| (irq_state == 1)) {
+				spin_unlock_irqrestore(&chan->lock, flags);
+
+				mdelay(5);
+
+				spin_lock_irqsave(&chan->lock, flags);
+				ret = irq_get_irqchip_state(mdev->irq,
+					IRQCHIP_STATE_ACTIVE, &irq_state);
+			}
+			spin_unlock_irqrestore(&chan->lock, flags);
+
 			(void)deregister_receive_queue(chan_info->receiveQueue);
 			kfree(chan_info->receiveQueue);
 			chan_info->receiveQueue = NULL;
@@ -534,6 +554,7 @@ static void tcc_received_msg(void *dev_id,
 			(struct tcc_mbox_device *)dev_id;
 		struct mbox_controller *mbox;
 		struct mbox_chan *chan;
+		struct tcc_channel *chan_info;
 
 		dprintk(mdev->mbox.dev, "In, ch(%d)\n", ch);
 
@@ -541,7 +562,13 @@ static void tcc_received_msg(void *dev_id,
 		chan = &mbox->chans[ch];
 		if (chan != NULL) {
 			mbox_chan_received_data(chan, msg);
-			mdev->ch_enable[ch] = TCC_MBOX_CH_ENALBE;
+
+			chan_info =
+				(struct tcc_channel *)chan->con_priv;
+
+			if (chan_info != NULL) {
+				atomic_dec(&chan_info->rx_remain_count);
+			}
 			dprintk(mdev->mbox.dev, "out, ch(%d)\n", ch);
 		} else {
 			eprintk(mdev->mbox.dev, "mbox_chan is NULL\n");
@@ -631,6 +658,8 @@ static irqreturn_t tcc_multich_mbox_irq(int32_t irq, void *dev_id)
 					if ((chan_info != NULL) &&
 						(chan_info->receiveQueue
 						!= NULL)) {
+						atomic_inc(
+						&chan_info->rx_remain_count);
 						(void)mbox_add_queue_and_work(
 						chan_info->receiveQueue,
 						mbox_list);
