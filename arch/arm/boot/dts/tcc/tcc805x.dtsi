@@ -2385,6 +2385,7 @@
 		      <0x0 0x11DA0010 0x0 0x54>;
 		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
 		telechips,ehci_phy = <&ehci_phy>;
+		tpl-support;
 		status = "disabled";
 	};
 
@@ -2393,6 +2394,7 @@
 		reg = <0x0 0x11A80000 0x0 0x60>,
 		      <0x0 0x11DA0010 0x0 0x54>;
 		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
+		tpl-support;
 		status = "disabled";
 	};
 

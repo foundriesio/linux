@@ -550,6 +550,10 @@ static void xhci_clear_port_change_bit(struct xhci_hcd *xhci, u16 wValue,
 	port_status = readl(addr);
 	xhci_dbg(xhci, "clear port %s change, actual port %d status  = 0x%x\n",
 			port_change_bit, wIndex, port_status);
+#if defined(CONFIG_TCC_EH_ELECT_TST)
+	if (port_status == 0x400002E0)
+		xhci_info(xhci, "Not Response, Not Connected\n");
+#endif
 }
 
 static int xhci_get_ports(struct usb_hcd *hcd, __le32 __iomem ***port_array)

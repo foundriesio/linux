@@ -891,7 +891,7 @@ static int pca953x_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, chip);
 
-#if defined(CONFIG_ARCH_TCC805X)
+#if defined(CONFIG_ARCH_TCC805X) && !defined(CONFIG_TCC_EH_ELECT_TST)
 	node = client->dev.of_node;
 
 	ret = of_property_read_bool(node, "not-use-subcore");
