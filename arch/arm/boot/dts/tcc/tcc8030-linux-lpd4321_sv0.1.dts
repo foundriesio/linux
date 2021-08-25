@@ -279,3 +279,15 @@
 &ictc {
 	status = "okay";
 };
+
+&pmap_overlay {
+	status = "disabled";
+};
+
+&pmap_overlay1 {
+	status = "disabled";
+};
+
+&pmap_tsif {
+	status = "disabled";
+};
