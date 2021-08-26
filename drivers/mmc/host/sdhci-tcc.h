@@ -83,7 +83,7 @@
 
 #define TCC_SDHC_MK_TX_CLKDLY(ch, x) (((ch) != (2u)) ? \
 	(((x) & 0x1Fu) << ((ch) * 16u)) : \
-	((((x) & 0x1Eu) << 16u) | ((x) & 0x1u)))
+	((((x) & 0x1Eu) << 15u) | ((x) & 0x1u)))
 #define TCC_SDHC_MK_RX_CLKTA_VAL(x) (((x) & 0x3u) << 0u)
 #define TCC_SDHC_MK_TAPDLY(in, out)	(TCC_SDHC_TAPDLY_IN(in) \
 	| TCC_SDHC_TAPDLY_OUT(out) \
@@ -138,7 +138,7 @@
 #define TCC_SDHC_CMDDLY_DEF_TAP		7
 #define TCC_SDHC_DATADLY_DEF_TAP	7
 
-#define TCC_SDHC_TAPDLY_DEF	(TCC_SDHC_TAPDLY_TUNE_CNT((u32)16) \
+#define TCC_SDHC_TAPDLY_DEF	(TCC_SDHC_TAPDLY_TUNE_CNT((u32)32) \
 	| TCC_SDHC_TAPDLY_OTAP_SEL((u32)0x8) \
 	| TCC_SDHC_TAPDLY_OTAP_EN((u32)1) \
 	| TCC_SDHC_TAPDLY_ASYNCWKUP_EN((u32)1))
@@ -193,6 +193,8 @@ struct sdhci_tcc {
 	u32 clk_tx_tap;
 	u32 hs400_pos_tap;
 	u32 hs400_neg_tap;
+	u32 itap;
+	u8 power_mode;
 	u64 force_caps;
 	u32 drive_strength;
 	u32 flags;

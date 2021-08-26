@@ -133,6 +133,22 @@ static unsigned int sdhci_tcc_get_ro(struct sdhci_host *host)
 	return mmc_gpio_get_ro(host->mmc);
 }
 
+static void sdhci_tcc_init_74_clocks(struct sdhci_host *host, u8 power_mode)
+{
+	struct sdhci_tcc *tcc = to_tcc(host);
+	u32 vals;
+
+	if (tcc->power_mode == MMC_POWER_UP &&
+			power_mode == MMC_POWER_ON) {
+		vals = readl(tcc->chctrl_base + TCC_SDHC_TAPDLY);
+		vals &= ~TCC_SDHC_TAPDLY_ITAP_SEL_MASK;
+		vals |= (TCC_SDHC_TAPDLY_ITAP_EN(1) |
+				TCC_SDHC_TAPDLY_ITAP_SEL(tcc->itap));
+		writel(vals, tcc->chctrl_base + TCC_SDHC_TAPDLY);
+	}
+	tcc->power_mode = power_mode;
+}
+
 static void sdhci_tcc_adma_write_desc(struct sdhci_host *host,
 				      void **desc, dma_addr_t addr, int len,
 				      unsigned int cmd)
@@ -245,13 +261,11 @@ static int sdhci_tcc_parse_channel_conf_v2(struct platform_device *pdev,
 		return -ENXIO;
 	}
 
-	if (of_property_read_u32_array(np, "tcc-mmc-taps", taps, 4) == 0) {
-		/* in case of tcc803x, tcc-mmc-taps is for rev. 1 */
-		tcc->clk_out_tap = taps[0];
-		tcc->cmd_tap = taps[1];
-		tcc->data_tap = taps[2];
-		tcc->clk_tx_tap = taps[3];	/* only for tcc803x rev. 1 */
-	}
+	(void)of_property_read_u32_array(np, "tcc-mmc-taps", taps, 4);
+	tcc->clk_out_tap = taps[0];
+	tcc->cmd_tap = taps[1];
+	tcc->data_tap = taps[2];
+	tcc->clk_tx_tap = taps[3];
 
 	dev_dbg(&pdev->dev, "[DEBUG][SDHC] default taps 0x%x 0x%x 0x%x 0x%x\n",
 		tcc->clk_out_tap, tcc->cmd_tap, tcc->data_tap, tcc->clk_tx_tap);
@@ -277,6 +291,10 @@ static int sdhci_tcc_parse_channel_conf_v2(struct platform_device *pdev,
 		} else {
 			/* do noting  */
 		}
+	}
+
+	if (of_property_read_u32(np, "tcc-mmc-itap", &tcc->itap) != 0) {
+		tcc->itap = 0;
 	}
 
 	ret = 0;
@@ -497,18 +515,20 @@ static void sdhci_tcc_set_channel_configs_tap_v2(struct sdhci_host *host)
 	vals = TCC_SDHC_TAPDLY_DEF;
 	vals &= ~TCC_SDHC_TAPDLY_OTAP_SEL_MASK;
 	vals |= TCC_SDHC_TAPDLY_OTAP_SEL(tcc->clk_out_tap);
+	vals |= (TCC_SDHC_TAPDLY_ITAP_EN(1) |
+			TCC_SDHC_TAPDLY_ITAP_SEL(tcc->itap));
 	writel(vals, tcc->chctrl_base + TCC_SDHC_TAPDLY);
 	pr_debug("[DEBUG][SDHC] %d: set clk-out-tap 0x%08x @0x%p\n",
 		 ch, vals, tcc->chctrl_base + TCC_SDHC_TAPDLY);
 
 	/* Configure CMD TAPDLY */
-	vals = TCC_SDHC_MK_TAPDLY(TCC_SDHC_CMDDLY_DEF_TAP_V2, tcc->cmd_tap);
+	vals = TCC_SDHC_MK_TAPDLY(0, tcc->cmd_tap);
 	writel(vals, tcc->chctrl_base + TCC_SDHC_CMDDLY(ch));
 	pr_debug("[DEBUG][SDHC] %d: set cmd-tap 0x%08x @0x%p\n",
 		 ch, vals, tcc->chctrl_base + TCC_SDHC_CMDDLY(ch));
 
 	/* Configure DATA TAPDLY */
-	vals = TCC_SDHC_MK_TAPDLY(TCC_SDHC_DATADLY_DEF_TAP_V2, tcc->data_tap);
+	vals = TCC_SDHC_MK_TAPDLY(0, tcc->data_tap);
 	for (i = 0u; i < 8u; i++) {
 		writel(vals, tcc->chctrl_base + TCC_SDHC_DATADLY(ch, i));
 		pr_debug("[DEBUG][SDHC] %d: set data%d-tap 0x%08x @0x%p\n",
@@ -1257,6 +1277,7 @@ static const struct sdhci_ops sdhci_tcc803x_ops = {
 	.platform_execute_tuning = NULL,
 	.irq = NULL,
 #endif
+	.platform_send_init_74_clocks = sdhci_tcc_init_74_clocks,
 };
 
 static const struct sdhci_ops sdhci_tcc805x_ops = {
@@ -1275,6 +1296,7 @@ static const struct sdhci_ops sdhci_tcc805x_ops = {
 	.platform_execute_tuning = NULL,
 	.irq = NULL,
 #endif
+	.platform_send_init_74_clocks = sdhci_tcc_init_74_clocks,
 };
 
 static const struct sdhci_pltfm_data sdhci_tcc_pdata = {
@@ -1382,7 +1404,8 @@ static int sdhci_tcc_tune_result_show(struct seq_file *sf, void *data)
 		en = (unsigned int)TCC_SDHC_AUTO_TUNE_EN(reg);
 		result = TCC_SDHC_AUTO_TUNE_RESULT(reg);
 
-		seq_printf(sf, "enable %d rxclk tap 0x%x\n", en, result);
+		seq_printf(sf, "auto tuning %s rxclk tap 0x%x\n",
+				(en != 0) ? "enabled" : "disabled", result);
 	}
 
 	return 0;
@@ -1434,6 +1457,7 @@ static ssize_t sdhci_tcc_tap_dly_store(struct file *file,
 	writel(reg, tcc->chctrl_base + TCC_SDHC_TAPDLY);
 	reg = readl(tcc->chctrl_base + TCC_SDHC_TAPDLY);
 	tcc->clk_out_tap = (reg & TCC_SDHC_TAPDLY_OTAP_SEL_MASK) >> 8u;
+	tcc->itap = reg & TCC_SDHC_TAPDLY_ITAP_SEL_MASK;
 
 	ret = (ssize_t) count;
 	return ret;
@@ -1451,7 +1475,11 @@ static int sdhci_tcc_clk_dly_show(struct seq_file *sf, void *data)
 		shift = 16;
 
 	reg = readl(tcc->chctrl_base + TCC_SDHC_TX_CLKDLY_OFFSET(ch));
-	reg = (reg >> shift) & 0x1Fu;
+	if (ch == 2u) {
+		reg = ((reg >> 15) | reg) & (0x1F);
+	} else {
+		reg = (reg >> shift) & 0x1Fu;
+	}
 	seq_printf(sf, "%d\n", reg);
 
 	return 0;
@@ -1489,6 +1517,11 @@ static ssize_t sdhci_tcc_clk_dly_store(struct file *file,
 
 	reg = readl(tcc->chctrl_base + TCC_SDHC_TX_CLKDLY_OFFSET(ch));
 	reg = (reg >> shift) & 0x1Fu;
+	if (ch == 2u) {
+		reg = ((reg >> 15) | reg) & (0x1F);
+	} else {
+		reg = (reg >> shift) & 0x1Fu;
+	}
 	tcc->clk_tx_tap = reg;
 
 	ret = (ssize_t) count;
@@ -1589,6 +1622,37 @@ static int sdhci_tcc_select_drive_strength(struct mmc_card *card,
 	return drive_strength;
 }
 
+static int sdhci_tcc_execute_tuning(struct mmc_host *mmc, u32 opcode)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+	struct sdhci_tcc *tcc = to_tcc(host);
+	int ret;
+	u32 vals;
+
+	if ((host->timing == MMC_TIMING_UHS_DDR50) ||
+			(host->timing == MMC_TIMING_UHS_SDR50)) {
+		/* HC doesn't support SDR50 and DDR50 tuning */
+		return 0;
+	}
+
+	/* Enable auto tuning */
+	vals = readl(tcc->chctrl_base + TCC_SDHC_TAPDLY);
+	vals &= ~TCC_SDHC_TAPDLY_ITAP_EN(1);
+	writel(vals, tcc->chctrl_base + TCC_SDHC_TAPDLY);
+
+	ret = sdhci_execute_tuning(mmc, opcode);
+	if (ret) {
+		/* If tuning is falied, use manual tuning value */
+		vals = readl(tcc->chctrl_base + TCC_SDHC_TAPDLY);
+		vals &= ~TCC_SDHC_TAPDLY_ITAP_SEL_MASK;
+		vals |= (TCC_SDHC_TAPDLY_ITAP_EN(1) |
+				TCC_SDHC_TAPDLY_ITAP_SEL(tcc->itap));
+		writel(vals, tcc->chctrl_base + TCC_SDHC_TAPDLY);
+	}
+
+	return ret;
+}
+
 static void sdhci_tcc_hs400_enhanced_strobe(struct mmc_host *mmc,
 					    struct mmc_ios *ios)
 {
@@ -1632,6 +1696,7 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 
 	tcc->soc_data = soc_data;
 	tcc->version = (system_rev > 0u) ? 1u : 0u;
+	tcc->power_mode = MMC_POWER_UNDEFINED;
 
 	dev_dbg(&pdev->dev, "[DEBUG][SDHC] system version 0x%x\n",
 		tcc->version);
@@ -1735,7 +1800,8 @@ static int sdhci_tcc_probe(struct platform_device *pdev)
 		tcc->soc_data->set_channel_configs(host);
 
 	host->mmc_host_ops.select_drive_strength =
-	    sdhci_tcc_select_drive_strength;
+		sdhci_tcc_select_drive_strength;
+	host->mmc_host_ops.execute_tuning = sdhci_tcc_execute_tuning;
 
 	if ((host->mmc->caps2 & (unsigned int)MMC_CAP2_HS400_ES) != 0u) {
 		host->mmc_host_ops.hs400_enhanced_strobe =
