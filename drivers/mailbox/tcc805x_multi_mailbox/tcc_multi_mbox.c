@@ -1169,7 +1169,7 @@ static void tcc_received_msg(void *dev_id, uint32_t ch,
 		mbox = &mdev->mbox;
 		chan = &mbox->chans[ch];
 
-		if (chan != NULL) {
+		if ((chan != NULL) && (chan->cl != NULL)) {
 			mbox_chan_received_data(chan, msg);
 
 			chan_info =
@@ -1315,12 +1315,12 @@ static irqreturn_t tcc_multich_mbox_rx_irq(int irq, void *dev_id)
 				(struct tcc_channel *) chan->con_priv;
 				atomic_inc(&chan_info->rx_remain_count);
 
+				mbox_list->ch = i;
 				(void)mbox_add_rx_queue_and_work(
 					&chan_info->receiveQueue,
 					mbox_list);
 
 				chan_info->rx_count++;
-				mbox_list->ch = i;
 				is_valid_ch = 1;
 				break;
 			}

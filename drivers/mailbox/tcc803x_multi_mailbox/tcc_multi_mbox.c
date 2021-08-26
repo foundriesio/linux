@@ -560,7 +560,7 @@ static void tcc_received_msg(void *dev_id,
 
 		mbox = &mdev->mbox;
 		chan = &mbox->chans[ch];
-		if (chan != NULL) {
+		if ((chan != NULL) && (chan->cl != NULL)) {
 			mbox_chan_received_data(chan, msg);
 
 			chan_info =
