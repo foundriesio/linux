@@ -94,8 +94,9 @@ config RESET_SUNXI
 	  This enables the reset driver for Allwinner SoCs.
 
 config RESET_TCC
-	bool "Telechips SoCs Reset Driver"
-	default ARCH_TCC if !TCC803X_CA7S
+	tristate "Telechips SoCs Reset Driver"
+	depends on HAVE_TCC_SIP_SERVICE
+	default ARCH_TCC
 	help
 	  This enables the reset driver for peripherals or controllers on
 	  Telechips SoCs.

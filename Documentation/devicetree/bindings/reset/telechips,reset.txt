@@ -3,15 +3,15 @@ Telechips Reset Controller
 The reset controllers provide reset signals of perpheral devices.
 
 Required properties:
-  - compatible: should be one of the following:
-    - "telechips,reset": for PMU software reset
-    - "telechips,vpubus-reset": for VPU software reset
-    - "telechips,ddibus-reset": for DDI software reset
-    - "telechips,iobus-reset": for IO software reset
-    - "telechips,hsiobus-reset": for HSIO software reset
+- compatible: should be one of the following:
+  - "telechips,reset" for PMU software reset
+  - "telechips,vpubus-reset" for VPU software reset
+  - "telechips,ddibus-reset" for DDI software reset
+  - "telechips,iobus-reset" for IO software reset
+  - "telechips,hsiobus-reset" for HSIO software reset
 
 The reset of the properties should follow the generic reset description found
-in reset.txt
+in reset.txt.
 
 Example:
 	reset: reset-controller@140000b4 {

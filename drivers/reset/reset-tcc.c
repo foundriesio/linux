@@ -1,15 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Reset driver for Telechisp SoCs
- *
- * Copyright (C) 2019 Telechips Inc.
+ * Copyright (C) Telechips Inc.
  */
 
+#define pr_fmt(fmt) "tcc-reset: " fmt
+
 #include <linux/module.h>
+#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/reset-controller.h>
-#include <linux/of_device.h>
-#include <linux/arm-smccc.h>
 #include <soc/tcc/tcc-sip.h>
 
 struct tcc_reset_data {
@@ -24,20 +23,20 @@ struct tcc_reset_data {
 static inline s32 tcc_reset_internal(struct reset_controller_dev *rcdev,
 				     ulong id, ulong ast)
 {
-	struct tcc_reset_data *priv = to_tcc_reset_data(rcdev, rcdev);
+	struct tcc_reset_data *data = to_tcc_reset_data(rcdev, rcdev);
 	struct arm_smccc_res res;
 	ulong flags;
 
-	if (priv == NULL)
+	if (data == NULL)
 		return -EINVAL;
 
-	pr_debug("[DEBUG][reset] %sassert: %lu\n", (ast == 1U) ? "" : "de", id);
+	pr_debug("%s soft reset %lu\n", (ast == 1U) ? "Assert" : "Release", id);
 
-	spin_lock_irqsave(&priv->lock, flags);
+	spin_lock_irqsave(&data->lock, flags);
 
-	arm_smccc_smc(priv->op, id, ast, 0, 0, 0, 0, 0, &res);
+	arm_smccc_smc(data->op, id, ast, 0, 0, 0, 0, 0, &res);
 
-	spin_unlock_irqrestore(&priv->lock, flags);
+	spin_unlock_irqrestore(&data->lock, flags);
 
 	return 0;
 }
@@ -61,29 +60,60 @@ static const struct reset_control_ops tcc_reset_ops = {
 
 static int tcc_reset_probe(struct platform_device *pdev)
 {
-	struct tcc_reset_data *priv;
+	struct device *dev = &pdev->dev;
+	struct tcc_reset_data *data;
+	s32 ret = -ENODEV;
 
-	if (pdev == NULL)
-		return -ENODEV;
+	/* Allocate memory for driver data */
+	data = devm_kzalloc(dev, sizeof(struct tcc_reset_data), GFP_KERNEL);
+	if (data == NULL) {
+		ret = -ENOMEM;
+		pr_err("Failed to allocate driver data (err: %d)\n", ret);
+		goto fail;
+	}
 
-	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
-	if (priv == NULL)
-		return -ENOMEM;
+	/* Get SiP service call ID for reset control */
+	data->op = (ulong)of_device_get_match_data(dev);
+	if (data->op == 0UL) {
+		ret = -EINVAL;
+		pr_err("Failed to get SiP service call (err: %d)\n", ret);
+		goto fail_match_device;
+	}
 
-	priv->op = (ulong)of_device_get_match_data(&pdev->dev);
-	if (WARN_ON(priv->op == 0UL))
-		return -EINVAL;
+	/* Initialize driver data struct */
+	data->rcdev.owner = THIS_MODULE;
+	data->rcdev.nr_resets = 32;
+	data->rcdev.ops = &tcc_reset_ops;
+	data->rcdev.of_node = dev->of_node;
 
-	spin_lock_init(&priv->lock);
+	spin_lock_init(&data->lock);
 
-	priv->rcdev.owner = THIS_MODULE;
-	priv->rcdev.nr_resets = 32;
-	priv->rcdev.ops = &tcc_reset_ops;
-	priv->rcdev.of_node = pdev->dev.of_node;
+	/* Register reset controller */
+	ret = devm_reset_controller_register(dev, &data->rcdev);
+	if (ret != 0) {
+		pr_err("Failed to register reset controller (err: %d)\n", ret);
+		goto fail_register_rcdev;
+	}
 
-	platform_set_drvdata(pdev, priv);
+	/* Now we can register driver data */
+	platform_set_drvdata(pdev, data);
 
-	return devm_reset_controller_register(&pdev->dev, &priv->rcdev);
+	return 0;
+
+fail_register_rcdev:
+fail_match_device:
+	devm_kfree(dev, data);
+fail:
+	return ret;
+}
+
+static int tcc_reset_remove(struct platform_device *pdev)
+{
+	struct tcc_reset_data *data = platform_get_drvdata(pdev);
+
+	reset_controller_unregister(&data->rcdev);
+
+	return 0;
 }
 
 static const struct of_device_id tcc_reset_match[6] = {
@@ -109,13 +139,15 @@ static const struct of_device_id tcc_reset_match[6] = {
 	},
 	{ .compatible = "" }
 };
+
 MODULE_DEVICE_TABLE(of, tcc_reset_match);
 
 static struct platform_driver tcc_reset_driver = {
-	.probe	= tcc_reset_probe,
-	.driver	= {
-		.name	= "tcc-reset",
-		.of_match_table = tcc_reset_match,
+	.probe = tcc_reset_probe,
+	.remove = tcc_reset_remove,
+	.driver = {
+		.name = "tcc-reset",
+		.of_match_table = of_match_ptr(tcc_reset_match),
 	},
 };
 
@@ -123,8 +155,15 @@ static int __init tcc_reset_init(void)
 {
 	return platform_driver_register(&tcc_reset_driver);
 }
-postcore_initcall(tcc_reset_init);
 
-MODULE_AUTHOR("Albert Kim <kimys@telechips.com>");
+static void __exit tcc_reset_exit(void)
+{
+	return platform_driver_unregister(&tcc_reset_driver);
+}
+
+postcore_initcall(tcc_reset_init);
+module_exit(tcc_reset_exit)
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Jigi Kim <jigi.kim@telechips.com>");
 MODULE_DESCRIPTION("Telechips reset driver");
-MODULE_LICENSE("GPL v2");
