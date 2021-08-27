@@ -60,7 +60,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  struct ring_buffer_event *
-@@ -4177,9 +4187,10 @@ static void print_lat_help_header(struct
+@@ -4189,9 +4199,10 @@ static void print_lat_help_header(struct
  		    "#                  | / _----=> need-resched    \n"
  		    "#                  || / _---=> hardirq/softirq \n"
  		    "#                  ||| / _--=> preempt-depth   \n"
@@ -74,7 +74,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void print_event_info(struct array_buffer *buf, struct seq_file *m)
-@@ -4217,9 +4228,10 @@ static void print_func_help_header_irq(s
+@@ -4229,9 +4240,10 @@ static void print_func_help_header_irq(s
  	seq_printf(m, "#                            %.*s / _----=> need-resched\n", prec, space);
  	seq_printf(m, "#                            %.*s| / _---=> hardirq/softirq\n", prec, space);
  	seq_printf(m, "#                            %.*s|| / _--=> preempt-depth\n", prec, space);

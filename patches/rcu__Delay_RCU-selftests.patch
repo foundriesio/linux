@@ -34,7 +34,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void rcu_sysrq_end(void);
 --- a/init/main.c
 +++ b/init/main.c
-@@ -1580,6 +1580,7 @@ static noinline void __init kernel_init_
+@@ -1585,6 +1585,7 @@ static noinline void __init kernel_init_
  
  	rcu_init_tasks_generic();
  	do_pre_smp_initcalls();

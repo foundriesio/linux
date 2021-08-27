@@ -12,11 +12,9 @@ larger struct to allocate.
 Signed-off-by: Mike Galbraith <umgwanakikbuti@gmail.com>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 [bigeasy: replace the bitspin_lock() with a mutex, get_locked_var(). Mike then
-fixed the size magic]
+fixed the size magic, Mike made handle lock spinlock_t]
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
 ---
  mm/zsmalloc.c |   85 +++++++++++++++++++++++++++++++++++++++++++++++++++++-----
  1 file changed, 79 insertions(+), 6 deletions(-)
@@ -39,7 +37,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +
 +struct zsmalloc_handle {
 +	unsigned long addr;
-+	struct mutex lock;
++	spinlock_t lock;
 +};
 +
 +#define ZS_HANDLE_ALLOC_SIZE (sizeof(struct zsmalloc_handle))
@@ -69,7 +67,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  					0, 0, NULL);
  	if (!pool->handle_cachep)
  		return 1;
-@@ -346,9 +362,26 @@ static void destroy_cache(struct zs_pool
+@@ -346,10 +362,27 @@ static void destroy_cache(struct zs_pool
  
  static unsigned long cache_alloc_handle(struct zs_pool *pool, gfp_t gfp)
  {
@@ -83,21 +81,22 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	if (p) {
 +		struct zsmalloc_handle *zh = p;
 +
-+		mutex_init(&zh->lock);
++		spin_lock_init(&zh->lock);
 +	}
 +#endif
 +	return (unsigned long)p;
-+}
-+
+ }
+ 
 +#ifdef CONFIG_PREEMPT_RT
 +static struct zsmalloc_handle *zs_get_pure_handle(unsigned long handle)
 +{
 +	return (void *)(handle &~((1 << OBJ_TAG_BITS) - 1));
- }
++}
 +#endif
- 
++
  static void cache_free_handle(struct zs_pool *pool, unsigned long handle)
  {
+ 	kmem_cache_free(pool->handle_cachep, (void *)handle);
 @@ -368,12 +401,18 @@ static void cache_free_zspage(struct zs_
  
  static void record_obj(unsigned long handle, unsigned long obj)
@@ -150,7 +149,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#ifdef CONFIG_PREEMPT_RT
 +	struct zsmalloc_handle *zh = zs_get_pure_handle(handle);
 +
-+	return mutex_is_locked(&zh->lock);
++	return spin_is_locked(&zh->lock);
 +#else
  	return bit_spin_is_locked(HANDLE_PIN_BIT, (unsigned long *)handle);
 +#endif
@@ -161,7 +160,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#ifdef CONFIG_PREEMPT_RT
 +	struct zsmalloc_handle *zh = zs_get_pure_handle(handle);
 +
-+	return mutex_trylock(&zh->lock);
++	return spin_trylock(&zh->lock);
 +#else
  	return bit_spin_trylock(HANDLE_PIN_BIT, (unsigned long *)handle);
 +#endif
@@ -172,7 +171,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#ifdef CONFIG_PREEMPT_RT
 +	struct zsmalloc_handle *zh = zs_get_pure_handle(handle);
 +
-+	return mutex_lock(&zh->lock);
++	return spin_lock(&zh->lock);
 +#else
  	bit_spin_lock(HANDLE_PIN_BIT, (unsigned long *)handle);
 +#endif
@@ -183,7 +182,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#ifdef CONFIG_PREEMPT_RT
 +	struct zsmalloc_handle *zh = zs_get_pure_handle(handle);
 +
-+	return mutex_unlock(&zh->lock);
++	return spin_unlock(&zh->lock);
 +#else
  	bit_spin_unlock(HANDLE_PIN_BIT, (unsigned long *)handle);
 +#endif

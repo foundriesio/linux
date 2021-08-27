@@ -79,6 +79,9 @@ printk__Enhance_the_condition_check_of_msleep_in_pr_flush.patch
 # Posted
 ###########################################################################
 highmem-Don-t-disable-preemption-on-RT-in-kmap_atomi.patch
+sched-Fix-get_push_task-vs-migrate_disable.patch
+sched-Switch-wait_task_inactive-to-HRTIMER_MODE_REL_.patch
+sched-Prevent-balance_push-on-remote-runqueues.patch
 
 ###########################################################################
 # Post
@@ -202,7 +205,12 @@ debugobjects__Make_RT_aware.patch
 0070-locking-rtmutex-Add-adaptive-spinwait-mechanism.patch
 0071-locking-spinlock-rt-Prepare-for-RT-local_lock.patch
 0072-locking-local_lock-Add-PREEMPT_RT-support.patch
+
 locking-ww_mutex-Initialize-waiter.ww_ctx-properly.patch
+locking-rtmutex-Dont-dereference-waiter-lockless.patch
+locking-rtmutex-Dequeue-waiter-on-ww_mutex-deadlock.patch
+locking-rtmutex-Return-success-on-deadlock-for-ww_mu.patch
+locking-rtmutex-Prevent-spurious-EDEADLK-return-caus.patch
 
 ###########################################################################
 # Locking: RT bits. Need review

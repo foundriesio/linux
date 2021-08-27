@@ -519,7 +519,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /*
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
-@@ -2303,6 +2303,15 @@ extern void reweight_task(struct task_st
+@@ -2306,6 +2306,15 @@ extern void reweight_task(struct task_st
  extern void resched_curr(struct rq *rq);
  extern void resched_cpu(int cpu);
  
@@ -556,7 +556,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  struct ring_buffer_event *
-@@ -4182,15 +4190,17 @@ unsigned long trace_total_entries(struct
+@@ -4194,15 +4202,17 @@ unsigned long trace_total_entries(struct
  
  static void print_lat_help_header(struct seq_file *m)
  {
@@ -583,7 +583,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void print_event_info(struct array_buffer *buf, struct seq_file *m)
-@@ -4224,14 +4234,16 @@ static void print_func_help_header_irq(s
+@@ -4236,14 +4246,16 @@ static void print_func_help_header_irq(s
  
  	print_event_info(buf, m);
  
