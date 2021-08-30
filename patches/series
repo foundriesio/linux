@@ -79,7 +79,6 @@ printk__Enhance_the_condition_check_of_msleep_in_pr_flush.patch
 # Posted
 ###########################################################################
 highmem-Don-t-disable-preemption-on-RT-in-kmap_atomi.patch
-sched-Fix-get_push_task-vs-migrate_disable.patch
 sched-Switch-wait_task_inactive-to-HRTIMER_MODE_REL_.patch
 sched-Prevent-balance_push-on-remote-runqueues.patch
 
