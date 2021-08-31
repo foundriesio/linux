@@ -141,10 +141,9 @@ struct stm32_cryp {
 	size_t                  authsize;
 	size_t                  hw_blocksize;
 
-	size_t                  remain_in;
-	size_t                  total_in;
-	size_t                  remain_out;
-	size_t                  total_out;
+	size_t                  payload_in;
+	size_t                  header_in;
+	size_t                  payload_out;
 
 	struct scatterlist      *out_sg;
 
@@ -401,12 +400,14 @@ static void stm32_crypt_gcmccm_end_header(struct stm32_cryp *cryp)
 	int err;
 
 	/* Check if whole header written */
-	if ((cryp->total_in - cryp->remain_in) == cryp->areq->assoclen) {
+	if (!cryp->header_in) {
 		/* Wait for completion */
 		err = stm32_cryp_wait_busy(cryp);
 		if (err) {
 			dev_err(cryp->dev, "Timeout (gcm/ccm header)\n");
-			return stm32_cryp_finish_req(cryp, err);
+			stm32_cryp_write(cryp, CRYP_IMSCR, 0);
+			stm32_cryp_finish_req(cryp, err);
+			return;
 		}
 
 		if (stm32_cryp_get_input_text_len(cryp)) {
@@ -419,9 +420,11 @@ static void stm32_crypt_gcmccm_end_header(struct stm32_cryp *cryp)
 			cfg |= CR_PH_PAYLOAD | CR_CRYPEN;
 			stm32_cryp_write(cryp, CRYP_CR, cfg);
 		} else {
-			/* Phase 4 : tag */
-			stm32_cryp_write(cryp, CRYP_IMSCR, 0);
-			stm32_cryp_finish_req(cryp, 0);
+			/*
+			 * Phase 4 : tag.
+			 * Nothing to read, nothing to write, caller have to
+			 * end request
+			 */
 		}
 	}
 }
@@ -457,7 +460,7 @@ static void stm32_cryp_write_ccm_first_header(struct stm32_cryp *cryp)
 	for (i = 0; i < AES_BLOCK_32; i++)
 		stm32_cryp_write(cryp, CRYP_DIN, block[i]);
 
-	cryp->remain_in -= written;
+	cryp->header_in -= written;
 
 	stm32_crypt_gcmccm_end_header(cryp);
 }
@@ -466,7 +469,8 @@ static void stm32_cryp_write_ccm_first_header(struct stm32_cryp *cryp)
 static int stm32_cryp_ccm_init(struct stm32_cryp *cryp, u32 cfg)
 {
 	int ret;
-	u8 iv[AES_BLOCK_SIZE], b0[AES_BLOCK_SIZE];
+	u32 iv_32[AES_BLOCK_32], b0_32[AES_BLOCK_32];
+	u8 *iv = (u8 *)iv_32, *b0 = (u8 *)b0_32;
 	__be32 *bd;
 	u32 *d;
 	unsigned int i, textlen;
@@ -632,6 +636,8 @@ static void stm32_cryp_finish_req(struct stm32_cryp *cryp, int err)
 	if (!err && (!(is_gcm(cryp) || is_ccm(cryp))))
 		stm32_cryp_get_iv(cryp);
 
+	memset(cryp->ctx->key, 0, sizeof(cryp->ctx->key));
+
 	pm_runtime_mark_last_busy(cryp->dev);
 	pm_runtime_put_autosuspend(cryp->dev);
 
@@ -640,8 +646,6 @@ static void stm32_cryp_finish_req(struct stm32_cryp *cryp, int err)
 	else
 		crypto_finalize_skcipher_request(cryp->engine, cryp->req,
 						   err);
-
-	memset(cryp->ctx->key, 0, cryp->ctx->keylen);
 }
 
 static int stm32_cryp_cpu_start(struct stm32_cryp *cryp)
@@ -1023,46 +1027,41 @@ static int stm32_cryp_prepare_req(struct skcipher_request *req,
 	if (req) {
 		cryp->req = req;
 		cryp->areq = NULL;
-		cryp->total_in = req->cryptlen;
-		cryp->total_out = cryp->total_in;
+		cryp->header_in = 0;
+		cryp->payload_in = req->cryptlen;
+		cryp->payload_out = req->cryptlen;
+		cryp->authsize = 0;
 	} else {
 		/*
 		 * Length of input and output data:
 		 * Encryption case:
-		 *  INPUT  =   AssocData  ||   PlainText
+		 *  INPUT  = AssocData   ||     PlainText
 		 *          <- assoclen ->  <- cryptlen ->
-		 *          <------- total_in ----------->
 		 *
-		 *  OUTPUT =   AssocData  ||  CipherText  ||   AuthTag
-		 *          <- assoclen ->  <- cryptlen ->  <- authsize ->
-		 *          <---------------- total_out ----------------->
+		 *  OUTPUT = AssocData    ||   CipherText   ||      AuthTag
+		 *          <- assoclen ->  <-- cryptlen -->  <- authsize ->
 		 *
 		 * Decryption case:
-		 *  INPUT  =   AssocData  ||  CipherText  ||  AuthTag
-		 *          <- assoclen ->  <--------- cryptlen --------->
-		 *                                          <- authsize ->
-		 *          <---------------- total_in ------------------>
+		 *  INPUT  =  AssocData     ||    CipherTex   ||       AuthTag
+		 *          <- assoclen --->  <---------- cryptlen ---------->
 		 *
-		 *  OUTPUT =   AssocData  ||   PlainText
-		 *          <- assoclen ->  <- crypten - authsize ->
-		 *          <---------- total_out ----------------->
+		 *  OUTPUT = AssocData    ||               PlainText
+		 *          <- assoclen ->  <- cryptlen - authsize ->
 		 */
 		cryp->areq = areq;
 		cryp->req = NULL;
 		cryp->authsize = crypto_aead_authsize(crypto_aead_reqtfm(areq));
-		cryp->total_in = areq->assoclen + areq->cryptlen;
-		if (is_encrypt(cryp))
-			/* Append auth tag to output */
-			cryp->total_out = areq->assoclen + areq->cryptlen
-						+ cryp->authsize;
-		else
-			/* No auth tag in output */
-			cryp->total_out =  areq->assoclen + areq->cryptlen
-						- cryp->authsize;
+		if (is_encrypt(cryp)) {
+			cryp->payload_in = areq->cryptlen;
+			cryp->header_in = areq->assoclen;
+			cryp->payload_out = areq->cryptlen;
+		} else {
+			cryp->payload_in = areq->cryptlen - cryp->authsize;
+			cryp->header_in = areq->assoclen;
+			cryp->payload_out = cryp->payload_in;
+		}
 	}
 
-	cryp->remain_in = cryp->total_in;
-	cryp->remain_out = cryp->total_out;
 
 	in_sg = req ? req->src : areq->src;
 	scatterwalk_start(&cryp->in_walk, in_sg);
@@ -1074,7 +1073,6 @@ static int stm32_cryp_prepare_req(struct skcipher_request *req,
 		/* In output, jump after assoc data */
 		scatterwalk_copychunks(NULL, &cryp->out_walk,
 				       cryp->areq->assoclen, 2);
-		cryp->remain_out -= cryp->areq->assoclen;
 	}
 
 	if (is_ctr(cryp))
@@ -1127,8 +1125,7 @@ static int stm32_cryp_aead_one_req(struct crypto_engine *engine, void *areq)
 	if (!cryp)
 		return -ENODEV;
 
-	if (unlikely(!cryp->areq->assoclen &&
-		     !stm32_cryp_get_input_text_len(cryp))) {
+	if (unlikely(!cryp->payload_in && !cryp->header_in)) {
 		/* No input data to process: get tag and finish */
 		stm32_cryp_finish_req(cryp, 0);
 		return 0;
@@ -1251,57 +1248,41 @@ static void stm32_cryp_check_ctr_counter(struct stm32_cryp *cryp)
 	cryp->last_ctr[3] = cpu_to_be32(stm32_cryp_read(cryp, CRYP_IV1RR));
 }
 
-static bool stm32_cryp_irq_read_data(struct stm32_cryp *cryp)
+static void stm32_cryp_irq_read_data(struct stm32_cryp *cryp)
 {
 	unsigned int i;
-	size_t tag_size;
 	u32 block[AES_BLOCK_32];
-
-	/* Do no read tag now (if any) */
-	if (is_encrypt(cryp) && (is_gcm(cryp) || is_ccm(cryp)))
-		tag_size = cryp->authsize;
-	else
-		tag_size = 0;
 
 	for (i = 0; i < cryp->hw_blocksize / sizeof(u32); i++)
 		block[i] = stm32_cryp_read(cryp, CRYP_DOUT);
 
-	scatterwalk_copychunks(block, &cryp->out_walk, min_t(size_t, cryp->hw_blocksize,
-							     cryp->remain_out - tag_size),
+	scatterwalk_copychunks(block, &cryp->out_walk, min_t(size_t,
+							     cryp->hw_blocksize,
+							     cryp->payload_out),
 			       1);
-	cryp->remain_out -= min_t(size_t, cryp->hw_blocksize,
-				  cryp->remain_out - tag_size);
-
-	return !(cryp->remain_out - tag_size) || !cryp->remain_in;
+	cryp->payload_out -= min_t(size_t, cryp->hw_blocksize,
+				   cryp->payload_out);
 }
 
 static void stm32_cryp_irq_write_block(struct stm32_cryp *cryp)
 {
 	unsigned int i;
-	size_t tag_size;
 	u32 block[AES_BLOCK_32] = {0};
 
-	/* Do no write tag (if any) */
-	if (is_decrypt(cryp) && (is_gcm(cryp) || is_ccm(cryp)))
-		tag_size = cryp->authsize;
-	else
-		tag_size = 0;
-
-	scatterwalk_copychunks(block, &cryp->in_walk, min_t(size_t, cryp->hw_blocksize,
-							    cryp->remain_in - tag_size),
+	scatterwalk_copychunks(block, &cryp->in_walk, min_t(size_t,
+							    cryp->hw_blocksize,
+							    cryp->payload_in),
 			       0);
 	for (i = 0; i < cryp->hw_blocksize / sizeof(u32); i++)
 		stm32_cryp_write(cryp, CRYP_DIN, block[i]);
 
-	cryp->remain_in -= min_t(size_t, cryp->hw_blocksize, cryp->remain_in - tag_size);
+	cryp->payload_in -= min_t(size_t, cryp->hw_blocksize, cryp->payload_in);
 }
 
 static void stm32_cryp_irq_write_gcm_padded_data(struct stm32_cryp *cryp)
 {
 	int err;
-	u32 cfg, tmp[AES_BLOCK_32];
-	size_t remain_in_ori = cryp->remain_in;
-	struct scatterlist *out_sg_ori = cryp->out_sg;
+	u32 cfg, block[AES_BLOCK_32] = {0};
 	unsigned int i;
 
 	/* 'Special workaround' procedure described in the datasheet */
@@ -1326,18 +1307,27 @@ static void stm32_cryp_irq_write_gcm_padded_data(struct stm32_cryp *cryp)
 
 	/* b) pad and write the last block */
 	stm32_cryp_irq_write_block(cryp);
-	cryp->remain_in = remain_in_ori;
+	/* wait end of process */
 	err = stm32_cryp_wait_output(cryp);
 	if (err) {
-		dev_err(cryp->dev, "Timeout (write gcm header)\n");
+		dev_err(cryp->dev, "Timeout (write gcm last data)\n");
 		return stm32_cryp_finish_req(cryp, err);
 	}
 
 	/* c) get and store encrypted data */
-	stm32_cryp_irq_read_data(cryp);
-	scatterwalk_map_and_copy(tmp, out_sg_ori,
-				 cryp->total_in - remain_in_ori,
-				 remain_in_ori, 0);
+	/*
+	 * Same code as stm32_cryp_irq_read_data(), but we want to store
+	 * block value
+	 */
+	for (i = 0; i < cryp->hw_blocksize / sizeof(u32); i++)
+		block[i] = stm32_cryp_read(cryp, CRYP_DOUT);
+
+	scatterwalk_copychunks(block, &cryp->out_walk, min_t(size_t,
+							     cryp->hw_blocksize,
+							     cryp->payload_out),
+			       1);
+	cryp->payload_out -= min_t(size_t, cryp->hw_blocksize,
+				   cryp->payload_out);
 
 	/* d) change mode back to AES GCM */
 	cfg &= ~CR_ALGO_MASK;
@@ -1350,19 +1340,13 @@ static void stm32_cryp_irq_write_gcm_padded_data(struct stm32_cryp *cryp)
 	stm32_cryp_write(cryp, CRYP_CR, cfg);
 
 	/* f) write padded data */
-	for (i = 0; i < AES_BLOCK_32; i++) {
-		if (cryp->remain_in)
-			stm32_cryp_write(cryp, CRYP_DIN, tmp[i]);
-		else
-			stm32_cryp_write(cryp, CRYP_DIN, 0);
-
-		cryp->remain_in -= min_t(size_t, sizeof(u32), cryp->remain_in);
-	}
+	for (i = 0; i < AES_BLOCK_32; i++)
+		stm32_cryp_write(cryp, CRYP_DIN, block[i]);
 
 	/* g) Empty fifo out */
 	err = stm32_cryp_wait_output(cryp);
 	if (err) {
-		dev_err(cryp->dev, "Timeout (write gcm header)\n");
+		dev_err(cryp->dev, "Timeout (write gcm padded data)\n");
 		return stm32_cryp_finish_req(cryp, err);
 	}
 
@@ -1375,16 +1359,14 @@ static void stm32_cryp_irq_write_gcm_padded_data(struct stm32_cryp *cryp)
 
 static void stm32_cryp_irq_set_npblb(struct stm32_cryp *cryp)
 {
-	u32 cfg, payload_bytes;
+	u32 cfg;
 
 	/* disable ip, set NPBLB and reneable ip */
 	cfg = stm32_cryp_read(cryp, CRYP_CR);
 	cfg &= ~CR_CRYPEN;
 	stm32_cryp_write(cryp, CRYP_CR, cfg);
 
-	payload_bytes = is_decrypt(cryp) ? cryp->remain_in - cryp->authsize :
-					   cryp->remain_in;
-	cfg |= (cryp->hw_blocksize - payload_bytes) << CR_NBPBL_SHIFT;
+	cfg |= (cryp->hw_blocksize - cryp->payload_in) << CR_NBPBL_SHIFT;
 	cfg |= CR_CRYPEN;
 	stm32_cryp_write(cryp, CRYP_CR, cfg);
 }
@@ -1393,9 +1375,8 @@ static void stm32_cryp_irq_write_ccm_padded_data(struct stm32_cryp *cryp)
 {
 	int err = 0;
 	u32 cfg, iv1tmp;
-	u32 cstmp1[AES_BLOCK_32], cstmp2[AES_BLOCK_32], tmp[AES_BLOCK_32];
-	size_t last_remain_out, remain_in_ori = cryp->remain_in;
-	struct scatterlist *out_sg_ori = cryp->out_sg;
+	u32 cstmp1[AES_BLOCK_32], cstmp2[AES_BLOCK_32];
+	u32 block[AES_BLOCK_32] = {0};
 	unsigned int i;
 
 	/* 'Special workaround' procedure described in the datasheet */
@@ -1428,7 +1409,7 @@ static void stm32_cryp_irq_write_ccm_padded_data(struct stm32_cryp *cryp)
 
 	/* b) pad and write the last block */
 	stm32_cryp_irq_write_block(cryp);
-	cryp->remain_in = remain_in_ori;
+	/* wait end of process */
 	err = stm32_cryp_wait_output(cryp);
 	if (err) {
 		dev_err(cryp->dev, "Timeout (wite ccm padded data)\n");
@@ -1436,13 +1417,19 @@ static void stm32_cryp_irq_write_ccm_padded_data(struct stm32_cryp *cryp)
 	}
 
 	/* c) get and store decrypted data */
-	last_remain_out = cryp->remain_out;
-	stm32_cryp_irq_read_data(cryp);
+	/*
+	 * Same code as stm32_cryp_irq_read_data(), but we want to store
+	 * block value
+	 */
+	for (i = 0; i < cryp->hw_blocksize / sizeof(u32); i++)
+		block[i] = stm32_cryp_read(cryp, CRYP_DOUT);
 
-	memset(tmp, 0, sizeof(tmp));
-	scatterwalk_map_and_copy(tmp, out_sg_ori,
-				 cryp->total_out - last_remain_out,
-				 last_remain_out, 0);
+	scatterwalk_copychunks(block, &cryp->out_walk, min_t(size_t,
+							     cryp->hw_blocksize,
+							     cryp->payload_out),
+			       1);
+	cryp->payload_out -= min_t(size_t, cryp->hw_blocksize,
+				   cryp->payload_out);
 
 	/* d) Load again CRYP_CSGCMCCMxR */
 	for (i = 0; i < ARRAY_SIZE(cstmp2); i++)
@@ -1459,10 +1446,10 @@ static void stm32_cryp_irq_write_ccm_padded_data(struct stm32_cryp *cryp)
 	stm32_cryp_write(cryp, CRYP_CR, cfg);
 
 	/* g) XOR and write padded data */
-	for (i = 0; i < ARRAY_SIZE(tmp); i++) {
-		tmp[i] ^= cstmp1[i];
-		tmp[i] ^= cstmp2[i];
-		stm32_cryp_write(cryp, CRYP_DIN, tmp[i]);
+	for (i = 0; i < ARRAY_SIZE(block); i++) {
+		block[i] ^= cstmp1[i];
+		block[i] ^= cstmp2[i];
+		stm32_cryp_write(cryp, CRYP_DIN, block[i]);
 	}
 
 	/* h) wait for completion */
@@ -1476,32 +1463,34 @@ static void stm32_cryp_irq_write_ccm_padded_data(struct stm32_cryp *cryp)
 
 static void stm32_cryp_irq_write_data(struct stm32_cryp *cryp)
 {
-	if (unlikely(!cryp->remain_in)) {
+	if (unlikely(!cryp->payload_in)) {
 		dev_warn(cryp->dev, "No more data to process\n");
-		writel_relaxed(readl_relaxed(cryp->regs + CRYP_IMSCR) | IMSCR_IN,
-			       cryp->regs + CRYP_IMSCR);
 		return;
 	}
 
-	if (unlikely(cryp->remain_in < AES_BLOCK_SIZE &&
+	if (unlikely(cryp->payload_in < AES_BLOCK_SIZE &&
 		     (stm32_cryp_get_hw_mode(cryp) == CR_AES_GCM) &&
 		     is_encrypt(cryp))) {
 		/* Padding for AES GCM encryption */
-		if (cryp->caps->padding_wa)
+		if (cryp->caps->padding_wa) {
 			/* Special case 1 */
-			return stm32_cryp_irq_write_gcm_padded_data(cryp);
+			stm32_cryp_irq_write_gcm_padded_data(cryp);
+			return;
+		}
 
 		/* Setting padding bytes (NBBLB) */
 		stm32_cryp_irq_set_npblb(cryp);
 	}
 
-	if (unlikely((cryp->remain_in - cryp->authsize < AES_BLOCK_SIZE) &&
+	if (unlikely((cryp->payload_in < AES_BLOCK_SIZE) &&
 		     (stm32_cryp_get_hw_mode(cryp) == CR_AES_CCM) &&
 		     is_decrypt(cryp))) {
 		/* Padding for AES CCM decryption */
-		if (cryp->caps->padding_wa)
+		if (cryp->caps->padding_wa) {
 			/* Special case 2 */
-			return stm32_cryp_irq_write_ccm_padded_data(cryp);
+			stm32_cryp_irq_write_ccm_padded_data(cryp);
+			return;
+		}
 
 		/* Setting padding bytes (NBBLB) */
 		stm32_cryp_irq_set_npblb(cryp);
@@ -1519,14 +1508,13 @@ static void stm32_cryp_irq_write_gcmccm_header(struct stm32_cryp *cryp)
 	u32 block[AES_BLOCK_32] = {0};
 	size_t written;
 
-	written = min_t(size_t, AES_BLOCK_SIZE,
-		       cryp->areq->assoclen - (cryp->total_in - cryp->remain_in));
+	written = min_t(size_t, AES_BLOCK_SIZE, cryp->header_in);
 
 	scatterwalk_copychunks(block, &cryp->in_walk, written, 0);
 	for (i = 0; i < AES_BLOCK_32; i++)
 		stm32_cryp_write(cryp, CRYP_DIN, block[i]);
 
-	cryp->remain_in -= written;
+	cryp->header_in -= written;
 
 	stm32_crypt_gcmccm_end_header(cryp);
 }
@@ -1535,15 +1523,12 @@ static irqreturn_t stm32_cryp_irq_thread(int irq, void *arg)
 {
 	struct stm32_cryp *cryp = arg;
 	u32 ph;
+	u32 it_mask = stm32_cryp_read(cryp, CRYP_IMSCR);
+
 
 	if (cryp->irq_status & MISR_OUT)
 		/* Output FIFO IRQ: read data */
-		if (unlikely(stm32_cryp_irq_read_data(cryp))) {
-			/* All bytes processed, finish */
-			stm32_cryp_write(cryp, CRYP_IMSCR, 0);
-			stm32_cryp_finish_req(cryp, 0);
-			return IRQ_HANDLED;
-		}
+		stm32_cryp_irq_read_data(cryp);
 
 	if (cryp->irq_status & MISR_IN) {
 		if (is_gcm(cryp) || is_ccm(cryp)) {
@@ -1561,6 +1546,16 @@ static irqreturn_t stm32_cryp_irq_thread(int irq, void *arg)
 			stm32_cryp_irq_write_data(cryp);
 		}
 	}
+
+	/* Mask useless interrupts */
+	if (!cryp->payload_in && !cryp->header_in)
+		it_mask &= ~IMSCR_IN;
+	if (!cryp->payload_out)
+		it_mask &= ~IMSCR_OUT;
+	stm32_cryp_write(cryp, CRYP_IMSCR, it_mask);
+
+	if (!cryp->payload_in && !cryp->header_in && !cryp->payload_out)
+		stm32_cryp_finish_req(cryp, 0);
 
 	return IRQ_HANDLED;
 }
@@ -1871,8 +1866,6 @@ err_engine1:
 	list_del(&cryp->list);
 	spin_unlock(&cryp_list.lock);
 err_rst:
-	pm_runtime_disable(dev);
-	pm_runtime_put_noidle(dev);
 	pm_runtime_disable(dev);
 	pm_runtime_put_noidle(dev);
 
