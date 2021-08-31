@@ -48,7 +48,7 @@ static struct usb_device_id whitelist_table[] = {
 { USB_DEVICE(0x0525, 0xa4a0), },
 #endif
 #ifdef CONFIG_TCC_EH_ELECT_TST
-{ USB_VENDOR_AND_INTERFACE_INFO(0x0781, USB_CLASS_MASS_STORAGE, 0, 0) }, // SanDisk device
+{ USB_INTERFACE_CLASS_INFO(USB_CLASS_MASS_STORAGE) },
 #endif
 { }	/* Terminating entry */
 };

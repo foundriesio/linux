@@ -738,9 +738,7 @@ static int __dwc2_lowlevel_hw_enable(struct dwc2_hsotg *hsotg)
 {
 	struct platform_device *pdev = to_platform_device(hsotg->dev);
 	int ret;
-#if defined(CONFIG_USB_DWC2_TCC)
-	dwc2_tcc_vbus_ctrl(hsotg, 1);
-#else
+#if !defined(CONFIG_USB_DWC2_TCC)
 	ret = regulator_bulk_enable(ARRAY_SIZE(hsotg->supplies),
 			hsotg->supplies);
 	if (ret)
@@ -942,10 +940,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 		if (phy_get_bus_width(hsotg->phy) == 8)
 			hsotg->phyif = GUSBCFG_PHYIF8;
 	}
-#if defined(CONFIG_USB_DWC2_TCC)
-	/* TCC vbus */
-	ret = dwc2_tcc_vbus_ctrl(hsotg, 1);
-#else
+#if !defined(CONFIG_USB_DWC2_TCC)
 	/* Regulators */
 	for (i = 0; i < ARRAY_SIZE(hsotg->supplies); i++)
 		hsotg->supplies[i].supply = dwc2_hsotg_supply_names[i];
@@ -1301,7 +1296,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 
 #if defined(CONFIG_USB_DWC2_TCC_FIRST_HOST) //first host
 #if defined(CONFIG_USB_DWC2_TCC_MUX)
-	//NOTHING TO DO!!
+	dwc2_tcc_vbus_ctrl(hsotg, 1);
 #else
 	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
 	dwc2_manual_change(hsotg);

@@ -5196,6 +5196,9 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 
 		choose_devnum(udev);
 		if (udev->devnum <= 0) {
+#if defined(CONFIG_TCC_EH_ELECT_TST)
+			dev_info(&udev->dev, "[INFO][USB] The number of devices has exceeded the maximum!\n");
+#endif
 			status = -ENOTCONN;	/* Don't retry */
 			goto loop;
 		}

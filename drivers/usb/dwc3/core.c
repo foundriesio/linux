@@ -585,7 +585,9 @@ static int dwc3_phy_setup(struct dwc3 *dwc)
 	if (dwc->tx_de_emphasis_quirk)
 		reg |= DWC3_GUSB3PIPECTL_TX_DEEPH(dwc->tx_de_emphasis);
 
-#ifndef CONFIG_TCC_EH_ELECT_TST
+#if defined(CONFIG_TCC_EH_ELECT_TST)
+	reg |= DWC3_GUSB3PIPECTL_LFPSP0ALIGN;
+#else
 	if (dwc->dis_u3_susphy_quirk)
 		reg &= ~DWC3_GUSB3PIPECTL_SUSPHY;
 #endif
