@@ -40,7 +40,7 @@ Link: https://lore.kernel.org/r/20210815211302.372319055@linutronix.de
  extern void io_schedule_finish(int token);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -5829,7 +5829,13 @@ pick_next_task(struct rq *rq, struct tas
+@@ -5917,7 +5917,13 @@ pick_next_task(struct rq *rq, struct tas
   */
  #define SM_NONE			0x0
  #define SM_PREEMPT		0x1
@@ -55,7 +55,7 @@ Link: https://lore.kernel.org/r/20210815211302.372319055@linutronix.de
  
  /*
   * __schedule() is the main scheduler function.
-@@ -6134,6 +6140,18 @@ void __sched schedule_preempt_disabled(v
+@@ -6222,6 +6228,18 @@ void __sched schedule_preempt_disabled(v
  	preempt_disable();
  }
  

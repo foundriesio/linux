@@ -542,7 +542,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 -EXPORT_SYMBOL(vprintk);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3162,8 +3162,8 @@ static int select_fallback_rq(int cpu, s
+@@ -3176,8 +3176,8 @@ static int select_fallback_rq(int cpu, s
  		 * leave kernel.
  		 */
  		if (p->mm && printk_ratelimit()) {

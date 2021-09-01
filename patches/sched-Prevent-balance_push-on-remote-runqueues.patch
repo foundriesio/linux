@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Fri, 27 Aug 2021 16:07:30 +0200
-Subject: [PATCH] sched: Prevent balance_push() on remote runqueues
+Subject: sched: Prevent balance_push() on remote runqueues
+Date: Sat, 28 Aug 2021 15:55:52 +0200
 
 sched_setscheduler() and rt_mutex_setprio() invoke the run-queue balance
 callback after changing priorities or the scheduling class of a task. The
@@ -12,22 +12,33 @@ is only valid to be invoked on the outgoing CPU that's wrong. It not only
 triggers the debug warning, but also leaves the per CPU variable push_work
 unprotected, which can result in double enqueues on the stop machine list.
 
-Remove the warning and check that the function is invoked on the
-outgoing CPU. If not, just return and do nothing.
+Remove the warning and validate that the function is invoked on the
+outgoing CPU.
 
 Fixes: ae7927023243 ("sched: Optimize finish_lock_switch()")
 Reported-by: Sebastian Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Cc: stable@vger.kernel.org
+Cc: Juri Lelli <juri.lelli@redhat.com>
+Cc: Vincent Guittot <vincent.guittot@linaro.org>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Steven Rostedt <rostedt@goodmis.org>
+Cc: Ben Segall <bsegall@google.com>
+Cc: Ingo Molnar <mingo@kernel.org>
+Cc: Mel Gorman <mgorman@suse.de>
+Cc: Daniel Bristot de Oliveira <bristot@redhat.com>
+Cc: Dietmar Eggemann <dietmar.eggemann@arm.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Link: https://lore.kernel.org/r/87tujb0yn1.ffs@tglx
+Link: https://lore.kernel.org/r/87zgt1hdw7.ffs@tglx
+---
+V2: Use the correct check for the outgoing CPU
 ---
  kernel/sched/core.c |    6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -8435,7 +8435,6 @@ static void balance_push(struct rq *rq)
+@@ -8523,7 +8523,6 @@ static void balance_push(struct rq *rq)
  	struct task_struct *push_task = rq->curr;
  
  	lockdep_assert_rq_held(rq);
@@ -35,7 +46,7 @@ Link: https://lore.kernel.org/r/87tujb0yn1.ffs@tglx
  
  	/*
  	 * Ensure the thing is persistent until balance_push_set(.on = false);
-@@ -8443,9 +8442,10 @@ static void balance_push(struct rq *rq)
+@@ -8531,9 +8530,10 @@ static void balance_push(struct rq *rq)
  	rq->balance_callback = &balance_push_callback;
  
  	/*
@@ -44,7 +55,7 @@ Link: https://lore.kernel.org/r/87tujb0yn1.ffs@tglx
 +	 * CPU.
  	 */
 -	if (!cpu_dying(rq->cpu))
-+	if (!cpu_dying(rq->cpu) && rq == this_rq())
++	if (!cpu_dying(rq->cpu) || rq != this_rq())
  		return;
  
  	/*

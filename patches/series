@@ -82,6 +82,13 @@ highmem-Don-t-disable-preemption-on-RT-in-kmap_atomi.patch
 sched-Switch-wait_task_inactive-to-HRTIMER_MODE_REL_.patch
 sched-Prevent-balance_push-on-remote-runqueues.patch
 
+#KCOV
+0001_documentation_kcov_include_types_h_in_the_example.patch
+0002_documentation_kcov_define_ip_in_the_example.patch
+0003_kcov_allocate_per_cpu_memory_on_the_relevant_node.patch
+0004_kcov_avoid_enable_disable_interrupts_if_in_task.patch
+0005_kcov_replace_local_irq_save_with_a_local_lock_t.patch
+
 ###########################################################################
 # Post
 ###########################################################################

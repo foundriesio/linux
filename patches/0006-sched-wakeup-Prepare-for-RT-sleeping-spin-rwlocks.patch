@@ -146,7 +146,7 @@ Link: https://lore.kernel.org/r/20210815211302.258751046@linutronix.de
  #ifdef CONFIG_MMU
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3566,14 +3566,47 @@ static void ttwu_queue(struct task_struc
+@@ -3580,14 +3580,47 @@ static void ttwu_queue(struct task_struc
   *
   * The caller holds p::pi_lock if p != current or has preemption
   * disabled when p == current.
