@@ -936,7 +936,8 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&tsc_default>;
 
-			irq-gpios = <&gpsd1 9 0x0>;
+			interrupt-parent = <&gpsd1>;
+			interrupts = <9 IRQ_TYPE_EDGE_FALLING>;
 			reset-gpios = <&gpb 16 0x0>;
 		};
 		ga657x@5d {
