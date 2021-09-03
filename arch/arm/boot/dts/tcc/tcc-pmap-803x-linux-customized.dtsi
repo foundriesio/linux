@@ -17,7 +17,7 @@
 
 //***************************** VPU/HEVC ******************************/
 //Should sync with hardware/telechips/omx/omx_videodec_interface/include/vdec.h
-#if defined(SUPPORT_TCC_HEVC_4K)
+#if SUPPORT_TCC_HEVC_4K
 #define SUPPORT_VIDEO_MAX_WIDTH         (4096)
 #define SUPPORT_VIDEO_MAX_HEIGHT        (2176)
 #else
