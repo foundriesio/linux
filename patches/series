@@ -81,6 +81,7 @@ printk__Enhance_the_condition_check_of_msleep_in_pr_flush.patch
 highmem-Don-t-disable-preemption-on-RT-in-kmap_atomi.patch
 sched-Switch-wait_task_inactive-to-HRTIMER_MODE_REL_.patch
 sched-Prevent-balance_push-on-remote-runqueues.patch
+lockdep-Let-lock_is_held_type-detect-recursive-read-.patch
 
 #KCOV
 0001_documentation_kcov_include_types_h_in_the_example.patch
@@ -217,6 +218,11 @@ locking-rtmutex-Dont-dereference-waiter-lockless.patch
 locking-rtmutex-Dequeue-waiter-on-ww_mutex-deadlock.patch
 locking-rtmutex-Return-success-on-deadlock-for-ww_mu.patch
 locking-rtmutex-Prevent-spurious-EDEADLK-return-caus.patch
+
+0001-futex-Return-error-code-instead-of-assigning-it-with.patch
+0002-futex-Prevent-inconsistent-state-and-exit-race.patch
+0003-futex-Clarify-comment-for-requeue_pi_wake_futex.patch
+0004-futex-Avoid-redundant-task-lookup.patch
 
 ###########################################################################
 # Locking: RT bits. Need review
