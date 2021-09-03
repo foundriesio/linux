@@ -3,7 +3,7 @@
  * Copyright (C) Telechips Inc.
  */
 
-#include "tcc-pmap-video.dtsi"
+#include <dt-bindings/pmap/tcc803x/pmap-tcc803x-linux-ivi-video.h>
 
 #define TCC_ALIGN(value, base)   (((value)+((base)-1))&~((base)-1))
 
