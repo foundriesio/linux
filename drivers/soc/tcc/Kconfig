@@ -90,7 +90,7 @@ config TCC_BOOTSTAGE
 	  If unsure, say N.
 
 config TCC_CHIPINFO
-	bool "Telechips chipinfo driver"
+	tristate "Telechips chipinfo driver"
 	depends on HAVE_TCC_SIP_SERVICE
 	default y
 	help

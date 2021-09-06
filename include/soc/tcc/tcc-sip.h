@@ -7,6 +7,7 @@
 #define SOC_TCC_SIP_H
 
 #include <linux/arm-smccc.h>
+#include <linux/types.h>
 
 /*
  * 8200_TXXX	: SMC Function ID Struct
@@ -25,6 +26,12 @@
 
 #define SMC_OK			(0UL)
 #define SMC_UNK			(ULONG_MAX)
+
+/* Pre-defined SMC IDs (0x8200FF00 ~ 0x8200FFFF) */
+#define SIP_SVC_CALL_COUNT	(0x8200ff00UL)
+#define SIP_SVC_UID		(0x8200ff01UL)
+#define SIP_SVC_RESERVED0	(0x8200ff02UL) /* Reserved */
+#define SIP_SVC_VERSION		(0x8200ff03UL)
 
 /* Device Type */
 enum {
