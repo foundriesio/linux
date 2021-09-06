@@ -420,6 +420,7 @@ static IPC_LONG tcc_ipc_ioctl(struct file *filp,
 			case IOCTL_IPC_FLUSH:
 			{
 				ipc_flush(ipc_dev);
+				ret = 0;
 			}
 			break;
 			case IOCTL_IPC_PING_TEST:
