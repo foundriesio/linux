@@ -193,6 +193,11 @@ static int stm_drm_platform_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_put;
 
+	ret = drm_fb_helper_remove_conflicting_framebuffers(NULL, "stmdrmfb",
+							    false);
+	if (ret)
+		goto err_put;
+
 	ret = drm_dev_register(ddev, 0);
 	if (ret)
 		goto err_put;
