@@ -719,6 +719,13 @@ static int dwc2_get_dr_mode(struct dwc2_hsotg *hsotg)
 			mode = USB_DR_MODE_HOST;
 		else if (IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL))
 			mode = USB_DR_MODE_PERIPHERAL;
+		else { // CONFIG_USB_DWC2_DUAL_ROLE
+			if (IS_ENABLED(CONFIG_USB_DWC2_TCC_FIRST_HOST)) {
+				mode = USB_DR_MODE_HOST;
+			} else { // CONFIG_USB_DWC2_TCC_FIRST_PERIPHERAL
+				mode = USB_DR_MODE_PERIPHERAL;
+			}
+		}
 	}
 	if (mode != hsotg->dr_mode) {
 		dev_warn(hsotg->dev,
