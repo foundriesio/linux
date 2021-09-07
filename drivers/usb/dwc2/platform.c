@@ -1302,9 +1302,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 		dev_err(hsotg->dev, "[ERROR][USB] failed to create dr_mode\n");
 
 #if defined(CONFIG_USB_DWC2_TCC_FIRST_HOST) //first host
-#if defined(CONFIG_USB_DWC2_TCC_MUX)
-	dwc2_tcc_vbus_ctrl(hsotg, 1);
-#else
+#if !defined(CONFIG_USB_DWC2_TCC_MUX)
 	hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
 	dwc2_manual_change(hsotg);
 	hsotg->dr_mode = USB_DR_MODE_HOST;
@@ -1331,6 +1329,7 @@ static int dwc2_driver_probe(struct platform_device *dev)
 
 #endif //CONFIG_USB_DWC2_TCC_FIRST
 #endif //CONFIG_USB_DWC2_DUAL_ROLE
+	dwc2_tcc_vbus_ctrl(hsotg, 1);
 #endif //CONFIG_USB_DWC2_TCC
 
 	retval = device_create_file(&dev->dev, &dev_attr_dwc_pcfg1);
