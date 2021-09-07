@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:16 +0200
-Subject: [PATCH 19/35] mm, slub: move reset of c->page and freelist out of
+Date: Wed, 12 May 2021 13:53:34 +0200
+Subject: [PATCH 18/33] mm, slub: move reset of c->page and freelist out of
  deactivate_slab()
 
 deactivate_slab() removes the cpu slab by merging the cpu freelist with slab's
@@ -15,14 +15,13 @@ to assign kmem_cache_cpu.page before deactivation or care if somebody preempted
 us and assigned a different page to our kmem_cache_cpu in the process.
 
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |   31 ++++++++++++++++++-------------
  1 file changed, 18 insertions(+), 13 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2195,10 +2195,13 @@ static void init_kmem_cache_cpus(struct
+@@ -2209,10 +2209,13 @@ static void init_kmem_cache_cpus(struct
  }
  
  /*
@@ -38,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	enum slab_modes { M_NONE, M_PARTIAL, M_FULL, M_FREE };
  	struct kmem_cache_node *n = get_node(s, page_to_nid(page));
-@@ -2327,9 +2330,6 @@ static void deactivate_slab(struct kmem_
+@@ -2341,9 +2344,6 @@ static void deactivate_slab(struct kmem_
  		discard_slab(s, page);
  		stat(s, FREE_SLAB);
  	}
@@ -48,7 +47,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -2454,10 +2454,16 @@ static void put_cpu_partial(struct kmem_
+@@ -2468,10 +2468,16 @@ static void put_cpu_partial(struct kmem_
  
  static inline void flush_slab(struct kmem_cache *s, struct kmem_cache_cpu *c)
  {
@@ -67,7 +66,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -2755,7 +2761,10 @@ static void *___slab_alloc(struct kmem_c
+@@ -2769,7 +2775,10 @@ static void *___slab_alloc(struct kmem_c
  		local_irq_restore(flags);
  		goto reread_page;
  	}
@@ -79,7 +78,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	local_irq_restore(flags);
  
  new_slab:
-@@ -2834,11 +2843,7 @@ static void *___slab_alloc(struct kmem_c
+@@ -2848,11 +2857,7 @@ static void *___slab_alloc(struct kmem_c
  return_single:
  
  	local_irq_save(flags);

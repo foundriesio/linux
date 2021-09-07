@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Thu, 29 Jul 2021 15:21:27 +0200
-Subject: [PATCH 30/35] mm: slub: Make object_map_lock a raw_spinlock_t
+Date: Thu, 16 Jul 2020 18:47:50 +0200
+Subject: [PATCH 29/33] mm: slub: make object_map_lock a raw_spinlock_t
 
 The variable object_map is protected by object_map_lock. The lock is always
 acquired in debug code and within already atomic context
@@ -9,14 +9,13 @@ Make object_map_lock a raw_spinlock_t.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |    6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -438,7 +438,7 @@ static inline bool cmpxchg_double_slab(s
+@@ -452,7 +452,7 @@ static inline bool cmpxchg_double_slab(s
  
  #ifdef CONFIG_SLUB_DEBUG
  static unsigned long object_map[BITS_TO_LONGS(MAX_OBJS_PER_PAGE)];
@@ -25,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static void __fill_map(unsigned long *obj_map, struct kmem_cache *s,
  		       struct page *page)
-@@ -483,7 +483,7 @@ static unsigned long *get_map(struct kme
+@@ -497,7 +497,7 @@ static unsigned long *get_map(struct kme
  {
  	VM_BUG_ON(!irqs_disabled());
  
@@ -34,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	__fill_map(object_map, s, page);
  
-@@ -493,7 +493,7 @@ static unsigned long *get_map(struct kme
+@@ -507,7 +507,7 @@ static unsigned long *get_map(struct kme
  static void put_map(unsigned long *map) __releases(&object_map_lock)
  {
  	VM_BUG_ON(map != object_map);

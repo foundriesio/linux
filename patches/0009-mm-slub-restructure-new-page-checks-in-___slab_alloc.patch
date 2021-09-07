@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:07 +0200
-Subject: [PATCH 10/35] mm, slub: restructure new page checks in
+Date: Tue, 11 May 2021 18:25:09 +0200
+Subject: [PATCH 09/33] mm, slub: restructure new page checks in
  ___slab_alloc()
 
 When we allocate slab object from a newly acquired page (from node's partial
@@ -14,14 +14,13 @@ No functional change.
 
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
 Acked-by: Mel Gorman <mgorman@techsingularity.net>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |   28 ++++++++++++++++++++++------
  1 file changed, 22 insertions(+), 6 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2768,13 +2768,29 @@ static void *___slab_alloc(struct kmem_c
+@@ -2782,13 +2782,29 @@ static void *___slab_alloc(struct kmem_c
  	c->page = page;
  
  check_new_page:

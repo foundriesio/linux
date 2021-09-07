@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:11 +0200
-Subject: [PATCH 14/35] mm, slub: move disabling irqs closer to get_partial()
+Date: Mon, 10 May 2021 13:56:17 +0200
+Subject: [PATCH 13/33] mm, slub: move disabling irqs closer to get_partial()
  in ___slab_alloc()
 
 Continue reducing the irq disabled scope. Check for per-cpu partial slabs with
@@ -8,14 +8,13 @@ first with irqs enabled and then recheck with irqs disabled before grabbing
 the slab page. Mostly preparatory for the following patches.
 
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |   34 +++++++++++++++++++++++++---------
  1 file changed, 25 insertions(+), 9 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2692,11 +2692,6 @@ static void *___slab_alloc(struct kmem_c
+@@ -2706,11 +2706,6 @@ static void *___slab_alloc(struct kmem_c
  		if (unlikely(node != NUMA_NO_NODE &&
  			     !node_isset(node, slab_nodes)))
  			node = NUMA_NO_NODE;
@@ -27,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		goto new_slab;
  	}
  redo:
-@@ -2737,6 +2732,7 @@ static void *___slab_alloc(struct kmem_c
+@@ -2751,6 +2746,7 @@ static void *___slab_alloc(struct kmem_c
  
  	if (!freelist) {
  		c->page = NULL;
@@ -35,7 +34,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		stat(s, DEACTIVATE_BYPASS);
  		goto new_slab;
  	}
-@@ -2766,12 +2762,19 @@ static void *___slab_alloc(struct kmem_c
+@@ -2780,12 +2776,19 @@ static void *___slab_alloc(struct kmem_c
  		goto reread_page;
  	}
  	deactivate_slab(s, page, c->freelist, c);
@@ -57,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		page = c->page = slub_percpu_partial(c);
  		slub_set_percpu_partial(c, page);
  		local_irq_restore(flags);
-@@ -2779,6 +2782,16 @@ static void *___slab_alloc(struct kmem_c
+@@ -2793,6 +2796,16 @@ static void *___slab_alloc(struct kmem_c
  		goto redo;
  	}
  
@@ -74,7 +73,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	freelist = get_partial(s, gfpflags, node, &page);
  	if (freelist) {
  		c->page = page;
-@@ -2811,15 +2824,18 @@ static void *___slab_alloc(struct kmem_c
+@@ -2825,15 +2838,18 @@ static void *___slab_alloc(struct kmem_c
  check_new_page:
  
  	if (kmem_cache_debug(s)) {

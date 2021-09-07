@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:08 +0200
-Subject: [PATCH 11/35] mm, slub: simplify kmem_cache_cpu and tid setup
+Date: Tue, 18 May 2021 02:01:39 +0200
+Subject: [PATCH 10/33] mm, slub: simplify kmem_cache_cpu and tid setup
 
 In slab_alloc_node() and do_slab_free() fastpaths we need to guarantee that
 our kmem_cache_cpu pointer is from the same cpu as the tid value. Currently
@@ -16,14 +16,13 @@ freelist didn't change by anyone preempting us since reading the tid.
 
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
 Acked-by: Mel Gorman <mgorman@techsingularity.net>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |   22 +++++++++-------------
  1 file changed, 9 insertions(+), 13 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2868,15 +2868,14 @@ static __always_inline void *slab_alloc_
+@@ -2882,15 +2882,14 @@ static __always_inline void *slab_alloc_
  	 * reading from one cpu area. That does not matter as long
  	 * as we end up on the original cpu again when doing the cmpxchg.
  	 *
@@ -46,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/*
  	 * Irqless object alloc/free algorithm used here depends on sequence
-@@ -3150,11 +3149,8 @@ static __always_inline void do_slab_free
+@@ -3164,11 +3163,8 @@ static __always_inline void do_slab_free
  	 * data is retrieved via this pointer. If we are on the same cpu
  	 * during the cmpxchg then the free will succeed.
  	 */

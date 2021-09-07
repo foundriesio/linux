@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:10 +0200
-Subject: [PATCH 13/35] mm, slub: do initial checks in ___slab_alloc() with
+Date: Sat, 8 May 2021 02:28:02 +0200
+Subject: [PATCH 12/33] mm, slub: do initial checks in ___slab_alloc() with
  irqs enabled
 
 As another step of shortening irq disabled sections in ___slab_alloc(), delay
@@ -17,7 +17,6 @@ variant that lacks the PageSlab check.
 
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
 Acked-by: Mel Gorman <mgorman@techsingularity.net>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/page-flags.h |    9 +++++++
  mm/slub.c                  |   54 +++++++++++++++++++++++++++++++++++++--------
@@ -43,7 +42,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	VM_BUG_ON_PAGE(!PageSlab(page), page);
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2607,6 +2607,19 @@ static inline bool pfmemalloc_match(stru
+@@ -2621,6 +2621,19 @@ static inline bool pfmemalloc_match(stru
  }
  
  /*
@@ -63,7 +62,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Check the page->freelist of a page and either transfer the freelist to the
   * per cpu freelist or deactivate the page.
   *
-@@ -2668,8 +2681,9 @@ static void *___slab_alloc(struct kmem_c
+@@ -2682,8 +2695,9 @@ static void *___slab_alloc(struct kmem_c
  
  	stat(s, ALLOC_SLOWPATH);
  
@@ -75,7 +74,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (!page) {
  		/*
  		 * if the node is not online or has no normal memory, just
-@@ -2678,6 +2692,11 @@ static void *___slab_alloc(struct kmem_c
+@@ -2692,6 +2706,11 @@ static void *___slab_alloc(struct kmem_c
  		if (unlikely(node != NUMA_NO_NODE &&
  			     !node_isset(node, slab_nodes)))
  			node = NUMA_NO_NODE;
@@ -87,7 +86,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		goto new_slab;
  	}
  redo:
-@@ -2692,8 +2711,7 @@ static void *___slab_alloc(struct kmem_c
+@@ -2706,8 +2725,7 @@ static void *___slab_alloc(struct kmem_c
  			goto redo;
  		} else {
  			stat(s, ALLOC_NODE_MISMATCH);
@@ -97,7 +96,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	}
  
-@@ -2702,12 +2720,15 @@ static void *___slab_alloc(struct kmem_c
+@@ -2716,12 +2734,15 @@ static void *___slab_alloc(struct kmem_c
  	 * PFMEMALLOC but right now, we are losing the pfmemalloc
  	 * information when the page leaves the per-cpu allocator
  	 */
@@ -118,7 +117,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	freelist = c->freelist;
  	if (freelist)
  		goto load_freelist;
-@@ -2723,6 +2744,9 @@ static void *___slab_alloc(struct kmem_c
+@@ -2737,6 +2758,9 @@ static void *___slab_alloc(struct kmem_c
  	stat(s, ALLOC_REFILL);
  
  load_freelist:
@@ -128,7 +127,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * freelist is pointing to the list of objects to be used.
  	 * page is pointing to the page from which the objects are obtained.
-@@ -2734,11 +2758,23 @@ static void *___slab_alloc(struct kmem_c
+@@ -2748,11 +2772,23 @@ static void *___slab_alloc(struct kmem_c
  	local_irq_restore(flags);
  	return freelist;
  

@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:22 +0200
-Subject: [PATCH 25/35] mm, slub: separate detaching of partial list in
+Date: Thu, 20 May 2021 16:39:51 +0200
+Subject: [PATCH 24/33] mm, slub: separate detaching of partial list in
  unfreeze_partials() from unfreezing
 
 Unfreezing partial list can be split to two phases - detaching the list from
@@ -25,14 +25,13 @@ restructure the code as follows:
   proper calls.
 
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |   73 +++++++++++++++++++++++++++++++++++++++++++-------------------
  1 file changed, 51 insertions(+), 22 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2333,25 +2333,15 @@ static void deactivate_slab(struct kmem_
+@@ -2347,25 +2347,15 @@ static void deactivate_slab(struct kmem_
  	}
  }
  
@@ -61,7 +60,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	while (partial_page) {
  		struct page new;
  		struct page old;
-@@ -2406,10 +2396,45 @@ static void unfreeze_partials(struct kme
+@@ -2420,10 +2410,45 @@ static void unfreeze_partials(struct kme
  		discard_slab(s, page);
  		stat(s, FREE_SLAB);
  	}
@@ -108,7 +107,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Put a page that was just frozen (in __slab_free|get_partial_node) into a
   * partial page slot if available.
-@@ -2438,7 +2463,7 @@ static void put_cpu_partial(struct kmem_
+@@ -2452,7 +2477,7 @@ static void put_cpu_partial(struct kmem_
  				 * partial array is full. Move the existing
  				 * set to the per node partial list.
  				 */
@@ -117,7 +116,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				oldpage = NULL;
  				pobjects = 0;
  				pages = 0;
-@@ -2473,11 +2498,6 @@ static inline void flush_slab(struct kme
+@@ -2487,11 +2512,6 @@ static inline void flush_slab(struct kme
  	stat(s, CPUSLAB_FLUSH);
  }
  
@@ -129,7 +128,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline void __flush_cpu_slab(struct kmem_cache *s, int cpu)
  {
  	struct kmem_cache_cpu *c = per_cpu_ptr(s->cpu_slab, cpu);
-@@ -2485,14 +2505,23 @@ static inline void __flush_cpu_slab(stru
+@@ -2499,14 +2519,23 @@ static inline void __flush_cpu_slab(stru
  	if (c->page)
  		flush_slab(s, c);
  

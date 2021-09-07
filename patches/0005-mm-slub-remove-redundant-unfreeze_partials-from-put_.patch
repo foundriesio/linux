@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:02 +0200
-Subject: [PATCH 05/35] mm, slub: remove redundant unfreeze_partials() from
+Date: Tue, 8 Jun 2021 01:19:03 +0200
+Subject: [PATCH 05/33] mm, slub: remove redundant unfreeze_partials() from
  put_cpu_partial()
 
 Commit d6e0b7fa1186 ("slub: make dead caches discard free slabs immediately")
@@ -17,7 +17,6 @@ unfreeze_partials() which could be thus also considered unnecessary. But
 further patches will rely on it, so keep it.
 
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |    7 -------
  1 file changed, 7 deletions(-)

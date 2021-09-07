@@ -37,43 +37,41 @@ printk__Enhance_the_condition_check_of_msleep_in_pr_flush.patch
 
 ###########################################################################
 # mm bits polished by Mel and Vlastimil
-# slub-local-lock-v4r3
+# slub-local-lock-v6r2
 ###########################################################################
 0001-mm-slub-don-t-call-flush_all-from-slab_debug_trace_o.patch
 0002-mm-slub-allocate-private-object-map-for-debugfs-list.patch
 0003-mm-slub-allocate-private-object-map-for-validate_sla.patch
 0004-mm-slub-don-t-disable-irq-for-debug_check_no_locks_f.patch
 0005-mm-slub-remove-redundant-unfreeze_partials-from-put_.patch
-0006-mm-slub-unify-cmpxchg_double_slab-and-__cmpxchg_doub.patch
-0007-mm-slub-extract-get_partial-from-new_slab_objects.patch
-0008-mm-slub-dissolve-new_slab_objects-into-___slab_alloc.patch
-0009-mm-slub-return-slab-page-from-get_partial-and-set-c-.patch
-0010-mm-slub-restructure-new-page-checks-in-___slab_alloc.patch
-0011-mm-slub-simplify-kmem_cache_cpu-and-tid-setup.patch
-0012-mm-slub-move-disabling-enabling-irqs-to-___slab_allo.patch
-0013-mm-slub-do-initial-checks-in-___slab_alloc-with-irqs.patch
-0014-mm-slub-move-disabling-irqs-closer-to-get_partial-in.patch
-0015-mm-slub-restore-irqs-around-calling-new_slab.patch
-0016-mm-slub-validate-slab-from-partial-list-or-page-allo.patch
-0017-mm-slub-check-new-pages-with-restored-irqs.patch
-0018-mm-slub-stop-disabling-irqs-around-get_partial.patch
-0019-mm-slub-move-reset-of-c-page-and-freelist-out-of-dea.patch
-0020-mm-slub-make-locking-in-deactivate_slab-irq-safe.patch
-0021-mm-slub-call-deactivate_slab-without-disabling-irqs.patch
-0022-mm-slub-move-irq-control-into-unfreeze_partials.patch
-0023-mm-slub-discard-slabs-in-unfreeze_partials-without-i.patch
-0024-mm-slub-detach-whole-partial-list-at-once-in-unfreez.patch
-0025-mm-slub-separate-detaching-of-partial-list-in-unfree.patch
-0026-mm-slub-only-disable-irq-with-spin_lock-in-__unfreez.patch
-0027-mm-slub-don-t-disable-irqs-in-slub_cpu_dead.patch
-0028-mm-slab-make-flush_slab-possible-to-call-with-irqs-e.patch
-0029-mm-slub-Move-flush_cpu_slab-invocations-__free_slab-.patch
-0030-mm-slub-Make-object_map_lock-a-raw_spinlock_t.patch
-0031-mm-slub-optionally-save-restore-irqs-in-slab_-un-loc.patch
-0032-mm-slub-make-slab_lock-disable-irqs-with-PREEMPT_RT.patch
-0033-mm-slub-protect-put_cpu_partial-with-disabled-irqs-i.patch
-0034-mm-slub-use-migrate_disable-on-PREEMPT_RT.patch
-0035-mm-slub-convert-kmem_cpu_slab-protection-to-local_lo.patch
+0006-mm-slub-extract-get_partial-from-new_slab_objects.patch
+0007-mm-slub-dissolve-new_slab_objects-into-___slab_alloc.patch
+0008-mm-slub-return-slab-page-from-get_partial-and-set-c-.patch
+0009-mm-slub-restructure-new-page-checks-in-___slab_alloc.patch
+0010-mm-slub-simplify-kmem_cache_cpu-and-tid-setup.patch
+0011-mm-slub-move-disabling-enabling-irqs-to-___slab_allo.patch
+0012-mm-slub-do-initial-checks-in-___slab_alloc-with-irqs.patch
+0013-mm-slub-move-disabling-irqs-closer-to-get_partial-in.patch
+0014-mm-slub-restore-irqs-around-calling-new_slab.patch
+0015-mm-slub-validate-slab-from-partial-list-or-page-allo.patch
+0016-mm-slub-check-new-pages-with-restored-irqs.patch
+0017-mm-slub-stop-disabling-irqs-around-get_partial.patch
+0018-mm-slub-move-reset-of-c-page-and-freelist-out-of-dea.patch
+0019-mm-slub-make-locking-in-deactivate_slab-irq-safe.patch
+0020-mm-slub-call-deactivate_slab-without-disabling-irqs.patch
+0021-mm-slub-move-irq-control-into-unfreeze_partials.patch
+0022-mm-slub-discard-slabs-in-unfreeze_partials-without-i.patch
+0023-mm-slub-detach-whole-partial-list-at-once-in-unfreez.patch
+0024-mm-slub-separate-detaching-of-partial-list-in-unfree.patch
+0025-mm-slub-only-disable-irq-with-spin_lock-in-__unfreez.patch
+0026-mm-slub-don-t-disable-irqs-in-slub_cpu_dead.patch
+0027-mm-slab-split-out-the-cpu-offline-variant-of-flush_s.patch
+0028-mm-slub-move-flush_cpu_slab-invocations-__free_slab-.patch
+0029-mm-slub-make-object_map_lock-a-raw_spinlock_t.patch
+0030-mm-slub-make-slab_lock-disable-irqs-with-PREEMPT_RT.patch
+0031-mm-slub-protect-put_cpu_partial-with-disabled-irqs-i.patch
+0032-mm-slub-use-migrate_disable-on-PREEMPT_RT.patch
+0033-mm-slub-convert-kmem_cpu_slab-protection-to-local_lo.patch
 
 ###########################################################################
 # Posted
@@ -82,6 +80,7 @@ highmem-Don-t-disable-preemption-on-RT-in-kmap_atomi.patch
 sched-Switch-wait_task_inactive-to-HRTIMER_MODE_REL_.patch
 sched-Prevent-balance_push-on-remote-runqueues.patch
 lockdep-Let-lock_is_held_type-detect-recursive-read-.patch
+sched-Make-the-idle-timer-expire-always-in-hardirq-c.patch
 
 #KCOV
 0001_documentation_kcov_include_types_h_in_the_example.patch
@@ -227,6 +226,8 @@ locking-rtmutex-Prevent-spurious-EDEADLK-return-caus.patch
 ###########################################################################
 # Locking: RT bits. Need review
 ###########################################################################
+locking-rtmutex-Fix-ww_mutex-deadlock-check.patch
+locking-Remove-rt_rwlock_is_contended.patch
 lockdep-selftests-Avoid-using-local_lock_-acquire-re.patch
 0001-sched-Trigger-warning-if-migration_disabled-counter-.patch
 0003-rtmutex-Add-a-special-case-for-ww-mutex-handling.patch

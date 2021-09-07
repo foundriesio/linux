@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:18 +0200
-Subject: [PATCH 21/35] mm, slub: call deactivate_slab() without disabling irqs
+Date: Wed, 12 May 2021 14:04:43 +0200
+Subject: [PATCH 20/33] mm, slub: call deactivate_slab() without disabling irqs
 
 The function is now safe to be called with irqs enabled, so move the calls
 outside of irq disabled sections.
@@ -16,14 +16,13 @@ irqs anyway, and slub_cpu_dead() which will be dealt with in the following
 patch.
 
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |   24 +++++++++++++++++++-----
  1 file changed, 19 insertions(+), 5 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2765,8 +2765,8 @@ static void *___slab_alloc(struct kmem_c
+@@ -2779,8 +2779,8 @@ static void *___slab_alloc(struct kmem_c
  	freelist = c->freelist;
  	c->page = NULL;
  	c->freelist = NULL;
@@ -33,7 +32,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  new_slab:
  
-@@ -2834,18 +2834,32 @@ static void *___slab_alloc(struct kmem_c
+@@ -2848,18 +2848,32 @@ static void *___slab_alloc(struct kmem_c
  		 */
  		goto return_single;
  

@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:12 +0200
-Subject: [PATCH 15/35] mm, slub: restore irqs around calling new_slab()
+Date: Mon, 10 May 2021 16:30:01 +0200
+Subject: [PATCH 14/33] mm, slub: restore irqs around calling new_slab()
 
 allocate_slab() currently re-enables irqs before calling to the page allocator.
 It depends on gfpflags_allow_blocking() to determine if it's safe to do so.
@@ -8,14 +8,13 @@ Now we can instead simply restore irq before calling it through new_slab().
 The other caller early_kmem_cache_node_alloc() is unaffected by this.
 
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |    8 ++------
  1 file changed, 2 insertions(+), 6 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -1795,9 +1795,6 @@ static struct page *allocate_slab(struct
+@@ -1809,9 +1809,6 @@ static struct page *allocate_slab(struct
  
  	flags &= gfp_allowed_mask;
  
@@ -25,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	flags |= s->allocflags;
  
  	/*
-@@ -1856,8 +1853,6 @@ static struct page *allocate_slab(struct
+@@ -1870,8 +1867,6 @@ static struct page *allocate_slab(struct
  	page->frozen = 1;
  
  out:
@@ -34,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (!page)
  		return NULL;
  
-@@ -2798,16 +2793,17 @@ static void *___slab_alloc(struct kmem_c
+@@ -2812,16 +2807,17 @@ static void *___slab_alloc(struct kmem_c
  		goto check_new_page;
  	}
  

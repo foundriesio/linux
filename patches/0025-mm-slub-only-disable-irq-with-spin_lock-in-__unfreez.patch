@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:23 +0200
-Subject: [PATCH 26/35] mm, slub: only disable irq with spin_lock in
+Date: Fri, 21 May 2021 01:16:54 +0200
+Subject: [PATCH 25/33] mm, slub: only disable irq with spin_lock in
  __unfreeze_partials()
 
 __unfreeze_partials() no longer needs to have irqs disabled, except for making
@@ -8,14 +8,13 @@ the spin_lock operations irq-safe, so convert the spin_locks operations and
 remove the separate irq handling.
 
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |   12 ++++--------
  1 file changed, 4 insertions(+), 8 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2338,9 +2338,7 @@ static void __unfreeze_partials(struct k
+@@ -2352,9 +2352,7 @@ static void __unfreeze_partials(struct k
  {
  	struct kmem_cache_node *n = NULL, *n2 = NULL;
  	struct page *page, *discard_page = NULL;
@@ -26,7 +25,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	while (partial_page) {
  		struct page new;
-@@ -2352,10 +2350,10 @@ static void __unfreeze_partials(struct k
+@@ -2366,10 +2364,10 @@ static void __unfreeze_partials(struct k
  		n2 = get_node(s, page_to_nid(page));
  		if (n != n2) {
  			if (n)
@@ -39,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  
  		do {
-@@ -2384,9 +2382,7 @@ static void __unfreeze_partials(struct k
+@@ -2398,9 +2396,7 @@ static void __unfreeze_partials(struct k
  	}
  
  	if (n)

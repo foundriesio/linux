@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:20:59 +0200
-Subject: [PATCH 02/35] mm, slub: allocate private object map for debugfs
+Date: Sun, 23 May 2021 01:28:37 +0200
+Subject: [PATCH 02/33] mm, slub: allocate private object map for debugfs
  listings
 
 Slub has a static spinlock protected bitmap for marking which objects are on
@@ -16,7 +16,6 @@ to use a private bitmap.
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
 Acked-by: Christoph Lameter <cl@linux.com>
 Acked-by: Mel Gorman <mgorman@techsingularity.net>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |   44 +++++++++++++++++++++++++++++---------------
  1 file changed, 29 insertions(+), 15 deletions(-)

@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:15 +0200
-Subject: [PATCH 18/35] mm, slub: stop disabling irqs around get_partial()
+Date: Tue, 11 May 2021 17:45:26 +0200
+Subject: [PATCH 17/33] mm, slub: stop disabling irqs around get_partial()
 
 The function get_partial() does not need to have irqs disabled as a whole. It's
 sufficient to convert spin_lock operations to their irq saving/restoring
@@ -10,14 +10,13 @@ As a result, it's now possible to reach the page allocator from the slab
 allocator without disabling and re-enabling interrupts on the way.
 
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |   22 ++++++++--------------
  1 file changed, 8 insertions(+), 14 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -1996,11 +1996,12 @@ static inline bool pfmemalloc_match(stru
+@@ -2010,11 +2010,12 @@ static inline bool pfmemalloc_match(stru
   * Try to allocate a partial slab from a specific node.
   */
  static void *get_partial_node(struct kmem_cache *s, struct kmem_cache_node *n,
@@ -31,7 +30,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int objects;
  
  	/*
-@@ -2012,11 +2013,11 @@ static void *get_partial_node(struct kme
+@@ -2026,11 +2027,11 @@ static void *get_partial_node(struct kme
  	if (!n || !n->nr_partial)
  		return NULL;
  
@@ -45,7 +44,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			continue;
  
  		t = acquire_slab(s, n, page, object == NULL, &objects);
-@@ -2037,7 +2038,7 @@ static void *get_partial_node(struct kme
+@@ -2051,7 +2052,7 @@ static void *get_partial_node(struct kme
  			break;
  
  	}
@@ -54,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return object;
  }
  
-@@ -2765,8 +2766,10 @@ static void *___slab_alloc(struct kmem_c
+@@ -2779,8 +2780,10 @@ static void *___slab_alloc(struct kmem_c
  			local_irq_restore(flags);
  			goto reread_page;
  		}
@@ -66,7 +65,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		page = c->page = slub_percpu_partial(c);
  		slub_set_percpu_partial(c, page);
-@@ -2775,18 +2778,9 @@ static void *___slab_alloc(struct kmem_c
+@@ -2789,18 +2792,9 @@ static void *___slab_alloc(struct kmem_c
  		goto redo;
  	}
  

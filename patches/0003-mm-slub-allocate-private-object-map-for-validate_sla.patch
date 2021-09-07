@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:00 +0200
-Subject: [PATCH 03/35] mm, slub: allocate private object map for
+Date: Sun, 23 May 2021 01:37:07 +0200
+Subject: [PATCH 03/33] mm, slub: allocate private object map for
  validate_slab_cache()
 
 validate_slab_cache() is called either to handle a sysfs write, or from a
@@ -11,7 +11,6 @@ critical sections, so let's do that.
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
 Acked-by: Christoph Lameter <cl@linux.com>
 Acked-by: Mel Gorman <mgorman@techsingularity.net>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |   24 +++++++++++++++---------
  1 file changed, 15 insertions(+), 9 deletions(-)

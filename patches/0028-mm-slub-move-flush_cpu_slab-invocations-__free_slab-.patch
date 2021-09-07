@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Thu, 29 Jul 2021 15:21:26 +0200
-Subject: [PATCH 29/35] mm: slub: Move flush_cpu_slab() invocations
+Date: Fri, 26 Feb 2021 17:11:55 +0100
+Subject: [PATCH 28/33] mm: slub: move flush_cpu_slab() invocations
  __free_slab() invocations out of IRQ context
 
 flush_all() flushes a specific SLAB cache on each CPU (where the cache
@@ -10,14 +10,17 @@ within IPI handler and is problematic for PREEMPT_RT.
 The flush operation is not a frequent operation or a hot path. The
 per-CPU flush operation can be moved to within a workqueue.
 
+Because a workqueue handler, unlike IPI handler, does not disable irqs,
+flush_slab() now has to disable them for working with the kmem_cache_cpu
+fields. deactivate_slab() is safe to call with irqs enabled.
+
 [vbabka@suse.cz: adapt to new SLUB changes]
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slab_common.c |    2 +
- mm/slub.c        |   79 +++++++++++++++++++++++++++++++++++++++++++++----------
- 2 files changed, 68 insertions(+), 13 deletions(-)
+ mm/slub.c        |   94 +++++++++++++++++++++++++++++++++++++++++++++----------
+ 2 files changed, 80 insertions(+), 16 deletions(-)
 
 --- a/mm/slab_common.c
 +++ b/mm/slab_common.c
@@ -39,7 +42,37 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2516,33 +2516,79 @@ static inline void __flush_cpu_slab(stru
+@@ -2496,16 +2496,25 @@ static void put_cpu_partial(struct kmem_
+ 
+ static inline void flush_slab(struct kmem_cache *s, struct kmem_cache_cpu *c)
+ {
+-	void *freelist = c->freelist;
+-	struct page *page = c->page;
++	unsigned long flags;
++	struct page *page;
++	void *freelist;
++
++	local_irq_save(flags);
++
++	page = c->page;
++	freelist = c->freelist;
+ 
+ 	c->page = NULL;
+ 	c->freelist = NULL;
+ 	c->tid = next_tid(c->tid);
+ 
+-	deactivate_slab(s, page, freelist);
++	local_irq_restore(flags);
+ 
+-	stat(s, CPUSLAB_FLUSH);
++	if (page) {
++		deactivate_slab(s, page, freelist);
++		stat(s, CPUSLAB_FLUSH);
++	}
+ }
+ 
+ static inline void __flush_cpu_slab(struct kmem_cache *s, int cpu)
+@@ -2526,15 +2535,27 @@ static inline void __flush_cpu_slab(stru
  	unfreeze_partials_cpu(s, c);
  }
  
@@ -70,9 +103,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	c = this_cpu_ptr(s->cpu_slab);
  
  	if (c->page)
--		flush_slab(s, c, false);
-+		flush_slab(s, c, true);
- 
+ 		flush_slab(s, c);
+@@ -2542,17 +2563,51 @@ static void flush_cpu_slab(void *d)
  	unfreeze_partials(s);
  }
  
@@ -127,7 +159,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -4087,7 +4133,7 @@ int __kmem_cache_shutdown(struct kmem_ca
+@@ -4097,7 +4152,7 @@ int __kmem_cache_shutdown(struct kmem_ca
  	int node;
  	struct kmem_cache_node *n;
  
@@ -136,7 +168,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* Attempt to free all objects */
  	for_each_kmem_cache_node(s, node, n) {
  		free_partial(s, n);
-@@ -4363,7 +4409,7 @@ EXPORT_SYMBOL(kfree);
+@@ -4373,7 +4428,7 @@ EXPORT_SYMBOL(kfree);
   * being allocated from last increasing the chance that the last objects
   * are freed in them.
   */
@@ -145,7 +177,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	int node;
  	int i;
-@@ -4375,7 +4421,6 @@ int __kmem_cache_shrink(struct kmem_cach
+@@ -4385,7 +4440,6 @@ int __kmem_cache_shrink(struct kmem_cach
  	unsigned long flags;
  	int ret = 0;
  
@@ -153,7 +185,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	for_each_kmem_cache_node(s, node, n) {
  		INIT_LIST_HEAD(&discard);
  		for (i = 0; i < SHRINK_PROMOTE_MAX; i++)
-@@ -4425,13 +4470,21 @@ int __kmem_cache_shrink(struct kmem_cach
+@@ -4435,13 +4489,21 @@ int __kmem_cache_shrink(struct kmem_cach
  	return ret;
  }
  

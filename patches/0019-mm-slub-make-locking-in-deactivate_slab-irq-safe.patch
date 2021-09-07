@@ -1,6 +1,6 @@
 From: Vlastimil Babka <vbabka@suse.cz>
-Date: Thu, 29 Jul 2021 15:21:17 +0200
-Subject: [PATCH 20/35] mm, slub: make locking in deactivate_slab() irq-safe
+Date: Wed, 12 May 2021 13:59:58 +0200
+Subject: [PATCH 19/33] mm, slub: make locking in deactivate_slab() irq-safe
 
 dectivate_slab() now no longer touches the kmem_cache_cpu structure, so it will
 be possible to call it with irqs enabled. Just convert the spin_lock calls to
@@ -10,14 +10,13 @@ Note we now have to use cmpxchg_double_slab() for irq-safe slab_lock(), because
 in some situations we don't take the list_lock, which would disable irqs.
 
 Signed-off-by: Vlastimil Babka <vbabka@suse.cz>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  mm/slub.c |    9 +++++----
  1 file changed, 5 insertions(+), 4 deletions(-)
 
 --- a/mm/slub.c
 +++ b/mm/slub.c
-@@ -2209,6 +2209,7 @@ static void deactivate_slab(struct kmem_
+@@ -2223,6 +2223,7 @@ static void deactivate_slab(struct kmem_
  	enum slab_modes l = M_NONE, m = M_NONE;
  	void *nextfree, *freelist_iter, *freelist_tail;
  	int tail = DEACTIVATE_TO_HEAD;
@@ -25,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct page new;
  	struct page old;
  
-@@ -2284,7 +2285,7 @@ static void deactivate_slab(struct kmem_
+@@ -2298,7 +2299,7 @@ static void deactivate_slab(struct kmem_
  			 * that acquire_slab() will see a slab page that
  			 * is frozen
  			 */
@@ -34,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	} else {
  		m = M_FULL;
-@@ -2295,7 +2296,7 @@ static void deactivate_slab(struct kmem_
+@@ -2309,7 +2310,7 @@ static void deactivate_slab(struct kmem_
  			 * slabs from diagnostic functions will not see
  			 * any frozen slabs.
  			 */
@@ -43,7 +42,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		}
  	}
  
-@@ -2312,14 +2313,14 @@ static void deactivate_slab(struct kmem_
+@@ -2326,14 +2327,14 @@ static void deactivate_slab(struct kmem_
  	}
  
  	l = m;
