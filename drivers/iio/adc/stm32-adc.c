@@ -2081,7 +2081,7 @@ static int stm32_adc_generic_chan_init(struct iio_dev *indio_dev,
 		/* st,min-sample-time-nsecs is optional */
 		if (!ret) {
 			stm32_adc_smpr_init(adc, channels[scan_index].channel, val);
-			if (vin[1])
+			if (differential)
 				stm32_adc_smpr_init(adc, vin[1], val);
 		} else if (ret != -EINVAL) {
 			dev_err(&indio_dev->dev, "Invalid st,min-sample-time-nsecs property %d\n",
