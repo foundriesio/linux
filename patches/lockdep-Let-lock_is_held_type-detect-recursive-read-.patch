@@ -1,5 +1,5 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Wed, 1 Sep 2021 17:57:18 +0200
+Date: Fri, 3 Sep 2021 10:40:01 +0200
 Subject: [PATCH] lockdep: Let lock_is_held_type() detect recursive read as
  read
 
@@ -12,8 +12,10 @@ Rework the check to additionally recognise lock's read value one and two
 as a read held lock.
 
 Fixes: e918188611f07 ("locking: More accurate annotations for read_lock()")
-Link: https://lkml.kernel.org/r/20210903084001.lblecrvz4esl4mrr@linutronix.de
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Acked-by: Waiman Long <longman@redhat.com>
+Acked-by: Boqun Feng <boqun.feng@gmail.com>
+Link: https://lkml.kernel.org/r/20210910135312.4axzdxt74rgct2ur@linutronix.de
 ---
  kernel/locking/lockdep.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
@@ -25,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  		if (match_held_lock(hlock, lock)) {
 -			if (read == -1 || hlock->read == read)
-+			if (read == -1 || hlock->read == !!read)
++			if (read == -1 || !!hlock->read == read)
  				return LOCK_STATE_HELD;
  
  			return LOCK_STATE_NOT_HELD;

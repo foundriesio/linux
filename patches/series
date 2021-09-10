@@ -81,6 +81,9 @@ sched-Switch-wait_task_inactive-to-HRTIMER_MODE_REL_.patch
 sched-Prevent-balance_push-on-remote-runqueues.patch
 lockdep-Let-lock_is_held_type-detect-recursive-read-.patch
 sched-Make-the-idle-timer-expire-always-in-hardirq-c.patch
+ASoC-mediatek-mt8195-Remove-unsued-irqs_lock.patch
+smack-Guard-smack_ipv6_lock-definition-within-a-SMAC.patch
+virt-acrn-Remove-unsued-acrn_irqfds_mutex.patch
 
 #KCOV
 0001_documentation_kcov_include_types_h_in_the_example.patch
@@ -267,6 +270,8 @@ softirq__Disable_softirq_stacks_for_RT.patch
 # irqwork: Needs upstream consolidation
 ###########################################################################
 irqwork__push_most_work_into_softirq_context.patch
+irq_work-Allow-irq_work_sync-to-sleep-if-irq_work-no.patch
+irq_work-Also-rcuwait-for-IRQ_WORK_HARD_IRQ-on-PREEM.patch
 
 ###########################################################################
 # mm: Assorted RT bits. Need care
@@ -351,6 +356,8 @@ drm_i915__Dont_disable_interrupts_on_PREEMPT_RT_during_atomic_updates.patch
 drm_i915__disable_tracing_on_-RT.patch
 drm_i915__skip_DRM_I915_LOW_LEVEL_TRACEPOINTS_with_NOTRACE.patch
 drm_i915_gt__Only_disable_interrupts_for_the_timeline_lock_on_force-threaded.patch
+drm-i915-gt-Queue-and-wait-for-the-irq_work-item.patch
+drm-i915-gt-Use-spin_lock_irq-instead-of-local_irq_d.patch
 
 ###########################################################################
 # tty/serial: ARM drivers
