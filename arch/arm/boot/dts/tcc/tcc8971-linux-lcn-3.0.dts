@@ -9,8 +9,8 @@
 #include "tcc8971-display.dtsi"
 
 #include "tcc-pmap-897x-linux-customized.dtsi"
-#include "tcc-pmap-common.dtsi"
 #include <dt-bindings/pmap/tcc897x/pmap-tcc897x-linux-ivi.h>
+#include "tcc-pmap-common.dtsi"
 
 / {
 	model = "Telechips TCC8971 LCN Board SV3.0";
