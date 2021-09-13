@@ -17,6 +17,7 @@
 
 #include "tcc-pmap-901x-android-customized.dtsi"
 
+#include <dt-bindings/pmap/tcc901x/pmap-tcc901x-android-ivi.h>
 #include "tcc-pmap-common.dtsi"
 
 #include "tcc9010-android-lpd4321-v0.1.dts"

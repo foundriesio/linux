@@ -17,6 +17,7 @@
 
 #include "tcc-pmap-899x-linux-customized.dtsi"
 
+#include <dt-bindings/pmap/tcc899x/pmap-tcc899x-linux-ivi.h>
 #include "tcc-pmap-common.dtsi"
 
 #include "tcc8990-linux-lpd4322-v0.1.dts"

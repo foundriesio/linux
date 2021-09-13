@@ -2,15 +2,22 @@
  *
  * Copyright (C) Telechips Inc.
  */
-#ifndef DT_BINDINGS_PMAP_TCC803X_LINUX_CUSTOMIZED_H
-#define DT_BINDINGS_PMAP_TCC803X_LINUX_CUSTOMIZED_H
+#ifndef DT_PMAP_TCC803X_LINUX_CUSTOMIZED_DTSI
+#define DT_PMAP_TCC803X_LINUX_CUSTOMIZED_DTSI
+
+/*
+ * Temporary chip definition before sending
+ * VPU memory calculation code to dt-bindings
+ * completely
+ */
+#define ARCH_TCC803X_LINUX
 
 //########################################################################
 /**************** Customer edit from the following line. ****************/
 //########################################################################
 
 // Enable in case supporting the display-device
-//or video-contents rotation (90/180/270)
+// or video-contents rotation (90/180/270)
 // have to have rotation h/w block
 //#define SUPPORT_ROTATION
 #define SUPPORT_TCC_HEVC_4K             (1)
@@ -186,4 +193,4 @@
 /****************           Customer edit - end!          ****************/
 //########################################################################
 
-#endif //DT_BINDINGS_PMAP_TCC805X_LINUX_CUSTOMIZED_H
+#endif //DT_PMAP_TCC803X_LINUX_CUSTOMIZED_DTSI

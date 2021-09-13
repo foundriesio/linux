@@ -6,5 +6,6 @@
 #define DT_BINDINGS_PMAP_TCC803X_LINUX_IVI_H
 
 #include <dt-bindings/pmap/tcc803x/pmap-tcc803x-linux-ivi-display.h>
+#include <dt-bindings/pmap/tcc803x/pmap-tcc803x-video.h>
 
 #endif//DT_BINDINGS_PMAP_TCC803X_LINUX_IVI_H

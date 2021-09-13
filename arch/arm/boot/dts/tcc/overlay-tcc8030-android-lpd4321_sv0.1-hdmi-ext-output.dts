@@ -16,6 +16,7 @@
 
 #include "tcc-pmap-803x-android-customized.dtsi"
 
+#include <dt-bindings/pmap/tcc803x/pmap-tcc803x-android-ivi.h>
 #include "tcc-pmap-common.dtsi"
 
 #include "tcc8030-android-lpd4321_sv0.1-hdmi-ext-output.dts"

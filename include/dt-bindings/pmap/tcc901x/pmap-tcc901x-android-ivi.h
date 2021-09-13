@@ -6,5 +6,6 @@
 #define DT_BINDINGS_PMAP_TCC901X_ANDROID_IVI_H
 
 #include <dt-bindings/pmap/tcc901x/pmap-tcc901x-android-ivi-display.h>
+#include <dt-bindings/pmap/tcc901x/pmap-tcc901x-video.h>
 
 #endif//DT_BINDINGS_PMAP_TCC901X_ANDROID_IVI_H

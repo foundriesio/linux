@@ -16,6 +16,7 @@
 
 #include "tcc-pmap-805x-android-customized.dtsi"
 
+#include <dt-bindings/pmap/tcc805x/pmap-tcc805x-android-ivi.h>
 #include "tcc-pmap-common.dtsi"
 
 #include "tcc8053-android-lpd4x322_sv1.0.dts"

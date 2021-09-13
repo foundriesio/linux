@@ -6,5 +6,6 @@
 #define DT_BINDINGS_PMAP_TCC897X_LINUX_IVI_H
 
 #include <dt-bindings/pmap/tcc897x/pmap-tcc897x-linux-ivi-display.h>
+#include <dt-bindings/pmap/tcc897x/pmap-tcc897x-video.h>
 
 #endif//DT_BINDINGS_PMAP_TCC897X_LINUX_IVI_H

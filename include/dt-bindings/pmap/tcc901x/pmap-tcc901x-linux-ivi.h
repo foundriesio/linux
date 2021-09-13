@@ -6,5 +6,6 @@
 #define DT_BINDINGS_PMAP_TCC901X_LINUX_IVI_H
 
 #include <dt-bindings/pmap/tcc901x/pmap-tcc901x-linux-ivi-display.h>
+#include <dt-bindings/pmap/tcc901x/pmap-tcc901x-video.h>
 
 #endif//DT_BINDINGS_PMAP_TCC901X_LINUX_IVI_H
