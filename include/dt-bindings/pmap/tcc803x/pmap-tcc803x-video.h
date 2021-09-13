@@ -2,8 +2,8 @@
 /*
  * Copyright (C) 2020 Telechips Inc.
  */
-#ifndef DT_BINDINGS_PMAP_TCC803X_LINUX_IVI_VIDEO_H
-#define DT_BINDINGS_PMAP_TCC803X_LINUX_IVI_VIDEO_H
+#ifndef DT_BINDINGS_PMAP_TCC803X_VIDEO_H
+#define DT_BINDINGS_PMAP_TCC803X_VIDEO_H
 
 /*
 * For configuration for vpu's memory
@@ -14,6 +14,12 @@
 #define INC_DEVICE_TREE_PMAP
 //#define TEST_VPU_DRAM_INTLV
 //#define PMAP_TO_CMA
+
+/*
+ * vpu's configuration for TCC803x
+ */
+#define TCC_SUPPORT_JPU
+#define TCC_SUPPORT_WAVE410_HEVC
 
 /*
  * [20210903] Temporary fix -because followings are used
@@ -575,4 +581,4 @@
 #endif
 #define ENC_EXT15_SIZE ARRAY_MBYTE(INST_16TH_ENC_PROC_SIZE)
 
-#endif//DT_BINDINGS_PMAP_TCC803X_LINUX_IVI_VIDEO_H
+#endif//DT_BINDINGS_PMAP_TCC803X_VIDEO_H

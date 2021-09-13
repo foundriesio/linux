@@ -7,9 +7,15 @@
 #ifndef VPU_WBUFFER_H
 #define VPU_WBUFFER_H
 
+#undef SZ_1MB
+#define SZ_1MB              (1024*1024)
+#undef ARRAY_MBYTE
+#define ARRAY_MBYTE(x)      ((((x) + (SZ_1MB-1))>> 20) << 20)
+
+/******************* SYNC WITH pmap-tccXXX-XXX-XXX-video.h ******************/
 #ifdef CONFIG_SUPPORT_TCC_JPU
 #if defined(JPU_C5)
-#include <video/tcc/TCC_JPU_CODEC.h>
+#include <video/tcc/TCC_JPU_CODEC.h> //JPU C5
 #else
 #include <video/tcc/TCC_JPU_C6.h> //JPU C6
 #endif
@@ -18,7 +24,7 @@
 #if defined(CONFIG_TYPE_C5)
 #include <video/tcc/TCC_VPUs_CODEC.h> // VPU video codec
 #else
-#include <video/tcc/TCC_VPU_CODEC.h> //CODA960
+#include <video/tcc/TCC_VPU_CODEC.h> // CODA960 or BODA950
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE410_HEVC
@@ -37,12 +43,6 @@
 #include <video/tcc/TCC_VPU_HEVC_ENC_CODEC.h> //WAVE420L
 #endif
 
-#undef SZ_1MB
-#define SZ_1MB              (1024*1024)
-#undef ARRAY_MBYTE
-#define ARRAY_MBYTE(x)      ((((x) + (SZ_1MB-1))>> 20) << 20)
-
-/******************* SYNC WITH pmap-tccXXX-XXX-XXX-video.h ******************/
 #if defined(CONFIG_VDEC_CNT_5)
 #define VPU_INST_MAX 5
 #elif defined(CONFIG_VDEC_CNT_4)
@@ -93,31 +93,31 @@
 #define VPU_ENC_MAX_CNT 0
 #endif
 
-#define VPU_WORK_BUF_SIZE       (PAGE_ALIGN(WORK_CODE_PARA_BUF_SIZE))
+#define VPU_WORK_BUF_SIZE        (PAGE_ALIGN(WORK_CODE_PARA_BUF_SIZE))
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
-#define WAVExxx_WORK_BUF_SIZE   (PAGE_ALIGN(WAVE5_WORK_CODE_BUF_SIZE))
+#define WAVExxx_WORK_BUF_SIZE    (PAGE_ALIGN(WAVE5_WORK_CODE_BUF_SIZE))
 #elif defined(CONFIG_SUPPORT_TCC_WAVE410_HEVC) // HEVC
-#define WAVExxx_WORK_BUF_SIZE   (PAGE_ALIGN(WAVE4_WORK_CODE_BUF_SIZE))
+#define WAVExxx_WORK_BUF_SIZE    (PAGE_ALIGN(WAVE4_WORK_CODE_BUF_SIZE))
 #else
-#define WAVExxx_WORK_BUF_SIZE   (0)
+#define WAVExxx_WORK_BUF_SIZE    (0)
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_G2V2_VP9 // VP9
-#define G2V2_VP9_WORK_BUF_SIZE  (0) //(PAGE_ALIGN(VP9_WORK_CODE_BUF_SIZE))
+#define G2V2_VP9_WORK_BUF_SIZE   (0) //(PAGE_ALIGN(VP9_WORK_CODE_BUF_SIZE))
 #else
-#define G2V2_VP9_WORK_BUF_SIZE  (0)
+#define G2V2_VP9_WORK_BUF_SIZE   (0)
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_JPU
-#define JPU_WORK_BUF_SIZE       (0) //(PAGE_ALIGN(JPU_WORK_CODE_BUF_SIZE))
+#define JPU_WORK_BUF_SIZE        (0) //(PAGE_ALIGN(JPU_WORK_CODE_BUF_SIZE))
 #else
-#define JPU_WORK_BUF_SIZE       (0)
+#define JPU_WORK_BUF_SIZE        (0)
 #endif
 
 #ifdef CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC
 #define VPU_HEVC_ENC_WORK_BUF_SIZE \
-        (PAGE_ALIGN(VPU_HEVC_ENC_WORK_CODE_BUF_SIZE))
+    (PAGE_ALIGN(VPU_HEVC_ENC_WORK_CODE_BUF_SIZE))
 #else
 #define VPU_HEVC_ENC_WORK_BUF_SIZE (0)
 #endif
@@ -139,7 +139,7 @@
 #define ENC_HEADER_BUF_SIZE (0)
 #endif
 
-#ifdef CONFIG_SUPPORT_TCC_WAVE512_4K_D2 // HEVC/VP9
+#if defined(CONFIG_SUPPORT_TCC_WAVE512_4K_D2) // HEVC/VP9
 #define USER_DATA_BUF_SIZE (WAVE5_USERDATA_BUF_SIZE)
 #elif defined(CONFIG_SUPPORT_TCC_WAVE410_HEVC)  // HEVC
 #define USER_DATA_BUF_SIZE (WAVE4_USERDATA_BUF_SIZE)

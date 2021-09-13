@@ -1,12 +1,9 @@
-// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
+/* SPDX-License-Identifier: (GPL-2.0+ OR MIT) */
 /*
- * Copyright (C) Telechips Inc.
+ * Copyright (C) 2020 Telechips Inc.
  */
-
-////////////////////////////////////////////////////////////////////////////////
-#ifndef TCC_PMAP_VIDEO_DTSI
-#define TCC_PMAP_VIDEO_DTSI
-////////////////////////////////////////////////////////////////////////////////
+#ifndef DT_BINDINGS_PMAP_TCC901X_VIDEO_H
+#define DT_BINDINGS_PMAP_TCC901X_VIDEO_H
 
 /*
 * For configuration for vpu's memory
@@ -17,6 +14,12 @@
 #define INC_DEVICE_TREE_PMAP
 //#define TEST_VPU_DRAM_INTLV
 //#define PMAP_TO_CMA
+
+/*
+ * vpu's configuration for TCC805x
+ */
+#define TCC_SUPPORT_JPU
+#define TCC_SUPPORT_WAVE512_4K_D2
 
 /*
  * [20210903] Temporary fix -because followings are used
@@ -71,32 +74,32 @@
 
 #ifdef TCC_SUPPORT_JPU
 #if defined(JPU_C5)
-#include "../../../../../include/video/tcc/TCC_JPU_CODEC.h" //JPU C5
+#include <video/tcc/TCC_JPU_CODEC.h> //JPU C5
 #else
-#include "../../../../../include/video/tcc/TCC_JPU_C6.h" //JPU C6
+#include <video/tcc/TCC_JPU_C6.h> //JPU C6
 #endif
 #endif
 
 #if defined(SUPPORT_TYPE_C5)
-#include "../../../../../include/video/tcc/TCC_VPUs_CODEC.h" // VPU video codec
+#include <video/tcc/TCC_VPUs_CODEC.h> // VPU video codec
 #else
-#include "../../../../../include/video/tcc/TCC_VPU_CODEC.h" // CODA960 or BODA950
+#include <video/tcc/TCC_VPU_CODEC.h> // CODA960 or BODA950
 #endif
 
 #ifdef TCC_SUPPORT_WAVE410_HEVC
-#include "../../../../../include/video/tcc/TCC_HEVC_CODEC.h" //WAVE410
+#include <video/tcc/TCC_HEVC_CODEC.h> //WAVE410
 #endif
 
 #ifdef TCC_SUPPORT_G2V2_VP9
-#include "../../../../../include/video/tcc/TCC_VP9_CODEC.h"
+#include <video/tcc/TCC_VP9_CODEC.h>
 #endif
 
 #ifdef TCC_SUPPORT_WAVE512_4K_D2
-#include "../../../../../include/video/tcc/TCC_VPU_4K_D2_CODEC.h" //WAVE512
+#include <video/tcc/TCC_VPU_4K_D2_CODEC.h> //WAVE512
 #endif
 
 #ifdef TCC_SUPPORT_WAVE420L_VPU_HEVC_ENC
-#include "../../../../../include/video/tcc/TCC_VPU_HEVC_ENC_CODEC.h" //WAVE420L
+#include <video/tcc/TCC_VPU_HEVC_ENC_CODEC.h> //WAVE420L
 #endif
 
 #if INST_5TH_USE
@@ -578,5 +581,4 @@
 #endif
 #define ENC_EXT15_SIZE ARRAY_MBYTE(INST_16TH_ENC_PROC_SIZE)
 
-////////////////////////////////////////////////////////////////////////////////
-#endif //TCC_PMAP_VIDEO_DTSI
+#endif//DT_BINDINGS_PMAP_TCC901X_VIDEO_H
