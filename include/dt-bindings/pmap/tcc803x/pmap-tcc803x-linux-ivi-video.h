@@ -13,6 +13,7 @@
 #define _CODEC_ADDR_T_
 #define INC_DEVICE_TREE_PMAP
 //#define TEST_VPU_DRAM_INTLV
+//#define ANDROID
 //#define PMAP_TO_CMA
 
 /*
@@ -20,9 +21,49 @@
  * in tcc-pmap-common.dtsi. If these are defined
  * in display code, these will be removed in future.
  */
+#undef PRIMARY_FRAMEBUFFER_WIDTH
+#define PRIMARY_FRAMEBUFFER_WIDTH       (1920)
+#undef PRIMARY_FRAMEBUFFER_HEIGHT
+#define PRIMARY_FRAMEBUFFER_HEIGHT      (720)
+#undef SECONDARY_FRAMEBUFFER_WIDTH
+#define SECONDARY_FRAMEBUFFER_WIDTH     (1920)
+#undef SECONDARY_FRAMEBUFFER_HEIGHT
+#define SECONDARY_FRAMEBUFFER_HEIGHT    (720)
+#undef TERTIARY_FRAMEBUFFER_WIDTH
+#define TERTIARY_FRAMEBUFFER_WIDTH      (0)
+#undef TERTIARY_FRAMEBUFFER_HEIGHT
+#define TERTIARY_FRAMEBUFFER_HEIGHT     (0)
+
+#undef PRIMARY_TARGET_WIDTH
+#define PRIMARY_TARGET_WIDTH            (1920)
+#undef PRIMARY_TARGET_HEIGHT
+#define PRIMARY_TARGET_HEIGHT           (720)
+#undef SECONDARY_TARGET_WIDTH
+#define SECONDARY_TARGET_WIDTH          (1920)
+#undef SECONDARY_TARGET_HEIGHT
+#define SECONDARY_TARGET_HEIGHT         (720)
+#undef TERTIARY_TARGET_WIDTH
+#define TERTIARY_TARGET_HEIGHT          (0)
+#undef TERTIARY_TARGET_WIDTH
+#define TERTIARY_TARGET_HEIGHT          (0)
+#undef SUPPORT_DISPLAY_MAX_WIDTH
+#undef SUPPORT_DISPLAY_MAX_HEIGHT
+#if ((PRIMARY_TARGET_WIDTH*PRIMARY_TARGET_HEIGHT) > \
+    (SECONDARY_TARGET_WIDTH*SECONDARY_TARGET_HEIGHT))
+#define SUPPORT_DISPLAY_MAX_WIDTH       PRIMARY_TARGET_WIDTH
+#define SUPPORT_DISPLAY_MAX_HEIGHT      PRIMARY_TARGET_HEIGHT
+#else
+#define SUPPORT_DISPLAY_MAX_WIDTH       SECONDARY_TARGET_WIDTH
+#define SUPPORT_DISPLAY_MAX_HEIGHT      SECONDARY_TARGET_HEIGHT
+#endif
 #define SUPPORT_VIQE_MAX_WIDTH          (1920)
 #define SUPPORT_VIQE_MAX_HEIGHT         (1088)
 //*/
+
+// include codec headers suitable for TCC805x
+#include <video/tcc/TCC_JPU_C6.h> //JPU C6
+#include <video/tcc/TCC_VPU_CODEC.h> //CODA960
+#include <video/tcc/TCC_HEVC_CODEC.h> //WAVE410
 
 #undef SZ_1MB
 #define SZ_1MB              (1024*1024)
@@ -63,39 +104,6 @@
     *use) /*f=2*/
 
 /************************* SYNC WITH tcc_vpu_wbuffer.h ************************/
-#ifndef _VPU_WBUFFER_DTSI_
-#define _VPU_WBUFFER_DTSI_
-
-#ifdef TCC_SUPPORT_JPU
-#if defined(JPU_C5)
-#include <video/tcc/TCC_JPU_CODEC.h> //JPU C5
-#else
-#include <video/tcc/TCC_JPU_C6.h> //JPU C6
-#endif
-#endif
-
-#if defined(SUPPORT_TYPE_C5)
-#include <video/tcc/TCC_VPUs_CODEC.h> // VPU video codec
-#else
-#include <video/tcc/TCC_VPU_CODEC.h> // CODA960 or BODA950
-#endif
-
-#ifdef TCC_SUPPORT_WAVE410_HEVC
-#include <video/tcc/TCC_HEVC_CODEC.h> //WAVE410
-#endif
-
-#ifdef TCC_SUPPORT_G2V2_VP9
-#include <video/tcc/TCC_VP9_CODEC.h>
-#endif
-
-#ifdef TCC_SUPPORT_WAVE512_4K_D2
-#include <video/tcc/TCC_VPU_4K_D2_CODEC.h> //WAVE512
-#endif
-
-#ifdef TCC_SUPPORT_WAVE420L_VPU_HEVC_ENC
-#include <video/tcc/TCC_VPU_HEVC_ENC_CODEC.h> //WAVE420L
-#endif
-
 #if INST_5TH_USE
 #define VPU_INST_MAX 5
 #elif INST_4TH_USE
@@ -146,34 +154,13 @@
 #define VPU_ENC_MAX_CNT 0
 #endif
 
-#define VPU_WORK_BUF_SIZE        (WORK_CODE_PARA_BUF_SIZE)
+#define NUM_OF_MAIN_INSTANCE         (INST_1ST_USE + INST_2ND_USE)
 
-#if defined(TCC_SUPPORT_WAVE512_4K_D2) // HEVC/VP9
-#define WAVExxx_WORK_BUF_SIZE    (WAVE5_WORK_CODE_BUF_SIZE)
-#elif defined(TCC_SUPPORT_WAVE410_HEVC) // HEVC
-#define WAVExxx_WORK_BUF_SIZE    (WAVE4_WORK_CODE_BUF_SIZE)
-#else
-#define WAVExxx_WORK_BUF_SIZE    (0)
-#endif
-
-#ifdef TCC_SUPPORT_G2V2_VP9 // VP9
-#define G2V2_VP9_WORK_BUF_SIZE   (0) //(PAGE_ALIGN(VP9_WORK_CODE_BUF_SIZE))
-#else
-#define G2V2_VP9_WORK_BUF_SIZE   (0)
-#endif
-
-#ifdef TCC_SUPPORT_JPU
-#define JPU_WORK_BUF_SIZE        (0) //(PAGE_ALIGN(JPU_WORK_CODE_BUF_SIZE))
-#else
-#define JPU_WORK_BUF_SIZE        (0)
-#endif
-
-#ifdef TCC_SUPPORT_WAVE420L_VPU_HEVC_ENC
-#define VPU_HEVC_ENC_WORK_BUF_SIZE \
-    (VPU_HEVC_ENC_WORK_CODE_BUF_SIZE)
-#else
-#define VPU_HEVC_ENC_WORK_BUF_SIZE (0)
-#endif
+#define VPU_WORK_BUF_SIZE            (WORK_CODE_PARA_BUF_SIZE)
+#define WAVExxx_WORK_BUF_SIZE        (WAVE4_WORK_CODE_BUF_SIZE)
+#define G2V2_VP9_WORK_BUF_SIZE       (0)
+#define JPU_WORK_BUF_SIZE            (0) //(PAGE_ALIGN(JPU_WORK_CODE_BUF_SIZE))
+#define VPU_HEVC_ENC_WORK_BUF_SIZE   (0)
 
 #if INST_ENC_1ST_USE  || INST_ENC_2ND_USE   || \
    INST_ENC_3RD_USE   || INST_ENC_4TH_USE   || \
@@ -191,20 +178,26 @@
    INST_ENC_11TH_IS_HEVC_TYPE  || INST_ENC_12TH_IS_HEVC_TYPE  || \
    INST_ENC_13TH_IS_HEVC_TYPE  || INST_ENC_14TH_IS_HEVC_TYPE  || \
    INST_ENC_15TH_IS_HEVC_TYPE  || INST_ENC_16TH_IS_HEVC_TYPE
-#define ENC_HEADER_BUF_SIZE (VPU_HEVC_ENC_HEADER_BUF_SIZE)
+#define ENC_HEADER_BUF_SIZE  (VPU_HEVC_ENC_HEADER_BUF_SIZE)
 #else
-#define ENC_HEADER_BUF_SIZE (VPU_ENC_PUT_HEADER_SIZE)
+#define ENC_HEADER_BUF_SIZE  (VPU_ENC_PUT_HEADER_SIZE)
 #endif
 #else
-#define ENC_HEADER_BUF_SIZE (0)
+#define ENC_HEADER_BUF_SIZE  (0)
 #endif
 
-#if defined(TCC_SUPPORT_WAVE512_4K_D2) // HEVC/VP9
-#define USER_DATA_BUF_SIZE (WAVE5_USERDATA_BUF_SIZE)
-#elif defined(TCC_SUPPORT_WAVE410_HEVC) // HEVC
-#define USER_DATA_BUF_SIZE (WAVE4_USERDATA_BUF_SIZE)
+#if INST_1ST_USE  || INST_2ND_USE   || \
+   INST_3RD_USE   || INST_4TH_USE   || \
+   INST_5TH_USE
+#if INST_1ST_IS_HEVC_TYPE  || INST_2ND_IS_HEVC_TYPE   || \
+   INST_3RD_IS_HEVC_TYPE   || INST_4TH_IS_HEVC_TYPE   || \
+   INST_5TH_IS_HEVC_TYPE
+#define USER_DATA_BUF_SIZE   (WAVE4_USERDATA_BUF_SIZE)
 #else
-#define USER_DATA_BUF_SIZE (50*1024)
+#define USER_DATA_BUF_SIZE   (50*1024)
+#endif
+#else
+#define USER_DATA_BUF_SIZE   (0)
 #endif
 
 #if defined(TEST_VPU_DRAM_INTLV)
@@ -229,13 +222,9 @@
                         (ENC_HEADER_BUF_SIZE * VPU_ENC_MAX_CNT) + \
                         (USER_DATA_BUF_SIZE * VPU_INST_MAX)))
 #endif
-
-#endif //_VPU_WBUFFER_DTSI_
 /************************* SYNC WITH tcc_vpu_wbuffer.h ************************/
 
 // Decoder
-#define NUM_OF_MAIN_INSTANCE    (INST_1ST_USE + INST_2ND_USE)
-
 #if (INST_1ST_IS_HEVC_TYPE > 0)
 #define INST_1ST_PROC_SIZE WAVE_CAL_PROCBUFFER( \
                         INST_1ST_USE, \

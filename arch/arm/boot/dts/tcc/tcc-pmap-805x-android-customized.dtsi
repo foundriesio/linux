@@ -2,106 +2,131 @@
 /*
  * Copyright (C) Telechips Inc.
  */
-#ifndef DT_PMAP_TCC805X_ANDROID_CUSTOMIZED_DTSI
-#define DT_PMAP_TCC805X_ANDROID_CUSTOMIZED_DTSI
 
 #include "../../../../../include/generated/autoconf.h"
 
-/*
- * Temporary chip definition before sending
- * VPU memory calculation code to dt-bindings
- * completely
- */
-#define ARCH_TCC805X_ANDROID
+#include <dt-bindings/pmap/tcc805x/pmap-tcc805x-android-ivi.h>
 
-#ifndef CONFIG_ARCH_TCC805X
-#define CONFIG_ARCH_TCC805X
-#endif
+#undef SZ_1MB
+#define SZ_1MB				(1024*1024)
+#undef ARRAY_16MBYTE
+#define ARRAY_16MBYTE(x)	((((x) + ((16*SZ_1MB)-1)) >> 24) << 24)
+#undef ARRAY_MBYTE
+#define ARRAY_MBYTE(x)		((((x) + (SZ_1MB-1)) >> 20) << 20)
+#undef ARRAY_256KBYTE
+#define ARRAY_256KBYTE(x)	((((x) + ((SZ_1MB/4)-1)) >> 18) << 18)
+#define ALIGNED_BUF256(x)	(((x) + 255) & ~(255))
+#define ALIGNED_BUF64(x)	(((x) + 63) & ~(63))
 
-#ifndef CONFIG_ANDROID
-#define CONFIG_ANDROID
-#endif
+
+//for HEVC/VPU framebuffer_size Calculation
+#define WAVE_CAL_PROCBUFFER(use,w,h,f) \
+	(((0x1400000 \
+	/*the rest except framebuffer, userdatabuffer and workbuffer*/) \
+	+ (ARRAY_MBYTE(((w*h*2)+((w*h*37)/100))*(f+10))))*use)
+#define VPU_CAL_PROCBUFFER(use,w,h,f) \
+	(((0x400000 /*the rest except framebuffer and workbuffer*/) \
+	+ ARRAY_MBYTE(((w*h*182)/100)*(f+7)))*use)
+#define VPU_CAL_ENC_PROCBUFFER(use,w,h,f) \
+	(((0x300000 /*the rest except framebuffer and workbuffer*/) \
+	+ ARRAY_MBYTE(w*h*3/2) \
+	+ ARRAY_MBYTE((((w+15)/16*16)*((h+15)/16*16)*3/2)*f))*use)
+#define VPU_HEVC_ENC_CAL_PROCBUFFER(use,w,h,f) \
+	(((0x00C00000 \
+	/*the rest except framebuffer, userdatabuffer and workbuffer*/) \
+	+(f*ARRAY_MBYTE(ALIGNED_BUF256(w)*ALIGNED_BUF64(h)*69/32+(20*1024)))) \
+	*use) /*f=2*/
 
 //########################################################################
-/**************** Customer edit from the following line. ****************/
+/******************** Need to be optimized by customer ******************/
 //########################################################################
 
 // Enable in case supporting the display-device
 // or video-contents rotation (90/180/270)
 // have to have rotation h/w block
 //#define SUPPORT_ROTATION
-#define SUPPORT_TCC_HEVC_4K             (1)
 
 //***************************** VPU/HEVC ******************************/
 //Should sync with hardware/telechips/omx/omx_videodec_interface/include/vdec.h
-#if SUPPORT_TCC_HEVC_4K
-#define SUPPORT_VIDEO_MAX_WIDTH         (4096)
-#define SUPPORT_VIDEO_MAX_HEIGHT        (2176)
+#if defined(CONFIG_SUPPORT_4K_VIDEO) || \
+	defined(CONFIG_SUPPORT_TCC_HEVC_4K) || \
+	defined(CONFIG_SUPPORT_TCC_VP9_4K)
+#define SUPPORT_VIDEO_MAX_WIDTH		4096
+#define SUPPORT_VIDEO_MAX_HEIGHT	2160
 #else
-#define SUPPORT_VIDEO_MAX_WIDTH         (1920)
-#define SUPPORT_VIDEO_MAX_HEIGHT        (1088)
+#define SUPPORT_VIDEO_MAX_WIDTH		1920
+#define SUPPORT_VIDEO_MAX_HEIGHT	1088
 #endif
+
+#define SUPPORT_VIQE_MAX_WIDTH		1920
+#define SUPPORT_VIQE_MAX_HEIGHT		1088
 
 /*
  * DECODER on VPU
  *
  * INST_XXX_USE : Decide whether to use an instance or not. 1 means to use.
  * INST_XXX_IS_HEVC_TYPE : Decide whether or not to set the HEVC codec type.
- *                  1 means to set to HEVC (please put the defconfig
- *                  file to "CONFIG_SUPPORT_TCC_HEVC_4K=y")
+ *                      1 means to set HEVC (please check
+ *                      "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable
+ *                      HEVC at first.)
  * INST_XXX_VIDEO_WIDTH : Set the width of the video (HEVC: 32x alignment,
- *                  Other: 16x alignment)
- * INST_XXX_VIDEO_HEIGHT : Set the height of the video (HEVC: 32x alignment,
- *                  Other: 16x alignment)
+ *                      Other: 16x alignment)
+ * INST_XXX_VIDEO_HEIGHT : Set the width of the video (HEVC: 32x alignment,
+ *                      Other: 16x alignment)
  * INST_XXX_MAX_FRAMEBUFFER : Set the number of frame buffers (HEVC-4K: 7,
- *                  Others: 24)
+ *                      Others: 1~24)
  */
-#define INST_1ST_USE                    (1)
-#define INST_1ST_IS_HEVC_TYPE           (1)
-#define INST_1ST_VIDEO_WIDTH            (SUPPORT_VIDEO_MAX_WIDTH)
-#define INST_1ST_VIDEO_HEIGHT           (SUPPORT_VIDEO_MAX_HEIGHT)
-#if SUPPORT_TCC_HEVC_4K
-#define INST_1ST_MAX_FRAMEBUFFERS       (7)
+#define INST_1ST_USE                (1)
+#define INST_1ST_IS_HEVC_TYPE       (1)
+#if defined(CONFIG_SUPPORT_4K_VIDEO) || \
+	defined(CONFIG_SUPPORT_TCC_HEVC_4K) || \
+	defined(CONFIG_SUPPORT_TCC_VP9_4K)
+#define INST_1ST_VIDEO_WIDTH        (4096)
+#define INST_1ST_VIDEO_HEIGHT       (2176)
+#define INST_1ST_MAX_FRAMEBUFFERS   (7)
 #else
-#define INST_1ST_MAX_FRAMEBUFFERS       (24)
+#define INST_1ST_VIDEO_WIDTH        (1920)
+#define INST_1ST_VIDEO_HEIGHT       (1088)
+#define INST_1ST_MAX_FRAMEBUFFERS   (24)
 #endif
 
-#define INST_2ND_USE                    (1)
-#define INST_2ND_IS_HEVC_TYPE           (0)
-#define INST_2ND_VIDEO_WIDTH            (1920)
-#define INST_2ND_VIDEO_HEIGHT           (1088)
-#define INST_2ND_MAX_FRAMEBUFFERS       (24)
+#define INST_2ND_USE                (1)
+#define INST_2ND_IS_HEVC_TYPE       (0)
+#define INST_2ND_VIDEO_WIDTH        (1920)
+#define INST_2ND_VIDEO_HEIGHT       (1088)
+#define INST_2ND_MAX_FRAMEBUFFERS   (24)
 
-#define INST_3RD_USE                    (0)
-#define INST_3RD_IS_HEVC_TYPE           (0)
-#define INST_3RD_VIDEO_WIDTH            (1920)
-#define INST_3RD_VIDEO_HEIGHT           (1088)
-#define INST_3RD_MAX_FRAMEBUFFERS       (24)
+#define INST_3RD_USE                (0)
+#define INST_3RD_IS_HEVC_TYPE       (0)
+#define INST_3RD_VIDEO_WIDTH        (720)
+#define INST_3RD_VIDEO_HEIGHT       (576)
+#define INST_3RD_MAX_FRAMEBUFFERS   (24)
 
-#define INST_4TH_USE                    (0)
-#define INST_4TH_IS_HEVC_TYPE           (0)
-#define INST_4TH_VIDEO_WIDTH            (1920)
-#define INST_4TH_VIDEO_HEIGHT           (1088)
-#define INST_4TH_MAX_FRAMEBUFFERS       (24)
+#define INST_4TH_USE                (0)
+#define INST_4TH_IS_HEVC_TYPE       (0)
+#define INST_4TH_VIDEO_WIDTH        (720)
+#define INST_4TH_VIDEO_HEIGHT       (576)
+#define INST_4TH_MAX_FRAMEBUFFERS   (24)
 
-#define INST_5TH_USE                    (0)
-#define INST_5TH_IS_HEVC_TYPE           (0)
-#define INST_5TH_VIDEO_WIDTH            (1920)
-#define INST_5TH_VIDEO_HEIGHT           (1088)
-#define INST_5TH_MAX_FRAMEBUFFERS       (24)
+#define INST_5TH_USE                (0)
+#define INST_5TH_IS_HEVC_TYPE       (0)
+#define INST_5TH_VIDEO_WIDTH        (720)
+#define INST_5TH_VIDEO_HEIGHT       (576)
+#define INST_5TH_MAX_FRAMEBUFFERS   (24)
+
 
 /*
  * ENCODER on VPU
  *
  * INST_ENC_XXX_USE : Decide whether to use an instance or not. 1 means to use.
  * INST_ENC_XXX_IS_HEVC_TYPE : Decide whether or not to set the HEVC codec type.
- *                  1 means to set HEVC (please set the defconfig file to
- *                  CONFIG_SUPPORT_TCC_WAVE420L_VPU_HEVC_ENC=y"
- *                  )
+ *                      1 means to set HEVC (please check
+ *                      "CONFIG_SUPPORT_TCC_HEVC" Feature in order to enable
+ *                      HEVC at first.)
  * INST_ENC_XXX_VIDEO_WIDTH : Set the width of the video (16x alignment)
- * INST_ENC_XXX_VIDEO_HEIGHT : Set the height of the video (16x alignment)
- * INST_ENC_XXX_MAX_FRAMEBUFFERS : 8 :: fixed value. (Please, ask the right
- *                  engineerif you want to change it.)
+ * INST_ENC_XXX_VIDEO_HEIGHT : Set the width of the video (16x alignment)
+ * INST_ENC_XXX_MAX_FRAMEBUFFERS : 8 :: fixed value. ask right engineer
+ *                      if you want to change it.
  */
 #define INST_ENC_1ST_USE                (0)
 #define INST_ENC_1ST_IS_HEVC_TYPE       (0)
@@ -200,7 +225,4 @@
 #define INST_ENC_16TH_MAX_FRAMEBUFFERS  (8)
 
 //########################################################################
-/****************           Customer edit - end!          ****************/
 //########################################################################
-
-#endif //DT_PMAP_TCC805X_ANDROID_CUSTOMIZED_DTSI

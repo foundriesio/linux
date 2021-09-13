@@ -8,8 +8,8 @@
 #include "tcc8031.dtsi"
 #include "tcc803x-linux.dtsi"
 
-#include <dt-bindings/pmap/tcc803x/pmap-tcc803x-linux-ivi.h>
 #include "tcc-pmap-common.dtsi"
+#include <dt-bindings/pmap/tcc803x/pmap-tcc803x-linux-ivi.h>
 
 / {
 	model = "Telechips TCC8031 Evaluation Board";

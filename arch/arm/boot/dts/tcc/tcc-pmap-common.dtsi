@@ -3,31 +3,7 @@
  * Copyright (C) Telechips Inc.
  */
 
-/*
- * Temporary chip definition before sending
- * VPU memory calculation code to dt-bindings
- * completely
- */
-#if defined(CONFIG_ARCH_TCC805X)
-#include <dt-bindings/pmap/tcc805x/pmap-tcc805x-video.h>
-#endif
-
-#if defined(CONFIG_ARCH_TCC803X)
-#include <dt-bindings/pmap/tcc803x/pmap-tcc803x-video.h>
-#endif
-
-#if defined(CONFIG_ARCH_TCC897X)
-#include <dt-bindings/pmap/tcc897x/pmap-tcc897x-video.h>
-#endif
-
-#if defined(CONFIG_ARCH_TCC897X)
-#include <dt-bindings/pmap/tcc899x/pmap-tcc899x-video.h>
-#endif
-
-#if defined(CONFIG_ARCH_TCC897X)
-#include <dt-bindings/pmap/tcc901x/pmap-tcc901x-video.h>
-#endif
-//*/
+#include <dt-bindings/pmap/tcc803x/pmap-tcc803x-linux-ivi-video.h>
 
 #define TCC_ALIGN(value, base)   (((value)+((base)-1))&~((base)-1))
 
