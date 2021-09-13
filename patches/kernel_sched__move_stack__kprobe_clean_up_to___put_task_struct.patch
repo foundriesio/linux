@@ -40,7 +40,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		return;
  	}
  #endif
-@@ -747,6 +748,15 @@ void __put_task_struct(struct task_struc
+@@ -759,6 +760,15 @@ void __put_task_struct(struct task_struc
  	WARN_ON(refcount_read(&tsk->usage));
  	WARN_ON(tsk == current);
  
@@ -58,7 +58,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	task_numa_free(tsk, true);
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -4652,15 +4652,6 @@ static struct rq *finish_task_switch(str
+@@ -4851,15 +4851,6 @@ static struct rq *finish_task_switch(str
  		if (prev->sched_class->task_dead)
  			prev->sched_class->task_dead(prev);
  

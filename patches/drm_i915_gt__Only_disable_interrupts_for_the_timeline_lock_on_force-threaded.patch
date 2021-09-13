@@ -32,7 +32,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	unsigned long flags = 0;
  
 -	local_irq_save(flags);
-+	if (!force_irqthreads)
++	if (!force_irqthreads())
 +		local_irq_save(flags);
  	mutex_acquire(&ce->timeline->mutex.dep_map, 2, 0, _THIS_IP_);
  
@@ -42,7 +42,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  {
  	mutex_release(&ce->timeline->mutex.dep_map, _THIS_IP_);
 -	local_irq_restore(flags);
-+	if (!force_irqthreads)
++	if (!force_irqthreads())
 +		local_irq_restore(flags);
  }
  

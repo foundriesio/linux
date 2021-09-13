@@ -99,22 +99,23 @@ Signed-off-by: Valentin Schneider <valentin.schneider@arm.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20210811201354.1976839-4-valentin.schneider@arm.com
 ---
- kernel/rcu/tree.c        |    4 ++
- kernel/rcu/tree.h        |    4 ++
- kernel/rcu/tree_plugin.h |   76 +++++++++++++++++++++++++++++++++++++++++------
- 3 files changed, 75 insertions(+), 9 deletions(-)
+ kernel/rcu/tree.c        |    4 ++++
+ kernel/rcu/tree.h        |    4 ++++
+ kernel/rcu/tree_nocb.h   |   39 +++++++++++++++++++++++++++++++++++++++
+ kernel/rcu/tree_plugin.h |   38 ++++++++++++++++++++++++++++++--------
+ 4 files changed, 77 insertions(+), 8 deletions(-)
 
 --- a/kernel/rcu/tree.c
 +++ b/kernel/rcu/tree.c
-@@ -87,6 +87,7 @@ static DEFINE_PER_CPU_SHARED_ALIGNED(str
- 	.dynticks = ATOMIC_INIT(RCU_DYNTICK_CTRL_CTR),
+@@ -80,6 +80,7 @@ static DEFINE_PER_CPU_SHARED_ALIGNED(str
+ 	.dynticks = ATOMIC_INIT(1),
  #ifdef CONFIG_RCU_NOCB_CPU
  	.cblist.flags = SEGCBLIST_SOFTIRQ_ONLY,
 +	.nocb_local_lock =  INIT_LOCAL_LOCK(nocb_local_lock),
  #endif
  };
  static struct rcu_state rcu_state = {
-@@ -2853,10 +2854,12 @@ static void rcu_cpu_kthread(unsigned int
+@@ -2811,10 +2812,12 @@ static void rcu_cpu_kthread(unsigned int
  {
  	unsigned int *statusp = this_cpu_ptr(&rcu_data.rcu_cpu_kthread_status);
  	char work, *workp = this_cpu_ptr(&rcu_data.rcu_cpu_has_work);
@@ -127,7 +128,7 @@ Link: https://lore.kernel.org/r/20210811201354.1976839-4-valentin.schneider@arm.
  		local_bh_disable();
  		*statusp = RCU_KTHREAD_RUNNING;
  		local_irq_disable();
-@@ -2866,6 +2869,7 @@ static void rcu_cpu_kthread(unsigned int
+@@ -2824,6 +2827,7 @@ static void rcu_cpu_kthread(unsigned int
  		if (work)
  			rcu_core();
  		local_bh_enable();
@@ -155,8 +156,8 @@ Link: https://lore.kernel.org/r/20210811201354.1976839-4-valentin.schneider@arm.
  #ifdef CONFIG_RCU_NOCB_CPU
  static void __init rcu_organize_nocb_kthreads(void);
  #define rcu_nocb_lock_irqsave(rdp, flags)				\
---- a/kernel/rcu/tree_plugin.h
-+++ b/kernel/rcu/tree_plugin.h
+--- a/kernel/rcu/tree_nocb.h
++++ b/kernel/rcu/tree_nocb.h
 @@ -21,6 +21,11 @@ static inline int rcu_lockdep_is_held_no
  	return lockdep_is_held(&rdp->nocb_lock);
  }
@@ -169,21 +170,87 @@ Link: https://lore.kernel.org/r/20210811201354.1976839-4-valentin.schneider@arm.
  static inline bool rcu_current_is_nocb_kthread(struct rcu_data *rdp)
  {
  	/* Race on early boot between thread creation and assignment */
-@@ -38,7 +43,10 @@ static inline int rcu_lockdep_is_held_no
+@@ -181,6 +186,22 @@ static void rcu_nocb_unlock_irqrestore(s
+ 	}
+ }
+ 
++/*
++ * The invocation of rcu_core() within the RCU core kthreads remains preemptible
++ * under PREEMPT_RT, thus the offload state of a CPU could change while
++ * said kthreads are preempted. Prevent this from happening by protecting the
++ * offload state with a local_lock().
++ */
++static void rcu_nocb_local_lock(struct rcu_data *rdp)
++{
++	local_lock(&rcu_data.nocb_local_lock);
++}
++
++static void rcu_nocb_local_unlock(struct rcu_data *rdp)
++{
++	local_unlock(&rcu_data.nocb_local_lock);
++}
++
+ /* Lockdep check that ->cblist may be safely accessed. */
+ static void rcu_lockdep_assert_cblist_protected(struct rcu_data *rdp)
  {
+@@ -948,6 +969,7 @@ static int rdp_offload_toggle(struct rcu
+ 	if (rdp->nocb_cb_sleep)
+ 		rdp->nocb_cb_sleep = false;
+ 	rcu_nocb_unlock_irqrestore(rdp, flags);
++	rcu_nocb_local_unlock(rdp);
+ 
+ 	/*
+ 	 * Ignore former value of nocb_cb_sleep and force wake up as it could
+@@ -979,6 +1001,7 @@ static long rcu_nocb_rdp_deoffload(void
+ 
+ 	pr_info("De-offloading %d\n", rdp->cpu);
+ 
++	rcu_nocb_local_lock(rdp);
+ 	rcu_nocb_lock_irqsave(rdp, flags);
+ 	/*
+ 	 * Flush once and for all now. This suffices because we are
+@@ -1061,6 +1084,7 @@ static long rcu_nocb_rdp_offload(void *a
+ 	 * Can't use rcu_nocb_lock_irqsave() while we are in
+ 	 * SEGCBLIST_SOFTIRQ_ONLY mode.
+ 	 */
++	rcu_nocb_local_lock(rdp);
+ 	raw_spin_lock_irqsave(&rdp->nocb_lock, flags);
+ 
+ 	/*
+@@ -1408,6 +1432,11 @@ static inline int rcu_lockdep_is_held_no
  	return 0;
  }
--
+ 
 +static inline int rcu_lockdep_is_held_nocb_local(struct rcu_data *rdp)
 +{
 +	return 0;
 +}
++
  static inline bool rcu_current_is_nocb_kthread(struct rcu_data *rdp)
  {
  	return false;
-@@ -46,23 +54,44 @@ static inline bool rcu_current_is_nocb_k
+@@ -1430,6 +1459,16 @@ static void rcu_nocb_unlock_irqrestore(s
+ 	local_irq_restore(flags);
+ }
  
- #endif /* #ifdef CONFIG_RCU_NOCB_CPU */
++/* No ->nocb_local_lock to acquire. */
++static void rcu_nocb_local_lock(struct rcu_data *rdp)
++{
++}
++
++/* No ->nocb_local_lock to release. */
++static void rcu_nocb_local_unlock(struct rcu_data *rdp)
++{
++}
++
+ /* Lockdep check that ->cblist may be safely accessed. */
+ static void rcu_lockdep_assert_cblist_protected(struct rcu_data *rdp)
+ {
+--- a/kernel/rcu/tree_plugin.h
++++ b/kernel/rcu/tree_plugin.h
+@@ -13,23 +13,45 @@
+ 
+ #include "../locking/rtmutex_common.h"
  
 +/*
 + * Is a local read of the rdp's offloaded state safe and stable?
@@ -215,12 +282,13 @@ Link: https://lore.kernel.org/r/20210811201354.1976839-4-valentin.schneider@arm.
 -	 * timers have their own means of synchronization against the
 -	 * offloaded state updaters.
 +	 * In order to read the offloaded state of an rdp is a safe and stable
-+	 * way and prevent from its value to be changed under us, we must either...
++	 * way and prevent from its value to be changed under us, we must
++         * either...
  	 */
  	RCU_LOCKDEP_WARN(
 +		// ...hold the barrier mutex...
  		!(lockdep_is_held(&rcu_state.barrier_mutex) ||
-+		  // ... the cpu hotplug lock (read or write)...
++		// ... the cpu hotplug lock (read or write)...
  		  (IS_ENABLED(CONFIG_HOTPLUG_CPU) && lockdep_is_cpus_held()) ||
 +		  // ... or the NOCB lock.
  		  rcu_lockdep_is_held_nocb(rdp) ||
@@ -229,72 +297,8 @@ Link: https://lore.kernel.org/r/20210811201354.1976839-4-valentin.schneider@arm.
  		  (rdp == this_cpu_ptr(&rcu_data) &&
 -		   !(IS_ENABLED(CONFIG_PREEMPT_COUNT) && preemptible())) ||
 +		   rcu_local_offload_access_safe(rdp)) ||
-+		  // NOCB kthreads and timers have their own means of synchronization
-+		  // against the offloaded state updaters.
++		  // NOCB kthreads and timers have their own means of
++		  // synchronization against the offloaded state updaters.
  		  rcu_current_is_nocb_kthread(rdp)),
  		"Unsafe read of RCU_NOCB offloaded state"
  	);
-@@ -1629,6 +1658,22 @@ static void rcu_nocb_unlock_irqrestore(s
- 	}
- }
- 
-+/*
-+ * The invocation of rcu_core() within the RCU core kthreads remains preemptible
-+ * under PREEMPT_RT, thus the offload state of a CPU could change while
-+ * said kthreads are preempted. Prevent this from happening by protecting the
-+ * offload state with a local_lock().
-+ */
-+static void rcu_nocb_local_lock(struct rcu_data *rdp)
-+{
-+	local_lock(&rcu_data.nocb_local_lock);
-+}
-+
-+static void rcu_nocb_local_unlock(struct rcu_data *rdp)
-+{
-+	local_unlock(&rcu_data.nocb_local_lock);
-+}
-+
- /* Lockdep check that ->cblist may be safely accessed. */
- static void rcu_lockdep_assert_cblist_protected(struct rcu_data *rdp)
- {
-@@ -2396,6 +2441,7 @@ static int rdp_offload_toggle(struct rcu
- 	if (rdp->nocb_cb_sleep)
- 		rdp->nocb_cb_sleep = false;
- 	rcu_nocb_unlock_irqrestore(rdp, flags);
-+	rcu_nocb_local_unlock(rdp);
- 
- 	/*
- 	 * Ignore former value of nocb_cb_sleep and force wake up as it could
-@@ -2427,6 +2473,7 @@ static long rcu_nocb_rdp_deoffload(void
- 
- 	pr_info("De-offloading %d\n", rdp->cpu);
- 
-+	rcu_nocb_local_lock(rdp);
- 	rcu_nocb_lock_irqsave(rdp, flags);
- 	/*
- 	 * Flush once and for all now. This suffices because we are
-@@ -2509,6 +2556,7 @@ static long rcu_nocb_rdp_offload(void *a
- 	 * Can't use rcu_nocb_lock_irqsave() while we are in
- 	 * SEGCBLIST_SOFTIRQ_ONLY mode.
- 	 */
-+	rcu_nocb_local_lock(rdp);
- 	raw_spin_lock_irqsave(&rdp->nocb_lock, flags);
- 
- 	/*
-@@ -2868,6 +2916,16 @@ static void rcu_nocb_unlock_irqrestore(s
- 	local_irq_restore(flags);
- }
- 
-+/* No ->nocb_local_lock to acquire. */
-+static void rcu_nocb_local_lock(struct rcu_data *rdp)
-+{
-+}
-+
-+/* No ->nocb_local_lock to release. */
-+static void rcu_nocb_local_unlock(struct rcu_data *rdp)
-+{
-+}
-+
- /* Lockdep check that ->cblist may be safely accessed. */
- static void rcu_lockdep_assert_cblist_protected(struct rcu_data *rdp)
- {

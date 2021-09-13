@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static LIST_HEAD(smk_ipv6_port_list);
 +#endif
  struct kmem_cache *smack_rule_cache;
- int smack_enabled;
+ int smack_enabled __initdata;
  
 @@ -2603,7 +2605,6 @@ static void smk_ipv6_port_label(struct s
  	mutex_unlock(&smack_ipv6_lock);

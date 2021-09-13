@@ -1,0 +1,36 @@
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Tue, 31 Aug 2021 20:48:02 +0200
+Subject: [PATCH] mm: Fully initialize invalidate_lock, amend lock class later
+
+The function __init_rwsem() is not part of the official API, it just a helper
+function used by init_rwsem().
+Changing the lock's class and name should be done by using
+lockdep_set_class_and_name() after the has been fully initialized. The overhead
+of the additional class struct and setting it twice is negligible and it works
+across all locks.
+
+Fully initialize the lock with init_rwsem() and then set the custom class and
+name for the lock.
+
+Fixes: 730633f0b7f95 ("mm: Protect operations adding pages to page cache with invalidate_lock")
+Link: https://lkml.kernel.org/r/20210901084403.g4fezi23cixemlhh@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ fs/inode.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -190,8 +190,10 @@ int inode_init_always(struct super_block
+ 	mapping_set_gfp_mask(mapping, GFP_HIGHUSER_MOVABLE);
+ 	mapping->private_data = NULL;
+ 	mapping->writeback_index = 0;
+-	__init_rwsem(&mapping->invalidate_lock, "mapping.invalidate_lock",
+-		     &sb->s_type->invalidate_lock_key);
++	init_rwsem(&mapping->invalidate_lock);
++	lockdep_set_class_and_name(&mapping->invalidate_lock,
++				   &sb->s_type->invalidate_lock_key,
++				   "mapping.invalidate_lock");
+ 	inode->i_private = NULL;
+ 	inode->i_mapping = mapping;
+ 	INIT_HLIST_HEAD(&inode->i_dentry);	/* buggered by rcu freeing */

@@ -82,7 +82,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  };
  
  /**
-@@ -540,4 +542,10 @@ int hrtimers_dead_cpu(unsigned int cpu);
+@@ -536,4 +538,10 @@ int hrtimers_dead_cpu(unsigned int cpu);
  #define hrtimers_dead_cpu	NULL
  #endif
  
@@ -95,7 +95,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
 --- a/kernel/time/hrtimer.c
 +++ b/kernel/time/hrtimer.c
-@@ -1422,6 +1422,7 @@ static void __hrtimer_init(struct hrtime
+@@ -1570,6 +1570,7 @@ static void __hrtimer_init(struct hrtime
  	base += hrtimer_clockid_to_base(clock_id);
  	timer->is_soft = softtimer;
  	timer->is_hard = !!(mode & HRTIMER_MODE_HARD);
@@ -103,7 +103,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	timer->base = &cpu_base->clock_base[base];
  	timerqueue_init(&timer->node);
  }
-@@ -1788,7 +1789,7 @@ static enum hrtimer_restart hrtimer_wake
+@@ -1936,7 +1937,7 @@ static enum hrtimer_restart hrtimer_wake
  
  	t->task = NULL;
  	if (task)
@@ -112,7 +112,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return HRTIMER_NORESTART;
  }
-@@ -2006,6 +2007,34 @@ SYSCALL_DEFINE2(nanosleep_time32, struct
+@@ -2154,6 +2155,34 @@ SYSCALL_DEFINE2(nanosleep_time32, struct
  }
  #endif
  

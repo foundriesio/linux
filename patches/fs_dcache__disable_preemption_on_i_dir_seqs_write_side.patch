@@ -81,7 +81,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -699,7 +699,7 @@ struct inode {
+@@ -711,7 +711,7 @@ struct inode {
  		struct pipe_inode_info	*i_pipe;
  		struct cdev		*i_cdev;
  		char			*i_link;

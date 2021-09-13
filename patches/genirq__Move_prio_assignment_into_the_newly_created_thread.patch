@@ -39,16 +39,16 @@ Link: https://lkml.kernel.org/r/a23a826af7c108ea5651e73b8fbae5e653f16e86.camel@g
 ---
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -1260,6 +1260,8 @@ static int irq_thread(void *data)
+@@ -1259,6 +1259,8 @@ static int irq_thread(void *data)
  	irqreturn_t (*handler_fn)(struct irq_desc *desc,
  			struct irqaction *action);
  
 +	sched_set_fifo(current);
 +
- 	if (force_irqthreads && test_bit(IRQTF_FORCED_THREAD,
- 					&action->thread_flags))
+ 	if (force_irqthreads() && test_bit(IRQTF_FORCED_THREAD,
+ 					   &action->thread_flags))
  		handler_fn = irq_forced_thread_fn;
-@@ -1425,8 +1427,6 @@ setup_irq_thread(struct irqaction *new,
+@@ -1424,8 +1426,6 @@ setup_irq_thread(struct irqaction *new,
  	if (IS_ERR(t))
  		return PTR_ERR(t);
  

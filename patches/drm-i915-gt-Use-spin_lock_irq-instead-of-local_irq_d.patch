@@ -26,43 +26,43 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/gpu/drm/i915/gt/intel_execlists_submission.c
 +++ b/drivers/gpu/drm/i915/gt/intel_execlists_submission.c
-@@ -1265,7 +1265,7 @@ static void execlists_dequeue(struct int
+@@ -1283,7 +1283,7 @@ static void execlists_dequeue(struct int
  	 * and context switches) submission.
  	 */
  
--	spin_lock(&engine->active.lock);
-+	spin_lock_irq(&engine->active.lock);
+-	spin_lock(&sched_engine->lock);
++	spin_lock_irq(&sched_engine->lock);
  
  	/*
  	 * If the queue is higher priority than the last
-@@ -1365,7 +1365,7 @@ static void execlists_dequeue(struct int
+@@ -1383,7 +1383,7 @@ static void execlists_dequeue(struct int
  				 * Even if ELSP[1] is occupied and not worthy
  				 * of timeslices, our queue might be.
  				 */
--				spin_unlock(&engine->active.lock);
-+				spin_unlock_irq(&engine->active.lock);
+-				spin_unlock(&sched_engine->lock);
++				spin_unlock_irq(&sched_engine->lock);
  				return;
  			}
  		}
-@@ -1391,7 +1391,7 @@ static void execlists_dequeue(struct int
+@@ -1409,7 +1409,7 @@ static void execlists_dequeue(struct int
  
  		if (last && !can_merge_rq(last, rq)) {
- 			spin_unlock(&ve->base.active.lock);
--			spin_unlock(&engine->active.lock);
-+			spin_unlock_irq(&engine->active.lock);
+ 			spin_unlock(&ve->base.sched_engine->lock);
+-			spin_unlock(&engine->sched_engine->lock);
++			spin_unlock_irq(&engine->sched_engine->lock);
  			return; /* leave this for another sibling */
  		}
  
-@@ -1552,7 +1552,7 @@ static void execlists_dequeue(struct int
- 	 * interrupt for secondary ports).
+@@ -1571,7 +1571,7 @@ static void execlists_dequeue(struct int
  	 */
- 	execlists->queue_priority_hint = queue_prio(execlists);
--	spin_unlock(&engine->active.lock);
-+	spin_unlock_irq(&engine->active.lock);
+ 	sched_engine->queue_priority_hint = queue_prio(sched_engine);
+ 	i915_sched_engine_reset_on_empty(sched_engine);
+-	spin_unlock(&sched_engine->lock);
++	spin_unlock_irq(&sched_engine->lock);
  
  	/*
  	 * We can skip poking the HW if we ended up with exactly the same set
-@@ -1578,13 +1578,6 @@ static void execlists_dequeue(struct int
+@@ -1597,13 +1597,6 @@ static void execlists_dequeue(struct int
  	}
  }
  
@@ -76,7 +76,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void clear_ports(struct i915_request **ports, int count)
  {
  	memset_p((void **)ports, NULL, count);
-@@ -2377,7 +2370,7 @@ static void execlists_submission_tasklet
+@@ -2427,7 +2420,7 @@ static void execlists_submission_tasklet
  	}
  
  	if (!engine->execlists.pending[0]) {

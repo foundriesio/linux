@@ -15,7 +15,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/mm/Kconfig
 +++ b/mm/Kconfig
-@@ -374,7 +374,7 @@ config NOMMU_INITIAL_TRIM_EXCESS
+@@ -371,7 +371,7 @@ config NOMMU_INITIAL_TRIM_EXCESS
  
  config TRANSPARENT_HUGEPAGE
  	bool "Transparent Hugepage Support"

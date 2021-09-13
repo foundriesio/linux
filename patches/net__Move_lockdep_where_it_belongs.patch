@@ -11,7 +11,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/net/core/sock.c
 +++ b/net/core/sock.c
-@@ -3163,12 +3163,11 @@ void lock_sock_nested(struct sock *sk, i
+@@ -3184,12 +3184,11 @@ void lock_sock_nested(struct sock *sk, i
  	if (sk->sk_lock.owned)
  		__lock_sock(sk);
  	sk->sk_lock.owned = 1;
@@ -25,7 +25,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  EXPORT_SYMBOL(lock_sock_nested);
  
-@@ -3217,13 +3216,12 @@ bool lock_sock_fast(struct sock *sk) __a
+@@ -3238,13 +3237,12 @@ bool lock_sock_fast(struct sock *sk) __a
  
  	__lock_sock(sk);
  	sk->sk_lock.owned = 1;
