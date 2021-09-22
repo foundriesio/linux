@@ -1,0 +1,72 @@
+Subject: locking/rt: Take RCU nesting into account for might_sleep()
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Wed, 22 Sep 2021 12:28:19 +0200
+
+The RT patches contained a cheap hack to ignore the RCU nesting depth in
+might_sleep() checks, which was a pragmatic but incorrect workaround.
+
+The general rule that rcu_read_lock() held sections cannot voluntary sleep
+does apply even on RT kernels. Though the substitution of spin/rw locks on
+RT enabled kernels has to be exempt from that rule. On !RT a spin_lock()
+can obviously nest inside a rcu read side critical section as the lock
+acquisition is not going to block, but on RT this is not longer the case
+due to the 'sleeping' spin lock substitution.
+
+Instead of generally ignoring the RCU nesting depth in might_sleep()
+checks, pass the rcu_preempt_depth() as offset argument to might_sleep()
+from spin/read/write_lock() which makes the check work correctly even in
+RCU read side critical sections.
+
+The actual blocking on such a substituted lock within a RCU read side
+critical section is already handled correctly in __schedule() by treating
+it as a "preemption" of the RCU read side critical section.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+---
+ kernel/locking/spinlock_rt.c |   14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+
+--- a/kernel/locking/spinlock_rt.c
++++ b/kernel/locking/spinlock_rt.c
+@@ -24,6 +24,14 @@
+ #define RT_MUTEX_BUILD_SPINLOCKS
+ #include "rtmutex.c"
+ 
++/*
++ * Use ___might_sleep() which skips the state check and take RCU nesting
++ * into account as spin/read/write_lock() can legitimately nest into an RCU
++ * read side critical section:
++ */
++#define rtlock_might_sleep()					\
++	___might_sleep(__FILE__, __LINE__, rcu_preempt_depth())
++
+ static __always_inline void rtlock_lock(struct rt_mutex_base *rtm)
+ {
+ 	if (unlikely(!rt_mutex_cmpxchg_acquire(rtm, NULL, current)))
+@@ -32,7 +40,7 @@ static __always_inline void rtlock_lock(
+ 
+ static __always_inline void __rt_spin_lock(spinlock_t *lock)
+ {
+-	___might_sleep(__FILE__, __LINE__, 0);
++	rtlock_might_sleep();
+ 	rtlock_lock(&lock->lock);
+ 	rcu_read_lock();
+ 	migrate_disable();
+@@ -210,7 +218,7 @@ EXPORT_SYMBOL(rt_write_trylock);
+ 
+ void __sched rt_read_lock(rwlock_t *rwlock)
+ {
+-	___might_sleep(__FILE__, __LINE__, 0);
++	rtlock_might_sleep();
+ 	rwlock_acquire_read(&rwlock->dep_map, 0, 0, _RET_IP_);
+ 	rwbase_read_lock(&rwlock->rwbase, TASK_RTLOCK_WAIT);
+ 	rcu_read_lock();
+@@ -220,7 +228,7 @@ EXPORT_SYMBOL(rt_read_lock);
+ 
+ void __sched rt_write_lock(rwlock_t *rwlock)
+ {
+-	___might_sleep(__FILE__, __LINE__, 0);
++	rtlock_might_sleep();
+ 	rwlock_acquire(&rwlock->dep_map, 0, 0, _RET_IP_);
+ 	rwbase_write_lock(&rwlock->rwbase, TASK_RTLOCK_WAIT);
+ 	rcu_read_lock();

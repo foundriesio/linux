@@ -18,7 +18,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/include/linux/rcupdate.h
 +++ b/include/linux/rcupdate.h
-@@ -101,6 +101,13 @@ void rcu_init_tasks_generic(void);
+@@ -94,6 +94,13 @@ void rcu_init_tasks_generic(void);
  static inline void rcu_init_tasks_generic(void) { }
  #endif
  

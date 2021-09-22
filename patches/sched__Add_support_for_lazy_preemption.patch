@@ -72,7 +72,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -174,6 +174,20 @@ extern void preempt_count_sub(int val);
+@@ -182,6 +182,20 @@ extern void preempt_count_sub(int val);
  #define preempt_count_inc() preempt_count_add(1)
  #define preempt_count_dec() preempt_count_sub(1)
  
@@ -93,7 +93,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_PREEMPT_COUNT
  
  #define preempt_disable() \
-@@ -182,6 +196,12 @@ do { \
+@@ -190,6 +204,12 @@ do { \
  	barrier(); \
  } while (0)
  
@@ -106,7 +106,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define sched_preempt_enable_no_resched() \
  do { \
  	barrier(); \
-@@ -219,6 +239,18 @@ do { \
+@@ -227,6 +247,18 @@ do { \
  		__preempt_schedule(); \
  } while (0)
  
@@ -125,7 +125,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #else /* !CONFIG_PREEMPTION */
  #define preempt_enable() \
  do { \
-@@ -226,6 +258,12 @@ do { \
+@@ -234,6 +266,12 @@ do { \
  	preempt_count_dec(); \
  } while (0)
  
@@ -138,7 +138,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #define preempt_enable_notrace() \
  do { \
  	barrier(); \
-@@ -267,6 +305,9 @@ do { \
+@@ -275,6 +313,9 @@ do { \
  #define preempt_check_resched_rt()		barrier()
  #define preemptible()				0
  
@@ -148,7 +148,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif /* CONFIG_PREEMPT_COUNT */
  
  #ifdef MODULE
-@@ -285,7 +326,7 @@ do { \
+@@ -293,7 +334,7 @@ do { \
  } while (0)
  #define preempt_fold_need_resched() \
  do { \
@@ -157,7 +157,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		set_preempt_need_resched(); \
  } while (0)
  
-@@ -413,8 +454,15 @@ extern void migrate_enable(void);
+@@ -417,8 +458,15 @@ extern void migrate_enable(void);
  
  #else
  
@@ -177,7 +177,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -2014,6 +2014,43 @@ static inline int test_tsk_need_resched(
+@@ -2015,6 +2015,43 @@ static inline int test_tsk_need_resched(
  	return unlikely(test_tsk_thread_flag(tsk,TIF_NEED_RESCHED));
  }
  

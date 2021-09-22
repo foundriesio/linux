@@ -1,0 +1,78 @@
+Subject: sched: Make cond_resched_lock() RT aware
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Wed, 22 Sep 2021 12:08:32 +0200
+
+The might_sleep() checks in the cond_resched_lock() variants use
+PREEMPT_LOCK_OFFSET for preempt count offset checking.
+
+On PREEMPT_RT enabled kernels spin/rw_lock held sections stay preemptible
+which means PREEMPT_LOCK_OFFSET is 0, but that still triggers the
+might_sleep() check because that takes RCU read side nesting into account.
+
+On RT enabled kernels spin/read/write_lock() issue rcu_read_lock() to
+resemble the !RT semantics, which means in cond_resched_lock() the might
+sleep check will see preempt_count() == 0 and rcu_preempt_depth() == 1.
+
+Introduce PREEMPT_LOCK_SCHED_OFFSET for those might sleep checks and map
+them to PREEMPT_LOCK_OFFSET on !RT and to 1 (accounting for
+rcu_preempt_depth()) on RT enabled kernels.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+---
+ include/linux/preempt.h |   12 ++++++++++--
+ include/linux/sched.h   |   18 +++++++++---------
+ 2 files changed, 19 insertions(+), 11 deletions(-)
+
+--- a/include/linux/preempt.h
++++ b/include/linux/preempt.h
+@@ -122,9 +122,17 @@
+  * The preempt_count offset after spin_lock()
+  */
+ #if !defined(CONFIG_PREEMPT_RT)
+-#define PREEMPT_LOCK_OFFSET	PREEMPT_DISABLE_OFFSET
++#define PREEMPT_LOCK_OFFSET		PREEMPT_DISABLE_OFFSET
++#define PREEMPT_LOCK_RESCHED_OFFSET	PREEMPT_LOCK_OFFSET
+ #else
+-#define PREEMPT_LOCK_OFFSET	0
++/* Locks on RT do not disable preemption */
++#define PREEMPT_LOCK_OFFSET		0
++/*
++ * spin/rw_lock() on RT implies rcu_read_lock(). The might_sleep() check in
++ * cond_resched*lock() has to take that into account because it checks for
++ * preempt_count() + rcu_preempt_depth().
++ */
++#define PREEMPT_LOCK_RESCHED_OFFSET	1
+ #endif
+ 
+ /*
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -2057,19 +2057,19 @@ extern int __cond_resched_lock(spinlock_
+ extern int __cond_resched_rwlock_read(rwlock_t *lock);
+ extern int __cond_resched_rwlock_write(rwlock_t *lock);
+ 
+-#define cond_resched_lock(lock) ({				\
+-	___might_sleep(__FILE__, __LINE__, PREEMPT_LOCK_OFFSET);\
+-	__cond_resched_lock(lock);				\
++#define cond_resched_lock(lock) ({					\
++	__might_sleep(__FILE__, __LINE__, PREEMPT_LOCK_RESCHED_OFFSET);	\
++	__cond_resched_lock(lock);					\
+ })
+ 
+-#define cond_resched_rwlock_read(lock) ({			\
+-	__might_sleep(__FILE__, __LINE__, PREEMPT_LOCK_OFFSET);	\
+-	__cond_resched_rwlock_read(lock);			\
++#define cond_resched_rwlock_read(lock) ({				\
++	__might_sleep(__FILE__, __LINE__, PREEMPT_LOCK_RESCHED_OFFSET);	\
++	__cond_resched_rwlock_read(lock);				\
+ })
+ 
+-#define cond_resched_rwlock_write(lock) ({			\
+-	__might_sleep(__FILE__, __LINE__, PREEMPT_LOCK_OFFSET);	\
+-	__cond_resched_rwlock_write(lock);			\
++#define cond_resched_rwlock_write(lock) (	{			\
++	__might_sleep(__FILE__, __LINE__, PREEMPT_LOCK_RESCHED_OFFSET);	\
++	__cond_resched_rwlock_write(lock);				\
+ })
+ 
+ static inline void cond_resched_rcu(void)

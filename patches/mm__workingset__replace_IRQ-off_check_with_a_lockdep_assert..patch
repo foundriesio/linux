@@ -17,7 +17,7 @@ held.
 Cc: Peter Zijlstra <peterz@infradead.org>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-Link: https://https://lkml.kernel.org/r/.kernel.org/linux-mm/20190211113829.sqf6bdi4c4cdd3rp@linutronix.de/
+Link: https://lkml.kernel.org/r/20190211113829.sqf6bdi4c4cdd3rp@linutronix.de
 ---
  mm/workingset.c |    5 ++++-
  1 file changed, 4 insertions(+), 1 deletion(-)
