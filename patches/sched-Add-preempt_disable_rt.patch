@@ -13,7 +13,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -282,6 +282,14 @@ do { \
+@@ -283,6 +283,14 @@ do { \
  		set_preempt_need_resched(); \
  } while (0)
  

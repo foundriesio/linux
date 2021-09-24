@@ -16,9 +16,29 @@ fixed the size magic, Mike made handle lock spinlock_t]
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
+ mm/Kconfig    |    3 --
  mm/zsmalloc.c |   85 +++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 79 insertions(+), 6 deletions(-)
+ 2 files changed, 80 insertions(+), 8 deletions(-)
 ---
+--- a/mm/Kconfig
++++ b/mm/Kconfig
+@@ -640,7 +640,6 @@ config ZSWAP_ZPOOL_DEFAULT_Z3FOLD
+ 
+ config ZSWAP_ZPOOL_DEFAULT_ZSMALLOC
+ 	bool "zsmalloc"
+-	depends on !PREEMPT_RT
+ 	select ZSMALLOC
+ 	help
+ 	  Use the zsmalloc allocator as the default allocator.
+@@ -691,7 +690,7 @@ config Z3FOLD
+ 
+ config ZSMALLOC
+ 	tristate "Memory allocator for compressed pages"
+-	depends on MMU && !PREEMPT_RT
++	depends on MMU
+ 	help
+ 	  zsmalloc is a slab-based memory allocator designed to store
+ 	  compressed RAM pages.  zsmalloc uses virtual memory mapping
 --- a/mm/zsmalloc.c
 +++ b/mm/zsmalloc.c
 @@ -57,6 +57,7 @@

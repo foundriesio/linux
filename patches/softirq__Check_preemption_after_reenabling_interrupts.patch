@@ -25,7 +25,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -198,8 +198,10 @@ do { \
+@@ -191,8 +191,10 @@ do { \
  
  #ifndef CONFIG_PREEMPT_RT
  # define preempt_enable_no_resched() sched_preempt_enable_no_resched()
@@ -36,7 +36,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
  
  #define preemptible()	(preempt_count() == 0 && !irqs_disabled())
-@@ -270,6 +272,7 @@ do { \
+@@ -263,6 +265,7 @@ do { \
  #define preempt_disable_notrace()		barrier()
  #define preempt_enable_no_resched_notrace()	barrier()
  #define preempt_enable_notrace()		barrier()

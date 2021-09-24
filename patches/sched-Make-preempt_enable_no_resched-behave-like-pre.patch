@@ -11,7 +11,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -188,7 +188,11 @@ do { \
+@@ -189,7 +189,11 @@ do { \
  	preempt_count_dec(); \
  } while (0)
  

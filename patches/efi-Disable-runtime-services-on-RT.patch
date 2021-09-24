@@ -1,36 +1,31 @@
-Subject: efi: Disable runtime services on RT
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Thu Jul 26 15:03:16 2018 +0200
+Date: Thu, 26 Jul 2018 15:03:16 +0200
+Subject: [PATCH] efi: Disable runtime services on RT
 
-From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-
-Based on meassurements the EFI functions get_variable /
+Based on measurements the EFI functions get_variable /
 get_next_variable take up to 2us which looks okay.
-The functions get_time, set_time take around 10ms. Those 10ms are too
+The functions get_time, set_time take around 10ms. These 10ms are too
 much. Even one ms would be too much.
 Ard mentioned that SetVariable might even trigger larger latencies if
-the firware will erase flash blocks on NOR.
+the firmware will erase flash blocks on NOR.
 
 The time-functions are used by efi-rtc and can be triggered during
-runtimed (either via explicit read/write or ntp sync).
+run-time (either via explicit read/write or ntp sync).
 
 The variable write could be used by pstore.
 These functions can be disabled without much of a loss. The poweroff /
 reboot hooks may be provided by PSCI.
 
-Disable EFI's runtime wrappers.
+Disable EFI's runtime wrappers on PREEMPT_RT.
 
 This was observed on "EFI v2.60 by SoftIron Overdrive 1000".
 
 Acked-by: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
 ---
  drivers/firmware/efi/efi.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
----
+
 --- a/drivers/firmware/efi/efi.c
 +++ b/drivers/firmware/efi/efi.c
 @@ -66,7 +66,7 @@ struct mm_struct efi_mm = {

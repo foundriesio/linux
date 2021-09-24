@@ -53,25 +53,36 @@ mm__workingset__replace_IRQ-off_check_with_a_lockdep_assert..patch
 net__Move_lockdep_where_it_belongs.patch
 tcp__Remove_superfluous_BH-disable_around_listening_hash.patch
 samples_kfifo__Rename_read_lock_write_lock.patch
-smp__Wake_ksoftirqd_on_PREEMPT_RT_instead_do_softirq..patch
+smp_wake_ksoftirqd_on_preempt_rt_instead_do_softirq.patch
+mm-Disable-zsmalloc-on-PREEMPT_RT.patch
+
+# might sleep series
+sched--Clean-up-the-might_sleep---underscore-zoo.patch
+sched--Make-cond_resched_-lock---variants-consistent-vs.-might_sleep--.patch
+sched--Remove-preempt_offset-argument-from-__might_sleep--.patch
+sched--Cleanup-might_sleep---printks.patch
+sched--Make-might_sleep---output-more-informative.patch
+sched--Make-RCU-nest-depth-distinct-in-__might_resched--.patch
+sched--Make-cond_resched_lock---RT-aware.patch
+locking-rt--Take-RCU-nesting-into-account-for-might_sleep--.patch
 
 ###########################################################################
 # Kconfig bits:
 ###########################################################################
 jump-label__disable_if_stop_machine_is_used.patch
-leds__trigger__disable_CPU_trigger_on_-RT.patch
 kconfig__Disable_config_options_which_are_not_RT_compatible.patch
 mm__Allow_only_SLUB_on_RT.patch
 
 net_core__disable_NET_RX_BUSY_POLL_on_RT.patch
-efi__Disable_runtime_services_on_RT.patch
-efi__Allow_efiruntime.patch
+efi-Allow-efi-runtime.patch
+efi-Disable-runtime-services-on-RT.patch
 
 ###########################################################################
 # Include fixes
 ###########################################################################
-wait.h__include_atomic.h.patch
-pid.h__include_atomic.h.patch
+# Skip, seems not be needed.
+# wait.h__include_atomic.h.patch
+# pid.h__include_atomic.h.patch
 
 ###########################################################################
 # Locking: RT bits. Need review
@@ -108,17 +119,17 @@ sunrpc__Make_svc_xprt_do_enqueue_use_get_cpu_light.patch
 crypto__cryptd_-_add_a_lock_instead_preempt_disable_local_bh_disable.patch
 #
 sched__Limit_the_number_of_task_migrations_per_batch.patch
-sched__Move_mmdrop_to_RCU_on_RT.patch
-kernel_sched__move_stack__kprobe_clean_up_to___put_task_struct.patch
-sched--Make-cond_resched_lock---RT-aware.patch
-locking-rt--Take-RCU-nesting-into-account-for-might_sleep--.patch
 sched__Disable_TTWU_QUEUE_on_RT.patch
+sched--Move-kprobes-cleanup-out-of-finish_task_switch--.patch
+sched--Delay-task-stack-freeing-on-RT.patch
+sched__Move_mmdrop_to_RCU_on_RT.patch
 
 ###########################################################################
 # softirq:
 ###########################################################################
 softirq__Check_preemption_after_reenabling_interrupts.patch
-softirq__Disable_softirq_stacks_for_RT.patch
+x86-softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch
+
 
 ###########################################################################
 # irqwork: Needs upstream consolidation
@@ -133,8 +144,6 @@ irq_work-Also-rcuwait-for-IRQ_WORK_HARD_IRQ-on-PREEM.patch
 mm__page_alloc__Use_migrate_disable_in_drain_local_pages_wq.patch
 u64_stats__Disable_preemption_on_32bit-UP_SMP_with_RT_during_updates.patch
 
-mm_zsmalloc__copy_with_get_cpu_var_and_locking.patch
-drivers_block_zram__Replace_bit_spinlocks_with_rtmutex_for_-rt.patch
 mm_scatterlist__Do_not_disable_irqs_on_RT.patch
 
 ###########################################################################
@@ -217,6 +226,11 @@ ASoC-mediatek-mt8195-Remove-unsued-irqs_lock.patch
 smack-Guard-smack_ipv6_lock-definition-within-a-SMAC.patch
 virt-acrn-Remove-unsued-acrn_irqfds_mutex.patch
 tpm_tis__fix_stall_after_iowrites.patch
+mm_zsmalloc__copy_with_get_cpu_var_and_locking.patch
+drivers_block_zram__Replace_bit_spinlocks_with_rtmutex_for_-rt.patch
+leds-trigger-Disable-CPU-trigger-on-PREEMPT_RT.patch
+generic-softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch
+softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch
 
 ###########################################################################
 # Lazy preemption
