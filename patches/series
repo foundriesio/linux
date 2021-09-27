@@ -50,7 +50,6 @@ lockdep-Let-lock_is_held_type-detect-recursive-read-.patch
 ###########################################################################
 cgroup__use_irqsave_in_cgroup_rstat_flush_locked.patch
 mm__workingset__replace_IRQ-off_check_with_a_lockdep_assert..patch
-net__Move_lockdep_where_it_belongs.patch
 tcp__Remove_superfluous_BH-disable_around_listening_hash.patch
 samples_kfifo__Rename_read_lock_write_lock.patch
 smp_wake_ksoftirqd_on_preempt_rt_instead_do_softirq.patch
@@ -221,7 +220,6 @@ x86__Enable_RT_also_on_32bit.patch
 # For later, not essencial
 ###########################################################################
 genirq__update_irq_set_irqchip_state_documentation.patch
-mm-Fully-initialize-invalidate_lock-amend-lock-class.patch
 ASoC-mediatek-mt8195-Remove-unsued-irqs_lock.patch
 smack-Guard-smack_ipv6_lock-definition-within-a-SMAC.patch
 virt-acrn-Remove-unsued-acrn_irqfds_mutex.patch
