@@ -355,9 +355,19 @@ static void stm32_usart_push_buffer_dma(struct uart_port *port,
 	struct stm32_port *stm32_port = to_stm32_port(port);
 	struct tty_port *ttyport = &stm32_port->port.state->port;
 	unsigned char *dma_start;
-	int dma_count;
+	int dma_count, i;
 
 	dma_start = stm32_port->rx_buf + (RX_BUF_L - stm32_port->last_res);
+
+	/*
+	 * Apply rdr_mask on buffer in order to mask parity bit.
+	 * This loop is useless in cs8 mode because DMA copies only
+	 * 8 bits and already ignores parity bit.
+	 */
+	if (!(stm32_port->rdr_mask == (BIT(8) - 1)))
+		for (i = 0; i < dma_size; i++)
+			*(dma_start + i) &= stm32_port->rdr_mask;
+
 	dma_count = tty_insert_flip_string(ttyport, dma_start, dma_size);
 	port->icount.rx += dma_count;
 	if (dma_count != dma_size)
