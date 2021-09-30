@@ -20,6 +20,7 @@ Disable ZSMALLOC on PREEMPT_RT. If there is need for it, we can try to
 get it to work.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lkml.kernel.org/r/20210923170121.1860133-1-bigeasy@linutronix.de
 ---
  mm/Kconfig |    3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)

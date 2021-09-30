@@ -1,25 +1,40 @@
-Subject: mm/zsmalloc: copy with get_cpu_var() and locking
 From: Mike Galbraith <umgwanakikbuti@gmail.com>
-Date: Tue Mar 22 11:16:09 2016 +0100
+Date: Tue, 28 Sep 2021 09:38:47 +0200
+Subject: [PATCH] mm/zsmalloc: Replace bit spinlock and get_cpu_var() usage.
 
-From: Mike Galbraith <umgwanakikbuti@gmail.com>
+For efficiency reasons, zsmalloc is using a slim `handle'. The value is
+the address of a memory allocation of 4 or 8 bytes depending on the size
+of the long data type. The lowest bit in that allocated memory is used
+as a bit spin lock.
+The usage of the bit spin lock is problematic because with the bit spin
+lock held zsmalloc acquires a rwlock_t and spinlock_t which are both
+sleeping locks on PREEMPT_RT and therefore must not be acquired with
+disabled preemption.
 
-get_cpu_var() disables preemption and triggers a might_sleep() splat later.
-This is replaced with get_locked_var().
-This bitspinlocks are replaced with a proper mutex which requires a slightly
-larger struct to allocate.
+Extend the handle to struct zsmalloc_handle which holds the old handle as
+addr and a spinlock_t which replaces the bit spinlock. Replace all the
+wrapper functions accordingly.
+
+The usage of get_cpu_var() in zs_map_object() is problematic because
+it disables preemption and makes it impossible to acquire any sleeping
+lock on PREEMPT_RT such as a spinlock_t.
+Replace the get_cpu_var() usage with a local_lock_t which is embedded
+struct mapping_area. It ensures that the access the struct is
+synchronized against all users on the same CPU.
+
+This survived LTP testing.
 
 Signed-off-by: Mike Galbraith <umgwanakikbuti@gmail.com>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-[bigeasy: replace the bitspin_lock() with a mutex, get_locked_var(). Mike then
-fixed the size magic, Mike made handle lock spinlock_t]
+[bigeasy: replace the bitspin_lock() with a mutex, get_locked_var() and
+ patch description. Mike then fixed the size magic and made handle lock
+ spinlock_t.]
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
  mm/Kconfig    |    3 --
- mm/zsmalloc.c |   85 +++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 80 insertions(+), 8 deletions(-)
----
+ mm/zsmalloc.c |   84 +++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 2 files changed, 79 insertions(+), 8 deletions(-)
+
 --- a/mm/Kconfig
 +++ b/mm/Kconfig
 @@ -640,7 +640,6 @@ config ZSWAP_ZPOOL_DEFAULT_Z3FOLD
@@ -110,7 +125,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#ifdef CONFIG_PREEMPT_RT
 +static struct zsmalloc_handle *zs_get_pure_handle(unsigned long handle)
 +{
-+	return (void *)(handle &~((1 << OBJ_TAG_BITS) - 1));
++	return (void *)(handle & ~((1 << OBJ_TAG_BITS) - 1));
 +}
 +#endif
 +
@@ -136,19 +151,18 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  /* zpool driver */
-@@ -455,7 +494,10 @@ MODULE_ALIAS("zpool-zsmalloc");
+@@ -455,7 +494,9 @@ MODULE_ALIAS("zpool-zsmalloc");
  #endif /* CONFIG_ZPOOL */
  
  /* per-cpu VM mapping areas for zspage accesses that cross page boundaries */
 -static DEFINE_PER_CPU(struct mapping_area, zs_map_area);
 +static DEFINE_PER_CPU(struct mapping_area, zs_map_area) = {
-+	/* XXX remove this and use a spin_lock_t in pin_tag() */
 +	.lock	= INIT_LOCAL_LOCK(lock),
 +};
  
  static bool is_zspage_isolated(struct zspage *zspage)
  {
-@@ -862,7 +904,13 @@ static unsigned long location_to_obj(str
+@@ -862,7 +903,13 @@ static unsigned long location_to_obj(str
  
  static unsigned long handle_to_obj(unsigned long handle)
  {
@@ -162,7 +176,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static unsigned long obj_to_head(struct page *page, void *obj)
-@@ -876,22 +924,46 @@ static unsigned long obj_to_head(struct
+@@ -876,22 +923,46 @@ static unsigned long obj_to_head(struct
  
  static inline int testpin_tag(unsigned long handle)
  {
@@ -209,7 +223,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void reset_page(struct page *page)
-@@ -1274,7 +1346,8 @@ void *zs_map_object(struct zs_pool *pool
+@@ -1274,7 +1345,8 @@ void *zs_map_object(struct zs_pool *pool
  	class = pool->size_class[class_idx];
  	off = (class->size * obj_idx) & ~PAGE_MASK;
  
@@ -219,7 +233,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	area->vm_mm = mm;
  	if (off + class->size <= PAGE_SIZE) {
  		/* this object is contained entirely within a page */
-@@ -1328,7 +1401,7 @@ void zs_unmap_object(struct zs_pool *poo
+@@ -1328,7 +1400,7 @@ void zs_unmap_object(struct zs_pool *poo
  
  		__zs_unmap_object(area, pages, off, class->size);
  	}

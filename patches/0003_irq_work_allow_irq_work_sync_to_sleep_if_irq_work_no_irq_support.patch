@@ -1,7 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Wed, 8 Sep 2021 13:23:20 +0200
-Subject: [PATCH] irq_work: Allow irq_work_sync() to sleep if irq_work() no
- IRQ support.
+Subject: irq_work: Allow irq_work_sync() to sleep if irq_work() no IRQ support.
+Date: Mon, 27 Sep 2021 23:19:17 +0200
 
 irq_work() triggers instantly an interrupt if supported by the
 architecture. Otherwise the work will be processed on the next timer
@@ -12,10 +11,11 @@ preemptible. Based on review irq_work_sync() is invoked from preemptible
 context and there is one waiter at a time. This qualifies it to use
 rcuwait for synchronisation.
 
-Let irq_work_sync() synchornize with rcuwait if the architecture
+Let irq_work_sync() synchronize with rcuwait if the architecture
 processes irqwork via the timer tick.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/20210927211919.310855-4-bigeasy@linutronix.de
 ---
  include/linux/irq_work.h |    3 +++
  kernel/irq_work.c        |   10 ++++++++++
@@ -47,7 +47,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #define IRQ_WORK_INIT(_func) __IRQ_WORK_INIT(_func, 0)
 --- a/kernel/irq_work.c
 +++ b/kernel/irq_work.c
-@@ -181,6 +181,9 @@ void irq_work_single(void *arg)
+@@ -160,6 +160,9 @@ void irq_work_single(void *arg)
  	 * else claimed it meanwhile.
  	 */
  	(void)atomic_cmpxchg(&work->node.a_flags, flags, flags & ~IRQ_WORK_BUSY);
@@ -57,7 +57,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static void irq_work_run_list(struct llist_head *list)
-@@ -247,6 +250,13 @@ void irq_work_tick_soft(void)
+@@ -204,6 +207,13 @@ void irq_work_tick(void)
  void irq_work_sync(struct irq_work *work)
  {
  	lockdep_assert_irqs_enabled();

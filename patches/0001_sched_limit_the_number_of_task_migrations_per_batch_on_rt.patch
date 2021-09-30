@@ -1,6 +1,6 @@
-Subject: sched: Limit the number of task migrations per batch on RT
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Mon Jun  6 12:12:51 2011 +0200
+Subject: sched: Limit the number of task migrations per batch on RT
+Date: Tue, 28 Sep 2021 14:24:25 +0200
 
 Batched task migrations are a source for large latencies as they keep the
 scheduler from running while processing the migrations.
@@ -9,6 +9,8 @@ Limit the batch size to 8 instead of 32 when running on a RT enabled
 kernel.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/20210928122411.425097596@linutronix.de
 ---
  kernel/sched/core.c |    4 ++++
  1 file changed, 4 insertions(+)

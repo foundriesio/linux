@@ -34,16 +34,48 @@ kthread-Move-prio-affinite-change-into-the-newly-cre.patch
 genirq-Move-prio-assignment-into-the-newly-created-t.patch
 genirq-Disable-irqfixup-poll-on-PREEMPT_RT.patch
 lockdep-Let-lock_is_held_type-detect-recursive-read-.patch
+net-bridge-mcast-Associate-the-seqcount-with-its-pro.patch
 
-###########################################################################
-# Posted
-###########################################################################
-#KCOV
+# KCOV (akpm)
 0001_documentation_kcov_include_types_h_in_the_example.patch
 0002_documentation_kcov_define_ip_in_the_example.patch
 0003_kcov_allocate_per_cpu_memory_on_the_relevant_node.patch
 0004_kcov_avoid_enable_disable_interrupts_if_in_task.patch
 0005_kcov_replace_local_irq_save_with_a_local_lock_t.patch
+
+###########################################################################
+# Posted
+###########################################################################
+crypto-testmgr-Only-disable-migration-in-crypto_disa.patch
+mm-Disable-zsmalloc-on-PREEMPT_RT.patch
+irq_poll-Use-raise_softirq_irqoff-in-cpu_dead-notifi.patch
+efi-Disable-runtime-services-on-RT.patch
+efi-Allow-efi-runtime.patch
+smp_wake_ksoftirqd_on_preempt_rt_instead_do_softirq.patch
+x86-softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch
+
+# sched
+0001_sched_clean_up_the_might_sleep_underscore_zoo.patch
+0002_sched_make_cond_resched__lock_variants_consistent_vs_might_sleep.patch
+0003_sched_remove_preempt_offset_argument_from___might_sleep.patch
+0004_sched_cleanup_might_sleep_printks.patch
+0005_sched_make_might_sleep_output_less_confusing.patch
+0006_sched_make_rcu_nest_depth_distinct_in___might_resched.patch
+0007_sched_make_cond_resched_lock_variants_rt_aware.patch
+0008_locking_rt_take_rcu_nesting_into_account_for___might_resched.patch
+#
+0001_sched_limit_the_number_of_task_migrations_per_batch_on_rt.patch
+0002_sched_disable_ttwu_queue_on_rt.patch
+0003_sched_move_kprobes_cleanup_out_of_finish_task_switch.patch
+0004_sched_delay_task_stack_freeing_on_rt.patch
+0005_sched_move_mmdrop_to_rcu_on_rt.patch
+
+# irqwork: Needs upstream consolidation
+0001_sched_rt_annotate_the_rt_balancing_logic_irqwork_as_irq_work_hard_irq.patch
+0002_irq_work_ensure_that_irq_work_runs_in_in_irq_context.patch
+0003_irq_work_allow_irq_work_sync_to_sleep_if_irq_work_no_irq_support.patch
+0004_irq_work_handle_some_irq_work_in_softirq_on_preempt_rt.patch
+0005_irq_work_also_rcuwait_for_irq_work_hard_irq_on_preempt_rt.patch
 
 ###########################################################################
 # Post
@@ -52,18 +84,6 @@ cgroup__use_irqsave_in_cgroup_rstat_flush_locked.patch
 mm__workingset__replace_IRQ-off_check_with_a_lockdep_assert..patch
 tcp__Remove_superfluous_BH-disable_around_listening_hash.patch
 samples_kfifo__Rename_read_lock_write_lock.patch
-smp_wake_ksoftirqd_on_preempt_rt_instead_do_softirq.patch
-mm-Disable-zsmalloc-on-PREEMPT_RT.patch
-
-# might sleep series
-sched--Clean-up-the-might_sleep---underscore-zoo.patch
-sched--Make-cond_resched_-lock---variants-consistent-vs.-might_sleep--.patch
-sched--Remove-preempt_offset-argument-from-__might_sleep--.patch
-sched--Cleanup-might_sleep---printks.patch
-sched--Make-might_sleep---output-more-informative.patch
-sched--Make-RCU-nest-depth-distinct-in-__might_resched--.patch
-sched--Make-cond_resched_lock---RT-aware.patch
-locking-rt--Take-RCU-nesting-into-account-for-might_sleep--.patch
 
 ###########################################################################
 # Kconfig bits:
@@ -71,10 +91,7 @@ locking-rt--Take-RCU-nesting-into-account-for-might_sleep--.patch
 jump-label__disable_if_stop_machine_is_used.patch
 kconfig__Disable_config_options_which_are_not_RT_compatible.patch
 mm__Allow_only_SLUB_on_RT.patch
-
 net_core__disable_NET_RX_BUSY_POLL_on_RT.patch
-efi-Allow-efi-runtime.patch
-efi-Disable-runtime-services-on-RT.patch
 
 ###########################################################################
 # Include fixes
@@ -116,34 +133,18 @@ mm_vmalloc__Another_preempt_disable_region_which_sucks.patch
 net__Remove_preemption_disabling_in_netif_rx.patch
 sunrpc__Make_svc_xprt_do_enqueue_use_get_cpu_light.patch
 crypto__cryptd_-_add_a_lock_instead_preempt_disable_local_bh_disable.patch
-#
-sched__Limit_the_number_of_task_migrations_per_batch.patch
-sched__Disable_TTWU_QUEUE_on_RT.patch
-sched--Move-kprobes-cleanup-out-of-finish_task_switch--.patch
-sched--Delay-task-stack-freeing-on-RT.patch
-sched__Move_mmdrop_to_RCU_on_RT.patch
 
 ###########################################################################
 # softirq:
 ###########################################################################
 softirq__Check_preemption_after_reenabling_interrupts.patch
-x86-softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch
-
-
-###########################################################################
-# irqwork: Needs upstream consolidation
-###########################################################################
-irqwork__push_most_work_into_softirq_context.patch
-irq_work-Allow-irq_work_sync-to-sleep-if-irq_work-no.patch
-irq_work-Also-rcuwait-for-IRQ_WORK_HARD_IRQ-on-PREEM.patch
 
 ###########################################################################
 # mm: Assorted RT bits. Need care
 ###########################################################################
 mm__page_alloc__Use_migrate_disable_in_drain_local_pages_wq.patch
 u64_stats__Disable_preemption_on_32bit-UP_SMP_with_RT_during_updates.patch
-
-mm_scatterlist__Do_not_disable_irqs_on_RT.patch
+mm-scatterlist-Replace-the-preemptible-warning-sg_mi.patch
 
 ###########################################################################
 # Disable memcontrol for now. The protection scopes are FUBARed
@@ -185,11 +186,6 @@ net__Dequeue_in_dev_cpu_dead_without_the_lock.patch
 net__dev__always_take_qdiscs_busylock_in___dev_xmit_skb.patch
 
 ###########################################################################
-# crypto:
-###########################################################################
-crypto-testmgr-Only-disable-migration-in-crypto_disa.patch
-
-###########################################################################
 # randomness:
 ###########################################################################
 panic__skip_get_random_bytes_for_RT_FULL_in_init_oops_id.patch
@@ -199,6 +195,7 @@ random__Make_it_work_on_rt.patch
 ###########################################################################
 # DRM:
 ###########################################################################
+irq-Export-force_irqthreads_key.patch
 drmradeoni915__Use_preempt_disable_enable_rt_where_recommended.patch
 drm_i915__Dont_disable_interrupts_on_PREEMPT_RT_during_atomic_updates.patch
 drm_i915__disable_tracing_on_-RT.patch
@@ -206,7 +203,6 @@ drm_i915__skip_DRM_I915_LOW_LEVEL_TRACEPOINTS_with_NOTRACE.patch
 drm_i915_gt__Only_disable_interrupts_for_the_timeline_lock_on_force-threaded.patch
 drm-i915-gt-Queue-and-wait-for-the-irq_work-item.patch
 drm-i915-gt-Use-spin_lock_irq-instead-of-local_irq_d.patch
-
 
 ###########################################################################
 # X86:
@@ -224,7 +220,7 @@ ASoC-mediatek-mt8195-Remove-unsued-irqs_lock.patch
 smack-Guard-smack_ipv6_lock-definition-within-a-SMAC.patch
 virt-acrn-Remove-unsued-acrn_irqfds_mutex.patch
 tpm_tis__fix_stall_after_iowrites.patch
-mm_zsmalloc__copy_with_get_cpu_var_and_locking.patch
+mm-zsmalloc-Replace-bit-spinlock-and-get_cpu_var-usa.patch
 drivers_block_zram__Replace_bit_spinlocks_with_rtmutex_for_-rt.patch
 leds-trigger-Disable-CPU-trigger-on-PREEMPT_RT.patch
 generic-softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch

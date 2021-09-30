@@ -1,0 +1,31 @@
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Subject: irq_work: Ensure that irq_work runs in in-IRQ context.
+Date: Mon, 27 Sep 2021 23:19:16 +0200
+
+The irq-work callback should be invoked in hardirq context and some
+callbacks rely on this behaviour. At the time irq_work_run_list()
+interrupts should be disabled but the important part is that the
+callback is invoked from a in-IRQ context.
+The "disabled interrupts" check can be satisfied by disabling interrupts
+from a kworker which is not the intended context.
+
+Ensure that the callback is invoked from hardirq context and not just
+with disabled interrupts.
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/20210927211919.310855-3-bigeasy@linutronix.de
+---
+ kernel/irq_work.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/kernel/irq_work.c
++++ b/kernel/irq_work.c
+@@ -167,7 +167,7 @@ static void irq_work_run_list(struct lli
+ 	struct irq_work *work, *tmp;
+ 	struct llist_node *llnode;
+ 
+-	BUG_ON(!irqs_disabled());
++	BUG_ON(!in_hardirq());
+ 
+ 	if (llist_empty(list))
+ 		return;

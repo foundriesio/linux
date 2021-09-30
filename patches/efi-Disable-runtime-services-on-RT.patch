@@ -22,6 +22,7 @@ This was observed on "EFI v2.60 by SoftIron Overdrive 1000".
 
 Acked-by: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lkml.kernel.org/r/20210924134919.1913476-2-bigeasy@linutronix.de
 ---
  drivers/firmware/efi/efi.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

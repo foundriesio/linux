@@ -17,7 +17,7 @@ Link: https://lkml.kernel.org/r/20210917103055.92150-1-bigeasy@linutronix.de
 ---
 --- a/kernel/irq/manage.c
 +++ b/kernel/irq/manage.c
-@@ -2833,7 +2833,7 @@ EXPORT_SYMBOL_GPL(irq_get_irqchip_state)
+@@ -2834,7 +2834,7 @@ EXPORT_SYMBOL_GPL(irq_get_irqchip_state)
   *	This call sets the internal irqchip state of an interrupt,
   *	depending on the value of @which.
   *

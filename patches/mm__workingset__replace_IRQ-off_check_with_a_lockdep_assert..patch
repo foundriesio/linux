@@ -24,7 +24,7 @@ Link: https://lkml.kernel.org/r/20190211113829.sqf6bdi4c4cdd3rp@linutronix.de
 ---
 --- a/mm/workingset.c
 +++ b/mm/workingset.c
-@@ -432,6 +432,8 @@ static struct list_lru shadow_nodes;
+@@ -433,6 +433,8 @@ static struct list_lru shadow_nodes;
  
  void workingset_update_node(struct xa_node *node)
  {
@@ -33,7 +33,7 @@ Link: https://lkml.kernel.org/r/20190211113829.sqf6bdi4c4cdd3rp@linutronix.de
  	/*
  	 * Track non-empty nodes that contain only shadow entries;
  	 * unlink those that contain pages or are being freed.
-@@ -440,7 +442,8 @@ void workingset_update_node(struct xa_no
+@@ -441,7 +443,8 @@ void workingset_update_node(struct xa_no
  	 * already where they should be. The list_empty() test is safe
  	 * as node->private_list is protected by the i_pages lock.
  	 */

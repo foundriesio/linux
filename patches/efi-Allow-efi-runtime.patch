@@ -10,6 +10,7 @@ user might need to alter the boot order for instance.
 
 Acked-by: Ard Biesheuvel <ard.biesheuvel@linaro.org>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lkml.kernel.org/r/20210924134919.1913476-3-bigeasy@linutronix.de
 ---
  drivers/firmware/efi/efi.c |    3 +++
  1 file changed, 3 insertions(+)

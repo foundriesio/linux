@@ -1,6 +1,6 @@
-Subject: sched: Make cond_resched_*lock() variants consistent vs. might_sleep()
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Wed, 22 Sep 2021 21:23:05 +0200
+Subject: sched: Make cond_resched_*lock() variants consistent vs. might_sleep()
+Date: Thu, 23 Sep 2021 18:54:37 +0200
 
 Commit 3427445afd26 ("sched: Exclude cond_resched() from nested sleep
 test") removed the task state check of __might_sleep() for
@@ -15,6 +15,8 @@ Make it consistent and use the non-state checking __might_resched() there
 as well.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/20210923165357.991262778@linutronix.de
 ---
  include/linux/sched.h |   12 ++++++------
  1 file changed, 6 insertions(+), 6 deletions(-)

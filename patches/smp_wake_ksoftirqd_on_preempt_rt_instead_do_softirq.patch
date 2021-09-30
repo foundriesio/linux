@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Subject: smp: Wake ksoftirqd on PREEMPT_RT instead do_softirq().
-Date: Fri, 24 Sep 2021 11:47:55 +0200
+Date: Mon, 27 Sep 2021 09:38:14 +0200
 
 The softirq implementation on PREEMPT_RT does not provide do_softirq().
 The other user of do_softirq() is replaced with a local_bh_disable()
@@ -11,14 +11,16 @@ preemption.
 Wake the softirq thread on PREEMPT_RT if there are any pending softirqs.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Link: https://lore.kernel.org/r/20210924094755.2m32pgqwrqw2cg2s@linutronix.de
+Link: https://lore.kernel.org/r/20210927073814.x5h6osr4dgiu44sc@linutronix.de
 ---
- kernel/smp.c |   15 +++++++++++++--
- 1 file changed, 13 insertions(+), 2 deletions(-)
+v1…v2: Drop an empty line.
+
+ kernel/smp.c |   14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 ---
 --- a/kernel/smp.c
 +++ b/kernel/smp.c
-@@ -690,10 +690,21 @@ void flush_smp_call_function_from_idle(v
+@@ -690,10 +690,20 @@ void flush_smp_call_function_from_idle(v
  
  	cfd_seq_store(this_cpu_ptr(&cfd_seq_local)->idle, CFD_SEQ_NOCPU,
  		      smp_processor_id(), CFD_SEQ_IDLE);
@@ -29,7 +31,6 @@ Link: https://lore.kernel.org/r/20210924094755.2m32pgqwrqw2cg2s@linutronix.de
 -		do_softirq();
 +
 +	if (local_softirq_pending()) {
-+
 +		if (!IS_ENABLED(CONFIG_PREEMPT_RT)) {
 +			do_softirq();
 +		} else {

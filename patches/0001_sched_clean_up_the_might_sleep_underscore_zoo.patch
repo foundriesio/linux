@@ -1,13 +1,13 @@
-Subject: sched: Clean up the might_sleep() underscore zoo
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Wed, 22 Sep 2021 21:32:57 +0200
+Subject: sched: Clean up the might_sleep() underscore zoo
+Date: Thu, 23 Sep 2021 18:54:35 +0200
 
 __might_sleep() vs. ___might_sleep() is hard to distinguish. Aside of that
 the three underscore variant is exposed to provide a checkpoint for
 rescheduling points which are distinct from blocking points.
 
 They are semantically a preemption point which means that scheduling is
-state preserving vs. a real blocking operation, e.g. mutex_lock(), wait*(),
+state preserving. A real blocking operation, e.g. mutex_lock(), wait*(),
 which cannot preserve a task state which is not equal to RUNNING.
 
 While technically blocking on a "sleeping" spinlock in RT enabled kernels
@@ -21,6 +21,8 @@ Rename ___might_sleep() to __might_resched() to make the distinction of
 these functions clear.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/20210923165357.928693482@linutronix.de
 ---
  include/linux/kernel.h       |    6 +++---
  include/linux/sched.h        |    8 ++++----

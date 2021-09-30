@@ -1,6 +1,6 @@
-Subject: sched: Move mmdrop to RCU on RT
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Mon Jun  6 12:20:33 2011 +0200
+Subject: sched: Move mmdrop to RCU on RT
+Date: Tue, 28 Sep 2021 14:24:32 +0200
 
 mmdrop() is invoked from finish_task_switch() by the incoming task to drop
 the mm which was handed over by the previous task. mmdrop() can be quite
@@ -11,12 +11,14 @@ Provide mmdrop_sched() which maps to mmdrop() on !RT kernels. On RT kernels
 it delagates the eventually required invocation of __mmdrop() to RCU.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/20210928122411.648582026@linutronix.de
 ---
  include/linux/mm_types.h |    4 ++++
  include/linux/sched/mm.h |   20 ++++++++++++++++++++
  kernel/fork.c            |   13 +++++++++++++
- kernel/sched/core.c      |    3 ++-
- 4 files changed, 39 insertions(+), 1 deletion(-)
+ kernel/sched/core.c      |    2 +-
+ 4 files changed, 38 insertions(+), 1 deletion(-)
 ---
 --- a/include/linux/mm_types.h
 +++ b/include/linux/mm_types.h
@@ -91,11 +93,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct mm_struct *mm;
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -4839,9 +4839,10 @@ static struct rq *finish_task_switch(str
- 	 *   provided by mmdrop(),
- 	 * - a sync_core for SYNC_CORE.
+@@ -4839,7 +4839,7 @@ static struct rq *finish_task_switch(str
  	 */
-+
  	if (mm) {
  		membarrier_mm_sync_core_before_usermode(mm);
 -		mmdrop(mm);

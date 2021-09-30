@@ -1,17 +1,19 @@
-Subject: sched: Disable TTWU_QUEUE on RT
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Tue Sep 13 16:42:35 2011 +0200
+Subject: sched: Disable TTWU_QUEUE on RT
+Date: Tue, 28 Sep 2021 14:24:27 +0200
 
 The queued remote wakeup mechanism has turned out to be suboptimal for RT
 enabled kernels. The maximum latencies go up by a factor of > 5x in certain
 scenarious.
 
-This caused by either long wake lists or by a large number of TTWU IPIs
+This is caused by either long wake lists or by a large number of TTWU IPIs
 which are processed back to back.
 
 Disable it for RT.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/20210928122411.482262764@linutronix.de
 ---
  kernel/sched/features.h |    5 +++++
  1 file changed, 5 insertions(+)

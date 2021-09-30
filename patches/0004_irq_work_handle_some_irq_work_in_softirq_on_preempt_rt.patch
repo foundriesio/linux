@@ -1,40 +1,54 @@
-Subject: irqwork: push most work into softirq context
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Tue Jun 23 15:32:51 2015 +0200
+Subject: irq_work: Handle some irq_work in SOFTIRQ on PREEMPT_RT
+Date: Mon, 27 Sep 2021 23:19:18 +0200
 
-From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+The irq_work callback is invoked in hard IRQ context. By default all
+callbacks are scheduled for invocation right away (given supported by
+the architecture) except for the ones marked IRQ_WORK_LAZY which are
+delayed until the next timer-tick.
 
-Initially we defered all irqwork into softirq because we didn't want the
-latency spikes if perf or another user was busy and delayed the RT task.
-The NOHZ trigger (nohz_full_kick_work) was the first user that did not work
-as expected if it did not run in the original irqwork context so we had to
-bring it back somehow for it. push_irq_work_func is the second one that
-requires this.
+While looking over the callbacks, some of them may acquire locks
+(spinlock_t, rwlock_t) which are transformed into sleeping locks on
+PREEMPT_RT and must not be acquired in hard IRQ context.
+Changing the locks into locks which could be acquired in this context
+will lead to other problems such as increased latencies if everything
+in the chain has IRQ-off locks. This will not solve all the issues as
+one callback has been noticed which invoked kref_put() and its callback
+invokes kfree() and this can not be invoked in hardirq context.
 
-This patch adds the IRQ_WORK_HARD_IRQ which makes sure the callback runs
-in raw-irq context. Everything else is defered into softirq context. Without
--RT we have the orignal behavior.
+Some callbacks are required to be invoked in hardirq context even on
+PREEMPT_RT to work properly. This includes for instance the NO_HZ
+callback which needs to be able to observe the idle context.
 
-This patch incorporates tglx orignal work which revoked a little bringing back
-the arch_irq_work_raise() if possible and a few fixes from Steven Rostedt and
-Mike Galbraith,
+The callbacks which require to be run in hardirq have already been
+marked. Use this information to split the callbacks onto the two lists
+on PREEMPT_RT:
+- lazy_list
+  Work items which are not marked with IRQ_WORK_HARD_IRQ will be added
+  to this list. Callbacks on this list will be invoked from timer
+  softirq handler. The handler here may acquire sleeping locks such as
+  spinlock_t and invoke kfree().
+
+- raised_list
+  Work items which are marked with IRQ_WORK_HARD_IRQ will be added to
+  this list. They will be invoked in hardirq context and must not
+  acquire any sleeping locks.
 
 [bigeasy: melt tglx's irq_work_tick_soft() which splits irq_work_tick() into a
-          hard and soft variant]
+          hard and soft variant. Collected fixes over time from Steven
+	  Rostedt and Mike Galbraith. ]
+
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
+Link: https://lore.kernel.org/r/20210927211919.310855-5-bigeasy@linutronix.de
 ---
  include/linux/irq_work.h |    6 ++++
- kernel/irq_work.c        |   69 ++++++++++++++++++++++++++++++++++++++---------
- kernel/sched/topology.c  |    3 +-
+ kernel/irq_work.c        |   58 ++++++++++++++++++++++++++++++++++++++---------
  kernel/time/timer.c      |    2 +
- 4 files changed, 66 insertions(+), 14 deletions(-)
----
+ 3 files changed, 55 insertions(+), 11 deletions(-)
+
 --- a/include/linux/irq_work.h
 +++ b/include/linux/irq_work.h
-@@ -64,4 +64,10 @@ static inline void irq_work_run(void) {
+@@ -67,4 +67,10 @@ static inline void irq_work_run(void) {
  static inline void irq_work_single(void *arg) { }
  #endif
  
@@ -74,8 +88,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +	if (work_flags & IRQ_WORK_LAZY)
 +		lazy_work = true;
 +	else if (IS_ENABLED(CONFIG_PREEMPT_RT) &&
-+		!(work_flags & IRQ_WORK_HARD_IRQ))
-+			lazy_work = true;
++		 !(work_flags & IRQ_WORK_HARD_IRQ))
++		lazy_work = true;
 +	else
 +		lazy_work = false;
 +
@@ -90,7 +104,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			arch_irq_work_raise();
  	}
  }
-@@ -104,7 +119,14 @@ bool irq_work_queue_on(struct irq_work *
+@@ -104,7 +119,13 @@ bool irq_work_queue_on(struct irq_work *
  	if (cpu != smp_processor_id()) {
  		/* Arch remote IPI send/receive backend aren't NMI safe */
  		WARN_ON_ONCE(in_nmi());
@@ -98,7 +112,6 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +
 +		if (IS_ENABLED(CONFIG_PREEMPT_RT) && !(atomic_read(&work->node.a_flags) & IRQ_WORK_HARD_IRQ)) {
 +			if (llist_add(&work->node.llist, &per_cpu(lazy_list, cpu)))
-+				/* && tick_nohz_tick_stopped_cpu(cpu) */
 +				arch_send_call_function_single_ipi(cpu);
 +		} else {
 +			__smp_call_single_queue(cpu, &work->node.llist);
@@ -106,51 +119,40 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	} else {
  		__irq_work_queue_local(work);
  	}
-@@ -122,9 +144,8 @@ bool irq_work_needs_cpu(void)
+@@ -121,7 +142,6 @@ bool irq_work_needs_cpu(void)
+ 
  	raised = this_cpu_ptr(&raised_list);
  	lazy = this_cpu_ptr(&lazy_list);
- 
--	if (llist_empty(raised) || arch_irq_work_has_interrupt())
--		if (llist_empty(lazy))
--			return false;
-+	if (llist_empty(raised) && llist_empty(lazy))
-+		return false;
- 
- 	/* All work should have been flushed before going offline */
- 	WARN_ON_ONCE(cpu_is_offline(smp_processor_id()));
-@@ -167,8 +188,12 @@ static void irq_work_run_list(struct lli
+-
+ 	if (llist_empty(raised) || arch_irq_work_has_interrupt())
+ 		if (llist_empty(lazy))
+ 			return false;
+@@ -170,7 +190,11 @@ static void irq_work_run_list(struct lli
  	struct irq_work *work, *tmp;
  	struct llist_node *llnode;
  
-+#ifndef CONFIG_PREEMPT_RT
+-	BUG_ON(!in_hardirq());
 +	/*
-+	 * nort: On RT IRQ-work may run in SOFTIRQ context.
++	 * On PREEMPT_RT IRQ-work may run in SOFTIRQ context if it is not marked
++	 * explicitly that it needs to run in hardirq context.
 +	 */
- 	BUG_ON(!irqs_disabled());
--
-+#endif
++	BUG_ON(!in_hardirq() && !IS_ENABLED(CONFIG_PREEMPT_RT));
+ 
  	if (llist_empty(list))
  		return;
- 
-@@ -184,7 +209,16 @@ static void irq_work_run_list(struct lli
+@@ -187,7 +211,10 @@ static void irq_work_run_list(struct lli
  void irq_work_run(void)
  {
  	irq_work_run_list(this_cpu_ptr(&raised_list));
 -	irq_work_run_list(this_cpu_ptr(&lazy_list));
-+	if (IS_ENABLED(CONFIG_PREEMPT_RT)) {
-+		/*
-+		 * NOTE: we raise softirq via IPI for safety,
-+		 * and execute in irq_work_tick() to move the
-+		 * overhead from hard to soft irq context.
-+		 */
-+		if (!llist_empty(this_cpu_ptr(&lazy_list)))
-+			raise_softirq(TIMER_SOFTIRQ);
-+	} else
++	if (!IS_ENABLED(CONFIG_PREEMPT_RT))
 +		irq_work_run_list(this_cpu_ptr(&lazy_list));
++	else if (!llist_empty(this_cpu_ptr(&lazy_list)))
++		raise_softirq(TIMER_SOFTIRQ);
  }
  EXPORT_SYMBOL_GPL(irq_work_run);
  
-@@ -194,8 +228,17 @@ void irq_work_tick(void)
+@@ -197,8 +224,17 @@ void irq_work_tick(void)
  
  	if (!llist_empty(raised) && !arch_irq_work_has_interrupt())
  		irq_work_run_list(raised);
@@ -168,18 +170,6 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  /*
   * Synchronize against the irq_work @entry, ensures the entry is not
---- a/kernel/sched/topology.c
-+++ b/kernel/sched/topology.c
-@@ -526,7 +526,8 @@ static int init_rootdomain(struct root_d
- #ifdef HAVE_RT_PUSH_IPI
- 	rd->rto_cpu = -1;
- 	raw_spin_lock_init(&rd->rto_lock);
--	init_irq_work(&rd->rto_push_work, rto_push_irq_work_func);
-+//	init_irq_work(&rd->rto_push_work, rto_push_irq_work_func);
-+	rd->rto_push_work = IRQ_WORK_INIT_HARD(rto_push_irq_work_func);
- #endif
- 
- 	rd->visit_gen = 0;
 --- a/kernel/time/timer.c
 +++ b/kernel/time/timer.c
 @@ -1744,6 +1744,8 @@ static __latent_entropy void run_timer_s

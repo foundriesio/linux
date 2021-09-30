@@ -1,6 +1,6 @@
-Subject: sched: Make might_sleep() output less confusing
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Wed, 22 Sep 2021 19:44:14 +0200
+Subject: sched: Make might_sleep() output less confusing
+Date: Thu, 23 Sep 2021 18:54:41 +0200
 
 might_sleep() output is pretty informative, but can be confusing at times
 especially with PREEMPT_RCU when the check triggers due to a voluntary
@@ -71,10 +71,12 @@ preempt disable IP is still printed as before:
  Preemption disabled at:
  [<ffffffff82b48326>] test_might_sleep+0x1e4/0x280
 
-This allows in the next step to provide a better debugging output for RT
-enabled kernels and their spinlock substitutions.
+This also prepares to provide a better debugging output for RT enabled
+kernels and their spinlock substitutions.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/20210923165358.181022656@linutronix.de
 ---
  kernel/sched/core.c |   27 ++++++++++++++++++++++-----
  1 file changed, 22 insertions(+), 5 deletions(-)

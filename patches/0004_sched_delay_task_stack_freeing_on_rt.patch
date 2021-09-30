@@ -1,8 +1,6 @@
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Subject: sched: Delay task stack freeing on RT
-From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Thu, 23 Sep 2021 22:08:58 +0200
-
-From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Tue, 28 Sep 2021 14:24:30 +0200
 
 Anything which is done on behalf of a dead task at the end of
 finish_task_switch() is preventing the incoming task from doing useful
@@ -13,6 +11,7 @@ Therefore delay the stack cleanup on RT enabled kernels.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Link: https://lore.kernel.org/r/20210928122411.593486363@linutronix.de
 ---
  kernel/exit.c       |    5 +++++
  kernel/fork.c       |    5 ++++-
@@ -49,7 +48,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -4847,8 +4847,12 @@ static struct rq *finish_task_switch(str
+@@ -4845,8 +4845,12 @@ static struct rq *finish_task_switch(str
  		if (prev->sched_class->task_dead)
  			prev->sched_class->task_dead(prev);
  
