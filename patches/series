@@ -34,7 +34,6 @@ kthread-Move-prio-affinite-change-into-the-newly-cre.patch
 genirq-Move-prio-assignment-into-the-newly-created-t.patch
 genirq-Disable-irqfixup-poll-on-PREEMPT_RT.patch
 lockdep-Let-lock_is_held_type-detect-recursive-read-.patch
-net-bridge-mcast-Associate-the-seqcount-with-its-pro.patch
 
 # KCOV (akpm)
 0001_documentation_kcov_include_types_h_in_the_example.patch
