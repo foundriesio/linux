@@ -70,5 +70,6 @@ chmod +x 'debian/tests/ubuntu-regression-suite'
 chmod +x 'samples/bpf/lwt_len_hist.sh'
 chmod +x 'samples/bpf/test_lwt_bpf.sh'
 chmod +x 'scripts/kmsg-doc'
+chmod +x 'update-dkms-versions'
 chmod +x 'update-version-dkms'
 exit 0
