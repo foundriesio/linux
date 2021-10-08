@@ -425,9 +425,13 @@ static int otm8009a_probe(struct mipi_dsi_device *dsi)
 		return ret;
 	}
 
-	/* Force the panel in reset to avoid visual artifacts */
-	if (ctx->reset_gpio)
+	/* Reset the panel to avoid visual artifacts */
+	if (ctx->reset_gpio) {
+		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
 		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+		msleep(20);
+		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
+	}
 
 	ctx->supply = devm_regulator_get(dev, "power");
 	if (IS_ERR(ctx->supply)) {
