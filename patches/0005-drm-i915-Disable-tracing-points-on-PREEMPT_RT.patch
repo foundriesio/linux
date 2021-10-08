@@ -1,8 +1,6 @@
-Subject: drm/i915: disable tracing on -RT
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Thu Dec  6 09:52:20 2018 +0100
-
-From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Thu, 6 Dec 2018 09:52:20 +0100
+Subject: [PATCH 05/10] drm/i915: Disable tracing points on PREEMPT_RT
 
 Luca Abeni reported this:
 | BUG: scheduling while atomic: kworker/u8:2/15203/0x00000003
@@ -14,22 +12,23 @@ Luca Abeni reported this:
 |  trace_event_raw_event_i915_pipe_update_start+0x7d/0xf0 [i915]
 
 The tracing events use trace_i915_pipe_update_start() among other events
-use functions acquire spin locks. A few trace points use
+use functions acquire spinlock_t locks which are transformed into
+sleeping locks on PREEMPT_RT. A few trace points use
 intel_get_crtc_scanline(), others use ->get_vblank_counter() wich also
-might acquire a sleeping lock.
+might acquire a sleeping locks on PREEMPT_RT.
+At the time the arguments are evaluated within trace point, preemption
+is disabled and so the locks must not be acquired on PREEMPT_RT.
 
-Based on this I don't see any other way than disable trace points on RT.
+Based on this I don't see any other way than disable trace points on
+PREMPT_RT.
 
-Cc: stable-rt@vger.kernel.org
 Reported-by: Luca Abeni <lucabe72@gmail.com>
+Cc: Steven Rostedt <rostedt@goodmis.org>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-
-
 ---
  drivers/gpu/drm/i915/i915_trace.h |    4 ++++
  1 file changed, 4 insertions(+)
----
+
 --- a/drivers/gpu/drm/i915/i915_trace.h
 +++ b/drivers/gpu/drm/i915/i915_trace.h
 @@ -2,6 +2,10 @@

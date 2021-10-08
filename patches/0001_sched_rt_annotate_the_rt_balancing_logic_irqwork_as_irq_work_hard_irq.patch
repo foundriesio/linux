@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Subject: sched/rt: Annotate the RT balancing logic irqwork as IRQ_WORK_HARD_IRQ
-Date: Mon, 27 Sep 2021 23:19:15 +0200
+Date: Wed, 06 Oct 2021 13:18:49 +0200
 
 The push-IPI logic for RT tasks expects to be invoked from hardirq
 context. One reason is that a RT task on the remote CPU would block the
@@ -19,7 +19,7 @@ Cc: Ben Segall <bsegall@google.com>
 Cc: Mel Gorman <mgorman@suse.de>
 Cc: Daniel Bristot de Oliveira <bristot@redhat.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Link: https://lore.kernel.org/r/20210927211919.310855-2-bigeasy@linutronix.de
+Link: https://lore.kernel.org/r/20211006111852.1514359-2-bigeasy@linutronix.de
 ---
  kernel/sched/topology.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

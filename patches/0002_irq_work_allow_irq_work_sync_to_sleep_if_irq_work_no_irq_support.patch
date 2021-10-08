@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Subject: irq_work: Allow irq_work_sync() to sleep if irq_work() no IRQ support.
-Date: Mon, 27 Sep 2021 23:19:17 +0200
+Date: Wed, 06 Oct 2021 13:18:50 +0200
 
 irq_work() triggers instantly an interrupt if supported by the
 architecture. Otherwise the work will be processed on the next timer
@@ -15,7 +15,7 @@ Let irq_work_sync() synchronize with rcuwait if the architecture
 processes irqwork via the timer tick.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Link: https://lore.kernel.org/r/20210927211919.310855-4-bigeasy@linutronix.de
+Link: https://lore.kernel.org/r/20211006111852.1514359-3-bigeasy@linutronix.de
 ---
  include/linux/irq_work.h |    3 +++
  kernel/irq_work.c        |   10 ++++++++++

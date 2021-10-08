@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 8 Sep 2021 17:18:00 +0200
-Subject: [PATCH] drm/i915/gt: Queue and wait for the irq_work item.
+Subject: [PATCH 07/10] drm/i915/gt: Queue and wait for the irq_work item.
 
 Disabling interrupts and invoking the irq_work function directly breaks
 on PREEMPT_RT.
@@ -19,6 +19,7 @@ directly.
 
 Reported-by: Clark Williams <williams@redhat.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Reviewed-by: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
 ---
  drivers/gpu/drm/i915/gt/intel_breadcrumbs.c |    5 ++---
  1 file changed, 2 insertions(+), 3 deletions(-)
