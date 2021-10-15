@@ -101,7 +101,7 @@ samples_kfifo__Rename_read_lock_write_lock.patch
 ###########################################################################
 jump-label__disable_if_stop_machine_is_used.patch
 kconfig__Disable_config_options_which_are_not_RT_compatible.patch
-mm__Allow_only_SLUB_on_RT.patch
+mm-Allow-only-SLUB-on-PREEMPT_RT.patch
 
 ###########################################################################
 # Include fixes
@@ -254,6 +254,7 @@ ARM__enable_irq_in_translation_section_permission_fault_handlers.patch
 KVM__arm_arm64__downgrade_preempt_disabled_region_to_migrate_disable.patch
 arm64-sve-Delay-freeing-memory-in-fpsimd_flush_threa.patch
 arm64-sve-Make-kernel-FPU-protection-RT-friendly.patch
+arm64-signal-Use-ARCH_RT_DELAYS_SIGNAL_SEND.patch
 tty_serial_omap__Make_the_locking_RT_aware.patch
 tty_serial_pl011__Make_the_locking_work_on_RT.patch
 ARM__Allow_to_enable_RT.patch

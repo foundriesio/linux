@@ -811,7 +811,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		return -1;
 --- a/net/sched/sch_taprio.c
 +++ b/net/sched/sch_taprio.c
-@@ -1973,7 +1973,7 @@ static int taprio_dump_class_stats(struc
+@@ -1977,7 +1977,7 @@ static int taprio_dump_class_stats(struc
  	struct netdev_queue *dev_queue = taprio_queue_get(sch, cl);
  
  	sch = dev_queue->qdisc_sleeping;

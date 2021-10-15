@@ -3,12 +3,10 @@ Date: Thu, 23 Jan 2014 14:45:59 +0100
 Subject: [PATCH] leds: trigger: Disable CPU trigger on PREEMPT_RT
 
 The CPU trigger is invoked on ARM from CPU-idle. That trigger later
-invokes led_trigger_event() which acquires a read lock in an IRQ-off
-section. The problematic part on PREEMPT_RT is that this lock is turned
-into a sleeping lock and must not be acquired with disabled interrupts.
-
-The problem continues as that the LED driver underneath must not acquire
-any sleeping locks itself.
+invokes led_trigger_event() which may invoke the callback of the actual driver.
+That driver can acquire a spinlock_t which is okay on kernel without
+PREEMPT_RT. On PREEMPT_RT enabled kernel this lock is turned into a sleeping
+lock and must not be acquired with disabled interrupts.
 
 Disable the CPU trigger on PREEMPT_RT.
 
