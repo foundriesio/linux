@@ -1,13 +1,13 @@
-From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
-Date: Fri, 17 Sep 2021 13:31:38 +0200
-Subject: [PATCH 06/10] net: sched: Protect Qdisc::bstats with u64_stats
+From: Ahmed S. Darwish <a.darwish@linutronix.de>
+Subject: net: sched: Protect Qdisc::bstats with u64_stats
+Date: Sat, 16 Oct 2021 10:49:07 +0200
 
 The not-per-CPU variant of qdisc tc (traffic control) statistics,
 Qdisc::gnet_stats_basic_packed bstats, is protected with Qdisc::running
 sequence counter.
 
 This sequence counter is used for reliably protecting bstats reads from
-parallel writes.  Meanwhile, the seqcount's write section covers a much
+parallel writes. Meanwhile, the seqcount's write section covers a much
 wider area than bstats update: qdisc_run_begin() => qdisc_run_end().
 
 That read/write section asymmetry can lead to needless retries of the
@@ -16,14 +16,12 @@ counter altogether, introduce a u64_stats sync point inside bstats
 instead.
 
 Modify _bstats_update() to start/end the bstats u64_stats write
-section. Introduce _bstats_set(); it is now needed since raw writes done
-within the bigger qdisc_run_begin/end() section need a helper for
-starting/ending the u64_stats write section.
+section.
 
 For bisectability, and finer commits granularity, the bstats read
 section is still protected with a Qdisc::running read/retry loop and
 qdisc_run_begin/end() still starts/ends that seqcount write section.
-Once all call sites are modified to use _bstats_set/update(), the
+Once all call sites are modified to use _bstats_update(), the
 Qdisc::running seqcount will be removed and bstats read/retry loop will
 be modified to utilize the internal u64_stats sync point.
 
@@ -36,11 +34,12 @@ still be valid.
 
 Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/20211016084910.4029084-7-bigeasy@linutronix.de
 ---
- include/net/gen_stats.h    |   14 ++++++++++++++
+ include/net/gen_stats.h    |    2 ++
  include/net/sch_generic.h  |    2 ++
  net/core/gen_estimator.c   |    2 +-
- net/core/gen_stats.c       |   16 ++++++++++++++--
+ net/core/gen_stats.c       |   14 ++++++++++++--
  net/netfilter/xt_RATEEST.c |    1 +
  net/sched/act_api.c        |    2 ++
  net/sched/sch_atm.c        |    1 +
@@ -54,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  net/sched/sch_mq.c         |    2 +-
  net/sched/sch_mqprio.c     |    5 +++--
  net/sched/sch_qfq.c        |    1 +
- 17 files changed, 53 insertions(+), 9 deletions(-)
+ 17 files changed, 39 insertions(+), 9 deletions(-)
 
 --- a/include/net/gen_stats.h
 +++ b/include/net/gen_stats.h
@@ -66,26 +65,14 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
  
  struct gnet_stats_basic_cpu {
-@@ -18,6 +19,19 @@ struct gnet_stats_basic_cpu {
- 	struct u64_stats_sync syncp;
- } __aligned(2 * sizeof(u64));
+@@ -34,6 +35,7 @@ struct gnet_dump {
+ 	struct tc_stats   tc_stats;
+ };
  
-+#ifdef CONFIG_LOCKDEP
 +void gnet_stats_basic_packed_init(struct gnet_stats_basic_packed *b);
-+
-+#else
-+
-+static inline void gnet_stats_basic_packed_init(struct gnet_stats_basic_packed *b)
-+{
-+	b->bytes = 0;
-+	b->packets = 0;
-+	u64_stats_init(&b->syncp);
-+}
-+#endif
-+
- struct net_rate_estimator;
+ int gnet_stats_start_copy(struct sk_buff *skb, int type, spinlock_t *lock,
+ 			  struct gnet_dump *d, int padattr);
  
- struct gnet_dump {
 --- a/include/net/sch_generic.h
 +++ b/include/net/sch_generic.h
 @@ -848,8 +848,10 @@ static inline int qdisc_enqueue(struct s
@@ -121,11 +108,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static inline int
  gnet_stats_copy(struct gnet_dump *d, int type, void *buf, int size, int padattr)
-@@ -114,6 +114,17 @@ gnet_stats_start_copy(struct sk_buff *sk
+@@ -114,6 +114,15 @@ gnet_stats_start_copy(struct sk_buff *sk
  }
  EXPORT_SYMBOL(gnet_stats_start_copy);
  
-+#ifdef CONFIG_LOCKDEP
 +/* Must not be inlined, due to u64_stats seqcount_t lockdep key */
 +void gnet_stats_basic_packed_init(struct gnet_stats_basic_packed *b)
 +{
@@ -134,12 +120,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	u64_stats_init(&b->syncp);
 +}
 +EXPORT_SYMBOL(gnet_stats_basic_packed_init);
-+#endif
 +
- static void
- __gnet_stats_copy_basic_cpu(struct gnet_stats_basic_packed *bstats,
- 			    struct gnet_stats_basic_cpu __percpu *cpu)
-@@ -169,8 +180,9 @@ static int
+ static void gnet_stats_add_basic_cpu(struct gnet_stats_basic_packed *bstats,
+ 				     struct gnet_stats_basic_cpu __percpu *cpu)
+ {
+@@ -167,8 +176,9 @@ static int
  			 struct gnet_stats_basic_packed *b,
  			 int type)
  {
@@ -147,7 +132,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	struct gnet_stats_basic_packed bstats;
  
 +	gnet_stats_basic_packed_init(&bstats);
- 	__gnet_stats_copy_basic(running, &bstats, cpu, b);
+ 	gnet_stats_add_basic(running, &bstats, cpu, b);
  
  	if (d->compat_tc_stats && type == TCA_STATS_BASIC) {
 --- a/net/netfilter/xt_RATEEST.c
@@ -278,8 +263,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			kfree(cl);
 --- a/net/sched/sch_mq.c
 +++ b/net/sched/sch_mq.c
-@@ -133,7 +133,7 @@ static int mq_dump(struct Qdisc *sch, st
- 	__u32 qlen = 0;
+@@ -132,7 +132,7 @@ static int mq_dump(struct Qdisc *sch, st
+ 	unsigned int ntx;
  
  	sch->q.qlen = 0;
 -	memset(&sch->bstats, 0, sizeof(sch->bstats));
@@ -298,9 +283,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	memset(&sch->qstats, 0, sizeof(sch->qstats));
  
  	/* MQ supports lockless qdiscs. However, statistics accounting needs
-@@ -504,10 +504,11 @@ static int mqprio_dump_class_stats(struc
+@@ -500,10 +500,11 @@ static int mqprio_dump_class_stats(struc
  		int i;
- 		__u32 qlen = 0;
+ 		__u32 qlen;
  		struct gnet_stats_queue qstats = {0};
 -		struct gnet_stats_basic_packed bstats = {0};
 +		struct gnet_stats_basic_packed bstats;

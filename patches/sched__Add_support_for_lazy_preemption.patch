@@ -537,7 +537,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
-@@ -2630,7 +2630,13 @@ unsigned int tracing_gen_ctx_irq_test(un
+@@ -2629,7 +2629,13 @@ unsigned int tracing_gen_ctx_irq_test(un
  		trace_flags |= TRACE_FLAG_NEED_RESCHED;
  	if (test_preempt_need_resched())
  		trace_flags |= TRACE_FLAG_PREEMPT_RESCHED;
@@ -552,7 +552,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		(min_t(unsigned int, migration_disable_value(), 0xf)) << 4;
  }
  
-@@ -4194,15 +4200,17 @@ unsigned long trace_total_entries(struct
+@@ -4193,15 +4199,17 @@ unsigned long trace_total_entries(struct
  
  static void print_lat_help_header(struct seq_file *m)
  {
@@ -579,7 +579,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void print_event_info(struct array_buffer *buf, struct seq_file *m)
-@@ -4236,14 +4244,16 @@ static void print_func_help_header_irq(s
+@@ -4235,14 +4243,16 @@ static void print_func_help_header_irq(s
  
  	print_event_info(buf, m);
  

@@ -1,7 +1,6 @@
-From adc8464a87ce16bfa731cbe9d9783120cd74106e Mon Sep 17 00:00:00 2001
 From: Ingo Molnar <mingo@kernel.org>
+Subject: mm: Allow only SLUB on PREEMPT_RT
 Date: Fri, 3 Jul 2009 08:44:03 -0500
-Subject: [PATCH] mm: Allow only SLUB on PREEMPT_RT
 
 Memory allocators may disable interrupts or preemption as part of the
 allocation and freeing process. For PREEMPT_RT it is important that
@@ -14,7 +13,7 @@ changes to meet all the requirements. The SLUB design fits better with
 PREEMPT_RT model and so the SLAB patches were dropped in the 3.12-RT
 patchset. Comparing the two allocator, SLUB outperformed SLAB in both
 throughput (time needed to allocate and free memory) and the maximal
-latency of the system measured with cyclictest.
+latency of the system measured with cyclictest during hackbench.
 
 SLOB was never evaluated since it was unlikely that it preforms better
 than SLAB. During a quick test, the kernel crashed with SLOB enabled
@@ -27,6 +26,8 @@ Disable SLAB and SLOB on PREEMPT_RT.
 Signed-off-by: Ingo Molnar <mingo@kernel.org>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Acked-by: Vlastimil Babka <vbabka@suse.cz>
+Link: https://lore.kernel.org/r/20211015210336.gen3tib33ig5q2md@linutronix.de
 ---
  init/Kconfig |    2 ++
  1 file changed, 2 insertions(+)

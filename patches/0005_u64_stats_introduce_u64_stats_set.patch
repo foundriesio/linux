@@ -1,6 +1,6 @@
-From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
-Date: Fri, 17 Sep 2021 13:31:37 +0200
-Subject: [PATCH 05/10] u64_stats: Introduce u64_stats_set()
+From: Ahmed S. Darwish <a.darwish@linutronix.de>
+Subject: u64_stats: Introduce u64_stats_set()
+Date: Sat, 16 Oct 2021 10:49:06 +0200
 
 Allow to directly set a u64_stats_t value which is used to provide an init
 function which sets it directly to zero intead of memset() the value.
@@ -11,6 +11,7 @@ Add u64_stats_set() to the u64_stats API.
 
 Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/20211016084910.4029084-6-bigeasy@linutronix.de
 ---
  include/linux/u64_stats_sync.h |   10 ++++++++++
  1 file changed, 10 insertions(+)

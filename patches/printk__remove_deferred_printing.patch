@@ -37,8 +37,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  kernel/time/ntp.c               |   14 ++-----
  kernel/time/timekeeping.c       |   30 ++++++++--------
  kernel/time/timekeeping_debug.c |    2 -
+ kernel/workqueue.c              |    4 --
  lib/ratelimit.c                 |    4 --
- 25 files changed, 83 insertions(+), 261 deletions(-)
+ 26 files changed, 83 insertions(+), 265 deletions(-)
  delete mode 100644 kernel/printk/internal.h
  delete mode 100644 kernel/printk/printk_safe.c
 ---
@@ -777,6 +778,34 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			   (s64)t->tv_sec, t->tv_nsec / NSEC_PER_MSEC);
  }
  
+--- a/kernel/workqueue.c
++++ b/kernel/workqueue.c
+@@ -4836,9 +4836,7 @@ void show_workqueue_state(void)
+ 				 * drivers that queue work while holding locks
+ 				 * also taken in their write paths.
+ 				 */
+-				printk_deferred_enter();
+ 				show_pwq(pwq);
+-				printk_deferred_exit();
+ 			}
+ 			raw_spin_unlock_irqrestore(&pwq->pool->lock, flags);
+ 			/*
+@@ -4862,7 +4860,6 @@ void show_workqueue_state(void)
+ 		 * queue work while holding locks also taken in their write
+ 		 * paths.
+ 		 */
+-		printk_deferred_enter();
+ 		pr_info("pool %d:", pool->id);
+ 		pr_cont_pool_info(pool);
+ 		pr_cont(" hung=%us workers=%d",
+@@ -4877,7 +4874,6 @@ void show_workqueue_state(void)
+ 			first = false;
+ 		}
+ 		pr_cont("\n");
+-		printk_deferred_exit();
+ 	next_pool:
+ 		raw_spin_unlock_irqrestore(&pool->lock, flags);
+ 		/*
 --- a/lib/ratelimit.c
 +++ b/lib/ratelimit.c
 @@ -47,9 +47,7 @@ int ___ratelimit(struct ratelimit_state

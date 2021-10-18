@@ -1,7 +1,6 @@
-From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
-Date: Fri, 17 Sep 2021 13:31:39 +0200
-Subject: [PATCH 07/10] net: sched: Use _bstats_update/set() instead of raw
- writes
+From: Ahmed S. Darwish <a.darwish@linutronix.de>
+Subject: net: sched: Use _bstats_update/set() instead of raw writes
+Date: Sat, 16 Oct 2021 10:49:08 +0200
 
 The Qdisc::running sequence counter, used to protect Qdisc::bstats reads
 from parallel writes, is in the process of being removed. Qdisc::bstats
@@ -14,6 +13,7 @@ appropriate.
 
 Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/20211016084910.4029084-8-bigeasy@linutronix.de
 ---
  net/core/gen_stats.c |    9 +++++----
  net/sched/sch_cbq.c  |    3 +--
@@ -24,15 +24,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/net/core/gen_stats.c
 +++ b/net/core/gen_stats.c
-@@ -129,6 +129,7 @@ static void
- __gnet_stats_copy_basic_cpu(struct gnet_stats_basic_packed *bstats,
- 			    struct gnet_stats_basic_cpu __percpu *cpu)
+@@ -126,6 +126,7 @@ EXPORT_SYMBOL(gnet_stats_basic_packed_in
+ static void gnet_stats_add_basic_cpu(struct gnet_stats_basic_packed *bstats,
+ 				     struct gnet_stats_basic_cpu __percpu *cpu)
  {
 +	u64 t_bytes = 0, t_packets = 0;
  	int i;
  
  	for_each_possible_cpu(i) {
-@@ -142,9 +143,10 @@ static void
+@@ -139,9 +140,10 @@ static void gnet_stats_add_basic_cpu(str
  			packets = bcpu->bstats.packets;
  		} while (u64_stats_fetch_retry_irq(&bcpu->syncp, start));
  
@@ -44,8 +44,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	_bstats_update(bstats, t_bytes, t_packets);
  }
  
- void
-@@ -168,8 +170,7 @@ void
+ void gnet_stats_add_basic(const seqcount_t *running,
+@@ -164,8 +166,7 @@ void gnet_stats_add_basic(const seqcount
  		packets = b->packets;
  	} while (running && read_seqcount_retry(running, seq));
  
@@ -53,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	bstats->packets += packets;
 +	_bstats_update(bstats, bytes, packets);
  }
- EXPORT_SYMBOL(__gnet_stats_copy_basic);
+ EXPORT_SYMBOL(gnet_stats_add_basic);
  
 --- a/net/sched/sch_cbq.c
 +++ b/net/sched/sch_cbq.c

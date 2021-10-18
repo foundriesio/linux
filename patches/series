@@ -38,6 +38,8 @@ efi-Disable-runtime-services-on-RT.patch
 efi-Allow-efi-runtime.patch
 mm-Disable-zsmalloc-on-PREEMPT_RT.patch
 net-core-disable-NET_RX_BUSY_POLL-on-PREEMPT_RT.patch
+samples_kfifo__Rename_read_lock_write_lock.patch
+crypto_testmgr_only_disable_migration_in_crypto_disable_simd_for_test.patch
 
 # KCOV (akpm)
 0001_documentation_kcov_include_types_h_in_the_example.patch
@@ -49,10 +51,12 @@ net-core-disable-NET_RX_BUSY_POLL-on-PREEMPT_RT.patch
 ###########################################################################
 # Posted
 ###########################################################################
-crypto-testmgr-Only-disable-migration-in-crypto_disa.patch
 irq_poll-Use-raise_softirq_irqoff-in-cpu_dead-notifi.patch
 smp_wake_ksoftirqd_on_preempt_rt_instead_do_softirq.patch
 x86-softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch
+mm_allow_only_slub_on_preempt_rt.patch
+mm_page_alloc_use_migrate_disable_in_drain_local_pages_wq.patch
+mm_scatterlist_replace_the_preemptible_warning_in_sg_miter_stop.patch
 
 # sched
 0001_sched_clean_up_the_might_sleep_underscore_zoo.patch
@@ -76,38 +80,29 @@ x86-softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch
 0003_irq_work_handle_some_irq_work_in_a_per_cpu_thread_on_preempt_rt.patch
 0004_irq_work_also_rcuwait_for_irq_work_hard_irq_on_preempt_rt.patch
 
+# Qdics's seqcount removal.
+0001_gen_stats_add_instead_set_the_value_in___gnet_stats_copy_basic.patch
+0002_gen_stats_add_gnet_stats_add_queue.patch
+0003_mq_mqprio_use_gnet_stats_add_queue.patch
+0004_gen_stats_move_remaining_users_to_gnet_stats_add_queue.patch
+0005_u64_stats_introduce_u64_stats_set.patch
+0006_net_sched_protect_qdisc_bstats_with_u64_stats.patch
+0007_net_sched_use__bstats_update_set_instead_of_raw_writes.patch
+0008_net_sched_merge_qdisc_bstats_and_qdisc_cpu_bstats_data_types.patch
+0009_net_sched_remove_qdisc_running_sequence_counter.patch
+
 ###########################################################################
 # Post
 ###########################################################################
 cgroup__use_irqsave_in_cgroup_rstat_flush_locked.patch
 mm__workingset__replace_IRQ-off_check_with_a_lockdep_assert..patch
 tcp__Remove_superfluous_BH-disable_around_listening_hash.patch
-samples_kfifo__Rename_read_lock_write_lock.patch
-
-# Qdics's seqcount removal.
-0002-gen_stats-Add-instead-Set-the-value-in-__gnet_stats_.patch
-0003-gen_stats-Add-instead-Set-the-value-in-__gnet_stats_.patch
-0004-mq-mqprio-Simplify-stats-copy.patch
-0005-u64_stats-Introduce-u64_stats_set.patch
-0006-net-sched-Protect-Qdisc-bstats-with-u64_stats.patch
-0007-net-sched-Use-_bstats_update-set-instead-of-raw-writ.patch
-0008-net-sched-Merge-Qdisc-bstats-and-Qdisc-cpu_bstats-da.patch
-0009-net-sched-Remove-Qdisc-running-sequence-counter.patch
-0010-sch_htb-Use-helpers-to-read-stats-in-dump_stats.patch
 
 ###########################################################################
 # Kconfig bits:
 ###########################################################################
 jump-label__disable_if_stop_machine_is_used.patch
 kconfig__Disable_config_options_which_are_not_RT_compatible.patch
-mm-Allow-only-SLUB-on-PREEMPT_RT.patch
-
-###########################################################################
-# Include fixes
-###########################################################################
-# Skip, seems not be needed.
-# wait.h__include_atomic.h.patch
-# pid.h__include_atomic.h.patch
 
 ###########################################################################
 # Locking: RT bits. Need review
@@ -151,9 +146,7 @@ softirq__Check_preemption_after_reenabling_interrupts.patch
 ###########################################################################
 # mm: Assorted RT bits. Need care
 ###########################################################################
-mm__page_alloc__Use_migrate_disable_in_drain_local_pages_wq.patch
 u64_stats__Disable_preemption_on_32bit-UP_SMP_with_RT_during_updates.patch
-mm-scatterlist-Replace-the-preemptible-warning-sg_mi.patch
 
 ###########################################################################
 # Disable memcontrol for now. The protection scopes are FUBARed

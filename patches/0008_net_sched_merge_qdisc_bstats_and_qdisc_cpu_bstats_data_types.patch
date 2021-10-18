@@ -1,7 +1,6 @@
-From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
-Date: Fri, 17 Sep 2021 13:31:40 +0200
-Subject: [PATCH 08/10] net: sched: Merge Qdisc::bstats and Qdisc::cpu_bstats
- data types
+From: Ahmed S. Darwish <a.darwish@linutronix.de>
+Subject: net: sched: Merge Qdisc::bstats and Qdisc::cpu_bstats data types
+Date: Sat, 16 Oct 2021 10:49:09 +0200
 
 The only factor differentiating per-CPU bstats data type (struct
 gnet_stats_basic_cpu) from the packed non-per-CPU one (struct
@@ -18,10 +17,11 @@ protection.
 
 Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/20211016084910.4029084-9-bigeasy@linutronix.de
 ---
  drivers/net/ethernet/netronome/nfp/abm/qdisc.c |    2 
  include/net/act_api.h                          |   10 ++--
- include/net/gen_stats.h                        |   50 ++++++++++----------
+ include/net/gen_stats.h                        |   44 +++++++++--------
  include/net/netfilter/xt_rateest.h             |    2 
  include/net/pkt_cls.h                          |    4 -
  include/net/sch_generic.h                      |   34 +++----------
@@ -49,7 +49,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  net/sched/sch_mq.c                             |    2 
  net/sched/sch_mqprio.c                         |    6 +-
  net/sched/sch_qfq.c                            |    4 -
- 30 files changed, 158 insertions(+), 163 deletions(-)
+ 30 files changed, 155 insertions(+), 160 deletions(-)
 
 --- a/drivers/net/ethernet/netronome/nfp/abm/qdisc.c
 +++ b/drivers/net/ethernet/netronome/nfp/abm/qdisc.c
@@ -93,7 +93,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	spin_lock(&a->tcfa_lock);
 --- a/include/net/gen_stats.h
 +++ b/include/net/gen_stats.h
-@@ -7,27 +7,29 @@
+@@ -7,15 +7,17 @@
  #include <linux/rtnetlink.h>
  #include <linux/pkt_sched.h>
  
@@ -112,7 +112,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 + * If no reads can ever occur parallel to writes (e.g. stack-allocated
 + * bstats), then the internal stat values can be written to and read
 + * from directly. Otherwise, use _bstats_set/update() for writes and
-+ * __gnet_stats_copy_basic() for reads.
++ * gnet_stats_add_basic() for reads.
 + */
 +struct gnet_stats_basic_sync {
 +	u64_stats_t bytes;
@@ -120,23 +120,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct u64_stats_sync syncp;
  } __aligned(2 * sizeof(u64));
  
- #ifdef CONFIG_LOCKDEP
+@@ -35,7 +37,7 @@ struct gnet_dump {
+ 	struct tc_stats   tc_stats;
+ };
+ 
 -void gnet_stats_basic_packed_init(struct gnet_stats_basic_packed *b);
 +void gnet_stats_basic_sync_init(struct gnet_stats_basic_sync *b);
+ int gnet_stats_start_copy(struct sk_buff *skb, int type, spinlock_t *lock,
+ 			  struct gnet_dump *d, int padattr);
  
- #else
- 
--static inline void gnet_stats_basic_packed_init(struct gnet_stats_basic_packed *b)
-+static inline void gnet_stats_basic_sync_init(struct gnet_stats_basic_sync *b)
- {
--	b->bytes = 0;
--	b->packets = 0;
-+	u64_stats_set(&b->bytes, 0);
-+	u64_stats_set(&b->packets, 0);
- 	u64_stats_init(&b->syncp);
- }
- #endif
-@@ -58,16 +60,16 @@ int gnet_stats_start_copy_compat(struct
+@@ -46,16 +48,16 @@ int gnet_stats_start_copy_compat(struct
  
  int gnet_stats_copy_basic(const seqcount_t *running,
  			  struct gnet_dump *d,
@@ -144,13 +137,13 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -			  struct gnet_stats_basic_packed *b);
 +			  struct gnet_stats_basic_sync __percpu *cpu,
 +			  struct gnet_stats_basic_sync *b);
- void __gnet_stats_copy_basic(const seqcount_t *running,
--			     struct gnet_stats_basic_packed *bstats,
--			     struct gnet_stats_basic_cpu __percpu *cpu,
--			     struct gnet_stats_basic_packed *b);
-+			     struct gnet_stats_basic_sync *bstats,
-+			     struct gnet_stats_basic_sync __percpu *cpu,
-+			     struct gnet_stats_basic_sync *b);
+ void gnet_stats_add_basic(const seqcount_t *running,
+-			  struct gnet_stats_basic_packed *bstats,
+-			  struct gnet_stats_basic_cpu __percpu *cpu,
+-			  struct gnet_stats_basic_packed *b);
++			  struct gnet_stats_basic_sync *bstats,
++			  struct gnet_stats_basic_sync __percpu *cpu,
++			  struct gnet_stats_basic_sync *b);
  int gnet_stats_copy_basic_hw(const seqcount_t *running,
  			     struct gnet_dump *d,
 -			     struct gnet_stats_basic_cpu __percpu *cpu,
@@ -160,7 +153,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  int gnet_stats_copy_rate_est(struct gnet_dump *d,
  			     struct net_rate_estimator __rcu **ptr);
  int gnet_stats_copy_queue(struct gnet_dump *d,
-@@ -80,14 +82,14 @@ int gnet_stats_copy_app(struct gnet_dump
+@@ -68,14 +70,14 @@ int gnet_stats_copy_app(struct gnet_dump
  
  int gnet_stats_finish_copy(struct gnet_dump *d);
  
@@ -279,7 +272,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static inline void qdisc_bstats_update(struct Qdisc *sch,
-@@ -1314,7 +1298,7 @@ void psched_ppscfg_precompute(struct psc
+@@ -1313,7 +1297,7 @@ void psched_ppscfg_precompute(struct psc
  struct mini_Qdisc {
  	struct tcf_proto *filter_list;
  	struct tcf_block *block;
@@ -288,7 +281,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct gnet_stats_queue	__percpu *cpu_qstats;
  	struct rcu_head rcu;
  };
-@@ -1322,7 +1306,7 @@ struct mini_Qdisc {
+@@ -1321,7 +1305,7 @@ struct mini_Qdisc {
  static inline void mini_qdisc_bstats_cpu_update(struct mini_Qdisc *miniq,
  						const struct sk_buff *skb)
  {
@@ -401,9 +394,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			  seqcount_t *running, struct nlattr *opt)
 --- a/net/core/gen_stats.c
 +++ b/net/core/gen_stats.c
-@@ -116,31 +116,31 @@ EXPORT_SYMBOL(gnet_stats_start_copy);
+@@ -115,29 +115,29 @@ gnet_stats_start_copy(struct sk_buff *sk
+ EXPORT_SYMBOL(gnet_stats_start_copy);
  
- #ifdef CONFIG_LOCKDEP
  /* Must not be inlined, due to u64_stats seqcount_t lockdep key */
 -void gnet_stats_basic_packed_init(struct gnet_stats_basic_packed *b)
 +void gnet_stats_basic_sync_init(struct gnet_stats_basic_sync *b)
@@ -416,13 +409,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
 -EXPORT_SYMBOL(gnet_stats_basic_packed_init);
 +EXPORT_SYMBOL(gnet_stats_basic_sync_init);
- #endif
  
- static void
--__gnet_stats_copy_basic_cpu(struct gnet_stats_basic_packed *bstats,
--			    struct gnet_stats_basic_cpu __percpu *cpu)
-+__gnet_stats_copy_basic_cpu(struct gnet_stats_basic_sync *bstats,
-+			    struct gnet_stats_basic_sync __percpu *cpu)
+-static void gnet_stats_add_basic_cpu(struct gnet_stats_basic_packed *bstats,
+-				     struct gnet_stats_basic_cpu __percpu *cpu)
++static void gnet_stats_add_basic_cpu(struct gnet_stats_basic_sync *bstats,
++				     struct gnet_stats_basic_sync __percpu *cpu)
  {
  	u64 t_bytes = 0, t_packets = 0;
  	int i;
@@ -442,20 +433,20 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		} while (u64_stats_fetch_retry_irq(&bcpu->syncp, start));
  
  		t_bytes += bytes;
-@@ -151,9 +151,9 @@ static void
+@@ -147,9 +147,9 @@ static void gnet_stats_add_basic_cpu(str
+ }
  
- void
- __gnet_stats_copy_basic(const seqcount_t *running,
--			struct gnet_stats_basic_packed *bstats,
--			struct gnet_stats_basic_cpu __percpu *cpu,
--			struct gnet_stats_basic_packed *b)
-+			struct gnet_stats_basic_sync *bstats,
-+			struct gnet_stats_basic_sync __percpu *cpu,
-+			struct gnet_stats_basic_sync *b)
+ void gnet_stats_add_basic(const seqcount_t *running,
+-			  struct gnet_stats_basic_packed *bstats,
+-			  struct gnet_stats_basic_cpu __percpu *cpu,
+-			  struct gnet_stats_basic_packed *b)
++			  struct gnet_stats_basic_sync *bstats,
++			  struct gnet_stats_basic_sync __percpu *cpu,
++			  struct gnet_stats_basic_sync *b)
  {
  	unsigned int seq;
- 	__u64 bytes = 0;
-@@ -166,8 +166,8 @@ void
+ 	u64 bytes = 0;
+@@ -162,8 +162,8 @@ void gnet_stats_add_basic(const seqcount
  	do {
  		if (running)
  			seq = read_seqcount_begin(running);
@@ -466,7 +457,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	} while (running && read_seqcount_retry(running, seq));
  
  	_bstats_update(bstats, bytes, packets);
-@@ -177,18 +177,22 @@ EXPORT_SYMBOL(__gnet_stats_copy_basic);
+@@ -173,18 +173,22 @@ EXPORT_SYMBOL(gnet_stats_add_basic);
  static int
  ___gnet_stats_copy_basic(const seqcount_t *running,
  			 struct gnet_dump *d,
@@ -482,7 +473,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 -	gnet_stats_basic_packed_init(&bstats);
 +	gnet_stats_basic_sync_init(&bstats);
- 	__gnet_stats_copy_basic(running, &bstats, cpu, b);
+ 	gnet_stats_add_basic(running, &bstats, cpu, b);
  
 +	bstats_bytes = u64_stats_read(&bstats.bytes);
 +	bstats_packets = u64_stats_read(&bstats.packets);
@@ -495,7 +486,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	if (d->tail) {
-@@ -196,14 +200,14 @@ static int
+@@ -192,14 +196,14 @@ static int
  		int res;
  
  		memset(&sb, 0, sizeof(sb));
@@ -515,7 +506,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	return 0;
  }
-@@ -224,8 +228,8 @@ static int
+@@ -220,8 +224,8 @@ static int
  int
  gnet_stats_copy_basic(const seqcount_t *running,
  		      struct gnet_dump *d,
@@ -526,7 +517,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	return ___gnet_stats_copy_basic(running, d, cpu, b,
  					TCA_STATS_BASIC);
-@@ -248,8 +252,8 @@ EXPORT_SYMBOL(gnet_stats_copy_basic);
+@@ -244,8 +248,8 @@ EXPORT_SYMBOL(gnet_stats_copy_basic);
  int
  gnet_stats_copy_basic_hw(const seqcount_t *running,
  			 struct gnet_dump *d,
@@ -946,8 +937,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		new_q = qdisc_create_dflt(dev_queue, &pfifo_qdisc_ops,
 --- a/net/sched/sch_mq.c
 +++ b/net/sched/sch_mq.c
-@@ -133,7 +133,7 @@ static int mq_dump(struct Qdisc *sch, st
- 	__u32 qlen = 0;
+@@ -132,7 +132,7 @@ static int mq_dump(struct Qdisc *sch, st
+ 	unsigned int ntx;
  
  	sch->q.qlen = 0;
 -	gnet_stats_basic_packed_init(&sch->bstats);
@@ -966,9 +957,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	memset(&sch->qstats, 0, sizeof(sch->qstats));
  
  	/* MQ supports lockless qdiscs. However, statistics accounting needs
-@@ -504,11 +504,11 @@ static int mqprio_dump_class_stats(struc
+@@ -500,11 +500,11 @@ static int mqprio_dump_class_stats(struc
  		int i;
- 		__u32 qlen = 0;
+ 		__u32 qlen;
  		struct gnet_stats_queue qstats = {0};
 -		struct gnet_stats_basic_packed bstats;
 +		struct gnet_stats_basic_sync bstats;
