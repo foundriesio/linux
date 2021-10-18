@@ -85,7 +85,6 @@ tcp__Remove_superfluous_BH-disable_around_listening_hash.patch
 samples_kfifo__Rename_read_lock_write_lock.patch
 
 # Qdics's seqcount removal.
-0001-mqprio-Correct-stats-in-mqprio_dump_class_stats.patch
 0002-gen_stats-Add-instead-Set-the-value-in-__gnet_stats_.patch
 0003-gen_stats-Add-instead-Set-the-value-in-__gnet_stats_.patch
 0004-mq-mqprio-Simplify-stats-copy.patch
@@ -203,7 +202,6 @@ random__Make_it_work_on_rt.patch
 ###########################################################################
 # DRM:
 ###########################################################################
-0001-drm-i915-remember-to-call-i915_sw_fence_fini.patch
 0002-drm-Increase-DRM_OBJECT_MAX_PROPERTY-by-18.patch
 0003-drm-i915-Use-preempt_disable-enable_rt-where-recomme.patch
 0004-drm-i915-Don-t-disable-interrupts-on-PREEMPT_RT-duri.patch
