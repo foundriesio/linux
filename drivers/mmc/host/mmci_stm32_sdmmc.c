@@ -475,8 +475,9 @@ static int sdmmc_vswitch(struct mmci_host *host, struct mmc_ios *ios)
 	u32 status;
 	int ret = 0;
 
-	if (ios->signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
-		spin_lock_irqsave(&host->lock, flags);
+	spin_lock_irqsave(&host->lock, flags);
+	if (ios->signal_voltage == MMC_SIGNAL_VOLTAGE_180 &&
+	    host->pwr_reg & MCI_STM32_VSWITCHEN) {
 		mmci_write_pwrreg(host, host->pwr_reg | MCI_STM32_VSWITCH);
 		spin_unlock_irqrestore(&host->lock, flags);
 
@@ -492,8 +493,8 @@ static int sdmmc_vswitch(struct mmci_host *host, struct mmc_ios *ios)
 		spin_lock_irqsave(&host->lock, flags);
 		mmci_write_pwrreg(host, host->pwr_reg &
 				  ~(MCI_STM32_VSWITCHEN | MCI_STM32_VSWITCH));
-		spin_unlock_irqrestore(&host->lock, flags);
 	}
+	spin_unlock_irqrestore(&host->lock, flags);
 
 	return ret;
 }
