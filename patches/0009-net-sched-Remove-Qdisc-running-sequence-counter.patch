@@ -1,6 +1,6 @@
-From: Ahmed S. Darwish <a.darwish@linutronix.de>
-Subject: net: sched: Remove Qdisc::running sequence counter
+From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
 Date: Sat, 16 Oct 2021 10:49:10 +0200
+Subject: [PATCH 9/9] net: sched: Remove Qdisc::running sequence counter
 
 The Qdisc::running sequence counter has two uses:
 
@@ -37,7 +37,7 @@ values will still be valid.
 
 Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Link: https://lore.kernel.org/r/20211016084910.4029084-10-bigeasy@linutronix.de
+Signed-off-by: David S. Miller <davem@davemloft.net>
 ---
  include/linux/netdevice.h |    4 ---
  include/net/gen_stats.h   |   19 +++++++----------

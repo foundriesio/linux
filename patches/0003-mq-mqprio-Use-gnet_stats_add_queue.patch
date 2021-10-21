@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Subject: mq, mqprio: Use gnet_stats_add_queue().
 Date: Sat, 16 Oct 2021 10:49:04 +0200
+Subject: [PATCH 3/9] mq, mqprio: Use gnet_stats_add_queue().
 
 gnet_stats_add_basic() and gnet_stats_add_queue() add up the statistics
 so they can be used directly for both the per-CPU and global case.
@@ -15,7 +15,7 @@ the per-CPU gnet_stats_queue::qlen was assigned to sch->q.qlen and
 sch->qstats.qlen. Now both fields are copied individually.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Link: https://lore.kernel.org/r/20211016084910.4029084-4-bigeasy@linutronix.de
+Signed-off-by: David S. Miller <davem@davemloft.net>
 ---
  net/sched/sch_mq.c     |   24 +++++-------------------
  net/sched/sch_mqprio.c |   49 ++++++++++++-------------------------------------

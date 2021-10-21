@@ -1,6 +1,6 @@
-From: Ahmed S. Darwish <a.darwish@linutronix.de>
-Subject: net: sched: Protect Qdisc::bstats with u64_stats
+From: "Ahmed S. Darwish" <a.darwish@linutronix.de>
 Date: Sat, 16 Oct 2021 10:49:07 +0200
+Subject: [PATCH 6/9] net: sched: Protect Qdisc::bstats with u64_stats
 
 The not-per-CPU variant of qdisc tc (traffic control) statistics,
 Qdisc::gnet_stats_basic_packed bstats, is protected with Qdisc::running
@@ -34,7 +34,7 @@ still be valid.
 
 Signed-off-by: Ahmed S. Darwish <a.darwish@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Link: https://lore.kernel.org/r/20211016084910.4029084-7-bigeasy@linutronix.de
+Signed-off-by: David S. Miller <davem@davemloft.net>
 ---
  include/net/gen_stats.h    |    2 ++
  include/net/sch_generic.h  |    2 ++
@@ -45,7 +45,7 @@ Link: https://lore.kernel.org/r/20211016084910.4029084-7-bigeasy@linutronix.de
  net/sched/sch_atm.c        |    1 +
  net/sched/sch_cbq.c        |    1 +
  net/sched/sch_drr.c        |    1 +
- net/sched/sch_ets.c        |    1 +
+ net/sched/sch_ets.c        |    2 +-
  net/sched/sch_generic.c    |    1 +
  net/sched/sch_gred.c       |    4 +++-
  net/sched/sch_hfsc.c       |    1 +
@@ -53,7 +53,7 @@ Link: https://lore.kernel.org/r/20211016084910.4029084-7-bigeasy@linutronix.de
  net/sched/sch_mq.c         |    2 +-
  net/sched/sch_mqprio.c     |    5 +++--
  net/sched/sch_qfq.c        |    1 +
- 17 files changed, 39 insertions(+), 9 deletions(-)
+ 17 files changed, 39 insertions(+), 10 deletions(-)
 
 --- a/include/net/gen_stats.h
 +++ b/include/net/gen_stats.h
@@ -188,14 +188,15 @@ Link: https://lore.kernel.org/r/20211016084910.4029084-7-bigeasy@linutronix.de
  	cl->qdisc	   = qdisc_create_dflt(sch->dev_queue,
 --- a/net/sched/sch_ets.c
 +++ b/net/sched/sch_ets.c
-@@ -662,6 +662,7 @@ static int ets_qdisc_change(struct Qdisc
- 	q->nbands = nbands;
- 	for (i = nstrict; i < q->nstrict; i++) {
- 		INIT_LIST_HEAD(&q->classes[i].alist);
+@@ -689,7 +689,7 @@ static int ets_qdisc_change(struct Qdisc
+ 		q->classes[i].qdisc = NULL;
+ 		q->classes[i].quantum = 0;
+ 		q->classes[i].deficit = 0;
+-		memset(&q->classes[i].bstats, 0, sizeof(q->classes[i].bstats));
 +		gnet_stats_basic_packed_init(&q->classes[i].bstats);
- 		if (q->classes[i].qdisc->q.qlen) {
- 			list_add_tail(&q->classes[i].alist, &q->active);
- 			q->classes[i].deficit = quanta[i];
+ 		memset(&q->classes[i].qstats, 0, sizeof(q->classes[i].qstats));
+ 	}
+ 	return 0;
 --- a/net/sched/sch_generic.c
 +++ b/net/sched/sch_generic.c
 @@ -892,6 +892,7 @@ struct Qdisc *qdisc_alloc(struct netdev_
