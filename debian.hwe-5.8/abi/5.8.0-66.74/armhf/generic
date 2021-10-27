@@ -8326,7 +8326,6 @@ EXPORT_SYMBOL	 vmlinux 0x815b5dd4	match_octal
 EXPORT_SYMBOL	 vmlinux 0x81755518	inet_frag_find
 EXPORT_SYMBOL	 vmlinux 0x818416e1	scsi_set_sense_information
 EXPORT_SYMBOL	 vmlinux 0x81862bad	serial8250_do_set_termios
-EXPORT_SYMBOL	 vmlinux 0x818b0b30	efi
 EXPORT_SYMBOL	 vmlinux 0x818edf97	cpm_muram_alloc
 EXPORT_SYMBOL	 vmlinux 0x81924cf4	tegra_dfll_suspend
 EXPORT_SYMBOL	 vmlinux 0x8195cce3	keyring_search
@@ -9958,6 +9957,7 @@ EXPORT_SYMBOL	 vmlinux 0xccc21f5e	input_get_new_minor
 EXPORT_SYMBOL	 vmlinux 0xccc758d8	nla_policy_len
 EXPORT_SYMBOL	 vmlinux 0xccd56040	cdev_del
 EXPORT_SYMBOL	 vmlinux 0xccdf596e	devm_mfd_add_devices
+EXPORT_SYMBOL	 vmlinux 0xcce8bc18	efi
 EXPORT_SYMBOL	 vmlinux 0xccfb9e07	dst_default_metrics
 EXPORT_SYMBOL	 vmlinux 0xccfd2ebc	scsi_dev_info_list_del_keyed
 EXPORT_SYMBOL	 vmlinux 0xcd00abbc	add_wait_queue_exclusive

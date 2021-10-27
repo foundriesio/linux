@@ -6269,6 +6269,7 @@ EXPORT_SYMBOL	 vmlinux 0x18e60984	__do_once_start
 EXPORT_SYMBOL	 vmlinux 0x18efd028	hdmi_drm_infoframe_unpack_only
 EXPORT_SYMBOL	 vmlinux 0x18efe7ef	starget_for_each_device
 EXPORT_SYMBOL	 vmlinux 0x18f83e9d	mntput
+EXPORT_SYMBOL	 vmlinux 0x190a48a9	efi
 EXPORT_SYMBOL	 vmlinux 0x19233a94	file_fdatawait_range
 EXPORT_SYMBOL	 vmlinux 0x1924af3a	d_add
 EXPORT_SYMBOL	 vmlinux 0x19294904	fscrypt_fname_disk_to_usr
@@ -7551,7 +7552,6 @@ EXPORT_SYMBOL	 vmlinux 0x54245b39	kstrtoull_from_user
 EXPORT_SYMBOL	 vmlinux 0x543655ce	touchscreen_parse_properties
 EXPORT_SYMBOL	 vmlinux 0x543ef284	seq_hlist_start
 EXPORT_SYMBOL	 vmlinux 0x5462e4b2	pci_request_selected_regions
-EXPORT_SYMBOL	 vmlinux 0x5469ff81	efi
 EXPORT_SYMBOL	 vmlinux 0x546c95dd	fget_raw
 EXPORT_SYMBOL	 vmlinux 0x547a05df	__nla_put_64bit
 EXPORT_SYMBOL	 vmlinux 0x54a9db5f	_kstrtoul

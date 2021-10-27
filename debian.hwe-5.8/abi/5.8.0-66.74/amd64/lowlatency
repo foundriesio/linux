@@ -9096,7 +9096,6 @@ EXPORT_SYMBOL	 vmlinux 0x99b9a862	pci_bus_write_config_dword
 EXPORT_SYMBOL	 vmlinux 0x99b9c430	pcim_set_mwi
 EXPORT_SYMBOL	 vmlinux 0x99c08483	vme_irq_request
 EXPORT_SYMBOL	 vmlinux 0x99d472b1	net_dim_get_rx_moderation
-EXPORT_SYMBOL	 vmlinux 0x99d65df1	efi
 EXPORT_SYMBOL	 vmlinux 0x99daa9bf	try_offline_node
 EXPORT_SYMBOL	 vmlinux 0x99f068d5	x86_cpu_to_node_map
 EXPORT_SYMBOL	 vmlinux 0x9a045b70	devfreq_add_governor
@@ -9657,6 +9656,7 @@ EXPORT_SYMBOL	 vmlinux 0xb2cf1bfe	md_bitmap_cond_end_sync
 EXPORT_SYMBOL	 vmlinux 0xb2f35c6a	xxh64
 EXPORT_SYMBOL	 vmlinux 0xb2f74fb6	intel_gmch_remove
 EXPORT_SYMBOL	 vmlinux 0xb2fa2e5d	pci_bus_size_bridges
+EXPORT_SYMBOL	 vmlinux 0xb2fabf63	efi
 EXPORT_SYMBOL	 vmlinux 0xb2fcb56d	queue_delayed_work_on
 EXPORT_SYMBOL	 vmlinux 0xb2fd5ceb	__put_user_4
 EXPORT_SYMBOL	 vmlinux 0xb2ff9982	flow_rule_match_enc_ipv6_addrs

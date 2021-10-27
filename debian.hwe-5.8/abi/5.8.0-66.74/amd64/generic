@@ -9113,7 +9113,6 @@ EXPORT_SYMBOL	 vmlinux 0x99b2cfcb	make_kgid
 EXPORT_SYMBOL	 vmlinux 0x99c2b0e5	generic_file_llseek_size
 EXPORT_SYMBOL	 vmlinux 0x99d45a40	input_unregister_handler
 EXPORT_SYMBOL	 vmlinux 0x99d472b1	net_dim_get_rx_moderation
-EXPORT_SYMBOL	 vmlinux 0x99d65df1	efi
 EXPORT_SYMBOL	 vmlinux 0x99daa9bf	try_offline_node
 EXPORT_SYMBOL	 vmlinux 0x99e72cb7	scsi_add_host_with_dma
 EXPORT_SYMBOL	 vmlinux 0x99f068d5	x86_cpu_to_node_map
@@ -9659,6 +9658,7 @@ EXPORT_SYMBOL	 vmlinux 0xb2cda8ba	intel_gmch_probe
 EXPORT_SYMBOL	 vmlinux 0xb2d2650a	mod_node_page_state
 EXPORT_SYMBOL	 vmlinux 0xb2f35c6a	xxh64
 EXPORT_SYMBOL	 vmlinux 0xb2f74fb6	intel_gmch_remove
+EXPORT_SYMBOL	 vmlinux 0xb2fabf63	efi
 EXPORT_SYMBOL	 vmlinux 0xb2fcb56d	queue_delayed_work_on
 EXPORT_SYMBOL	 vmlinux 0xb2fd5ceb	__put_user_4
 EXPORT_SYMBOL	 vmlinux 0xb3046fa0	__tcp_md5_do_lookup

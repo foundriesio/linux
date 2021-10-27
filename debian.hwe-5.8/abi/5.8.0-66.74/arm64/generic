@@ -6293,6 +6293,7 @@ EXPORT_SYMBOL	 vmlinux 0x18e5dbfa	register_netdev
 EXPORT_SYMBOL	 vmlinux 0x18e60984	__do_once_start
 EXPORT_SYMBOL	 vmlinux 0x18efd028	hdmi_drm_infoframe_unpack_only
 EXPORT_SYMBOL	 vmlinux 0x18f5f8c0	ata_print_version
+EXPORT_SYMBOL	 vmlinux 0x190a48a9	efi
 EXPORT_SYMBOL	 vmlinux 0x191aca83	fs_param_is_blob
 EXPORT_SYMBOL	 vmlinux 0x194ec4ae	phy_attached_print
 EXPORT_SYMBOL	 vmlinux 0x1953c958	mempool_create
@@ -7560,7 +7561,6 @@ EXPORT_SYMBOL	 vmlinux 0x54445d88	dev_set_promiscuity
 EXPORT_SYMBOL	 vmlinux 0x544a79bd	abx500_startup_irq_enabled
 EXPORT_SYMBOL	 vmlinux 0x54500686	sock_create
 EXPORT_SYMBOL	 vmlinux 0x5462c651	inet6_ioctl
-EXPORT_SYMBOL	 vmlinux 0x5469ff81	efi
 EXPORT_SYMBOL	 vmlinux 0x547a05df	__nla_put_64bit
 EXPORT_SYMBOL	 vmlinux 0x5484ea4b	blk_pm_runtime_init
 EXPORT_SYMBOL	 vmlinux 0x548a68f8	xfrm_lookup

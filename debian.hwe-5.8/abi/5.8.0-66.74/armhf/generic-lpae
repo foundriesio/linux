@@ -6031,6 +6031,7 @@ EXPORT_SYMBOL	 vmlinux 0x18ca3350	pci_pme_capable
 EXPORT_SYMBOL	 vmlinux 0x18ceaafd	mark_page_accessed
 EXPORT_SYMBOL	 vmlinux 0x18e60984	__do_once_start
 EXPORT_SYMBOL	 vmlinux 0x1905e07b	dquot_writeback_dquots
+EXPORT_SYMBOL	 vmlinux 0x190a48a9	efi
 EXPORT_SYMBOL	 vmlinux 0x19151363	mr_mfc_seq_next
 EXPORT_SYMBOL	 vmlinux 0x191c52f0	finalize_exec
 EXPORT_SYMBOL	 vmlinux 0x192e8b8e	param_ops_uint
@@ -7283,7 +7284,6 @@ EXPORT_SYMBOL	 vmlinux 0x542de9b7	dev_addr_init
 EXPORT_SYMBOL	 vmlinux 0x5433e120	tcp_poll
 EXPORT_SYMBOL	 vmlinux 0x543c2349	blk_mq_start_request
 EXPORT_SYMBOL	 vmlinux 0x543ef284	seq_hlist_start
-EXPORT_SYMBOL	 vmlinux 0x5469ff81	efi
 EXPORT_SYMBOL	 vmlinux 0x5488e4f8	devm_rproc_add
 EXPORT_SYMBOL	 vmlinux 0x549353ef	configfs_unregister_default_group
 EXPORT_SYMBOL	 vmlinux 0x5494a511	devm_clk_get_optional
