@@ -56,7 +56,7 @@ Link: https://lore.kernel.org/r/20210923165358.243232823@linutronix.de
  	__cond_resched_lock(lock);					\
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -9467,12 +9467,6 @@ void __init sched_init(void)
+@@ -9468,12 +9468,6 @@ void __init sched_init(void)
  }
  
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
@@ -69,7 +69,7 @@ Link: https://lore.kernel.org/r/20210923165358.243232823@linutronix.de
  
  void __might_sleep(const char *file, int line)
  {
-@@ -9504,7 +9498,16 @@ static void print_preempt_disable_ip(int
+@@ -9505,7 +9499,16 @@ static void print_preempt_disable_ip(int
  	print_ip_sym(KERN_ERR, ip);
  }
  
@@ -87,7 +87,7 @@ Link: https://lore.kernel.org/r/20210923165358.243232823@linutronix.de
  {
  	/* Ratelimiting timestamp: */
  	static unsigned long prev_jiffy;
-@@ -9514,7 +9517,7 @@ void __might_resched(const char *file, i
+@@ -9515,7 +9518,7 @@ void __might_resched(const char *file, i
  	/* WARN_ON_ONCE() by default, no rate limit required: */
  	rcu_sleep_check();
  
@@ -96,7 +96,7 @@ Link: https://lore.kernel.org/r/20210923165358.243232823@linutronix.de
  	     !is_idle_task(current) && !current->non_block_count) ||
  	    system_state == SYSTEM_BOOTING || system_state > SYSTEM_RUNNING ||
  	    oops_in_progress)
-@@ -9533,11 +9536,11 @@ void __might_resched(const char *file, i
+@@ -9534,11 +9537,11 @@ void __might_resched(const char *file, i
  	       in_atomic(), irqs_disabled(), current->non_block_count,
  	       current->pid, current->comm);
  	pr_err("preempt_count: %x, expected: %x\n", preempt_count(),
@@ -111,7 +111,7 @@ Link: https://lore.kernel.org/r/20210923165358.243232823@linutronix.de
  	}
  
  	if (task_stack_end_corrupted(current))
-@@ -9547,7 +9550,8 @@ void __might_resched(const char *file, i
+@@ -9548,7 +9551,8 @@ void __might_resched(const char *file, i
  	if (irqs_disabled())
  		print_irqtrace_events(current);
  

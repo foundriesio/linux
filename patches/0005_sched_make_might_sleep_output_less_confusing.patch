@@ -83,7 +83,7 @@ Link: https://lore.kernel.org/r/20210923165358.181022656@linutronix.de
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -9492,6 +9492,18 @@ void __might_sleep(const char *file, int
+@@ -9493,6 +9493,18 @@ void __might_sleep(const char *file, int
  }
  EXPORT_SYMBOL(__might_sleep);
  
@@ -102,7 +102,7 @@ Link: https://lore.kernel.org/r/20210923165358.181022656@linutronix.de
  void __might_resched(const char *file, int line, int preempt_offset)
  {
  	/* Ratelimiting timestamp: */
-@@ -9520,6 +9532,13 @@ void __might_resched(const char *file, i
+@@ -9521,6 +9533,13 @@ void __might_resched(const char *file, i
  	pr_err("in_atomic(): %d, irqs_disabled(): %d, non_block: %d, pid: %d, name: %s\n",
  	       in_atomic(), irqs_disabled(), current->non_block_count,
  	       current->pid, current->comm);
@@ -116,7 +116,7 @@ Link: https://lore.kernel.org/r/20210923165358.181022656@linutronix.de
  
  	if (task_stack_end_corrupted(current))
  		pr_emerg("Thread overran stack, or stack corrupted\n");
-@@ -9527,11 +9546,9 @@ void __might_resched(const char *file, i
+@@ -9528,11 +9547,9 @@ void __might_resched(const char *file, i
  	debug_show_held_locks(current);
  	if (irqs_disabled())
  		print_irqtrace_events(current);

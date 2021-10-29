@@ -45,7 +45,7 @@ Link: https://lore.kernel.org/r/20210923165358.054321586@linutronix.de
  # define cant_migrate()		do { } while (0)
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -9474,7 +9474,7 @@ static inline int preempt_count_equals(i
+@@ -9475,7 +9475,7 @@ static inline int preempt_count_equals(i
  	return (nested == preempt_offset);
  }
  
@@ -54,7 +54,7 @@ Link: https://lore.kernel.org/r/20210923165358.054321586@linutronix.de
  {
  	unsigned int state = get_current_state();
  	/*
-@@ -9488,7 +9488,7 @@ void __might_sleep(const char *file, int
+@@ -9489,7 +9489,7 @@ void __might_sleep(const char *file, int
  			(void *)current->task_state_change,
  			(void *)current->task_state_change);
  

@@ -13,7 +13,7 @@ Link: https://lore.kernel.org/r/20210923165358.117496067@linutronix.de
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -9515,16 +9515,14 @@ void __might_resched(const char *file, i
+@@ -9516,16 +9516,14 @@ void __might_resched(const char *file, i
  	/* Save this before calling printk(), since that will clobber it: */
  	preempt_disable_ip = get_preempt_disable_ip(current);
  

@@ -107,7 +107,7 @@ Link: https://lore.kernel.org/r/20210923165357.928693482@linutronix.de
  	rcu_read_lock();
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -9488,11 +9488,11 @@ void __might_sleep(const char *file, int
+@@ -9489,11 +9489,11 @@ void __might_sleep(const char *file, int
  			(void *)current->task_state_change,
  			(void *)current->task_state_change);
  
@@ -121,7 +121,7 @@ Link: https://lore.kernel.org/r/20210923165357.928693482@linutronix.de
  {
  	/* Ratelimiting timestamp: */
  	static unsigned long prev_jiffy;
-@@ -9537,7 +9537,7 @@ void ___might_sleep(const char *file, in
+@@ -9538,7 +9538,7 @@ void ___might_sleep(const char *file, in
  	dump_stack();
  	add_taint(TAINT_WARN, LOCKDEP_STILL_OK);
  }

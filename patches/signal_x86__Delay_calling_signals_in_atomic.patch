@@ -96,7 +96,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
-@@ -1330,6 +1330,34 @@ force_sig_info_to_task(struct kernel_sig
+@@ -1317,6 +1317,34 @@ force_sig_info_to_task(struct kernel_sig
  	struct k_sigaction *action;
  	int sig = info->si_signo;
  
