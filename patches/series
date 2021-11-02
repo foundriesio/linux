@@ -199,7 +199,6 @@ random__Make_it_work_on_rt.patch
 ###########################################################################
 # DRM:
 ###########################################################################
-0001-drm-i915-selftests-Properly-reset-mock-object-proper.patch
 0002-drm-i915-Don-t-disable-interrupts-and-pretend-a-lock.patch
 0003-drm-i915-Use-preempt_disable-enable_rt-where-recomme.patch
 0004-drm-i915-Don-t-disable-interrupts-on-PREEMPT_RT-duri.patch
