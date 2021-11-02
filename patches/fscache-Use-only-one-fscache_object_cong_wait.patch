@@ -26,11 +26,12 @@ Fixes: 8b8edefa2fffb ("fscache: convert object to use workqueue instead of slow-
 Reported-by: Gregor Beck <gregor.beck@gmail.com>
 Cc: stable-rt@vger.kernel.org
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lkml.kernel.org/r/20211029083839.xwwt7jgzru3kcpii@linutronix.de
 ---
  fs/fscache/internal.h |    1 -
  fs/fscache/main.c     |    6 ------
- fs/fscache/object.c   |   11 +++++------
- 3 files changed, 5 insertions(+), 13 deletions(-)
+ fs/fscache/object.c   |   13 +++++--------
+ 3 files changed, 5 insertions(+), 15 deletions(-)
 
 --- a/fs/fscache/internal.h
 +++ b/fs/fscache/internal.h
@@ -82,7 +83,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * enqueue an object for metadata-type processing
   */
-@@ -806,12 +808,10 @@ void fscache_enqueue_object(struct fscac
+@@ -806,16 +808,12 @@ void fscache_enqueue_object(struct fscac
  	_enter("{OBJ%x}", object->debug_id);
  
  	if (fscache_get_object(object, fscache_obj_get_queue) >= 0) {
@@ -95,8 +96,12 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +				wake_up(&fscache_object_cong_wait);
  		} else
  			fscache_put_object(object, fscache_obj_put_queue);
+-
+-		put_cpu_var(fscache_object_cong_wait);
+ 	}
+ }
  
-@@ -833,16 +833,15 @@ void fscache_enqueue_object(struct fscac
+@@ -833,16 +831,15 @@ void fscache_enqueue_object(struct fscac
   */
  bool fscache_object_sleep_till_congested(signed long *timeoutp)
  {
