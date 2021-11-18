@@ -22,7 +22,7 @@ Link: https://lore.kernel.org/r/20210811201354.1976839-5-valentin.schneider@arm.
 
 --- a/arch/arm64/include/asm/pgtable.h
 +++ b/arch/arm64/include/asm/pgtable.h
-@@ -995,7 +995,7 @@ static inline void update_mmu_cache(stru
+@@ -1001,7 +1001,7 @@ static inline void update_mmu_cache(stru
   */
  static inline bool arch_faults_on_old_pte(void)
  {

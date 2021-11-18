@@ -68,7 +68,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  static inline bool init_done(struct zram *zram)
  {
-@@ -1169,6 +1204,7 @@ static bool zram_meta_alloc(struct zram
+@@ -1199,6 +1234,7 @@ static bool zram_meta_alloc(struct zram
  
  	if (!huge_class_size)
  		huge_class_size = zs_huge_class_size(zram->mem_pool);

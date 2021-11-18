@@ -27,7 +27,7 @@ Link: https://lkml.kernel.org/r/20210923170121.1860133-1-bigeasy@linutronix.de
 
 --- a/mm/Kconfig
 +++ b/mm/Kconfig
-@@ -640,6 +640,7 @@ config ZSWAP_ZPOOL_DEFAULT_Z3FOLD
+@@ -643,6 +643,7 @@ config ZSWAP_ZPOOL_DEFAULT_Z3FOLD
  
  config ZSWAP_ZPOOL_DEFAULT_ZSMALLOC
  	bool "zsmalloc"
@@ -35,7 +35,7 @@ Link: https://lkml.kernel.org/r/20210923170121.1860133-1-bigeasy@linutronix.de
  	select ZSMALLOC
  	help
  	  Use the zsmalloc allocator as the default allocator.
-@@ -690,7 +691,7 @@ config Z3FOLD
+@@ -693,7 +694,7 @@ config Z3FOLD
  
  config ZSMALLOC
  	tristate "Memory allocator for compressed pages"

@@ -66,7 +66,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		if (console_trylock()) {
  			con->write(con, text, text_len);
  			console_unlock();
-@@ -2891,8 +2900,10 @@ void register_console(struct console *ne
+@@ -2892,8 +2901,10 @@ void register_console(struct console *ne
  	 * the real console are the same physical device, it's annoying to
  	 * see the beginning boot messages twice
  	 */

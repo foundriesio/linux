@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/Kconfig
 +++ b/mm/Kconfig
-@@ -640,7 +640,6 @@ config ZSWAP_ZPOOL_DEFAULT_Z3FOLD
+@@ -643,7 +643,6 @@ config ZSWAP_ZPOOL_DEFAULT_Z3FOLD
  
  config ZSWAP_ZPOOL_DEFAULT_ZSMALLOC
  	bool "zsmalloc"
@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	select ZSMALLOC
  	help
  	  Use the zsmalloc allocator as the default allocator.
-@@ -691,7 +690,7 @@ config Z3FOLD
+@@ -694,7 +693,7 @@ config Z3FOLD
  
  config ZSMALLOC
  	tristate "Memory allocator for compressed pages"

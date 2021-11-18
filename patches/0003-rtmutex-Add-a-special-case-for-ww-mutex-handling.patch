@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1097,8 +1097,26 @@ static int __sched task_blocks_on_rt_mut
+@@ -1104,8 +1104,26 @@ static int __sched task_blocks_on_rt_mut
  	 * which is wrong, as the other waiter is not in a deadlock
  	 * situation.
  	 */

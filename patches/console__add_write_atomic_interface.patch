@@ -259,7 +259,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/sched/clock.h>
  #include <linux/sched/debug.h>
  #include <linux/sched/task_stack.h>
-@@ -3582,6 +3583,7 @@ EXPORT_SYMBOL_GPL(kmsg_dump_rewind);
+@@ -3583,6 +3584,7 @@ EXPORT_SYMBOL_GPL(kmsg_dump_rewind);
  #ifdef CONFIG_SMP
  static atomic_t printk_cpulock_owner = ATOMIC_INIT(-1);
  static atomic_t printk_cpulock_nested = ATOMIC_INIT(0);
@@ -267,7 +267,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  /**
   * __printk_wait_on_cpu_lock() - Busy wait until the printk cpu-reentrant
-@@ -3661,6 +3663,9 @@ EXPORT_SYMBOL(__printk_cpu_trylock);
+@@ -3662,6 +3664,9 @@ EXPORT_SYMBOL(__printk_cpu_trylock);
   */
  void __printk_cpu_unlock(void)
  {
@@ -277,7 +277,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (atomic_read(&printk_cpulock_nested)) {
  		atomic_dec(&printk_cpulock_nested);
  		return;
-@@ -3671,6 +3676,12 @@ void __printk_cpu_unlock(void)
+@@ -3672,6 +3677,12 @@ void __printk_cpu_unlock(void)
  	 * LMM(__printk_cpu_unlock:A)
  	 */
  
@@ -290,7 +290,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * Guarantee loads and stores from this CPU when it was the
  	 * lock owner are visible to the next lock owner. This pairs
-@@ -3691,6 +3702,21 @@ void __printk_cpu_unlock(void)
+@@ -3692,6 +3703,21 @@ void __printk_cpu_unlock(void)
  	 */
  	atomic_set_release(&printk_cpulock_owner,
  			   -1); /* LMM(__printk_cpu_unlock:B) */

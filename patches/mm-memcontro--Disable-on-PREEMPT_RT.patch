@@ -15,7 +15,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 --- a/init/Kconfig
 +++ b/init/Kconfig
-@@ -938,6 +938,7 @@ config PAGE_COUNTER
+@@ -943,6 +943,7 @@ config PAGE_COUNTER
  
  config MEMCG
  	bool "Memory controller"

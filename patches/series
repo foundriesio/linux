@@ -40,7 +40,14 @@ fscache-Use-only-one-fscache_object_cong_wait.patch
 kernel-locking-Use-a-pointer-in-ww_mutex_trylock.patch
 
 # sched
-0004_sched_delay_task_stack_freeing_on_rt.patch
+0001_kernel_fork_redo_ifdefs_around_task_s_handling.patch
+0002_kernel_fork_duplicate_task_struct_before_stack_allocation.patch
+0003_kernel_fork_ia64_provide_a_alloc_thread_stack_node_for_ia64.patch
+0004_kernel_fork_don_t_assign_the_stack_pointer_in_dup_task_struct.patch
+0005_kernel_fork_move_memcg_charge_kernel_stack_into_config_vmap_stack.patch
+0006_kernel_fork_move_task_stack_account_to_do_exit.patch
+0007_kernel_fork_only_cache_the_vmap_stack_in_finish_task_switch.patch
+0008_kernel_fork_use_is_enabled_in_account_kernel_stack.patch
 
 ###########################################################################
 # Post

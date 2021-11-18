@@ -135,7 +135,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  extern int wait_for_random_bytes(void);
 --- a/kernel/irq/handle.c
 +++ b/kernel/irq/handle.c
-@@ -190,12 +190,18 @@ irqreturn_t __handle_irq_event_percpu(st
+@@ -192,12 +192,18 @@ irqreturn_t __handle_irq_event_percpu(st
  
  irqreturn_t handle_irq_event_percpu(struct irq_desc *desc)
  {
