@@ -38,9 +38,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#ifdef CONFIG_PRINTK
 +	char	sync_buf[CONSOLE_LOG_MAX];
 +#endif
+ 	uint	ispeed;
+ 	uint	ospeed;
  	void	*data;
- 	struct	 console *next;
- };
 --- a/include/linux/printk.h
 +++ b/include/linux/printk.h
 @@ -47,6 +47,12 @@ static inline const char *printk_skip_he
@@ -233,7 +233,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		if (con->flags & CON_EXTENDED)
  			con->write(con, ext_text, ext_len);
  		else {
-@@ -2114,6 +2241,7 @@ int vprintk_store(int facility, int leve
+@@ -2115,6 +2242,7 @@ int vprintk_store(int facility, int leve
  	const u32 caller_id = printk_caller_id();
  	struct prb_reserved_entry e;
  	enum printk_info_flags flags = 0;
@@ -241,7 +241,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct printk_record r;
  	unsigned long irqflags;
  	u16 trunc_msg_len = 0;
-@@ -2124,6 +2252,7 @@ int vprintk_store(int facility, int leve
+@@ -2125,6 +2253,7 @@ int vprintk_store(int facility, int leve
  	u16 text_len;
  	int ret = 0;
  	u64 ts_nsec;
@@ -249,7 +249,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/*
  	 * Since the duration of printk() can vary depending on the message
-@@ -2162,6 +2291,7 @@ int vprintk_store(int facility, int leve
+@@ -2163,6 +2292,7 @@ int vprintk_store(int facility, int leve
  	if (flags & LOG_CONT) {
  		prb_rec_init_wr(&r, reserve_size);
  		if (prb_reserve_in_last(&e, prb, &r, caller_id, LOG_LINE_MAX)) {
@@ -257,7 +257,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			text_len = printk_sprint(&r.text_buf[r.info->text_len], reserve_size,
  						 facility, &flags, fmt, args);
  			r.info->text_len += text_len;
-@@ -2169,6 +2299,7 @@ int vprintk_store(int facility, int leve
+@@ -2170,6 +2300,7 @@ int vprintk_store(int facility, int leve
  			if (flags & LOG_NEWLINE) {
  				r.info->flags |= LOG_NEWLINE;
  				prb_final_commit(&e);
@@ -265,7 +265,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			} else {
  				prb_commit(&e);
  			}
-@@ -2192,6 +2323,7 @@ int vprintk_store(int facility, int leve
+@@ -2193,6 +2324,7 @@ int vprintk_store(int facility, int leve
  		if (!prb_reserve(&e, prb, &r))
  			goto out;
  	}
@@ -273,7 +273,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/* fill message */
  	text_len = printk_sprint(&r.text_buf[0], reserve_size, facility, &flags, fmt, args);
-@@ -2207,13 +2339,25 @@ int vprintk_store(int facility, int leve
+@@ -2208,13 +2340,25 @@ int vprintk_store(int facility, int leve
  		memcpy(&r.info->dev_info, dev_info, sizeof(r.info->dev_info));
  
  	/* A message without a trailing newline can be continued. */
@@ -301,7 +301,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	printk_exit_irqrestore(recursion_ptr, irqflags);
  	return ret;
  }
-@@ -2282,13 +2426,13 @@ EXPORT_SYMBOL(_printk);
+@@ -2283,13 +2427,13 @@ EXPORT_SYMBOL(_printk);
  
  #else /* CONFIG_PRINTK */
  
@@ -317,7 +317,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  static u64 exclusive_console_stop_seq;
  static unsigned long console_dropped;
-@@ -2592,6 +2736,8 @@ static int have_callable_console(void)
+@@ -2593,6 +2737,8 @@ static int have_callable_console(void)
   */
  static inline int can_use_console(void)
  {
@@ -326,7 +326,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	return cpu_online(raw_smp_processor_id()) || have_callable_console();
  }
  
-@@ -2661,7 +2807,7 @@ void console_unlock(void)
+@@ -2662,7 +2808,7 @@ void console_unlock(void)
  		size_t len;
  
  skip:
@@ -335,7 +335,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		if (!prb_read_valid(prb, seq, &r))
  			break;
  
-@@ -2741,7 +2887,7 @@ void console_unlock(void)
+@@ -2742,7 +2888,7 @@ void console_unlock(void)
  	 * there's a new owner and the console_unlock() from them will do the
  	 * flush, no worries.
  	 */
@@ -344,7 +344,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (retry && console_trylock())
  		goto again;
  }
-@@ -3041,7 +3187,7 @@ void register_console(struct console *ne
+@@ -3042,7 +3188,7 @@ void register_console(struct console *ne
  		 * ignores console_lock.
  		 */
  		exclusive_console = newcon;
@@ -353,7 +353,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  		/* Get a consistent copy of @syslog_seq. */
  		mutex_lock(&syslog_lock);
-@@ -3411,6 +3557,18 @@ void kmsg_dump(enum kmsg_dump_reason rea
+@@ -3412,6 +3558,18 @@ void kmsg_dump(enum kmsg_dump_reason rea
  {
  	struct kmsg_dumper *dumper;
  

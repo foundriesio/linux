@@ -35,7 +35,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/gpu/drm/i915/gt/intel_context.h
 +++ b/drivers/gpu/drm/i915/gt/intel_context.h
-@@ -163,7 +163,8 @@ static inline void intel_context_enter(s
+@@ -211,7 +211,8 @@ static inline void intel_context_enter(s
  
  static inline void intel_context_mark_active(struct intel_context *ce)
  {
@@ -47,11 +47,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/drivers/gpu/drm/i915/gt/intel_context_types.h
 +++ b/drivers/gpu/drm/i915/gt/intel_context_types.h
-@@ -112,6 +112,7 @@ struct intel_context {
- #define CONTEXT_FORCE_SINGLE_SUBMISSION	7
- #define CONTEXT_NOPREEMPT		8
+@@ -118,6 +118,7 @@ struct intel_context {
  #define CONTEXT_LRCA_DIRTY		9
-+#define CONTEXT_IS_PARKED		10
+ #define CONTEXT_GUC_INIT		10
+ #define CONTEXT_PERMA_PIN		11
++#define CONTEXT_IS_PARKED		12
  
  	struct {
  		u64 timeout_us;
@@ -104,8 +104,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	unsigned long flags;
  	bool result = true;
  
- 	/* GPU is pointing to the void, as good as in the kernel context. */
-@@ -201,7 +167,7 @@ static bool switch_to_kernel_context(str
+ 	/*
+@@ -214,7 +180,7 @@ static bool switch_to_kernel_context(str
  	 * engine->wakeref.count, we may see the request completion and retire
  	 * it causing an underflow of the engine->wakeref.
  	 */
@@ -114,7 +114,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	GEM_BUG_ON(atomic_read(&ce->timeline->active_count) < 0);
  
  	rq = __i915_request_create(ce, GFP_NOWAIT);
-@@ -233,7 +199,7 @@ static bool switch_to_kernel_context(str
+@@ -246,7 +212,7 @@ static bool switch_to_kernel_context(str
  
  	result = false;
  out_unlock:
@@ -125,7 +125,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/drivers/gpu/drm/i915/i915_request.h
 +++ b/drivers/gpu/drm/i915/i915_request.h
-@@ -609,7 +609,8 @@ i915_request_timeline(const struct i915_
+@@ -642,7 +642,8 @@ i915_request_timeline(const struct i915_
  {
  	/* Valid only while the request is being constructed (or retired). */
  	return rcu_dereference_protected(rq->timeline,

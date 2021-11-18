@@ -16,9 +16,9 @@ Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 ---
- include/linux/console.h |   13 
+ include/linux/console.h |   12 
  kernel/printk/printk.c  |  715 ++++++++++++++----------------------------------
- 2 files changed, 236 insertions(+), 492 deletions(-)
+ 2 files changed, 235 insertions(+), 492 deletions(-)
 ---
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
@@ -35,7 +35,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  struct vc_data;
  struct console_font_op;
-@@ -153,7 +159,14 @@ struct console {
+@@ -153,9 +159,15 @@ struct console {
  	int	cflag;
  #ifdef CONFIG_PRINTK
  	char	sync_buf[CONSOLE_LOG_MAX];
@@ -44,8 +44,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#ifdef CONFIG_HAVE_NMI
 +	struct latched_seq printk_sync_nmi_seq;
  #endif
-+#endif /* CONFIG_PRINTK */
-+
++#endif	/* CONFIG_PRINTK */
+ 	uint	ispeed;
+ 	uint	ospeed;
 +	struct task_struct *thread;
  	void	*data;
  	struct	 console *next;
@@ -409,7 +410,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
   * Recursion is tracked separately on each CPU. If NMIs are supported, an
   * additional NMI context per CPU is also separately tracked. Until per-CPU
   * is available, a separate "early tracking" is performed.
-@@ -2354,7 +2143,7 @@ int vprintk_store(int facility, int leve
+@@ -2355,7 +2144,7 @@ int vprintk_store(int facility, int leve
  
  		for_each_console(con) {
  			if (console_may_sync(con))
@@ -418,7 +419,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		}
  	}
  
-@@ -2367,39 +2156,16 @@ asmlinkage int vprintk_emit(int facility
+@@ -2368,39 +2157,16 @@ asmlinkage int vprintk_emit(int facility
  			    const char *fmt, va_list args)
  {
  	int printed_len;
@@ -459,7 +460,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	wake_up_klogd();
  	return printed_len;
  }
-@@ -2424,37 +2190,162 @@ asmlinkage __visible int _printk(const c
+@@ -2425,37 +2191,162 @@ asmlinkage __visible int _printk(const c
  }
  EXPORT_SYMBOL(_printk);
  
@@ -645,7 +646,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  #endif /* CONFIG_PRINTK */
  
-@@ -2711,36 +2602,6 @@ int is_console_locked(void)
+@@ -2712,36 +2603,6 @@ int is_console_locked(void)
  }
  EXPORT_SYMBOL(is_console_locked);
  
@@ -682,7 +683,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
   * console_unlock - unlock the console system
   *
-@@ -2757,139 +2618,13 @@ static inline int can_use_console(void)
+@@ -2758,139 +2619,13 @@ static inline int can_use_console(void)
   */
  void console_unlock(void)
  {
@@ -822,7 +823,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  EXPORT_SYMBOL(console_unlock);
  
-@@ -2939,19 +2674,20 @@ void console_unblank(void)
+@@ -2940,19 +2675,20 @@ void console_unblank(void)
   */
  void console_flush_on_panic(enum con_flush_mode mode)
  {
@@ -855,7 +856,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	console_unlock();
  }
  
-@@ -3087,6 +2823,7 @@ static int try_enable_new_console(struct
+@@ -3088,6 +2824,7 @@ static int try_enable_new_console(struct
  void register_console(struct console *newcon)
  {
  	struct console *bcon = NULL;
@@ -863,7 +864,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	int err;
  
  	for_each_console(bcon) {
-@@ -3109,6 +2846,8 @@ void register_console(struct console *ne
+@@ -3110,6 +2847,8 @@ void register_console(struct console *ne
  		}
  	}
  
@@ -872,7 +873,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (console_drivers && console_drivers->flags & CON_BOOT)
  		bcon = console_drivers;
  
-@@ -3173,27 +2912,21 @@ void register_console(struct console *ne
+@@ -3174,27 +2913,21 @@ void register_console(struct console *ne
  	if (newcon->flags & CON_EXTENDED)
  		nr_ext_console_drivers++;
  
@@ -914,7 +915,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	console_unlock();
  	console_sysfs_notify();
  
-@@ -3267,6 +3000,9 @@ int unregister_console(struct console *c
+@@ -3268,6 +3001,9 @@ int unregister_console(struct console *c
  	console_unlock();
  	console_sysfs_notify();
  
@@ -924,7 +925,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (console->exit)
  		res = console->exit(console);
  
-@@ -3349,6 +3085,15 @@ static int __init printk_late_init(void)
+@@ -3350,6 +3086,15 @@ static int __init printk_late_init(void)
  			unregister_console(con);
  		}
  	}
@@ -940,7 +941,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	ret = cpuhp_setup_state_nocalls(CPUHP_PRINTK_DEAD, "printk:dead", NULL,
  					console_cpu_notify);
  	WARN_ON(ret < 0);
-@@ -3364,7 +3109,6 @@ late_initcall(printk_late_init);
+@@ -3365,7 +3110,6 @@ late_initcall(printk_late_init);
   * Delayed printk version, for scheduler-internal messages:
   */
  #define PRINTK_PENDING_WAKEUP	0x01
@@ -948,7 +949,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  static DEFINE_PER_CPU(int, printk_pending);
  
-@@ -3372,14 +3116,8 @@ static void wake_up_klogd_work_func(stru
+@@ -3373,14 +3117,8 @@ static void wake_up_klogd_work_func(stru
  {
  	int pending = __this_cpu_xchg(printk_pending, 0);
  
@@ -964,7 +965,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static DEFINE_PER_CPU(struct irq_work, wake_up_klogd_work) =
-@@ -3400,13 +3138,6 @@ void wake_up_klogd(void)
+@@ -3401,13 +3139,6 @@ void wake_up_klogd(void)
  
  void defer_console_output(void)
  {
