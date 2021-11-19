@@ -47,9 +47,9 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +#endif /* CONFIG_PRINTK */
 +
 +	struct task_struct *thread;
+ 	uint	ispeed;
+ 	uint	ospeed;
  	void	*data;
- 	struct	 console *next;
- };
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
 @@ -45,6 +45,7 @@
