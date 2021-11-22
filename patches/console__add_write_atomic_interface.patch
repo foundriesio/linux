@@ -144,7 +144,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif /* _KGDB_H_ */
 --- a/include/linux/printk.h
 +++ b/include/linux/printk.h
-@@ -280,10 +280,18 @@ static inline void dump_stack(void)
+@@ -284,10 +284,18 @@ static inline void printk_trigger_flush(
  extern int __printk_cpu_trylock(void);
  extern void __printk_wait_on_cpu_lock(void);
  extern void __printk_cpu_unlock(void);
@@ -163,7 +163,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif /* CONFIG_SMP */
  
  /**
-@@ -315,6 +323,21 @@ extern void __printk_cpu_unlock(void);
+@@ -319,6 +327,21 @@ extern void __printk_cpu_unlock(void);
  		local_irq_restore(flags);	\
  	} while (0)
  
@@ -259,7 +259,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #include <linux/sched/clock.h>
  #include <linux/sched/debug.h>
  #include <linux/sched/task_stack.h>
-@@ -3583,6 +3584,7 @@ EXPORT_SYMBOL_GPL(kmsg_dump_rewind);
+@@ -3588,6 +3589,7 @@ EXPORT_SYMBOL_GPL(kmsg_dump_rewind);
  #ifdef CONFIG_SMP
  static atomic_t printk_cpulock_owner = ATOMIC_INIT(-1);
  static atomic_t printk_cpulock_nested = ATOMIC_INIT(0);
@@ -267,7 +267,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  /**
   * __printk_wait_on_cpu_lock() - Busy wait until the printk cpu-reentrant
-@@ -3662,6 +3664,9 @@ EXPORT_SYMBOL(__printk_cpu_trylock);
+@@ -3667,6 +3669,9 @@ EXPORT_SYMBOL(__printk_cpu_trylock);
   */
  void __printk_cpu_unlock(void)
  {
@@ -277,7 +277,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	if (atomic_read(&printk_cpulock_nested)) {
  		atomic_dec(&printk_cpulock_nested);
  		return;
-@@ -3672,6 +3677,12 @@ void __printk_cpu_unlock(void)
+@@ -3677,6 +3682,12 @@ void __printk_cpu_unlock(void)
  	 * LMM(__printk_cpu_unlock:A)
  	 */
  
@@ -290,7 +290,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * Guarantee loads and stores from this CPU when it was the
  	 * lock owner are visible to the next lock owner. This pairs
-@@ -3692,6 +3703,21 @@ void __printk_cpu_unlock(void)
+@@ -3697,6 +3708,21 @@ void __printk_cpu_unlock(void)
  	 */
  	atomic_set_release(&printk_cpulock_owner,
  			   -1); /* LMM(__printk_cpu_unlock:B) */

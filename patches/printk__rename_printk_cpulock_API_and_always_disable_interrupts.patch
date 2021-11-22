@@ -26,7 +26,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/include/linux/printk.h
 +++ b/include/linux/printk.h
-@@ -280,17 +280,22 @@ static inline void dump_stack(void)
+@@ -284,17 +284,22 @@ static inline void printk_trigger_flush(
  extern int __printk_cpu_trylock(void);
  extern void __printk_wait_on_cpu_lock(void);
  extern void __printk_cpu_unlock(void);
@@ -53,7 +53,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	for (;;) {				\
  		local_irq_save(flags);		\
  		if (__printk_cpu_trylock())	\
-@@ -300,22 +305,15 @@ extern void __printk_cpu_unlock(void);
+@@ -304,22 +309,15 @@ extern void __printk_cpu_unlock(void);
  	}
  
  /**
@@ -97,7 +97,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/lib/nmi_backtrace.c
 +++ b/lib/nmi_backtrace.c
-@@ -93,7 +93,7 @@ bool nmi_cpu_backtrace(struct pt_regs *r
+@@ -99,7 +99,7 @@ bool nmi_cpu_backtrace(struct pt_regs *r
  		 * Allow nested NMI backtraces while serializing
  		 * against other CPUs.
  		 */
@@ -106,7 +106,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		if (!READ_ONCE(backtrace_idle) && regs && cpu_in_idle(instruction_pointer(regs))) {
  			pr_warn("NMI backtrace for cpu %d skipped: idling at %pS\n",
  				cpu, (void *)instruction_pointer(regs));
-@@ -104,7 +104,7 @@ bool nmi_cpu_backtrace(struct pt_regs *r
+@@ -110,7 +110,7 @@ bool nmi_cpu_backtrace(struct pt_regs *r
  			else
  				dump_stack();
  		}

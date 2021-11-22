@@ -353,7 +353,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  		/* Get a consistent copy of @syslog_seq. */
  		mutex_lock(&syslog_lock);
-@@ -3412,6 +3558,18 @@ void kmsg_dump(enum kmsg_dump_reason rea
+@@ -3417,6 +3563,18 @@ void kmsg_dump(enum kmsg_dump_reason rea
  {
  	struct kmsg_dumper *dumper;
  

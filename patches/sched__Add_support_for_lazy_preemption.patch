@@ -552,7 +552,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		(min_t(unsigned int, migration_disable_value(), 0xf)) << 4;
  }
  
-@@ -4170,15 +4176,17 @@ unsigned long trace_total_entries(struct
+@@ -4182,15 +4188,17 @@ unsigned long trace_total_entries(struct
  
  static void print_lat_help_header(struct seq_file *m)
  {
@@ -579,7 +579,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  }
  
  static void print_event_info(struct array_buffer *buf, struct seq_file *m)
-@@ -4212,14 +4220,16 @@ static void print_func_help_header_irq(s
+@@ -4224,14 +4232,16 @@ static void print_func_help_header_irq(s
  
  	print_event_info(buf, m);
  
