@@ -907,12 +907,13 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 	 * EOTIE enables irq from EOT, SUSP and TXC events. We need to set
 	 * SUSP to acknowledge it later. TXC is automatically cleared
 	 */
+
 	mask |= STM32H7_SPI_SR_SUSP;
 	/*
 	 * DXPIE is set in Full-Duplex, one IT will be raised if TXP and RXP
 	 * are set. So in case of Full-Duplex, need to poll TXP and RXP event.
 	 */
-	if ((spi->cur_comm == SPI_FULL_DUPLEX) && (!spi->cur_usedma))
+	if ((spi->cur_comm == SPI_FULL_DUPLEX) && !spi->cur_usedma)
 		mask |= STM32H7_SPI_SR_TXP | STM32H7_SPI_SR_RXP;
 
 	mask &= sr;
@@ -1959,12 +1960,12 @@ static int stm32_spi_probe(struct platform_device *pdev)
 		ret = PTR_ERR(spi->dma_tx);
 		spi->dma_tx = NULL;
 		if (ret == -EPROBE_DEFER)
-			goto err_dma_release;
-		else if (ret != -ENODEV)
-			dev_warn(&pdev->dev, "failed to request tx dma: %d\n",
-				 ret);
+			goto err_clk_disable;
+
+		dev_warn(&pdev->dev, "failed to request tx dma channel\n");
+	} else {
+		master->dma_tx = spi->dma_tx;
 	}
-	master->dma_tx = spi->dma_tx;
 
 	spi->dma_rx = dma_request_chan(spi->dev, "rx");
 	if (IS_ERR(spi->dma_rx)) {
@@ -1972,19 +1973,31 @@ static int stm32_spi_probe(struct platform_device *pdev)
 		spi->dma_rx = NULL;
 		if (ret == -EPROBE_DEFER)
 			goto err_dma_release;
-		else if (ret != -ENODEV)
-			dev_warn(&pdev->dev, "failed to request rx dma: %d\n",
-				 ret);
+
+		dev_warn(&pdev->dev, "failed to request rx dma channel\n");
+	} else {
+		master->dma_rx = spi->dma_rx;
 	}
-	master->dma_rx = spi->dma_rx;
 
 	if (spi->dma_tx || spi->dma_rx)
 		master->can_dma = stm32_spi_can_dma;
 
 	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_get_noresume(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
-	num_cs = of_gpio_named_count(pdev->dev.of_node, "cs-gpios");
+	ret = spi_register_master(master);
+	if (ret) {
+		dev_err(&pdev->dev, "spi master registration failed: %d\n",
+			ret);
+		goto err_pm_disable;
+	}
+
+	if (!master->cs_gpios) {
+		dev_err(&pdev->dev, "no CS gpios available\n");
+		ret = -EINVAL;
+		goto err_pm_disable;
+	}
 
 	for (i = 0; i < num_cs; i++) {
 		cs_gpio = of_get_named_gpio(pdev->dev.of_node, "cs-gpios", i);
@@ -2015,13 +2028,15 @@ static int stm32_spi_probe(struct platform_device *pdev)
 
 	return 0;
 
+err_pm_disable:
+	pm_runtime_disable(&pdev->dev);
+	pm_runtime_put_noidle(&pdev->dev);
+	pm_runtime_set_suspended(&pdev->dev);
 err_dma_release:
 	if (spi->dma_tx)
 		dma_release_channel(spi->dma_tx);
 	if (spi->dma_rx)
 		dma_release_channel(spi->dma_rx);
-
-	pm_runtime_disable(&pdev->dev);
 err_clk_disable:
 	clk_disable_unprepare(spi->clk);
 err_master_put:
@@ -2040,6 +2055,9 @@ static int stm32_spi_remove(struct platform_device *pdev)
 	spi_unregister_master(master);
 	spi->cfg->disable(spi);
 
+	pm_runtime_disable(&pdev->dev);
+	pm_runtime_put_noidle(&pdev->dev);
+	pm_runtime_set_suspended(&pdev->dev);
 	if (master->dma_tx)
 		dma_release_channel(master->dma_tx);
 	if (master->dma_rx)
@@ -2047,10 +2065,6 @@ static int stm32_spi_remove(struct platform_device *pdev)
 
 	clk_disable_unprepare(spi->clk);
 
-	pm_runtime_put_noidle(&pdev->dev);
-	pm_runtime_disable(&pdev->dev);
-	pm_runtime_set_suspended(&pdev->dev);
-	pm_runtime_dont_use_autosuspend(&pdev->dev);
 
 	pinctrl_pm_select_sleep_state(&pdev->dev);
 
