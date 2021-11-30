@@ -420,7 +420,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	do {
  		/*
  		 * Because the function tracer can trace preempt_count_sub()
-@@ -8660,7 +8734,9 @@ void __init init_idle(struct task_struct
+@@ -8657,7 +8731,9 @@ void __init init_idle(struct task_struct
  
  	/* Set the preempt count _outside_ the spinlocks! */
  	init_idle_preempt_count(idle, cpu);
