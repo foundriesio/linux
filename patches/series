@@ -70,6 +70,7 @@ tcp-Don-t-acquire-inet_listen_hashbucket-lock-with-d.patch
 ###########################################################################
 cgroup__use_irqsave_in_cgroup_rstat_flush_locked.patch
 mm__workingset__replace_IRQ-off_check_with_a_lockdep_assert..patch
+softirq-Use-a-dedicated-thread-for-timer-wakeups.patch
 
 ###########################################################################
 # Kconfig bits:
@@ -142,7 +143,6 @@ net__dev__always_take_qdiscs_busylock_in___dev_xmit_skb.patch
 # randomness:
 ###########################################################################
 panic__skip_get_random_bytes_for_RT_FULL_in_init_oops_id.patch
-x86__stackprotector__Avoid_random_pool_on_rt.patch
 random__Make_it_work_on_rt.patch
 
 ###########################################################################
