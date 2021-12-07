@@ -1260,37 +1260,35 @@ static __u32 get_reg(struct fast_pool *f, struct pt_regs *regs)
 	return *ptr;
 }
 
-static void process_interrupt_randomness_pool(struct fast_pool *fast_pool)
+static bool process_interrupt_randomness_pool(struct fast_pool *fast_pool)
 {
 	struct entropy_store	*r;
-	unsigned long		now = jiffies;
 
 	if (unlikely(crng_init == 0)) {
+		bool pool_reset = false;
+
 		if ((fast_pool->count >= 64) &&
 		    crng_fast_load((char *) fast_pool->pool,
-				   sizeof(fast_pool->pool))) {
-			fast_pool->count = 0;
-			fast_pool->last = now;
-		}
-		return;
+				   sizeof(fast_pool->pool)))
+			pool_reset = true;
+
+		return pool_reset;
 	}
 
 	if ((fast_pool->count < 64) &&
-	    !time_after(now, fast_pool->last + HZ))
-		return;
+	    !time_after(jiffies, fast_pool->last + HZ))
+		return false;
 
 	r = &input_pool;
 	if (!spin_trylock(&r->lock))
-		return;
+		return false;
 
-	fast_pool->last = now;
 	__mix_pool_bytes(r, &fast_pool->pool, sizeof(fast_pool->pool));
 	spin_unlock(&r->lock);
 
-	fast_pool->count = 0;
-
 	/* award one bit for the contents of the fast pool */
 	credit_entropy_bits(r, 1);
+	return true;
 }
 
 void add_interrupt_randomness(int irq)
@@ -1316,7 +1314,10 @@ void add_interrupt_randomness(int irq)
 	fast_mix(fast_pool);
 	add_interrupt_bench(cycles);
 
-	process_interrupt_randomness_pool(fast_pool);
+	if (process_interrupt_randomness_pool(fast_pool)) {
+		fast_pool->last = now;
+		fast_pool->count = 0;
+	}
 }
 EXPORT_SYMBOL_GPL(add_interrupt_randomness);
 
