@@ -69,7 +69,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline struct task_struct *this_cpu_ksoftirqd(void)
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
-@@ -623,6 +623,22 @@ static inline void tick_irq_exit(void)
+@@ -624,6 +624,22 @@ static inline void tick_irq_exit(void)
  #endif
  }
  
@@ -92,7 +92,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline void __irq_exit_rcu(void)
  {
  #ifndef __ARCH_IRQ_EXIT_IRQS_DISABLED
-@@ -634,6 +650,8 @@ static inline void __irq_exit_rcu(void)
+@@ -635,6 +651,8 @@ static inline void __irq_exit_rcu(void)
  	preempt_count_sub(HARDIRQ_OFFSET);
  	if (!in_interrupt() && local_softirq_pending())
  		invoke_softirq();
@@ -101,7 +101,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	tick_irq_exit();
  }
-@@ -962,11 +980,69 @@ static struct smp_hotplug_thread softirq
+@@ -963,11 +981,69 @@ static struct smp_hotplug_thread softirq
  	.thread_comm		= "ksoftirqd/%u",
  };
  

@@ -214,7 +214,7 @@ Link: https://lore.kernel.org/r/20211118143452.136421-8-bigeasy@linutronix.de
  	return NULL;
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -4879,8 +4879,11 @@ static struct rq *finish_task_switch(str
+@@ -4881,8 +4881,11 @@ static struct rq *finish_task_switch(str
  		if (prev->sched_class->task_dead)
  			prev->sched_class->task_dead(prev);
  

@@ -13,8 +13,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 
 ---
  include/linux/skbuff.h |    7 +++++++
- net/core/dev.c         |    6 +++---
- 2 files changed, 10 insertions(+), 3 deletions(-)
+ net/core/dev.c         |    8 ++++----
+ 2 files changed, 11 insertions(+), 4 deletions(-)
 ---
 --- a/include/linux/skbuff.h
 +++ b/include/linux/skbuff.h
@@ -58,7 +58,16 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
  }
  
-@@ -11660,7 +11660,7 @@ static int __init net_dev_init(void)
+@@ -11351,7 +11351,7 @@ static int dev_cpu_dead(unsigned int old
+ 		netif_rx_ni(skb);
+ 		input_queue_head_incr(oldsd);
+ 	}
+-	while ((skb = skb_dequeue(&oldsd->input_pkt_queue))) {
++	while ((skb = __skb_dequeue(&oldsd->input_pkt_queue))) {
+ 		netif_rx_ni(skb);
+ 		input_queue_head_incr(oldsd);
+ 	}
+@@ -11667,7 +11667,7 @@ static int __init net_dev_init(void)
  
  		INIT_WORK(flush, flush_backlog);
  

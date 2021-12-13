@@ -27,11 +27,11 @@ local_bh_disable() + spin_lock(&ilb->lock):
 	  spin_lock(&ilb->lock);
 	    acquire(&ilb->lock);
 
-Reverse order: spin_lock(&ilb->lock) + local_bh_disable():
+Reverse order: spin_lock(&ilb2->lock) + local_bh_disable():
   tcp_seq_next()
     listening_get_next()
-      spin_lock(&ilb->lock);
-	acquire(&ilb->lock);
+      spin_lock(&ilb2->lock);
+	acquire(&ilb2->lock);
 
   tcp4_seq_show()
     get_tcp4_sock()
