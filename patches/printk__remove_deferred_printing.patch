@@ -758,7 +758,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			tk->last_warning = jiffies;
  		}
  		tk->overflow_seen = 0;
-@@ -1669,9 +1671,7 @@ static void __timekeeping_inject_sleepti
+@@ -1668,9 +1670,7 @@ static void __timekeeping_inject_sleepti
  					   const struct timespec64 *delta)
  {
  	if (!timespec64_valid_strict(delta)) {

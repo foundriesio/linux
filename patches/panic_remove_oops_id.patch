@@ -19,6 +19,7 @@ Link: https://bugs.debian.org/953172
 Cc: Arjan van de Ven <arjan@linux.intel.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20211202142713.ofadr43tawengfw4@linutronix.de
+Link: https://lore.kernel.org/r/Ybdi16aP2NEugWHq@linutronix.de>
 ---
  kernel/panic.c |   19 +------------------
  1 file changed, 1 insertion(+), 18 deletions(-)
