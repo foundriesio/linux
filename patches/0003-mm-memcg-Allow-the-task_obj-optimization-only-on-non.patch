@@ -56,17 +56,17 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-4-bigeasy@linutronix.de
 +#ifndef CONFIG_PREEMPTION
  	if (likely(in_task())) {
  		*pflags = 0UL;
- 		*stock_pcp = NULL;
+ 		*stock_lock_acquried = false;
 @@ -2855,7 +2855,7 @@ static inline struct obj_stock *get_obj_
  static inline void put_obj_stock(unsigned long flags,
- 				 struct memcg_stock_pcp *stock_pcp)
+ 				 bool stock_lock_acquried)
  {
 -#ifndef CONFIG_PREEMPT_RT
 +#ifndef CONFIG_PREEMPTION
- 	if (likely(!stock_pcp))
+ 	if (likely(!stock_lock_acquried)) {
  		local_unlock(&memcg_stock.task_obj_lock);
- 	else
-@@ -3267,7 +3267,7 @@ static bool obj_stock_flush_required(str
+ 		return;
+@@ -3268,7 +3268,7 @@ static bool obj_stock_flush_required(str
  {
  	struct mem_cgroup *memcg;
  
