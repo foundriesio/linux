@@ -39,7 +39,7 @@ Link: https://lore.kernel.org/r/20211207121737.2347312-6-bigeasy@linutronix.de
 
 --- a/drivers/char/random.c
 +++ b/drivers/char/random.c
-@@ -1273,6 +1273,32 @@ static bool process_interrupt_randomness
+@@ -1291,6 +1291,32 @@ static bool process_interrupt_randomness
  	return true;
  }
  
@@ -72,7 +72,7 @@ Link: https://lore.kernel.org/r/20211207121737.2347312-6-bigeasy@linutronix.de
  void add_interrupt_randomness(int irq)
  {
  	struct fast_pool	*fast_pool = this_cpu_ptr(&irq_randomness);
-@@ -1296,9 +1322,16 @@ void add_interrupt_randomness(int irq)
+@@ -1314,9 +1340,16 @@ void add_interrupt_randomness(int irq)
  	fast_mix(fast_pool);
  	add_interrupt_bench(cycles);
  

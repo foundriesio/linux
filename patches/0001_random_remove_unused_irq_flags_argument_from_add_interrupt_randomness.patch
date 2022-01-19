@@ -53,7 +53,7 @@ Link: https://lore.kernel.org/r/20211207121737.2347312-2-bigeasy@linutronix.de
   * 	void add_disk_randomness(struct gendisk *disk);
   *
   * add_device_randomness() is for adding data to the random pool that
-@@ -1242,7 +1242,7 @@ static __u32 get_reg(struct fast_pool *f
+@@ -1260,7 +1260,7 @@ static __u32 get_reg(struct fast_pool *f
  	return *ptr;
  }
  

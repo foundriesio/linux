@@ -162,7 +162,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  ({									\
 --- a/drivers/char/random.c
 +++ b/drivers/char/random.c
-@@ -1507,9 +1507,8 @@ static void _warn_unseeded_randomness(co
+@@ -1525,9 +1525,8 @@ static void _warn_unseeded_randomness(co
  	print_once = true;
  #endif
  	if (__ratelimit(&unseeded_warning))
@@ -782,7 +782,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/kernel/workqueue.c
 +++ b/kernel/workqueue.c
-@@ -4826,9 +4826,7 @@ void show_one_workqueue(struct workqueue
+@@ -4845,9 +4845,7 @@ void show_one_workqueue(struct workqueue
  			 * drivers that queue work while holding locks
  			 * also taken in their write paths.
  			 */
@@ -792,7 +792,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		}
  		raw_spin_unlock_irqrestore(&pwq->pool->lock, flags);
  		/*
-@@ -4859,7 +4857,6 @@ static void show_one_worker_pool(struct
+@@ -4878,7 +4876,6 @@ static void show_one_worker_pool(struct
  	 * queue work while holding locks also taken in their write
  	 * paths.
  	 */
@@ -800,7 +800,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	pr_info("pool %d:", pool->id);
  	pr_cont_pool_info(pool);
  	pr_cont(" hung=%us workers=%d",
-@@ -4874,7 +4871,6 @@ static void show_one_worker_pool(struct
+@@ -4893,7 +4890,6 @@ static void show_one_worker_pool(struct
  		first = false;
  	}
  	pr_cont("\n");

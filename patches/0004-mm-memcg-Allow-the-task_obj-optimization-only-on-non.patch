@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 22 Dec 2021 12:16:27 +0100
-Subject: [PATCH 3/3] mm/memcg: Allow the task_obj optimization only on
+Subject: [PATCH 4/4] mm/memcg: Allow the task_obj optimization only on
  non-PREEMPTIBLE kernels.
 
 Based on my understanding the optimisation with task_obj for in_task()
@@ -11,17 +11,21 @@ With CONFIG_PREEMPT_DYNAMIC a non-PREEMPTIBLE kernel can also be
 configured but these kernels always have preempt_disable()/enable()
 present so it probably makes no sense here for the optimisation.
 
+I did a micro benchmark with disabled interrupts and a loop of
+100.000.000 invokcations of kfree(kmalloc()). Based on the results it
+makes no sense to add an exception based on dynamic preemption.
+
 Restrict the optimisation to !CONFIG_PREEMPTION kernels.
 
+Link: https://lore.kernel.org/all/YdX+INO9gQje6d0S@linutronix.de
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Link: https://lkml.kernel.org/r/20211222114111.2206248-4-bigeasy@linutronix.de
 ---
  mm/memcontrol.c |   12 ++++++------
  1 file changed, 6 insertions(+), 6 deletions(-)
 
 --- a/mm/memcontrol.c
 +++ b/mm/memcontrol.c
-@@ -2126,7 +2126,7 @@ struct memcg_stock_pcp {
+@@ -2023,7 +2023,7 @@ struct memcg_stock_pcp {
  	local_lock_t stock_lock;
  	struct mem_cgroup *cached; /* this never be root cgroup */
  	unsigned int nr_pages;
@@ -30,7 +34,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-4-bigeasy@linutronix.de
  	/* Protects only task_obj */
  	local_lock_t task_obj_lock;
  	struct obj_stock task_obj;
-@@ -2139,7 +2139,7 @@ struct memcg_stock_pcp {
+@@ -2036,7 +2036,7 @@ struct memcg_stock_pcp {
  };
  static DEFINE_PER_CPU(struct memcg_stock_pcp, memcg_stock) = {
  	.stock_lock = INIT_LOCAL_LOCK(stock_lock),
@@ -39,7 +43,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-4-bigeasy@linutronix.de
  	.task_obj_lock = INIT_LOCAL_LOCK(task_obj_lock),
  #endif
  };
-@@ -2228,7 +2228,7 @@ static void drain_local_stock(struct wor
+@@ -2125,7 +2125,7 @@ static void drain_local_stock(struct wor
  	 * drain_stock races is that we always operate on local CPU stock
  	 * here with IRQ disabled
  	 */
@@ -48,7 +52,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-4-bigeasy@linutronix.de
  	local_lock(&memcg_stock.task_obj_lock);
  	old = drain_obj_stock(&this_cpu_ptr(&memcg_stock)->task_obj, NULL);
  	local_unlock(&memcg_stock.task_obj_lock);
-@@ -2837,7 +2837,7 @@ static inline struct obj_stock *get_obj_
+@@ -2734,7 +2734,7 @@ static inline struct obj_stock *get_obj_
  {
  	struct memcg_stock_pcp *stock;
  
@@ -57,7 +61,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-4-bigeasy@linutronix.de
  	if (likely(in_task())) {
  		*pflags = 0UL;
  		*stock_lock_acquried = false;
-@@ -2855,7 +2855,7 @@ static inline struct obj_stock *get_obj_
+@@ -2752,7 +2752,7 @@ static inline struct obj_stock *get_obj_
  static inline void put_obj_stock(unsigned long flags,
  				 bool stock_lock_acquried)
  {
@@ -66,7 +70,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-4-bigeasy@linutronix.de
  	if (likely(!stock_lock_acquried)) {
  		local_unlock(&memcg_stock.task_obj_lock);
  		return;
-@@ -3268,7 +3268,7 @@ static bool obj_stock_flush_required(str
+@@ -3165,7 +3165,7 @@ static bool obj_stock_flush_required(str
  {
  	struct mem_cgroup *memcg;
  

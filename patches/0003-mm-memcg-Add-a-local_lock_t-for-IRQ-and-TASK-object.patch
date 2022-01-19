@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Mon, 20 Dec 2021 11:14:17 +0100
-Subject: [PATCH 2/3] mm/memcg: Add a local_lock_t for IRQ and TASK object.
+Subject: [PATCH 3/4] mm/memcg: Add a local_lock_t for IRQ and TASK object.
 
 The members of the per-CPU structure memcg_stock_pcp are protected
 either by disabling interrupts or by disabling preemption if the
@@ -50,14 +50,13 @@ interrupts with a local_lock_t. This change requires some factoring:
   complains.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
 ---
  mm/memcontrol.c |  176 ++++++++++++++++++++++++++++++++++++--------------------
  1 file changed, 115 insertions(+), 61 deletions(-)
 
 --- a/mm/memcontrol.c
 +++ b/mm/memcontrol.c
-@@ -261,8 +261,10 @@ bool mem_cgroup_kmem_disabled(void)
+@@ -260,8 +260,10 @@ bool mem_cgroup_kmem_disabled(void)
  	return cgroup_memory_nokmem;
  }
  
@@ -69,7 +68,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  
  static void obj_cgroup_release(struct percpu_ref *ref)
  {
-@@ -296,7 +298,7 @@ static void obj_cgroup_release(struct pe
+@@ -295,7 +297,7 @@ static void obj_cgroup_release(struct pe
  	nr_pages = nr_bytes >> PAGE_SHIFT;
  
  	if (nr_pages)
@@ -78,7 +77,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  
  	spin_lock_irqsave(&css_set_lock, flags);
  	list_del(&objcg->list);
-@@ -2120,26 +2122,40 @@ struct obj_stock {
+@@ -2017,26 +2019,40 @@ struct obj_stock {
  };
  
  struct memcg_stock_pcp {
@@ -122,7 +121,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  }
  static bool obj_stock_flush_required(struct memcg_stock_pcp *stock,
  				     struct mem_cgroup *root_memcg)
-@@ -2168,7 +2184,7 @@ static bool consume_stock(struct mem_cgr
+@@ -2065,7 +2081,7 @@ static bool consume_stock(struct mem_cgr
  	if (nr_pages > MEMCG_CHARGE_BATCH)
  		return ret;
  
@@ -131,7 +130,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  
  	stock = this_cpu_ptr(&memcg_stock);
  	if (memcg == stock->cached && stock->nr_pages >= nr_pages) {
-@@ -2176,7 +2192,7 @@ static bool consume_stock(struct mem_cgr
+@@ -2073,7 +2089,7 @@ static bool consume_stock(struct mem_cgr
  		ret = true;
  	}
  
@@ -140,7 +139,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  
  	return ret;
  }
-@@ -2204,38 +2220,43 @@ static void drain_stock(struct memcg_sto
+@@ -2101,38 +2117,43 @@ static void drain_stock(struct memcg_sto
  
  static void drain_local_stock(struct work_struct *dummy)
  {
@@ -192,16 +191,16 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  {
 -	struct memcg_stock_pcp *stock;
 -	unsigned long flags;
+-
+-	local_irq_save(flags);
 +	struct memcg_stock_pcp *stock = this_cpu_ptr(&memcg_stock);
  
--	local_irq_save(flags);
--
 -	stock = this_cpu_ptr(&memcg_stock);
 +	lockdep_assert_held(&stock->stock_lock);
  	if (stock->cached != memcg) { /* reset if necessary */
  		drain_stock(stock);
  		css_get(&memcg->css);
-@@ -2245,8 +2266,20 @@ static void refill_stock(struct mem_cgro
+@@ -2142,8 +2163,20 @@ static void refill_stock(struct mem_cgro
  
  	if (stock->nr_pages > MEMCG_CHARGE_BATCH)
  		drain_stock(stock);
@@ -223,7 +222,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  }
  
  /*
-@@ -2255,7 +2288,7 @@ static void refill_stock(struct mem_cgro
+@@ -2152,7 +2185,7 @@ static void refill_stock(struct mem_cgro
   */
  static void drain_all_stock(struct mem_cgroup *root_memcg)
  {
@@ -232,7 +231,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  
  	/* If someone's already draining, avoid adding running more workers. */
  	if (!mutex_trylock(&percpu_charge_mutex))
-@@ -2266,7 +2299,7 @@ static void drain_all_stock(struct mem_c
+@@ -2163,7 +2196,7 @@ static void drain_all_stock(struct mem_c
  	 * as well as workers from this path always operate on the local
  	 * per-cpu data. CPU up doesn't touch memcg_stock at all.
  	 */
@@ -241,7 +240,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  	for_each_online_cpu(cpu) {
  		struct memcg_stock_pcp *stock = &per_cpu(memcg_stock, cpu);
  		struct mem_cgroup *memcg;
-@@ -2282,14 +2315,10 @@ static void drain_all_stock(struct mem_c
+@@ -2179,14 +2212,10 @@ static void drain_all_stock(struct mem_c
  		rcu_read_unlock();
  
  		if (flush &&
@@ -259,7 +258,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  	mutex_unlock(&percpu_charge_mutex);
  }
  
-@@ -2690,7 +2719,7 @@ static int try_charge_memcg(struct mem_c
+@@ -2587,7 +2616,7 @@ static int try_charge_memcg(struct mem_c
  
  done_restock:
  	if (batch > nr_pages)
@@ -268,7 +267,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  
  	/*
  	 * If the hierarchy is above the normal consumption range, schedule
-@@ -2803,28 +2832,36 @@ static struct mem_cgroup *get_mem_cgroup
+@@ -2700,28 +2729,36 @@ static struct mem_cgroup *get_mem_cgroup
   * can only be accessed after disabling interrupt. User context code can
   * access interrupt object stock, but not vice versa.
   */
@@ -314,7 +313,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  }
  
  /*
-@@ -3002,7 +3039,8 @@ static void memcg_free_cache_id(int id)
+@@ -2899,7 +2936,8 @@ static void memcg_free_cache_id(int id)
   * @nr_pages: number of pages to uncharge
   */
  static void obj_cgroup_uncharge_pages(struct obj_cgroup *objcg,
@@ -324,7 +323,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  {
  	struct mem_cgroup *memcg;
  
-@@ -3010,7 +3048,7 @@ static void obj_cgroup_uncharge_pages(st
+@@ -2907,7 +2945,7 @@ static void obj_cgroup_uncharge_pages(st
  
  	if (!cgroup_subsys_on_dfl(memory_cgrp_subsys))
  		page_counter_uncharge(&memcg->kmem, nr_pages);
@@ -333,7 +332,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  
  	css_put(&memcg->css);
  }
-@@ -3084,7 +3122,7 @@ void __memcg_kmem_uncharge_page(struct p
+@@ -2981,7 +3019,7 @@ void __memcg_kmem_uncharge_page(struct p
  		return;
  
  	objcg = __folio_objcg(folio);
@@ -342,7 +341,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  	folio->memcg_data = 0;
  	obj_cgroup_put(objcg);
  }
-@@ -3092,17 +3130,21 @@ void __memcg_kmem_uncharge_page(struct p
+@@ -2989,17 +3027,21 @@ void __memcg_kmem_uncharge_page(struct p
  void mod_objcg_state(struct obj_cgroup *objcg, struct pglist_data *pgdat,
  		     enum node_stat_item idx, int nr)
  {
@@ -366,7 +365,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  		obj_cgroup_get(objcg);
  		stock->nr_bytes = atomic_read(&objcg->nr_charged_bytes)
  				? atomic_xchg(&objcg->nr_charged_bytes, 0) : 0;
-@@ -3146,38 +3188,43 @@ void mod_objcg_state(struct obj_cgroup *
+@@ -3043,38 +3085,43 @@ void mod_objcg_state(struct obj_cgroup *
  	if (nr)
  		mod_objcg_mlstate(objcg, pgdat, idx, nr);
  
@@ -416,7 +415,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  
  		/*
  		 * The leftover is flushed to the centralized per-memcg value.
-@@ -3212,8 +3259,8 @@ static void drain_obj_stock(struct obj_s
+@@ -3109,8 +3156,8 @@ static void drain_obj_stock(struct obj_s
  		stock->cached_pgdat = NULL;
  	}
  
@@ -426,7 +425,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  }
  
  static bool obj_stock_flush_required(struct memcg_stock_pcp *stock,
-@@ -3221,11 +3268,13 @@ static bool obj_stock_flush_required(str
+@@ -3118,11 +3165,13 @@ static bool obj_stock_flush_required(str
  {
  	struct mem_cgroup *memcg;
  
@@ -440,7 +439,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  	if (stock->irq_obj.cached_objcg) {
  		memcg = obj_cgroup_memcg(stock->irq_obj.cached_objcg);
  		if (memcg && mem_cgroup_is_descendant(memcg, root_memcg))
-@@ -3238,12 +3287,15 @@ static bool obj_stock_flush_required(str
+@@ -3135,12 +3184,15 @@ static bool obj_stock_flush_required(str
  static void refill_obj_stock(struct obj_cgroup *objcg, unsigned int nr_bytes,
  			     bool allow_uncharge)
  {
@@ -458,7 +457,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  		obj_cgroup_get(objcg);
  		stock->cached_objcg = objcg;
  		stock->nr_bytes = atomic_read(&objcg->nr_charged_bytes)
-@@ -3257,10 +3309,12 @@ static void refill_obj_stock(struct obj_
+@@ -3154,10 +3206,12 @@ static void refill_obj_stock(struct obj_
  		stock->nr_bytes &= (PAGE_SIZE - 1);
  	}
  
@@ -473,7 +472,7 @@ Link: https://lkml.kernel.org/r/20211222114111.2206248-3-bigeasy@linutronix.de
  }
  
  int obj_cgroup_charge(struct obj_cgroup *objcg, gfp_t gfp, size_t size)
-@@ -7061,7 +7115,7 @@ void mem_cgroup_uncharge_skmem(struct me
+@@ -7041,7 +7095,7 @@ void mem_cgroup_uncharge_skmem(struct me
  
  	mod_memcg_state(memcg, MEMCG_SOCK, -nr_pages);
  
