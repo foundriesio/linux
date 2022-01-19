@@ -613,6 +613,15 @@ static void dcmi_buf_queue(struct vb2_buffer *vb)
 	spin_unlock_irq(&dcmi->irqlock);
 }
 
+static void dcmi_buf_cleanup(struct vb2_buffer *vb)
+{
+	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
+	struct dcmi_buf *buf = container_of(vbuf, struct dcmi_buf, vb);
+
+	if (buf->prepared)
+		sg_free_table(&buf->sgt);
+}
+
 static struct media_entity *dcmi_find_source(struct stm32_dcmi *dcmi)
 {
 	struct media_entity *entity = &dcmi->vdev->entity;
@@ -970,6 +979,7 @@ static const struct vb2_ops dcmi_video_qops = {
 	.buf_init		= dcmi_buf_init,
 	.buf_prepare		= dcmi_buf_prepare,
 	.buf_queue		= dcmi_buf_queue,
+	.buf_cleanup		= dcmi_buf_cleanup,
 	.start_streaming	= dcmi_start_streaming,
 	.stop_streaming		= dcmi_stop_streaming,
 	.wait_prepare		= vb2_ops_wait_prepare,
