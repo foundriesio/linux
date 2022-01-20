@@ -1931,9 +1931,13 @@ int zynqmp_dp_probe(struct platform_device *pdev)
 		return dev_err_probe(dp->dev, PTR_ERR(dp->reset),
 			"failed to get reset: %ld\n", PTR_ERR(dp->reset));
 
+	ret = zynqmp_dp_reset(dp, false);
+	if (ret < 0)
+		return ret;
+
 	ret = zynqmp_dp_phy_probe(dp);
 	if (ret)
-		return ret;
+		goto err_reset;
 
 	ret = zynqmp_dp_phy_init(dp);
 	if (ret)
@@ -1983,6 +1987,9 @@ error:
 	drm_dp_aux_unregister(&dp->aux);
 error_phy:
 	zynqmp_dp_phy_exit(dp);
+err_reset:
+	zynqmp_dp_reset(dp, true);
+
 	return ret;
 }
 
