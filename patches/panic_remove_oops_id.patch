@@ -26,7 +26,7 @@ Link: https://lore.kernel.org/r/Ybdi16aP2NEugWHq@linutronix.de>
 
 --- a/kernel/panic.c
 +++ b/kernel/panic.c
-@@ -538,26 +538,9 @@ void oops_enter(void)
+@@ -537,26 +537,9 @@ void oops_enter(void)
  		trigger_all_cpu_backtrace();
  }
  
@@ -51,6 +51,6 @@ Link: https://lore.kernel.org/r/Ybdi16aP2NEugWHq@linutronix.de>
 -	init_oops_id();
 -	pr_warn("---[ end trace %016llx ]---\n", (unsigned long long)oops_id);
 +	pr_warn("---[ end trace %016llx ]---\n", 0ULL);
- 	pr_flush(1000, true);
  }
  
+ /*
