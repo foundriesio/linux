@@ -657,14 +657,14 @@ static int __maybe_unused cdns_spi_resume(struct device *dev)
 }
 
 /**
- * cdns_spi_runtime_resume - Runtime resume method for the SPI driver
+ * cdns_runtime_resume - Runtime resume method for the SPI driver
  * @dev:	Address of the platform_device structure
  *
  * This function enables the clocks
  *
  * Return:	0 on success and error value on error
  */
-static int __maybe_unused cnds_runtime_resume(struct device *dev)
+static int __maybe_unused cdns_runtime_resume(struct device *dev)
 {
 	struct spi_master *master = dev_get_drvdata(dev);
 	struct cdns_spi *xspi = spi_master_get_devdata(master);
@@ -686,14 +686,14 @@ static int __maybe_unused cnds_runtime_resume(struct device *dev)
 }
 
 /**
- * cdns_spi_runtime_suspend - Runtime suspend method for the SPI driver
+ * cdns_runtime_suspend - Runtime suspend method for the SPI driver
  * @dev:	Address of the platform_device structure
  *
  * This function disables the clocks
  *
  * Return:	Always 0
  */
-static int __maybe_unused cnds_runtime_suspend(struct device *dev)
+static int __maybe_unused cdns_runtime_suspend(struct device *dev)
 {
 	struct spi_master *master = dev_get_drvdata(dev);
 	struct cdns_spi *xspi = spi_master_get_devdata(master);
@@ -705,8 +705,8 @@ static int __maybe_unused cnds_runtime_suspend(struct device *dev)
 }
 
 static const struct dev_pm_ops cdns_spi_dev_pm_ops = {
-	SET_RUNTIME_PM_OPS(cnds_runtime_suspend,
-			   cnds_runtime_resume, NULL)
+	SET_RUNTIME_PM_OPS(cdns_runtime_suspend,
+			   cdns_runtime_resume, NULL)
 	SET_SYSTEM_SLEEP_PM_OPS(cdns_spi_suspend, cdns_spi_resume)
 };
 

@@ -792,7 +792,7 @@ static void xilinx_vdma_free_tx_segment(struct xilinx_dma_chan *chan,
 }
 
 /**
- * xilinx_dma_tx_descriptor - Allocate transaction descriptor
+ * xilinx_dma_alloc_tx_descriptor - Allocate transaction descriptor
  * @chan: Driver specific DMA channel
  *
  * Return: The allocated descriptor on success and NULL on failure.
@@ -2466,7 +2466,7 @@ static int xilinx_dma_terminate_all(struct dma_chan *dchan)
 }
 
 /**
- * xilinx_dma_channel_set_config - Configure VDMA channel
+ * xilinx_vdma_channel_set_config - Configure VDMA channel
  * Run-time configuration for Axi VDMA, supports:
  * . halt the channel
  * . configure interrupt coalescing and inter-packet delay threshold
@@ -2793,7 +2793,8 @@ static int xilinx_dma_chan_probe(struct xilinx_dma_device *xdev,
 		has_dre = false;
 
 	if (!has_dre)
-		xdev->common.copy_align = (enum dmaengine_alignment)fls(width - 1);
+		xdev->common.copy_align = (enum dmaengine_alignment)
+						fls(width - 1);
 
 	if (of_device_is_compatible(node, "xlnx,axi-vdma-mm2s-channel") ||
 	    of_device_is_compatible(node, "xlnx,axi-dma-mm2s-channel") ||
@@ -2907,7 +2908,7 @@ static int xilinx_dma_chan_probe(struct xilinx_dma_device *xdev,
  * @xdev: Driver specific device structure
  * @node: Device node
  *
- * Return: 0 always.
+ * Return: '0' on success and failure value on error.
  */
 static int xilinx_dma_child_probe(struct xilinx_dma_device *xdev,
 				    struct device_node *node)
@@ -2919,8 +2920,11 @@ static int xilinx_dma_child_probe(struct xilinx_dma_device *xdev,
 	if (xdev->dma_config->dmatype == XDMA_TYPE_AXIMCDMA && ret < 0)
 		dev_warn(xdev->dev, "missing dma-channels property\n");
 
-	for (i = 0; i < nr_channels; i++)
-		xilinx_dma_chan_probe(xdev, node);
+	for (i = 0; i < nr_channels; i++) {
+		ret = xilinx_dma_chan_probe(xdev, node);
+		if (ret)
+			return ret;
+	}
 
 	return 0;
 }

@@ -1386,6 +1386,7 @@ static int zynqmp_qspi_probe(struct platform_device *pdev)
 		ctlr->num_chipselect = num_cs;
 
 	dma_set_mask(&pdev->dev, DMA_BIT_MASK(44));
+
 	ctlr->bits_per_word_mask = SPI_BPW_MASK(8);
 	ctlr->mem_ops = &zynqmp_qspi_mem_ops;
 	ctlr->setup = zynqmp_qspi_setup_op;
