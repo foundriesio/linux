@@ -785,7 +785,8 @@ static irqreturn_t stm32_usart_interrupt(int irq, void *ptr)
 		spin_unlock(&port->lock);
 	}
 
-	if (stm32_usart_rx_dma_started(stm32_port))
+	if ((sr & USART_SR_RTOF) && !(stm32_port->throttled) &&
+	    stm32_usart_rx_dma_started(stm32_port))
 		return IRQ_WAKE_THREAD;
 	else
 		return IRQ_HANDLED;
@@ -794,13 +795,11 @@ static irqreturn_t stm32_usart_interrupt(int irq, void *ptr)
 static irqreturn_t stm32_usart_threaded_interrupt(int irq, void *ptr)
 {
 	struct uart_port *port = ptr;
-	struct stm32_port *stm32_port = to_stm32_port(port);
 	unsigned long flags;
 
 	spin_lock_irqsave(&port->lock, flags);
 	/* Receiver timeout irq for DMA RX */
-	if (!stm32_port->throttled)
-		stm32_usart_receive_chars(port, false);
+	stm32_usart_receive_chars(port, false);
 	spin_unlock_irqrestore(&port->lock, flags);
 
 	return IRQ_HANDLED;
