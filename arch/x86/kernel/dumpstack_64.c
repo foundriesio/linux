@@ -32,8 +32,14 @@ const char *stack_type_name(enum stack_type type)
 {
 	BUILD_BUG_ON(N_EXCEPTION_STACKS != 6);
 
+	if (type == STACK_TYPE_TASK)
+		return "TASK";
+
 	if (type == STACK_TYPE_IRQ)
 		return "IRQ";
+
+	if (type == STACK_TYPE_SOFTIRQ)
+		return "SOFTIRQ";
 
 	if (type == STACK_TYPE_ENTRY) {
 		/*
@@ -201,7 +207,8 @@ int get_stack_info(unsigned long *stack, struct task_struct *task,
 	if (visit_mask) {
 		if (*visit_mask & (1UL << info->type)) {
 			if (task == current)
-				printk_deferred_once(KERN_WARNING "WARNING: stack recursion on stack type %d\n", info->type);
+				pr_warn_once("WARNING: stack recursion on stack type %d\n",
+					     info->type);
 			goto unknown;
 		}
 		*visit_mask |= 1UL << info->type;

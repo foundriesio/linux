@@ -197,6 +197,7 @@ static int __noreturn rcu_tasks_kthread(void *arg)
 	 * This loop is terminated by the system going down.  ;-)
 	 */
 	for (;;) {
+		set_tasks_gp_state(rtp, RTGS_WAIT_CBS);
 
 		/* Pick up any new callbacks. */
 		raw_spin_lock_irqsave(&rtp->cbs_lock, flags);
@@ -236,8 +237,6 @@ static int __noreturn rcu_tasks_kthread(void *arg)
 		}
 		/* Paranoid sleep to keep this from entering a tight loop */
 		schedule_timeout_idle(rtp->gp_sleep);
-
-		set_tasks_gp_state(rtp, RTGS_WAIT_CBS);
 	}
 }
 
@@ -1348,7 +1347,7 @@ static void test_rcu_tasks_callback(struct rcu_head *rhp)
 	rttd->notrun = true;
 }
 
-static void rcu_tasks_initiate_self_tests(void)
+void rcu_tasks_initiate_self_tests(void)
 {
 	pr_info("Running RCU-tasks wait API self tests\n");
 #ifdef CONFIG_TASKS_RCU
@@ -1385,9 +1384,7 @@ static int rcu_tasks_verify_self_tests(void)
 	return ret;
 }
 late_initcall(rcu_tasks_verify_self_tests);
-#else /* #ifdef CONFIG_PROVE_RCU */
-static void rcu_tasks_initiate_self_tests(void) { }
-#endif /* #else #ifdef CONFIG_PROVE_RCU */
+#endif /* #ifdef CONFIG_PROVE_RCU */
 
 void __init rcu_init_tasks_generic(void)
 {
@@ -1402,9 +1399,6 @@ void __init rcu_init_tasks_generic(void)
 #ifdef CONFIG_TASKS_TRACE_RCU
 	rcu_spawn_tasks_trace_kthread();
 #endif
-
-	// Run the self-tests.
-	rcu_tasks_initiate_self_tests();
 }
 
 #else /* #ifdef CONFIG_TASKS_RCU_GENERIC */

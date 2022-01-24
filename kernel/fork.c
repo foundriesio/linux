@@ -289,7 +289,10 @@ static inline void free_thread_stack(struct task_struct *tsk)
 			return;
 		}
 
-		vfree_atomic(tsk->stack);
+		if (!IS_ENABLED(CONFIG_PREEMPT_RT))
+			vfree_atomic(tsk->stack);
+		else
+			vfree(tsk->stack);
 		return;
 	}
 #endif
@@ -704,6 +707,19 @@ void __mmdrop(struct mm_struct *mm)
 	free_mm(mm);
 }
 EXPORT_SYMBOL_GPL(__mmdrop);
+
+#ifdef CONFIG_PREEMPT_RT
+/*
+ * RCU callback for delayed mm drop. Not strictly RCU, but call_rcu() is
+ * by far the least expensive way to do that.
+ */
+void __mmdrop_delayed(struct rcu_head *rhp)
+{
+	struct mm_struct *mm = container_of(rhp, struct mm_struct, delayed_drop);
+
+	__mmdrop(mm);
+}
+#endif
 
 static void mmdrop_async_fn(struct work_struct *work)
 {
@@ -2280,6 +2296,7 @@ static __latent_entropy struct task_struct *copy_process(
 	p->pdeath_signal = 0;
 	INIT_LIST_HEAD(&p->thread_group);
 	p->task_works = NULL;
+	clear_posix_cputimers_work(p);
 
 #ifdef CONFIG_KRETPROBES
 	p->kretprobe_instances.first = NULL;
@@ -2405,7 +2422,7 @@ static __latent_entropy struct task_struct *copy_process(
 	write_unlock_irq(&tasklist_lock);
 
 	proc_fork_connector(p);
-	sched_post_fork(p);
+	sched_post_fork(p, args);
 	cgroup_post_fork(p, args);
 	perf_event_fork(p);
 
