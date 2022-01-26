@@ -22,7 +22,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/printk.h
 +++ b/include/linux/printk.h
-@@ -281,43 +281,43 @@ static inline void printk_trigger_flush(
+@@ -277,43 +277,43 @@ static inline void printk_trigger_flush(
  #endif
  
  #ifdef CONFIG_SMP
@@ -89,7 +89,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -3586,26 +3586,26 @@ EXPORT_SYMBOL_GPL(kmsg_dump_rewind);
+@@ -3600,26 +3600,26 @@ EXPORT_SYMBOL_GPL(kmsg_dump_rewind);
  #endif
  
  #ifdef CONFIG_SMP
@@ -125,7 +125,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   *
   * If no processor has the lock, the calling processor takes the lock and
   * becomes the owner. If the calling processor is already the owner of the
-@@ -3614,7 +3614,7 @@ EXPORT_SYMBOL(__printk_wait_on_cpu_lock)
+@@ -3628,7 +3628,7 @@ EXPORT_SYMBOL(__printk_wait_on_cpu_lock)
   * Context: Any context. Expects interrupts to be disabled.
   * Return: 1 on success, otherwise 0.
   */
@@ -134,7 +134,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	int cpu;
  	int old;
-@@ -3624,79 +3624,80 @@ int __printk_cpu_trylock(void)
+@@ -3638,79 +3638,80 @@ int __printk_cpu_trylock(void)
  	/*
  	 * Guarantee loads and stores from this CPU when it is the lock owner
  	 * are _not_ visible to the previous lock owner. This pairs with

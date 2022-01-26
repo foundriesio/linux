@@ -16,7 +16,7 @@ Link: https://lore.kernel.org/r/20211118143452.136421-9-bigeasy@linutronix.de
 
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -465,16 +465,16 @@ void vm_area_free(struct vm_area_struct
+@@ -468,16 +468,16 @@ void vm_area_free(struct vm_area_struct
  
  static void account_kernel_stack(struct task_struct *tsk, int account)
  {

@@ -28,7 +28,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
-@@ -343,8 +343,24 @@ int __mnt_want_write(struct vfsmount *m)
+@@ -344,8 +344,24 @@ int __mnt_want_write(struct vfsmount *m)
  	 * incremented count after it has set MNT_WRITE_HOLD.
  	 */
  	smp_mb();

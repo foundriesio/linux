@@ -50,7 +50,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
-@@ -2553,21 +2553,24 @@ static inline void end_dir_add(struct in
+@@ -2578,21 +2578,24 @@ static inline void end_dir_add(struct in
  
  static void d_wait_lookup(struct dentry *dentry)
  {
@@ -86,7 +86,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  {
  	unsigned int hash = name->hash;
  	struct hlist_bl_head *b = in_lookup_hash(parent, hash);
-@@ -2682,7 +2685,7 @@ void __d_lookup_done(struct dentry *dent
+@@ -2707,7 +2710,7 @@ void __d_lookup_done(struct dentry *dent
  	hlist_bl_lock(b);
  	dentry->d_flags &= ~DCACHE_PAR_LOOKUP;
  	__hlist_bl_del(&dentry->d_u.d_in_lookup_hash);
@@ -108,7 +108,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		/*
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -1633,7 +1633,7 @@ static struct dentry *__lookup_slow(cons
+@@ -1683,7 +1683,7 @@ static struct dentry *__lookup_slow(cons
  {
  	struct dentry *dentry, *old;
  	struct inode *inode = dir->d_inode;
@@ -117,7 +117,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/* Don't go there if it's already dead */
  	if (unlikely(IS_DEADDIR(inode)))
-@@ -3192,7 +3192,7 @@ static struct dentry *lookup_open(struct
+@@ -3242,7 +3242,7 @@ static struct dentry *lookup_open(struct
  	struct dentry *dentry;
  	int error, create_error = 0;
  	umode_t mode = op->mode;
@@ -128,7 +128,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		return ERR_PTR(-ENOENT);
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -638,7 +638,7 @@ void nfs_prime_dcache(struct dentry *par
+@@ -639,7 +639,7 @@ void nfs_prime_dcache(struct dentry *par
  		unsigned long dir_verifier)
  {
  	struct qstr filename = QSTR_INIT(entry->name, entry->len);
@@ -137,7 +137,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct dentry *dentry;
  	struct dentry *alias;
  	struct inode *inode;
-@@ -1860,7 +1860,7 @@ int nfs_atomic_open(struct inode *dir, s
+@@ -1861,7 +1861,7 @@ int nfs_atomic_open(struct inode *dir, s
  		    struct file *file, unsigned open_flags,
  		    umode_t mode)
  {
@@ -187,7 +187,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			goto end_instantiate;
 --- a/fs/proc/proc_sysctl.c
 +++ b/fs/proc/proc_sysctl.c
-@@ -678,7 +678,7 @@ static bool proc_sys_fill_cache(struct f
+@@ -696,7 +696,7 @@ static bool proc_sys_fill_cache(struct f
  
  	child = d_lookup(dir, &qname);
  	if (!child) {
@@ -198,7 +198,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			return false;
 --- a/include/linux/dcache.h
 +++ b/include/linux/dcache.h
-@@ -108,7 +108,7 @@ struct dentry {
+@@ -98,7 +98,7 @@ struct dentry {
  
  	union {
  		struct list_head d_lru;		/* LRU list */
@@ -207,7 +207,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	};
  	struct list_head d_child;	/* child of parent list */
  	struct list_head d_subdirs;	/* our children */
-@@ -240,7 +240,7 @@ extern void d_set_d_op(struct dentry *de
+@@ -230,7 +230,7 @@ extern void d_set_d_op(struct dentry *de
  extern struct dentry * d_alloc(struct dentry *, const struct qstr *);
  extern struct dentry * d_alloc_anon(struct super_block *);
  extern struct dentry * d_alloc_parallel(struct dentry *, const struct qstr *,

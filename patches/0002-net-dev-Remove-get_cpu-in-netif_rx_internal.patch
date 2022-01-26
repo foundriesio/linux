@@ -29,7 +29,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -4929,8 +4929,7 @@ static int netif_rx_internal(struct sk_b
+@@ -4810,8 +4810,7 @@ static int netif_rx_internal(struct sk_b
  	{
  		unsigned int qtail;
  

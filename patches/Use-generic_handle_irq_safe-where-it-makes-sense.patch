@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
 --- a/drivers/i2c/i2c-core-base.c
 +++ b/drivers/i2c/i2c-core-base.c
-@@ -1423,7 +1423,7 @@ int i2c_handle_smbus_host_notify(struct
+@@ -1424,7 +1424,7 @@ int i2c_handle_smbus_host_notify(struct
  	if (irq <= 0)
  		return -ENXIO;
  
@@ -101,7 +101,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/drivers/net/usb/lan78xx.c
 +++ b/drivers/net/usb/lan78xx.c
-@@ -1367,11 +1367,8 @@ static void lan78xx_status(struct lan78x
+@@ -1537,11 +1537,8 @@ static void lan78xx_status(struct lan78x
  		netif_dbg(dev, link, dev->net, "PHY INTR: 0x%08x\n", intdata);
  		lan78xx_defer_kevent(dev, EVENT_LINK_RESET);
  

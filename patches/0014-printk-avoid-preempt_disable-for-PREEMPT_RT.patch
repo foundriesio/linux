@@ -87,7 +87,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	wake_up_klogd();
-@@ -2867,8 +2881,13 @@ static bool console_emit_next_record(str
+@@ -2869,8 +2883,13 @@ static bool console_emit_next_record(str
  		len = record_print_text(&r, console_msg_format & MSG_FORMAT_SYSLOG, printk_time);
  	}
  

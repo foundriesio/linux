@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/printk.h
 +++ b/include/linux/printk.h
-@@ -285,9 +285,16 @@ extern int __printk_cpu_sync_try_get(voi
+@@ -281,9 +281,16 @@ extern int __printk_cpu_sync_try_get(voi
  extern void __printk_cpu_sync_wait(void);
  extern void __printk_cpu_sync_put(void);
  
@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * @flags: Stack-allocated storage for saving local interrupt state,
   *         to be passed to printk_cpu_sync_put_irqrestore().
   *
-@@ -314,13 +321,6 @@ extern void __printk_cpu_sync_put(void);
+@@ -310,13 +317,6 @@ extern void __printk_cpu_sync_put(void);
  		local_irq_restore(flags);	\
  	} while (0)
  

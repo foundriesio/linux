@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -4003,8 +4003,17 @@ u32 bpf_prog_run_generic_xdp(struct sk_b
+@@ -3668,8 +3668,17 @@ u32 bpf_prog_run_generic_xdp(struct sk_b
  void generic_xdp_tx(struct sk_buff *skb, struct bpf_prog *xdp_prog);
  int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff *skb);
  int netif_rx(struct sk_buff *skb);
@@ -57,7 +57,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +
  int netif_receive_skb(struct sk_buff *skb);
  int netif_receive_skb_core(struct sk_buff *skb);
- void netif_receive_skb_list(struct list_head *head);
+ void netif_receive_skb_list_internal(struct list_head *head);
 --- a/include/trace/events/net.h
 +++ b/include/trace/events/net.h
 @@ -260,13 +260,6 @@ DEFINE_EVENT(net_dev_rx_verbose_template
@@ -90,7 +90,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -4953,47 +4953,17 @@ int netif_rx(struct sk_buff *skb)
+@@ -4834,47 +4834,17 @@ int netif_rx(struct sk_buff *skb)
  {
  	int ret;
  

@@ -117,7 +117,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	spin_unlock_irqrestore(&up->port.lock, flags);
  
-@@ -568,6 +566,14 @@ serial8250_register_ports(struct uart_dr
+@@ -567,6 +565,14 @@ serial8250_register_ports(struct uart_dr
  
  #ifdef CONFIG_SERIAL_8250_CONSOLE
  
@@ -132,7 +132,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void univ8250_console_write(struct console *co, const char *s,
  				   unsigned int count)
  {
-@@ -661,6 +667,7 @@ static int univ8250_console_match(struct
+@@ -660,6 +666,7 @@ static int univ8250_console_match(struct
  
  static struct console univ8250_console = {
  	.name		= "ttyS",
@@ -472,7 +472,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/serial_core.h>
  #include <linux/serial_reg.h>
  #include <linux/platform_device.h>
-@@ -125,6 +126,8 @@ struct uart_8250_port {
+@@ -123,6 +124,8 @@ struct uart_8250_port {
  #define MSR_SAVE_FLAGS UART_MSR_ANY_DELTA
  	unsigned char		msr_saved_flags;
  
@@ -481,7 +481,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	struct uart_8250_dma	*dma;
  	const struct uart_8250_ops *ops;
  
-@@ -180,6 +183,8 @@ void serial8250_init_port(struct uart_82
+@@ -178,6 +181,8 @@ void serial8250_init_port(struct uart_82
  void serial8250_set_defaults(struct uart_8250_port *up);
  void serial8250_console_write(struct uart_8250_port *up, const char *s,
  			      unsigned int count);

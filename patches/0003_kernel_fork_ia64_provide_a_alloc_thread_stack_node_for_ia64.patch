@@ -41,7 +41,7 @@ Link: https://lore.kernel.org/r/20211118143452.136421-4-bigeasy@linutronix.de
  #define __HAVE_THREAD_FUNCTIONS
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -329,6 +329,22 @@ void thread_stack_cache_init(void)
+@@ -330,6 +330,22 @@ void thread_stack_cache_init(void)
  }
  
  # endif /* THREAD_SIZE >= PAGE_SIZE || defined(CONFIG_VMAP_STACK) */

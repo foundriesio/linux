@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static __always_inline void call_do_irq(struct pt_regs *regs, void *sp)
  {
-@@ -820,10 +822,12 @@ void *mcheckirq_ctx[NR_CPUS] __read_most
+@@ -821,10 +823,12 @@ void *mcheckirq_ctx[NR_CPUS] __read_most
  void *softirq_ctx[NR_CPUS] __read_mostly;
  void *hardirq_ctx[NR_CPUS] __read_mostly;
  

@@ -43,7 +43,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	char	name[16];
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -2781,6 +2781,8 @@ static bool console_flush_all(bool do_co
+@@ -2783,6 +2783,8 @@ static bool console_flush_all(bool do_co
  
  			if (!console_is_usable(con))
  				continue;

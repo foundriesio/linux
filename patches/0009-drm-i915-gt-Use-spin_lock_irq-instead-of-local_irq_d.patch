@@ -77,7 +77,7 @@ Reviewed-by: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
  static void clear_ports(struct i915_request **ports, int count)
  {
  	memset_p((void **)ports, NULL, count);
-@@ -2424,7 +2417,7 @@ static void execlists_submission_tasklet
+@@ -2425,7 +2418,7 @@ static void execlists_submission_tasklet
  	}
  
  	if (!engine->execlists.pending[0]) {

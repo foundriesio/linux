@@ -79,11 +79,11 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static int console_lock_spinning_disable_and_check(void) { return 0; }
 -static void call_console_driver(struct console *con, const char *text, size_t len) {}
 +static void call_console_driver(struct console *con, const char *text, size_t len,
-+				char *dropped_text) {}
++				char *dropped_text) { }
  static bool suppress_message_printing(int level) { return false; }
- 
- #endif /* CONFIG_PRINTK */
-@@ -2558,6 +2563,14 @@ static void __console_unlock(void)
+ static inline void boot_delay_msec(int level) { }
+ static inline void printk_delay(void) { }
+@@ -2560,6 +2565,14 @@ static void __console_unlock(void)
   * Print one record for the given console. The record printed is whatever
   * record is the next available record for the given console.
   *
@@ -98,7 +98,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Requires the console_lock.
   *
   * Returns false if the given console has no next record to print, otherwise
-@@ -2567,17 +2580,16 @@ static void __console_unlock(void)
+@@ -2569,17 +2582,16 @@ static void __console_unlock(void)
   * console_lock, in which case the caller is no longer holding the
   * console_lock.
   */
@@ -119,7 +119,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (!prb_read_valid(prb, con->seq, &r))
  		return false;
-@@ -2593,13 +2605,13 @@ static bool console_emit_next_record(str
+@@ -2595,13 +2607,13 @@ static bool console_emit_next_record(str
  		goto skip;
  	}
  
@@ -138,7 +138,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		len = record_print_text(&r, console_msg_format & MSG_FORMAT_SYSLOG, printk_time);
  	}
  
-@@ -2617,7 +2629,7 @@ static bool console_emit_next_record(str
+@@ -2619,7 +2631,7 @@ static bool console_emit_next_record(str
  	console_lock_spinning_enable();
  
  	stop_critical_timings();	/* don't trace print latency */
@@ -147,7 +147,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	start_critical_timings();
  
  	con->seq++;
-@@ -2647,6 +2659,9 @@ static bool console_emit_next_record(str
+@@ -2649,6 +2661,9 @@ static bool console_emit_next_record(str
   */
  static bool console_flush_all(bool do_cond_resched, u64 *next_seq, bool *handover)
  {
@@ -157,7 +157,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	bool any_usable = false;
  	struct console *con;
  	bool any_progress;
-@@ -2664,7 +2679,16 @@ static bool console_flush_all(bool do_co
+@@ -2666,7 +2681,16 @@ static bool console_flush_all(bool do_co
  				continue;
  			any_usable = true;
  

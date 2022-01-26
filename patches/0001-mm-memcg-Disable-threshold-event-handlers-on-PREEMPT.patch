@@ -103,7 +103,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void mem_cgroup_remove_from_trees(struct mem_cgroup *memcg)
  {
  	struct mem_cgroup_tree_per_node *mctz;
-@@ -821,50 +783,6 @@ static void mem_cgroup_charge_statistics
+@@ -827,50 +789,6 @@ static void mem_cgroup_charge_statistics
  	__this_cpu_add(memcg->vmstats_percpu->nr_page_events, nr_pages);
  }
  
@@ -154,7 +154,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  struct mem_cgroup *mem_cgroup_from_task(struct task_struct *p)
  {
  	/*
-@@ -3751,8 +3669,12 @@ static ssize_t mem_cgroup_write(struct k
+@@ -3763,8 +3681,12 @@ static ssize_t mem_cgroup_write(struct k
  		}
  		break;
  	case RES_SOFT_LIMIT:
@@ -167,7 +167,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		break;
  	}
  	return ret ?: nbytes;
-@@ -4057,6 +3979,343 @@ static int mem_cgroup_swappiness_write(s
+@@ -4069,6 +3991,343 @@ static int mem_cgroup_swappiness_write(s
  	return 0;
  }
  
@@ -511,7 +511,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void __mem_cgroup_threshold(struct mem_cgroup *memcg, bool swap)
  {
  	struct mem_cgroup_threshold_ary *t;
-@@ -4119,6 +4378,25 @@ static void mem_cgroup_threshold(struct
+@@ -4131,6 +4390,25 @@ static void mem_cgroup_threshold(struct
  	}
  }
  
@@ -537,7 +537,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static int compare_thresholds(const void *a, const void *b)
  {
  	const struct mem_cgroup_threshold *_a = a;
-@@ -4133,27 +4411,6 @@ static int compare_thresholds(const void
+@@ -4145,27 +4423,6 @@ static int compare_thresholds(const void
  	return 0;
  }
  
@@ -565,7 +565,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static int __mem_cgroup_usage_register_event(struct mem_cgroup *memcg,
  	struct eventfd_ctx *eventfd, const char *args, enum res_type type)
  {
-@@ -4382,259 +4639,6 @@ static void mem_cgroup_oom_unregister_ev
+@@ -4394,259 +4651,6 @@ static void mem_cgroup_oom_unregister_ev
  	spin_unlock(&memcg_oom_lock);
  }
  
@@ -825,7 +825,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Unregister event and free resources.
   *
-@@ -4845,6 +4849,18 @@ static ssize_t memcg_write_event_control
+@@ -4857,6 +4861,18 @@ static ssize_t memcg_write_event_control
  	return ret;
  }
  
@@ -841,6 +841,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +
 +#endif
 +
- static struct cftype mem_cgroup_legacy_files[] = {
- 	{
- 		.name = "usage_in_bytes",
+ #if defined(CONFIG_MEMCG_KMEM) && (defined(CONFIG_SLAB) || defined(CONFIG_SLUB_DEBUG))
+ static int mem_cgroup_slab_show(struct seq_file *m, void *p)
+ {

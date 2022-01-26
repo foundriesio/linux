@@ -31,7 +31,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/gpu/drm/i915/i915_trace.h
 +++ b/drivers/gpu/drm/i915/i915_trace.h
-@@ -2,6 +2,10 @@
+@@ -6,6 +6,10 @@
  #if !defined(_I915_TRACE_H_) || defined(TRACE_HEADER_MULTI_READ)
  #define _I915_TRACE_H_
  

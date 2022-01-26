@@ -32,14 +32,14 @@ afterwards if needed.
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20211207121737.2347312-6-bigeasy@linutronix.de
 ---
- drivers/char/random.c  |   39 ++++++++++++++++++++++++++++++++++++---
+ drivers/char/random.c  |   34 +++++++++++++++++++++++++++++++++-
  include/linux/random.h |    1 +
  kernel/irq/manage.c    |    3 +++
- 3 files changed, 40 insertions(+), 3 deletions(-)
+ 3 files changed, 37 insertions(+), 1 deletion(-)
 
 --- a/drivers/char/random.c
 +++ b/drivers/char/random.c
-@@ -1291,6 +1291,32 @@ static bool process_interrupt_randomness
+@@ -1245,6 +1245,32 @@ static bool process_interrupt_randomness
  	return true;
  }
  
@@ -71,27 +71,22 @@ Link: https://lore.kernel.org/r/20211207121737.2347312-6-bigeasy@linutronix.de
 +
  void add_interrupt_randomness(int irq)
  {
- 	struct fast_pool	*fast_pool = this_cpu_ptr(&irq_randomness);
-@@ -1314,9 +1340,16 @@ void add_interrupt_randomness(int irq)
+ 	struct fast_pool *fast_pool = this_cpu_ptr(&irq_randomness);
+@@ -1268,7 +1294,13 @@ void add_interrupt_randomness(int irq)
  	fast_mix(fast_pool);
  	add_interrupt_bench(cycles);
  
 -	if (process_interrupt_randomness_pool(fast_pool)) {
--		fast_pool->last = now;
--		fast_pool->count = 0;
 +	/*
 +	 * On PREEMPT_RT the entropy can not be fed into the input_pool because
 +	 * it needs to acquire sleeping locks with disabled interrupts.
 +	 * This is deferred to the threaded handler.
 +	 */
-+	if (!IS_ENABLED(CONFIG_PREEMPT_RT)) {
-+		if (process_interrupt_randomness_pool(fast_pool)) {
-+			fast_pool->last = now;
-+			fast_pool->count = 0;
-+		}
++	if (!IS_ENABLED(CONFIG_PREEMPT_RT) &&
++	    process_interrupt_randomness_pool(fast_pool)) {
+ 		fast_pool->last = now;
+ 		fast_pool->count = 0;
  	}
- }
- EXPORT_SYMBOL_GPL(add_interrupt_randomness);
 --- a/include/linux/random.h
 +++ b/include/linux/random.h
 @@ -36,6 +36,7 @@ static inline void add_latent_entropy(vo
