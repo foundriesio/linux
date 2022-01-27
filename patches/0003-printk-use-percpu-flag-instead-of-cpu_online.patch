@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Wed, 10 Nov 2021 17:19:25 +0106
-Subject: [PATCH 03/14] printk: use percpu flag instead of cpu_online()
+Subject: [PATCH 03/15] printk: use percpu flag instead of cpu_online()
 
 The CON_ANYTIME console flag is used to label consoles that will
 work correctly before percpu resources are allocated. To check

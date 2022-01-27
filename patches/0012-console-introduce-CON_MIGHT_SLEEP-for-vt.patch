@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Thu, 16 Dec 2021 16:06:29 +0106
-Subject: [PATCH 11/14] console: introduce CON_MIGHT_SLEEP for vt
+Subject: [PATCH 12/15] console: introduce CON_MIGHT_SLEEP for vt
 
 Deadlocks and the framebuffer console have been a recurring issue
 that is getting worse. Daniel Vetter suggested [0] that
@@ -43,7 +43,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	char	name[16];
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -2783,6 +2783,8 @@ static bool console_flush_all(bool do_co
+@@ -2808,6 +2808,8 @@ static bool console_flush_all(bool do_co
  
  			if (!console_is_usable(con))
  				continue;

@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Tue, 3 Aug 2021 13:00:00 +0206
-Subject: [PATCH 02/14] printk: cpu sync always disable interrupts
+Subject: [PATCH 02/15] printk: cpu sync always disable interrupts
 
 The CPU sync functions are a NOP for !CONFIG_SMP. But for
 !CONFIG_SMP they still need to disable interrupts in order to

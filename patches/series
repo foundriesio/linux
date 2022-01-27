@@ -10,16 +10,17 @@ Revert-tty-serial-Use-fifo-in-8250-console-driver.patch
 0002-printk-cpu-sync-always-disable-interrupts.patch
 0003-printk-use-percpu-flag-instead-of-cpu_online.patch
 0004-printk-get-caller_id-timestamp-after-migration-disab.patch
-0005-printk-refactor-and-rework-printing-logic.patch
-0006-printk-move-buffer-definitions-into-console_emit_nex.patch
-0007-printk-add-pr_flush.patch
-0008-printk-add-kthread-console-printers.patch
-0009-printk-reimplement-console_lock-for-proper-kthread-s.patch
-0010-printk-remove-console_locked.patch
-0011-console-introduce-CON_MIGHT_SLEEP-for-vt.patch
-0012-printk-add-infrastucture-for-atomic-consoles.patch
-0013-serial-8250-implement-write_atomic.patch
-0014-printk-avoid-preempt_disable-for-PREEMPT_RT.patch
+0005-printk-call-boot_delay_msec-in-printk_delay.patch
+0006-printk-refactor-and-rework-printing-logic.patch
+0007-printk-move-buffer-definitions-into-console_emit_nex.patch
+0008-printk-add-pr_flush.patch
+0009-printk-add-kthread-console-printers.patch
+0010-printk-reimplement-console_lock-for-proper-kthread-s.patch
+0011-printk-remove-console_locked.patch
+0012-console-introduce-CON_MIGHT_SLEEP-for-vt.patch
+0013-printk-add-infrastucture-for-atomic-consoles.patch
+0014-serial-8250-implement-write_atomic.patch
+0015-printk-avoid-preempt_disable-for-PREEMPT_RT.patch
 
 ###########################################################################
 # Posted and applied

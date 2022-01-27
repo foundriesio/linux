@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Thu, 20 Jan 2022 16:53:56 +0106
-Subject: [PATCH 14/14] printk: avoid preempt_disable() for PREEMPT_RT
+Subject: [PATCH 15/15] printk: avoid preempt_disable() for PREEMPT_RT
 
 During non-normal operation, printk() calls will attempt to
 write the messages directly to the consoles. This involves
@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /*
   * Call the specified console driver, asking it to write out the specified
-@@ -2268,19 +2270,31 @@ asmlinkage int vprintk_emit(int facility
+@@ -2270,19 +2272,31 @@ asmlinkage int vprintk_emit(int facility
  	/* If called from the scheduler, we can not call up(). */
  	if (!in_sched && !kthread_printers_active()) {
  		/*
@@ -87,7 +87,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	wake_up_klogd();
-@@ -2869,8 +2883,13 @@ static bool console_emit_next_record(str
+@@ -2895,8 +2909,13 @@ static bool console_emit_next_record(str
  		len = record_print_text(&r, console_msg_format & MSG_FORMAT_SYSLOG, printk_time);
  	}
  

@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Mon, 30 Nov 2020 01:42:02 +0106
-Subject: [PATCH 13/14] serial: 8250: implement write_atomic
+Subject: [PATCH 14/15] serial: 8250: implement write_atomic
 
 Implement a non-sleeping NMI-safe write_atomic() console function in
 order to support atomic console printing during a panic.

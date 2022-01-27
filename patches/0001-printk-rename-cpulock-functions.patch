@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Tue, 28 Sep 2021 11:27:02 +0206
-Subject: [PATCH 01/14] printk: rename cpulock functions
+Subject: [PATCH 01/15] printk: rename cpulock functions
 
 Since the printk cpulock is CPU-reentrant and since it is used
 in all contexts, its usage must be carefully considered and

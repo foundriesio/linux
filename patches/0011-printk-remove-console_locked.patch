@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Fri, 17 Dec 2021 12:29:13 +0106
-Subject: [PATCH 10/14] printk: remove @console_locked
+Subject: [PATCH 11/15] printk: remove @console_locked
 
 The static global variable @console_locked is used to help debug VT
 code to make sure that certain code paths are running with the
@@ -15,8 +15,8 @@ alternative variables.
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/printk/printk.c |   29 ++++++++++++++---------------
- 1 file changed, 14 insertions(+), 15 deletions(-)
+ kernel/printk/printk.c |   30 ++++++++++++++----------------
+ 1 file changed, 14 insertions(+), 16 deletions(-)
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
@@ -37,7 +37,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /*
   *	Array of consoles built from command line options (console=)
-@@ -2566,7 +2558,6 @@ void console_lock(void)
+@@ -2567,7 +2559,6 @@ void console_lock(void)
  	if (console_suspended)
  		return;
  	pause_all_consoles();
@@ -45,7 +45,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	console_may_schedule = 1;
  }
  EXPORT_SYMBOL(console_lock);
-@@ -2591,15 +2582,26 @@ int console_trylock(void)
+@@ -2592,7 +2583,6 @@ int console_trylock(void)
  		up_console_sem();
  		return 0;
  	}
@@ -53,7 +53,14 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	console_may_schedule = 0;
  	return 1;
  }
- EXPORT_SYMBOL(console_trylock);
+@@ -2619,14 +2609,25 @@ static int console_trylock_sched(bool ma
+ 		return 0;
+ 	}
+ 	pause_all_consoles();
+-	console_locked = 1;
+ 	console_may_schedule = 1;
+ 	return 1;
+ }
  
 +/*
 + * This is used to help to make sure that certain paths within the VT code are
@@ -74,7 +81,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  EXPORT_SYMBOL(is_console_locked);
  
-@@ -2632,8 +2634,6 @@ static inline bool console_is_usable(str
+@@ -2659,8 +2660,6 @@ static inline bool console_is_usable(str
  
  static void __console_unlock(void)
  {
@@ -83,7 +90,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * Depending on whether console_lock() or console_trylock() was used,
  	 * appropriately allow the kthread printers to continue.
-@@ -2915,7 +2915,6 @@ void console_unblank(void)
+@@ -2938,7 +2937,6 @@ void console_unblank(void)
  		console_lock();
  	}
  
