@@ -893,6 +893,13 @@ error:
 	return ret;
 }
 
+static void stm32_dma_sg_inc(struct stm32_dma_chan *chan)
+{
+	chan->next_sg++;
+	if (chan->desc->cyclic && (chan->next_sg == chan->desc->num_sgs))
+		chan->next_sg = 0;
+}
+
 static void stm32_dma_configure_next_sg(struct stm32_dma_chan *chan)
 {
 	struct stm32_dma_device *dmadev = stm32_dma_get_dev(chan);
@@ -901,9 +908,6 @@ static void stm32_dma_configure_next_sg(struct stm32_dma_chan *chan)
 
 	id = chan->id;
 	dma_scr = stm32_dma_read(dmadev, STM32_DMA_SCR(id));
-
-	if (chan->next_sg == chan->desc->num_sgs)
-		chan->next_sg = 0;
 
 	sg_req = &chan->desc->sg_req[chan->next_sg];
 
@@ -1003,7 +1007,7 @@ static void stm32_dma_start_transfer(struct stm32_dma_chan *chan)
 		}
 	}
 
-	chan->next_sg++;
+	stm32_dma_sg_inc(chan);
 
 	reg->dma_scr &= ~STM32_DMA_SCR_EN;
 	stm32_dma_write(dmadev, STM32_DMA_SCR(chan->id), reg->dma_scr);
@@ -1113,7 +1117,7 @@ static void stm32_dma_handle_chan_done(struct stm32_dma_chan *chan, u32 scr)
 		vchan_cyclic_callback(&chan->desc->vdesc);
 		if (chan->use_mdma)
 			return;
-		chan->next_sg++;
+		stm32_dma_sg_inc(chan);
 		/* cyclic while CIRC/DBM disable => post resume reconfiguration needed */
 		if (!(scr & (STM32_DMA_SCR_CIRC | STM32_DMA_SCR_DBM)))
 			stm32_dma_post_resume_reconfigure(chan);
