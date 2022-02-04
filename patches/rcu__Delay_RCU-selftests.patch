@@ -44,7 +44,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	smp_init();
 --- a/kernel/rcu/tasks.h
 +++ b/kernel/rcu/tasks.h
-@@ -1657,7 +1657,7 @@ static void test_rcu_tasks_callback(stru
+@@ -1661,7 +1661,7 @@ static void test_rcu_tasks_callback(stru
  	rttd->notrun = true;
  }
  
@@ -53,7 +53,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  {
  	pr_info("Running RCU-tasks wait API self tests\n");
  #ifdef CONFIG_TASKS_RCU
-@@ -1694,9 +1694,7 @@ static int rcu_tasks_verify_self_tests(v
+@@ -1698,9 +1698,7 @@ static int rcu_tasks_verify_self_tests(v
  	return ret;
  }
  late_initcall(rcu_tasks_verify_self_tests);
@@ -64,7 +64,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  void __init rcu_init_tasks_generic(void)
  {
-@@ -1711,9 +1709,6 @@ void __init rcu_init_tasks_generic(void)
+@@ -1715,9 +1713,6 @@ void __init rcu_init_tasks_generic(void)
  #ifdef CONFIG_TASKS_TRACE_RCU
  	rcu_spawn_tasks_trace_kthread();
  #endif

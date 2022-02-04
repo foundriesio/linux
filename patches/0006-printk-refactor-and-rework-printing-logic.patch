@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Tue, 10 Aug 2021 16:32:52 +0206
-Subject: [PATCH 06/15] printk: refactor and rework printing logic
+Date: Fri, 4 Feb 2022 16:01:16 +0106
+Subject: [PATCH 06/16] printk: refactor and rework printing logic
 
 Refactor/rework printing logic in order to prepare for moving to threaded
 console printing.

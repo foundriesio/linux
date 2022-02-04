@@ -1,6 +1,7 @@
 From: Valentin Schneider <valentin.schneider@arm.com>
-Subject: arm64: mm: Make arch_faults_on_old_pte() check for migratability
-Date: Wed, 11 Aug 2021 21:13:54 +0100
+Date: Thu, 27 Jan 2022 19:24:37 +0000
+Subject: [PATCH] arm64: mm: Make arch_faults_on_old_pte() check for
+ migratability
 
 arch_faults_on_old_pte() relies on the calling context being
 non-preemptible. CONFIG_PREEMPT_RT turns the PTE lock into a sleepable
@@ -11,23 +12,25 @@ It does however disable migration, ensuring the task remains on the same
 CPU during the entirety of the critical section, making the read of
 cpu_has_hw_af() safe and stable.
 
-Make arch_faults_on_old_pte() check migratable() instead of preemptible().
+Make arch_faults_on_old_pte() check cant_migrate() instead of preemptible().
 
+Suggested-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Signed-off-by: Valentin Schneider <valentin.schneider@arm.com>
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Link: https://lore.kernel.org/r/20210811201354.1976839-5-valentin.schneider@arm.com
+Link: https://lore.kernel.org/r/20220127192437.1192957-1-valentin.schneider@arm.com
+Acked-by: Catalin Marinas <catalin.marinas@arm.com>
 ---
- arch/arm64/include/asm/pgtable.h |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ arch/arm64/include/asm/pgtable.h |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 --- a/arch/arm64/include/asm/pgtable.h
 +++ b/arch/arm64/include/asm/pgtable.h
-@@ -1001,7 +1001,7 @@ static inline void update_mmu_cache(stru
+@@ -1001,7 +1001,8 @@ static inline void update_mmu_cache(stru
   */
  static inline bool arch_faults_on_old_pte(void)
  {
 -	WARN_ON(preemptible());
-+	WARN_ON(is_migratable());
++	/* The register read below requires a stable CPU to make any sense */
++	cant_migrate();
  
  	return !cpu_has_hw_af();
  }

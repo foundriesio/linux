@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Wed, 22 Dec 2021 13:44:40 +0106
-Subject: [PATCH 13/15] printk: add infrastucture for atomic consoles
+Date: Fri, 4 Feb 2022 16:01:17 +0106
+Subject: [PATCH 14/16] printk: add infrastucture for atomic consoles
 
 Many times it is not possible to see the console output on
 panic because printing threads cannot be scheduled and/or the
@@ -118,7 +118,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #include <linux/sched/clock.h>
  #include <linux/sched/debug.h>
  #include <linux/sched/task_stack.h>
-@@ -1942,21 +1943,30 @@ static int console_trylock_spinning(void
+@@ -1968,21 +1969,30 @@ static int console_trylock_spinning(void
   * dropped, a dropped message will be written out first.
   */
  static void call_console_driver(struct console *con, const char *text, size_t len,
@@ -155,7 +155,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -2299,6 +2309,76 @@ asmlinkage __visible int _printk(const c
+@@ -2325,6 +2335,76 @@ asmlinkage __visible int _printk(const c
  }
  EXPORT_SYMBOL(_printk);
  
@@ -232,7 +232,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static void start_printk_kthread(struct console *con);
  
  #else /* CONFIG_PRINTK */
-@@ -2311,6 +2391,8 @@ static void start_printk_kthread(struct
+@@ -2337,6 +2417,8 @@ static void start_printk_kthread(struct
  #define prb_first_valid_seq(rb)		0
  #define prb_next_seq(rb)		0
  
@@ -241,7 +241,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static u64 syslog_seq;
  
  static size_t record_print_text(const struct printk_record *r,
-@@ -2329,7 +2411,7 @@ static ssize_t msg_print_ext_body(char *
+@@ -2355,7 +2437,7 @@ static ssize_t msg_print_ext_body(char *
  static void console_lock_spinning_enable(void) { }
  static int console_lock_spinning_disable_and_check(void) { return 0; }
  static void call_console_driver(struct console *con, const char *text, size_t len,
@@ -250,7 +250,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static bool suppress_message_printing(int level) { return false; }
  static void printk_delay(int level) {}
  static void start_printk_kthread(struct console *con) {}
-@@ -2637,13 +2719,23 @@ EXPORT_SYMBOL(is_console_locked);
+@@ -2664,13 +2746,23 @@ EXPORT_SYMBOL(is_console_locked);
   *
   * Requires the console_lock.
   */
@@ -268,15 +268,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		if (!con->atomic_data)
 +			return false;
 +#else
-+		return false;
+ 		return false;
 +#endif
 +	} else if (!con->write) {
- 		return false;
++		return false;
 +	}
  
  	/*
  	 * Console drivers may assume that per-cpu resources have been
-@@ -2675,6 +2767,66 @@ static void __console_unlock(void)
+@@ -2702,6 +2794,66 @@ static void __console_unlock(void)
  	up_console_sem();
  }
  
@@ -343,7 +343,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Print one record for the given console. The record printed is whatever
   * record is the next available record for the given console.
-@@ -2687,6 +2839,8 @@ static void __console_unlock(void)
+@@ -2714,6 +2866,8 @@ static void __console_unlock(void)
   * If dropped messages should be printed, @dropped_text is a buffer of size
   * DROPPED_TEXT_MAX. Otherise @dropped_text must be NULL.
   *
@@ -352,7 +352,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Requires the console_lock.
   *
   * Returns false if the given console has no next record to print, otherwise
-@@ -2698,7 +2852,8 @@ static void __console_unlock(void)
+@@ -2725,7 +2879,8 @@ static void __console_unlock(void)
   * to disable allowing the console_lock to be taken over by a printk waiter.
   */
  static bool console_emit_next_record(struct console *con, char *text, char *ext_text,
@@ -362,7 +362,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	struct printk_info info;
  	struct printk_record r;
-@@ -2706,23 +2861,27 @@ static bool console_emit_next_record(str
+@@ -2733,23 +2888,27 @@ static bool console_emit_next_record(str
  	bool allow_handover;
  	char *write_text;
  	size_t len;
@@ -395,7 +395,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		goto skip;
  	}
  
-@@ -2755,10 +2914,10 @@ static bool console_emit_next_record(str
+@@ -2782,10 +2941,10 @@ static bool console_emit_next_record(str
  	}
  
  	stop_critical_timings();	/* don't trace print latency */
@@ -408,7 +408,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (allow_handover) {
  		*handover = console_lock_spinning_disable_and_check();
-@@ -2806,7 +2965,7 @@ static bool console_flush_all(bool do_co
+@@ -2833,7 +2992,7 @@ static bool console_flush_all(bool do_co
  		for_each_console(con) {
  			bool progress;
  
@@ -417,7 +417,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				continue;
  			if ((con->flags & CON_MIGHT_SLEEP) && !do_cond_resched)
  				continue;
-@@ -2816,11 +2975,11 @@ static bool console_flush_all(bool do_co
+@@ -2843,11 +3002,11 @@ static bool console_flush_all(bool do_co
  				/* Extended consoles do not print "dropped messages". */
  				progress = console_emit_next_record(con, &text[0],
  								    &ext_text[0], NULL,
@@ -431,7 +431,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			}
  			if (*handover)
  				return true;
-@@ -2841,6 +3000,67 @@ static bool console_flush_all(bool do_co
+@@ -2868,6 +3027,67 @@ static bool console_flush_all(bool do_co
  	return any_usable;
  }
  
@@ -499,7 +499,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * console_unlock - unlock the console system
   *
-@@ -2954,6 +3174,11 @@ void console_unblank(void)
+@@ -2981,6 +3201,11 @@ void console_unblank(void)
   */
  void console_flush_on_panic(enum con_flush_mode mode)
  {
@@ -511,7 +511,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * If someone else is holding the console lock, trylock will fail
  	 * and may_schedule may be set.  Ignore and proceed to unlock so
-@@ -2970,7 +3195,7 @@ void console_flush_on_panic(enum con_flu
+@@ -2997,7 +3222,7 @@ void console_flush_on_panic(enum con_flu
  
  		seq = prb_first_valid_seq(prb);
  		for_each_console(c)
@@ -520,7 +520,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	console_unlock();
  }
-@@ -3211,16 +3436,19 @@ void register_console(struct console *ne
+@@ -3238,16 +3463,19 @@ void register_console(struct console *ne
  	if (consoles_paused)
  		newcon->flags |= CON_PAUSED;
  
@@ -543,7 +543,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	if (kthreads_started)
  		start_printk_kthread(newcon);
-@@ -3302,6 +3530,10 @@ int unregister_console(struct console *c
+@@ -3329,6 +3557,10 @@ int unregister_console(struct console *c
  	console_unlock();
  	console_sysfs_notify();
  
@@ -554,7 +554,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (console->exit)
  		res = console->exit(console);
  
-@@ -3436,7 +3668,7 @@ bool pr_flush(int timeout_ms, bool reset
+@@ -3463,7 +3695,7 @@ bool pr_flush(int timeout_ms, bool reset
  
  		console_lock();
  		for_each_console(con) {
@@ -563,7 +563,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				continue;
  			printk_seq = con->seq;
  			if (printk_seq < seq)
-@@ -3504,6 +3736,11 @@ static int printk_kthread_func(void *dat
+@@ -3531,6 +3763,11 @@ static int printk_kthread_func(void *dat
  		(con->flags & CON_BOOT) ? "boot" : "",
  		con->name, con->index);
  
@@ -575,7 +575,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	text = kmalloc(CONSOLE_LOG_MAX, GFP_KERNEL);
  	if (!text)
  		goto out;
-@@ -3532,7 +3769,7 @@ static int printk_kthread_func(void *dat
+@@ -3559,7 +3796,7 @@ static int printk_kthread_func(void *dat
  			if (error)
  				break;
  
@@ -584,7 +584,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				mutex_unlock(&con->lock);
  				break;
  			}
-@@ -3552,7 +3789,7 @@ static int printk_kthread_func(void *dat
+@@ -3579,7 +3816,7 @@ static int printk_kthread_func(void *dat
  			 */
  			console_may_schedule = 0;
  			progress = console_emit_next_record(con, text, ext_text,

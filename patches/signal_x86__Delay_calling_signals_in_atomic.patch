@@ -66,7 +66,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  typedef sigset_t compat_sigset_t;
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -1087,6 +1087,10 @@ struct task_struct {
+@@ -1083,6 +1083,10 @@ struct task_struct {
  	/* Restored if set_restore_sigmask() was used: */
  	sigset_t			saved_sigmask;
  	struct sigpending		pending;

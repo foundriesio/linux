@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Wed, 15 Dec 2021 18:44:59 +0106
-Subject: [PATCH 08/15] printk: add pr_flush()
+Date: Fri, 4 Feb 2022 16:01:16 +0106
+Subject: [PATCH 08/16] printk: add pr_flush()
 
 Provide a might-sleep function to allow waiting for threaded console
 printers to catch up to the latest logged message.

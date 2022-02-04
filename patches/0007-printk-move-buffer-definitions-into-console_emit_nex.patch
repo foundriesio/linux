@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Mon, 22 Nov 2021 17:04:02 +0106
-Subject: [PATCH 07/15] printk: move buffer definitions into
+Date: Fri, 4 Feb 2022 16:01:16 +0106
+Subject: [PATCH 07/16] printk: move buffer definitions into
  console_emit_next_record() caller
 
 Extended consoles print extended messages and do not print messages about

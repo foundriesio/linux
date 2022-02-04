@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Mon, 30 Nov 2020 01:42:04 +0106
-Subject: [PATCH 05/15] printk: call boot_delay_msec() in printk_delay()
+Date: Fri, 4 Feb 2022 16:01:16 +0106
+Subject: [PATCH 05/16] printk: call boot_delay_msec() in printk_delay()
 
 boot_delay_msec() is always called immediately before printk_delay()
 so just call it from within printk_delay().
