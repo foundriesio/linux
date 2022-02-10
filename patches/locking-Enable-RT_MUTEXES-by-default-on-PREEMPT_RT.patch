@@ -10,6 +10,7 @@ because RT_MUTEX based locking is always used.
 Enable CONFIG_RT_MUTEXES by default on PREEMPT_RT builds.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lkml.kernel.org/r/YgKmhjkcuqWXdUjQ@linutronix.de
 ---
  init/Kconfig |    1 +
  1 file changed, 1 insertion(+)

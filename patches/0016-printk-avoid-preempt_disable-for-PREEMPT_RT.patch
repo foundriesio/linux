@@ -82,7 +82,7 @@ Signed-off-by: John Ogness <john.ogness@linutronix.de>
  	}
  
  	wake_up_klogd();
-@@ -2922,8 +2936,13 @@ static bool console_emit_next_record(str
+@@ -2924,8 +2938,13 @@ static bool console_emit_next_record(str
  		len = record_print_text(&r, console_msg_format & MSG_FORMAT_SYSLOG, printk_time);
  	}
  
