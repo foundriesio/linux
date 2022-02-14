@@ -75,7 +75,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -		obj_cgroup_uncharge_pages(objcg, nr_pages);
 +		obj_cgroup_uncharge_pages(objcg, nr_pages, false);
  
- 	spin_lock_irqsave(&css_set_lock, flags);
+ 	spin_lock_irqsave(&objcg_lock, flags);
  	list_del(&objcg->list);
 @@ -2024,26 +2026,40 @@ struct obj_stock {
  };
