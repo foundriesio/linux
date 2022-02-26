@@ -128,7 +128,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  		return ERR_PTR(-ENOENT);
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -639,7 +639,7 @@ void nfs_prime_dcache(struct dentry *par
+@@ -641,7 +641,7 @@ void nfs_prime_dcache(struct dentry *par
  		unsigned long dir_verifier)
  {
  	struct qstr filename = QSTR_INIT(entry->name, entry->len);
@@ -137,7 +137,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	struct dentry *dentry;
  	struct dentry *alias;
  	struct inode *inode;
-@@ -1883,7 +1883,7 @@ int nfs_atomic_open(struct inode *dir, s
+@@ -1895,7 +1895,7 @@ int nfs_atomic_open(struct inode *dir, s
  		    struct file *file, unsigned open_flags,
  		    umode_t mode)
  {
