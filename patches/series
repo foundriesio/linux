@@ -56,7 +56,6 @@ tcp-Don-t-acquire-inet_listen_hashbucket-lock-with-d.patch
 0008-kernel-fork-Use-IS_ENABLED-in-account_kernel_stack.patch
 
 # In net-next
-usb-dwc3-gadget-Let-the-interrupt-handler-disable-bo.patch
 0001-net-dev-Remove-preempt_disable-and-get_cpu-in-netif_.patch
 0002-net-dev-Make-rps_lock-disable-interrupts.patch
 0003-net-dev-Makes-sure-netif_rx-can-be-invoked-in-any-co.patch
