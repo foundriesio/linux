@@ -19,7 +19,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -236,6 +236,7 @@ config X86
+@@ -237,6 +237,7 @@ config X86
  	select HAVE_PCI
  	select HAVE_PERF_REGS
  	select HAVE_PERF_USER_STACK_DUMP
@@ -136,7 +136,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
 --- a/kernel/entry/common.c
 +++ b/kernel/entry/common.c
-@@ -159,7 +159,7 @@ static unsigned long exit_to_user_mode_l
+@@ -171,7 +171,7 @@ static unsigned long exit_to_user_mode_l
  
  		local_irq_enable_exit_to_user(ti_work);
  
@@ -144,4 +144,4 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 +		if (ti_work & _TIF_NEED_RESCHED_MASK)
  			schedule();
  
- #ifdef ARCH_RT_DELAYS_SIGNAL_SEND
+ 		raise_delayed_signal();
