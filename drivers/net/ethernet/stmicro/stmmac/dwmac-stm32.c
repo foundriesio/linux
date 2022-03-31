@@ -189,9 +189,10 @@ static int stm32mp1_set_mode(struct plat_stmmacenet_data *plat_dat)
 		break;
 	case PHY_INTERFACE_MODE_RMII:
 		val = SYSCFG_PMCR_ETH_SEL_RMII;
-		if ((clk_rate == ETH_CK_F_25M || clk_rate == ETH_CK_F_50M) &&
-		    (dwmac->eth_ref_clk_sel_reg || dwmac->ext_phyclk)) {
-			dwmac->enable_eth_ck = true;
+		if (clk_rate == ETH_CK_F_25M || clk_rate == ETH_CK_F_50M) {
+		   dwmac->enable_eth_ck = true;
+		   if (clk_rate == ETH_CK_F_50M &&
+		       (dwmac->eth_ref_clk_sel_reg || dwmac->ext_phyclk))
 			val |= SYSCFG_PMCR_ETH_REF_CLK_SEL;
 		}
 		pr_debug("SYSCFG init : PHY_INTERFACE_MODE_RMII\n");
@@ -201,9 +202,10 @@ static int stm32mp1_set_mode(struct plat_stmmacenet_data *plat_dat)
 	case PHY_INTERFACE_MODE_RGMII_RXID:
 	case PHY_INTERFACE_MODE_RGMII_TXID:
 		val = SYSCFG_PMCR_ETH_SEL_RGMII;
-		if ((clk_rate == ETH_CK_F_25M || clk_rate == ETH_CK_F_125M) &&
-		    (dwmac->eth_clk_sel_reg || dwmac->ext_phyclk)) {
-			dwmac->enable_eth_ck = true;
+		if ((clk_rate == ETH_CK_F_25M || clk_rate == ETH_CK_F_125M)) {
+		   dwmac->enable_eth_ck = true;
+		   if (clk_rate == ETH_CK_F_125M &&
+		       (dwmac->eth_clk_sel_reg || dwmac->ext_phyclk))
 			val |= SYSCFG_PMCR_ETH_CLK_SEL;
 		}
 		pr_debug("SYSCFG init : PHY_INTERFACE_MODE_RGMII\n");
