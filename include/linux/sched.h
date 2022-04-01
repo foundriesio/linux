@@ -2058,21 +2058,22 @@ static inline bool task_state_match_and(struct task_struct *tsk, long state)
 	return match;
 }
 
-static inline bool __task_state_match_eq(struct task_struct *tsk, long state)
+static inline int __task_state_match_eq(struct task_struct *tsk, long state)
 {
-	bool match = false;
+	int match = 0;
 
 	if (READ_ONCE(tsk->__state) == state)
-		match = true;
+		match = 1;
 	else if (tsk->saved_state == state)
-		match = true;
+		match = -1;
+
 	return match;
 }
 
-static inline bool task_state_match_eq(struct task_struct *tsk, long state)
+static inline int task_state_match_eq(struct task_struct *tsk, long state)
 {
 	unsigned long flags;
-	bool match;
+	int match;
 
 	raw_spin_lock_irqsave(&tsk->pi_lock, flags);
 	match = __task_state_match_eq(tsk, state);
@@ -2091,7 +2092,7 @@ static inline bool task_state_match_and_set(struct task_struct *tsk, long state,
 		WRITE_ONCE(tsk->__state, new_state);
 		match = true;
 	} else if (tsk->saved_state & state) {
-		tsk->__state = new_state;
+		tsk->saved_state = new_state;
 		match = true;
 	}
 	raw_spin_unlock_irqrestore(&tsk->pi_lock, flags);
@@ -2123,12 +2124,12 @@ static inline bool task_state_match_and(struct task_struct *tsk, long state)
 	return READ_ONCE(tsk->__state) & state;
 }
 
-static inline bool __task_state_match_eq(struct task_struct *tsk, long state)
+static inline int __task_state_match_eq(struct task_struct *tsk, long state)
 {
 	return READ_ONCE(tsk->__state) == state;
 }
 
-static inline bool task_state_match_eq(struct task_struct *tsk, long state)
+static inline int task_state_match_eq(struct task_struct *tsk, long state)
 {
 	return __task_state_match_eq(tsk, state);
 }
