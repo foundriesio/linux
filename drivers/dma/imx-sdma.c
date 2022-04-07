@@ -551,8 +551,8 @@ struct sdma_engine {
 	u8				*fw_data;
 	unsigned short			ram_code_start;
 #ifdef CONFIG_IMX_SDMA_OOB
-	+	hard_spinlock_t			oob_lock;
-	+	u32				pending_stat;
+	hard_spinlock_t			oob_lock;
+	u32				pending_stat;
 #endif
 };
 
@@ -2631,6 +2631,10 @@ static int sdma_probe(struct platform_device *pdev)
 	ret = sdma_init_sw(sdma);
 	if (ret)
 		goto err_init;
+
+#ifdef CONFIG_IMX_SDMA_OOB
+	raw_spin_lock_init(&sdma->oob_lock);
+#endif
 
 	ret = sdma_event_remap(sdma);
 	if (ret)
