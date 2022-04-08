@@ -438,10 +438,17 @@ static void ltdc_crtc_atomic_enable(struct drm_crtc *crtc,
 {
 	struct ltdc_device *ldev = crtc_to_ltdc(crtc);
 	struct drm_device *ddev = crtc->dev;
+	int ret;
 
 	DRM_DEBUG_DRIVER("\n");
 
-	pm_runtime_get_sync(ddev->dev);
+	if (!pm_runtime_active(ddev->dev)) {
+		ret = pm_runtime_get_sync(ddev->dev);
+		if (ret) {
+			DRM_ERROR("Failed to set mode, cannot get sync\n");
+			return;
+		}
+	}
 
 	/* Sets the background color value */
 	reg_write(ldev->regs, LTDC_BCCR,
@@ -475,7 +482,7 @@ static void ltdc_crtc_atomic_disable(struct drm_crtc *crtc,
 	/* immediately commit disable of layers before switching off LTDC */
 	reg_set(ldev->regs, LTDC_SRCR, SRCR_IMR);
 
-	pm_runtime_put_sync(ddev->dev);
+	pm_runtime_put_sync_suspend(ddev->dev);
 }
 
 #define CLK_TOLERANCE_HZ 50
@@ -815,6 +822,7 @@ static void ltdc_plane_atomic_update(struct drm_plane *plane,
 				     struct drm_plane_state *oldstate)
 {
 	struct ltdc_device *ldev = plane_to_ltdc(plane);
+	struct drm_device *ddev = plane->dev;
 	struct drm_plane_state *state = plane->state;
 	struct drm_rect *src = &state->src;
 	struct drm_rect *dst = &state->dst;
@@ -827,6 +835,11 @@ static void ltdc_plane_atomic_update(struct drm_plane *plane,
 
 	if (!state->crtc || !fb) {
 		DRM_DEBUG_DRIVER("fb or crtc NULL");
+		return;
+	}
+
+	if (!pm_runtime_active(ddev->dev)) {
+		DRM_DEBUG_DRIVER("crtc not activated");
 		return;
 	}
 
@@ -940,7 +953,11 @@ static void ltdc_plane_atomic_disable(struct drm_plane *plane,
 				      struct drm_plane_state *oldstate)
 {
 	struct ltdc_device *ldev = plane_to_ltdc(plane);
+	struct drm_device *ddev = plane->dev;
 	u32 lofs = plane->index * LAY_OFS;
+
+	if (!pm_runtime_active(ddev->dev))
+		return;
 
 	/* disable layer */
 	reg_clear(ldev->regs, LTDC_L1CR + lofs, LXCR_LEN);
