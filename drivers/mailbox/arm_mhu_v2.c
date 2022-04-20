@@ -221,13 +221,11 @@ static int mhuv2_probe(struct amba_device *adev, const struct amba_id *id)
 	return 0;
 }
 
-static int mhuv2_remove(struct amba_device *adev)
+static void mhuv2_remove(struct amba_device *adev)
 {
 	struct arm_mhuv2 *mhuv2 = amba_get_drvdata(adev);
 
 	mbox_controller_unregister(&mhuv2->mbox);
-
-	return 0;
 }
 
 static struct amba_id mhuv2_ids[] = {
