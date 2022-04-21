@@ -14,7 +14,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/mm/vmalloc.c
 +++ b/mm/vmalloc.c
-@@ -1924,11 +1924,12 @@ static void *new_vmap_block(unsigned int
+@@ -1938,11 +1938,12 @@ static void *new_vmap_block(unsigned int
  		return ERR_PTR(err);
  	}
  
@@ -29,7 +29,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	return vaddr;
  }
-@@ -2007,7 +2008,8 @@ static void *vb_alloc(unsigned long size
+@@ -2021,7 +2022,8 @@ static void *vb_alloc(unsigned long size
  	order = get_order(size);
  
  	rcu_read_lock();
@@ -39,7 +39,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	list_for_each_entry_rcu(vb, &vbq->free, free_list) {
  		unsigned long pages_off;
  
-@@ -2030,7 +2032,7 @@ static void *vb_alloc(unsigned long size
+@@ -2044,7 +2046,7 @@ static void *vb_alloc(unsigned long size
  		break;
  	}
  

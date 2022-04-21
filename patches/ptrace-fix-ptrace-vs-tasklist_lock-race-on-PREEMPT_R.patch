@@ -55,7 +55,7 @@ Link: https://lore.kernel.org/r/YkW55u6u2fo5QmV7@linutronix.de
  /*
   * Special states are those that do not use the normal wait-loop pattern. See
   * the comment with set_special_state().
-@@ -2009,6 +2005,130 @@ static inline int test_tsk_need_resched(
+@@ -2027,6 +2023,130 @@ static inline int test_tsk_need_resched(
  	return unlikely(test_tsk_thread_flag(tsk,TIF_NEED_RESCHED));
  }
  
@@ -236,7 +236,7 @@ Link: https://lore.kernel.org/r/YkW55u6u2fo5QmV7@linutronix.de
  
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3219,6 +3219,8 @@ unsigned long wait_task_inactive(struct
+@@ -3287,6 +3287,8 @@ unsigned long wait_task_inactive(struct
  	struct rq *rq;
  
  	for (;;) {
@@ -245,7 +245,7 @@ Link: https://lore.kernel.org/r/YkW55u6u2fo5QmV7@linutronix.de
  		/*
  		 * We do the initial early heuristics without holding
  		 * any task-queue locks at all. We'll only try to get
-@@ -3239,7 +3241,8 @@ unsigned long wait_task_inactive(struct
+@@ -3307,7 +3309,8 @@ unsigned long wait_task_inactive(struct
  		 * is actually now running somewhere else!
  		 */
  		while (task_running(rq, p)) {
@@ -255,7 +255,7 @@ Link: https://lore.kernel.org/r/YkW55u6u2fo5QmV7@linutronix.de
  				return 0;
  			cpu_relax();
  		}
-@@ -3254,7 +3257,9 @@ unsigned long wait_task_inactive(struct
+@@ -3322,7 +3325,9 @@ unsigned long wait_task_inactive(struct
  		running = task_running(rq, p);
  		queued = task_on_rq_queued(p);
  		ncsw = 0;
@@ -266,7 +266,7 @@ Link: https://lore.kernel.org/r/YkW55u6u2fo5QmV7@linutronix.de
  			ncsw = p->nvcsw | LONG_MIN; /* sets MSB */
  		task_rq_unlock(rq, p, &rf);
  
-@@ -3284,7 +3289,7 @@ unsigned long wait_task_inactive(struct
+@@ -3352,7 +3357,7 @@ unsigned long wait_task_inactive(struct
  		 * running right now), it's preempted, and we should
  		 * yield - it could be a while.
  		 */

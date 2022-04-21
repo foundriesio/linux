@@ -16,7 +16,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/arch/arm64/Kconfig
 +++ b/arch/arm64/Kconfig
-@@ -89,6 +89,7 @@ config ARM64
+@@ -91,6 +91,7 @@ config ARM64
  	select ARCH_SUPPORTS_ATOMIC_RMW
  	select ARCH_SUPPORTS_INT128 if CC_HAS_INT128
  	select ARCH_SUPPORTS_NUMA_BALANCING

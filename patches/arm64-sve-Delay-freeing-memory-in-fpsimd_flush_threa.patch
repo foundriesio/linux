@@ -14,7 +14,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/arch/arm64/kernel/fpsimd.c
 +++ b/arch/arm64/kernel/fpsimd.c
-@@ -1135,6 +1135,8 @@ static void fpsimd_flush_thread_vl(enum
+@@ -1141,6 +1141,8 @@ static void fpsimd_flush_thread_vl(enum
  
  void fpsimd_flush_thread(void)
  {
@@ -23,7 +23,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (!system_supports_fpsimd())
  		return;
  
-@@ -1146,11 +1148,16 @@ void fpsimd_flush_thread(void)
+@@ -1152,11 +1154,16 @@ void fpsimd_flush_thread(void)
  
  	if (system_supports_sve()) {
  		clear_thread_flag(TIF_SVE);

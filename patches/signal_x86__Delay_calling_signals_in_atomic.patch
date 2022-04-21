@@ -42,8 +42,8 @@ Link: https://lore.kernel.org/r/Ygq5aBB/qMQw6aP5@linutronix.de
 
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -120,6 +120,7 @@ config X86
- 	select ARCH_WANTS_NO_INSTR
+@@ -122,6 +122,7 @@ config X86
+ 	select ARCH_WANT_GENERAL_HUGETLB
  	select ARCH_WANT_HUGE_PMD_SHARE
  	select ARCH_WANT_LD_ORPHAN_WARN
 +	select ARCH_WANTS_RT_DELAYED_SIGNALS
@@ -52,7 +52,7 @@ Link: https://lore.kernel.org/r/Ygq5aBB/qMQw6aP5@linutronix.de
  	select BUILDTIME_TABLE_SORT
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -1087,6 +1087,9 @@ struct task_struct {
+@@ -1090,6 +1090,9 @@ struct task_struct {
  	/* Restored if set_restore_sigmask() was used: */
  	sigset_t			saved_sigmask;
  	struct sigpending		pending;
@@ -64,7 +64,7 @@ Link: https://lore.kernel.org/r/Ygq5aBB/qMQw6aP5@linutronix.de
  	unsigned int			sas_ss_flags;
 --- a/kernel/Kconfig.preempt
 +++ b/kernel/Kconfig.preempt
-@@ -132,4 +132,14 @@ config SCHED_CORE
+@@ -133,4 +133,14 @@ config SCHED_CORE
  	  which is the likely usage by Linux distributions, there should
  	  be no measurable impact on performance.
  
@@ -81,8 +81,8 @@ Link: https://lore.kernel.org/r/Ygq5aBB/qMQw6aP5@linutronix.de
 +	def_bool PREEMPT_RT && ARCH_WANTS_RT_DELAYED_SIGNALS
 --- a/kernel/entry/common.c
 +++ b/kernel/entry/common.c
-@@ -148,6 +148,18 @@ static void handle_signal_work(struct pt
- 	arch_do_signal_or_restart(regs, ti_work & _TIF_SIGPENDING);
+@@ -139,6 +139,18 @@ void noinstr exit_to_user_mode(void)
+ 	__exit_to_user_mode();
  }
  
 +#ifdef CONFIG_RT_DELAYED_SIGNALS
@@ -97,10 +97,10 @@ Link: https://lore.kernel.org/r/Ygq5aBB/qMQw6aP5@linutronix.de
 +static inline void raise_delayed_signal(void) { }
 +#endif
 +
- static unsigned long exit_to_user_mode_loop(struct pt_regs *regs,
- 					    unsigned long ti_work)
- {
-@@ -162,6 +174,8 @@ static unsigned long exit_to_user_mode_l
+ /* Workaround to allow gradual conversion of architecture code */
+ void __weak arch_do_signal_or_restart(struct pt_regs *regs) { }
+ 
+@@ -156,6 +168,8 @@ static unsigned long exit_to_user_mode_l
  		if (ti_work & _TIF_NEED_RESCHED)
  			schedule();
  

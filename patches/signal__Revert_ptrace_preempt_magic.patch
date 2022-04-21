@@ -17,7 +17,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
-@@ -2316,16 +2316,8 @@ static void ptrace_stop(int exit_code, i
+@@ -2320,16 +2320,8 @@ static int ptrace_stop(int exit_code, in
  		if (gstop_done && ptrace_reparented(current))
  			do_notify_parent_cldstop(current, false, why);
  

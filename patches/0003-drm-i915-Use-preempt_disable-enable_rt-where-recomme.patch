@@ -33,7 +33,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/gpu/drm/i915/i915_irq.c
 +++ b/drivers/gpu/drm/i915/i915_irq.c
-@@ -916,7 +916,8 @@ static bool i915_get_crtc_scanoutpos(str
+@@ -917,7 +917,8 @@ static bool i915_get_crtc_scanoutpos(str
  	 */
  	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
  
@@ -43,7 +43,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	/* Get optional system timestamp before query. */
  	if (stime)
-@@ -980,7 +981,8 @@ static bool i915_get_crtc_scanoutpos(str
+@@ -981,7 +982,8 @@ static bool i915_get_crtc_scanoutpos(str
  	if (etime)
  		*etime = ktime_get();
  

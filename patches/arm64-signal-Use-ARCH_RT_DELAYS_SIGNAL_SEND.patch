@@ -19,7 +19,7 @@ Link: https://lore.kernel.org/r/20211012084421.35136-1-zhe.he@windriver.com
 
 --- a/arch/arm64/Kconfig
 +++ b/arch/arm64/Kconfig
-@@ -96,6 +96,7 @@ config ARM64
+@@ -98,6 +98,7 @@ config ARM64
  	select ARCH_WANT_HUGE_PMD_SHARE if ARM64_4K_PAGES || (ARM64_16K_PAGES && !ARM64_VA_BITS_36)
  	select ARCH_WANT_LD_ORPHAN_WARN
  	select ARCH_WANTS_NO_INSTR
@@ -29,7 +29,7 @@ Link: https://lore.kernel.org/r/20211012084421.35136-1-zhe.he@windriver.com
  	select ARM_ARCH_TIMER
 --- a/arch/arm64/kernel/signal.c
 +++ b/arch/arm64/kernel/signal.c
-@@ -928,6 +928,14 @@ void do_notify_resume(struct pt_regs *re
+@@ -929,6 +929,14 @@ void do_notify_resume(struct pt_regs *re
  		} else {
  			local_daif_restore(DAIF_PROCCTX);
  

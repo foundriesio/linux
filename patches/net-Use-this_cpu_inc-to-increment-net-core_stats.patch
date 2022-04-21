@@ -1,0 +1,132 @@
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Thu, 21 Apr 2022 13:20:32 +0200
+Subject: [PATCH] net: Use this_cpu_inc() to increment net->core_stats
+
+The macro dev_core_stats_##FIELD##_inc() disables preemption and invokes
+netdev_core_stats_alloc() to return a per-CPU pointer.
+netdev_core_stats_alloc() will allocate memory on its first invocation
+which breaks on PREEMPT_RT because it requires non-atomic context for
+memory allocation.
+
+This can be avoided by enabling preemption in netdev_core_stats_alloc()
+assuming the caller always disables preemption.
+
+It might be better to replace local_inc() with this_cpu_inc() now that
+dev_core_stats_##FIELD##_inc() gained a preempt-disable section and does
+not rely on already disabled preemption. This results in less
+instructions on x86-64:
+local_inc:
+|          incl %gs:__preempt_count(%rip)  # __preempt_count
+|          movq    488(%rdi), %rax # _1->core_stats, _22
+|          testq   %rax, %rax      # _22
+|          je      .L585   #,
+|          add %gs:this_cpu_off(%rip), %rax        # this_cpu_off, tcp_ptr__
+|  .L586:
+|          testq   %rax, %rax      # _27
+|          je      .L587   #,
+|          incq (%rax)            # _6->a.counter
+|  .L587:
+|          decl %gs:__preempt_count(%rip)  # __preempt_count
+
+this_cpu_inc(), this patch:
+|         movq    488(%rdi), %rax # _1->core_stats, _5
+|         testq   %rax, %rax      # _5
+|         je      .L591   #,
+| .L585:
+|         incq %gs:(%rax) # _18->rx_dropped
+
+Use unsigned long as type for the counter. Use this_cpu_inc() to
+increment the counter. Use a plain read of the counter.
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+---
+ include/linux/netdevice.h |   17 +++++++----------
+ net/core/dev.c            |   14 +++++---------
+ 2 files changed, 12 insertions(+), 19 deletions(-)
+
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -199,10 +199,10 @@ struct net_device_stats {
+  * Try to fit them in a single cache line, for dev_get_stats() sake.
+  */
+ struct net_device_core_stats {
+-	local_t		rx_dropped;
+-	local_t		tx_dropped;
+-	local_t		rx_nohandler;
+-} __aligned(4 * sizeof(local_t));
++	unsigned long	rx_dropped;
++	unsigned long	tx_dropped;
++	unsigned long	rx_nohandler;
++} __aligned(4 * sizeof(unsigned long));
+ 
+ #include <linux/cache.h>
+ #include <linux/skbuff.h>
+@@ -3843,7 +3843,7 @@ static __always_inline bool __is_skb_for
+ 	return false;
+ }
+ 
+-struct net_device_core_stats *netdev_core_stats_alloc(struct net_device *dev);
++struct net_device_core_stats __percpu *netdev_core_stats_alloc(struct net_device *dev);
+ 
+ static inline struct net_device_core_stats *dev_core_stats(struct net_device *dev)
+ {
+@@ -3851,7 +3851,7 @@ static inline struct net_device_core_sta
+ 	struct net_device_core_stats __percpu *p = READ_ONCE(dev->core_stats);
+ 
+ 	if (likely(p))
+-		return this_cpu_ptr(p);
++		return p;
+ 
+ 	return netdev_core_stats_alloc(dev);
+ }
+@@ -3861,12 +3861,9 @@ static inline void dev_core_stats_##FIEL
+ {										\
+ 	struct net_device_core_stats *p;					\
+ 										\
+-	preempt_disable();							\
+ 	p = dev_core_stats(dev);						\
+-										\
+ 	if (p)									\
+-		local_inc(&p->FIELD);						\
+-	preempt_enable();							\
++		this_cpu_inc(p->FIELD);						\
+ }
+ DEV_CORE_STATS_INC(rx_dropped)
+ DEV_CORE_STATS_INC(tx_dropped)
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -10304,7 +10304,7 @@ void netdev_stats_to_stats64(struct rtnl
+ }
+ EXPORT_SYMBOL(netdev_stats_to_stats64);
+ 
+-struct net_device_core_stats *netdev_core_stats_alloc(struct net_device *dev)
++struct net_device_core_stats __percpu *netdev_core_stats_alloc(struct net_device *dev)
+ {
+ 	struct net_device_core_stats __percpu *p;
+ 
+@@ -10315,11 +10315,7 @@ struct net_device_core_stats *netdev_cor
+ 		free_percpu(p);
+ 
+ 	/* This READ_ONCE() pairs with the cmpxchg() above */
+-	p = READ_ONCE(dev->core_stats);
+-	if (!p)
+-		return NULL;
+-
+-	return this_cpu_ptr(p);
++	return READ_ONCE(dev->core_stats);
+ }
+ EXPORT_SYMBOL(netdev_core_stats_alloc);
+ 
+@@ -10356,9 +10352,9 @@ struct rtnl_link_stats64 *dev_get_stats(
+ 
+ 		for_each_possible_cpu(i) {
+ 			core_stats = per_cpu_ptr(p, i);
+-			storage->rx_dropped += local_read(&core_stats->rx_dropped);
+-			storage->tx_dropped += local_read(&core_stats->tx_dropped);
+-			storage->rx_nohandler += local_read(&core_stats->rx_nohandler);
++			storage->rx_dropped += core_stats->rx_dropped;
++			storage->tx_dropped += core_stats->tx_dropped;
++			storage->rx_nohandler += core_stats->rx_nohandler;
+ 		}
+ 	}
+ 	return storage;
