@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Wed, 20 Apr 2022 01:52:30 +0206
-Subject: [PATCH 08/15] printk: add con_printk() macro for console details
+Subject: [PATCH 08/18] printk: add con_printk() macro for console details
 
 It is useful to generate log messages that include details about
 the related console. Rather than duplicate the code to assemble
@@ -12,6 +12,7 @@ users.
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20220419234637.357112-9-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/printk/printk.c |   13 +++++++------
  1 file changed, 7 insertions(+), 6 deletions(-)

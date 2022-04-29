@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Wed, 20 Apr 2022 01:52:35 +0206
-Subject: [PATCH 13/15] printk: add kthread console printers
+Subject: [PATCH 13/18] printk: add kthread console printers
 
 Create a kthread for each console to perform console printing. During
 normal operation (@system_state == SYSTEM_RUNNING), the kthread
@@ -42,6 +42,7 @@ is stopped before exit() is called.
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20220419234637.357112-14-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/console.h |    2 
  kernel/printk/printk.c  |  303 ++++++++++++++++++++++++++++++++++++++++++++----

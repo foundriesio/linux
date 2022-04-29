@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Wed, 20 Apr 2022 01:52:34 +0206
-Subject: [PATCH 12/15] printk: add functions to prefer direct printing
+Subject: [PATCH 12/18] printk: add functions to prefer direct printing
 
 Once kthread printing is available, console printing will no longer
 occur in the context of the printk caller. However, there are some
@@ -44,6 +44,7 @@ Reviewed-by: Petr Mladek <pmladek@suse.com>
 Acked-by: Paul E. McKenney <paulmck@kernel.org> # for RCU
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20220419234637.357112-13-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  drivers/tty/sysrq.c     |    2 ++
  include/linux/printk.h  |   11 +++++++++++

@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Wed, 20 Apr 2022 01:52:26 +0206
-Subject: [PATCH 04/15] printk: wake up all waiters
+Subject: [PATCH 04/18] printk: wake up all waiters
 
 There can be multiple tasks waiting for new records. They should
 all be woken. Use wake_up_interruptible_all() instead of
@@ -9,6 +9,7 @@ wake_up_interruptible().
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20220419234637.357112-5-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/printk/printk.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

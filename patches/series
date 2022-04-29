@@ -16,12 +16,11 @@
 0011-printk-add-pr_flush.patch
 0012-printk-add-functions-to-prefer-direct-printing.patch
 0013-printk-add-kthread-console-printers.patch
-0014-printk-extend-console_lock-for-proper-kthread-suppor.patch
+0014-printk-extend-console_lock-for-per-console-locking.patch
 0015-printk-remove-console_locked.patch
-#
-0001-printk-add-infrastucture-for-atomic-consoles.patch
-0002-serial-8250-implement-write_atomic.patch
-0003-printk-avoid-preempt_disable-for-PREEMPT_RT.patch
+0016-printk-add-infrastucture-for-atomic-consoles.patch
+0017-serial-8250-implement-write_atomic.patch
+0018-printk-avoid-preempt_disable-for-PREEMPT_RT.patch
 
 ###########################################################################
 # Posted and applied

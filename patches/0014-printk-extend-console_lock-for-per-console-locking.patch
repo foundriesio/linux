@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
-Date: Wed, 20 Apr 2022 01:52:36 +0206
-Subject: [PATCH 14/15] printk: extend console_lock for proper kthread support
+Date: Mon, 25 Apr 2022 23:04:28 +0206
+Subject: [PATCH 14/18] printk: extend console_lock for per-console locking
 
 Currently threaded console printers synchronize against each
 other using console_lock(). However, different console drivers
@@ -11,33 +11,22 @@ speed.
 
 But the threaded consoles printers do still need to synchronize
 against console_lock() callers. Introduce a per-console mutex
-and a new console flag CON_THD_BLOCKED to provide this
+and a new console boolean field @blocked to provide this
 synchronization.
 
 console_lock() is modified so that it must acquire the mutex
-of each console in order to set the CON_THD_BLOCKED flag.
-Console printing threads will acquire their mutex while
-printing a record. If CON_THD_BLOCKED was set, the thread will
-go back to sleep instead of printing.
+of each console in order to set the @blocked field. Console
+printing threads will acquire their mutex while printing a
+record. If @blocked was set, the thread will go back to sleep
+instead of printing.
 
-The reason for the CON_THD_BLOCKED flag is so that
+The reason for the @blocked boolean field is so that
 console_lock() callers do not need to acquire multiple console
 mutexes simultaneously, which would introduce unnecessary
-complexity due to nested mutex locking.
-
-The per-console mutex is also used to synchronize setting and
-checking the CON_ENABLED flag. A new console_lock() variant is
-introduced, console_lock_single_hold(), that allows acquiring
-@console_sem but only locking (and holding) the mutex of a
-single console. This allows safely enabling and disabling
-consoles without disturbing the other kthread printers. The
-mutex and @console_sem are released with
-console_unlock_single_release().
-
-Console unregistering now uses console_lock_single_hold() to
-stop the kthread. Thus con->thread is now synchronized by
-the per-console mutex. This allows consoles to be unregistered
-without disturbing the other kthread printers.
+complexity due to nested mutex locking. Also, a new field
+was chosen instead of adding a new @flags value so that the
+blocked status could be checked without concern of reading
+inconsistent values due to @flags updates from other contexts.
 
 Threaded console printers also need to synchronize against
 console_trylock() callers. Since console_trylock() may be
@@ -59,7 +48,7 @@ console_lock()
         down(&console_sem);
         for_each_console(con) {
                 mutex_lock(&con->lock);
-                con->flags |= CON_THD_BLOCKED;
+                con->blocked = true;
                 mutex_unlock(&con->lock);
         }
         /* console_lock acquired */
@@ -77,7 +66,7 @@ console_trylock()
 threaded_printer()
 {
         mutex_lock(&con->lock);
-        if (!(con->flags & CON_THD_BLOCKED)) {
+        if (!con->blocked) {
 		/* console_lock() callers blocked */
 
                 if (atomic_inc_unless_negative(&console_kthreads_active)) {
@@ -109,17 +98,16 @@ This means wake_up_klogd() calls following a console_unlock() are
 no longer necessary and are removed.
 
 Also note that threaded printers no longer need to check
-@console_suspended. The check for the CON_THD_BLOCKED flag
-implicitly covers the suspended console case.
+@console_suspended. The check for the @blocked field implicitly
+covers the suspended console case.
 
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
-Reported-by: kernel test robot <lkp@intel.com>
+Reviewed-by: Petr Mladek <pmladek@suse.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.de
 ---
  include/linux/console.h |   15 ++
- kernel/printk/printk.c  |  295 ++++++++++++++++++++++++++++++++++++------------
- 2 files changed, 242 insertions(+), 68 deletions(-)
+ kernel/printk/printk.c  |  261 +++++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 220 insertions(+), 56 deletions(-)
 
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
@@ -131,23 +119,17 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  
  struct vc_data;
  struct console_font_op;
-@@ -136,6 +137,7 @@ static inline int con_debug_leave(void)
- #define CON_ANYTIME	(16) /* Safe to call when cpu is offline */
- #define CON_BRL		(32) /* Used for a braille device */
- #define CON_EXTENDED	(64) /* Use the extended output format a la /dev/kmsg */
-+#define CON_THD_BLOCKED	(128) /* Thread blocked because console is locked */
- 
- struct console {
- 	char	name[16];
-@@ -155,6 +157,19 @@ struct console {
+@@ -154,6 +155,20 @@ struct console {
+ 	u64	seq;
  	unsigned long dropped;
  	struct task_struct *thread;
- 
++	bool	blocked;
++
 +	/*
 +	 * The per-console lock is used by printing kthreads to synchronize
 +	 * this console with callers of console_lock(). This is necessary in
 +	 * order to allow printing kthreads to run in parallel to each other,
-+	 * while each safely accessing their own @flags and synchronizing
++	 * while each safely accessing the @blocked field and synchronizing
 +	 * against direct printing via console_lock/console_unlock.
 +	 *
 +	 * Note: For synchronizing against direct printing via
@@ -155,10 +137,9 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
 +	 *       variable @console_kthreads_active.
 +	 */
 +	struct mutex lock;
-+
+ 
  	void	*data;
  	struct	 console *next;
- };
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
 @@ -224,6 +224,33 @@ int devkmsg_sysctl_set_loglvl(struct ctl
@@ -201,7 +182,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  /*
 + * Tracks whether kthread printers are all blocked. A value of true implies
 + * that the console is locked via console_lock() or the console is suspended.
-+ * Reading and writing to this variable requires holding @console_sem.
++ * Writing to this variable requires holding @console_sem.
 + */
 +static bool console_kthreads_blocked;
 +
@@ -216,7 +197,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
 +
 +	for_each_console(con) {
 +		mutex_lock(&con->lock);
-+		con->flags |= CON_THD_BLOCKED;
++		con->blocked = true;
 +		mutex_unlock(&con->lock);
 +	}
 +
@@ -234,7 +215,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
 +
 +	for_each_console(con) {
 +		mutex_lock(&con->lock);
-+		con->flags &= ~CON_THD_BLOCKED;
++		con->blocked = false;
 +		mutex_unlock(&con->lock);
 +	}
 +
@@ -259,7 +240,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  	pr_flush(1000, true);
  }
  
-@@ -2603,9 +2666,10 @@ static int console_cpu_notify(unsigned i
+@@ -2603,9 +2666,14 @@ static int console_cpu_notify(unsigned i
  		/* If trylock fails, someone else is doing the printing */
  		if (console_trylock())
  			console_unlock();
@@ -267,13 +248,17 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
 -		/* Wake kthread printers. Some may have become usable. */
 -		wake_up_klogd();
 +		else {
-+			/* Some kthread printers may have become usable. */
++			/*
++			 * If a new CPU comes online, the conditions for
++			 * printer_should_wake() may have changed for some
++			 * kthread printer with !CON_ANYTIME.
++			 */
 +			wake_up_klogd();
 +		}
  	}
  	return 0;
  }
-@@ -2625,11 +2689,33 @@ void console_lock(void)
+@@ -2625,6 +2693,7 @@ void console_lock(void)
  	down_console_sem();
  	if (console_suspended)
  		return;
@@ -281,33 +266,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  	console_locked = 1;
  	console_may_schedule = 1;
  }
- EXPORT_SYMBOL(console_lock);
- 
-+/*
-+ * Lock the console_lock, but rather than blocking all the kthread printers,
-+ * lock a specified kthread printer and hold the lock. This is useful if
-+ * console flags for a particular console need to be updated.
-+ */
-+static void console_lock_single_hold(struct console *con)
-+{
-+	might_sleep();
-+	down_console_sem();
-+	mutex_lock(&con->lock);
-+	console_locked = 1;
-+	console_may_schedule = 1;
-+}
-+
-+static void console_unlock_single_release(struct console *con)
-+{
-+	console_locked = 0;
-+	mutex_unlock(&con->lock);
-+	up_console_sem();
-+}
-+
- /**
-  * console_trylock - try to lock the console system for exclusive use.
-  *
-@@ -2646,6 +2732,10 @@ int console_trylock(void)
+@@ -2646,6 +2715,10 @@ int console_trylock(void)
  		up_console_sem();
  		return 0;
  	}
@@ -318,7 +277,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  	console_locked = 1;
  	console_may_schedule = 0;
  	return 1;
-@@ -2654,7 +2744,7 @@ EXPORT_SYMBOL(console_trylock);
+@@ -2654,7 +2727,7 @@ EXPORT_SYMBOL(console_trylock);
  
  int is_console_locked(void)
  {
@@ -327,16 +286,16 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  }
  EXPORT_SYMBOL(is_console_locked);
  
-@@ -2698,7 +2788,7 @@ static inline bool __console_is_usable(s
+@@ -2698,7 +2771,7 @@ static inline bool __console_is_usable(s
   * Check if the given console is currently capable and allowed to print
   * records.
   *
 - * Requires the console_lock.
-+ * Requires holding the console_lock or con->lock.
++ * Requires holding the console_lock.
   */
  static inline bool console_is_usable(struct console *con)
  {
-@@ -2711,6 +2801,22 @@ static inline bool console_is_usable(str
+@@ -2711,6 +2784,22 @@ static inline bool console_is_usable(str
  static void __console_unlock(void)
  {
  	console_locked = 0;
@@ -359,7 +318,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  	up_console_sem();
  }
  
-@@ -2728,17 +2834,18 @@ static void __console_unlock(void)
+@@ -2728,17 +2817,19 @@ static void __console_unlock(void)
   *
   * @handover will be set to true if a printk waiter has taken over the
   * console_lock, in which case the caller is no longer holding the
@@ -372,6 +331,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
   *
 - * Requires the console_lock.
 + * Requires the console_lock if @handover is non-NULL.
++ * Requires con->lock otherwise.
   */
 -static bool console_emit_next_record(struct console *con, char *text, char *ext_text,
 -				     char *dropped_text, bool *handover)
@@ -383,7 +343,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  	struct printk_info info;
  	struct printk_record r;
  	unsigned long flags;
-@@ -2747,7 +2854,8 @@ static bool console_emit_next_record(str
+@@ -2747,7 +2838,8 @@ static bool console_emit_next_record(str
  
  	prb_rec_init_rd(&r, &info, text, CONSOLE_LOG_MAX);
  
@@ -393,7 +353,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  
  	if (!prb_read_valid(prb, con->seq, &r))
  		return false;
-@@ -2755,7 +2863,8 @@ static bool console_emit_next_record(str
+@@ -2755,7 +2847,8 @@ static bool console_emit_next_record(str
  	if (con->seq != r.info->seq) {
  		con->dropped += r.info->seq - con->seq;
  		con->seq = r.info->seq;
@@ -403,7 +363,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  			suppress_panic_printk = 1;
  			pr_warn_once("Too many dropped messages. Suppress messages on non-panic CPUs to prevent livelock.\n");
  		}
-@@ -2777,32 +2886,62 @@ static bool console_emit_next_record(str
+@@ -2777,32 +2870,62 @@ static bool console_emit_next_record(str
  		len = record_print_text(&r, console_msg_format & MSG_FORMAT_SYSLOG, printk_time);
  	}
  
@@ -482,7 +442,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
   * Print out all remaining records to all consoles.
   *
   * @do_cond_resched is set by the caller. It can be true only in schedulable
-@@ -2853,13 +2992,11 @@ static bool console_flush_all(bool do_co
+@@ -2853,13 +2976,11 @@ static bool console_flush_all(bool do_co
  
  			if (con->flags & CON_EXTENDED) {
  				/* Extended consoles do not print "dropped messages". */
@@ -500,7 +460,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  			}
  			if (*handover)
  				return false;
-@@ -2974,6 +3111,10 @@ void console_unblank(void)
+@@ -2974,6 +3095,10 @@ void console_unblank(void)
  	if (oops_in_progress) {
  		if (down_trylock_console_sem() != 0)
  			return;
@@ -511,80 +471,27 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  	} else
  		console_lock();
  
-@@ -3045,21 +3186,20 @@ struct tty_driver *console_device(int *i
- void console_stop(struct console *console)
- {
- 	__pr_flush(console, 1000, true);
--	console_lock();
-+	console_lock_single_hold(console);
- 	console->flags &= ~CON_ENABLED;
--	console_unlock();
-+	console_unlock_single_release(console);
- }
- EXPORT_SYMBOL(console_stop);
- 
-+
- void console_start(struct console *console)
- {
--	console_lock();
-+	console_lock_single_hold(console);
+@@ -3056,10 +3181,6 @@ void console_start(struct console *conso
+ 	console_lock();
  	console->flags |= CON_ENABLED;
--	console_unlock();
+ 	console_unlock();
 -
-+	console_unlock_single_release(console);
- 	/* Wake the newly enabled kthread printer. */
- 	wake_up_klogd();
+-	/* Wake the newly enabled kthread printer. */
+-	wake_up_klogd();
 -
  	__pr_flush(console, 1000, true);
  }
  EXPORT_SYMBOL(console_start);
-@@ -3261,6 +3401,8 @@ void register_console(struct console *ne
+@@ -3261,6 +3382,8 @@ void register_console(struct console *ne
  
  	newcon->dropped = 0;
  	newcon->thread = NULL;
-+	newcon->flags |= CON_THD_BLOCKED;
++	newcon->blocked = true;
 +	mutex_init(&newcon->lock);
  
  	if (newcon->flags & CON_PRINTBUFFER) {
  		/* Get a consistent copy of @syslog_seq. */
-@@ -3314,7 +3456,7 @@ int unregister_console(struct console *c
- 		return 0;
- 
- 	res = -ENODEV;
--	console_lock();
-+	console_lock_single_hold(console);
- 	if (console_drivers == console) {
- 		console_drivers=console->next;
- 		res = 0;
-@@ -3344,14 +3486,14 @@ int unregister_console(struct console *c
- 	console->flags &= ~CON_ENABLED;
- 
- 	/*
--	 * console->thread can only be cleared under the console lock. But
--	 * stopping the thread must be done without the console lock. The
--	 * task that clears @thread is the task that stops the kthread.
-+	 * console->thread can only be cleared while holding con->lock. But
-+	 * stopping the thread must be done without con->lock. The task that
-+	 * clears @thread is the task that stops the kthread.
- 	 */
- 	thd = console->thread;
- 	console->thread = NULL;
- 
--	console_unlock();
-+	console_unlock_single_release(console);
- 
- 	if (thd)
- 		kthread_stop(thd);
-@@ -3365,7 +3507,7 @@ int unregister_console(struct console *c
- 
- out_disable_unlock:
- 	console->flags &= ~CON_ENABLED;
--	console_unlock();
-+	console_unlock_single_release(console);
- 
- 	return res;
- }
-@@ -3561,6 +3703,19 @@ static void printk_fallback_preferred_di
+@@ -3561,6 +3684,19 @@ static void printk_fallback_preferred_di
  	console_unlock();
  }
  
@@ -604,29 +511,19 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  static bool printer_should_wake(struct console *con, u64 seq)
  {
  	short flags;
-@@ -3568,9 +3723,6 @@ static bool printer_should_wake(struct c
+@@ -3568,8 +3704,10 @@ static bool printer_should_wake(struct c
  	if (kthread_should_stop() || !printk_kthreads_available)
  		return true;
  
 -	if (console_suspended)
--		return false;
--
++	if (con->blocked ||
++	    console_kthreads_atomically_blocked()) {
+ 		return false;
++	}
+ 
  	/*
  	 * This is an unsafe read from con->flags, but a false positive is
- 	 * not a problem. Worst case it would allow the printer to wake up
-@@ -3582,6 +3734,11 @@ static bool printer_should_wake(struct c
- 	if (!__console_is_usable(flags))
- 		return false;
- 
-+	if ((flags & CON_THD_BLOCKED) ||
-+	    console_kthreads_atomically_blocked()) {
-+		return false;
-+	}
-+
- 	return prb_read_valid(prb, seq, NULL);
- }
- 
-@@ -3590,7 +3747,6 @@ static int printk_kthread_func(void *dat
+@@ -3590,7 +3728,6 @@ static int printk_kthread_func(void *dat
  	struct console *con = data;
  	char *dropped_text = NULL;
  	char *ext_text = NULL;
@@ -634,7 +531,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  	u64 seq = 0;
  	char *text;
  	int error;
-@@ -3640,15 +3796,18 @@ static int printk_kthread_func(void *dat
+@@ -3640,15 +3777,27 @@ static int printk_kthread_func(void *dat
  		if (error)
  			continue;
  
@@ -645,20 +542,29 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  
 -		if (console_suspended) {
 -			up_console_sem();
-+		if (!console_is_usable(con)) {
++		if (con->blocked ||
++		    !console_kthread_printing_tryenter()) {
++			/* Another context has locked the console_lock. */
 +			mutex_unlock(&con->lock);
  			continue;
  		}
  
 -		if (!console_is_usable(con)) {
 -			__console_unlock();
-+		if ((con->flags & CON_THD_BLOCKED) ||
-+		    !console_kthread_printing_tryenter()) {
++		/*
++		 * Although this context has not locked the console_lock, it
++		 * is known that the console_lock is not locked and it is not
++		 * possible for any other context to lock the console_lock.
++		 * Therefore it is safe to read con->flags.
++		 */
++
++		if (!__console_is_usable(con->flags)) {
++			console_kthread_printing_exit();
 +			mutex_unlock(&con->lock);
  			continue;
  		}
  
-@@ -3661,13 +3820,13 @@ static int printk_kthread_func(void *dat
+@@ -3661,13 +3810,13 @@ static int printk_kthread_func(void *dat
  		 * which can conditionally invoke cond_resched().
  		 */
  		console_may_schedule = 0;
@@ -676,20 +582,3 @@ Link: https://lore.kernel.org/r/20220419234637.357112-15-john.ogness@linutronix.
  	}
  
  	con_printk(KERN_INFO, con, "printing thread stopped\n");
-@@ -3676,14 +3835,14 @@ static int printk_kthread_func(void *dat
- 	kfree(ext_text);
- 	kfree(text);
- 
--	console_lock();
-+	mutex_lock(&con->lock);
- 	/*
- 	 * If this kthread is being stopped by another task, con->thread will
- 	 * already be NULL. That is fine. The important thing is that it is
- 	 * NULL after the kthread exits.
- 	 */
- 	con->thread = NULL;
--	console_unlock();
-+	mutex_unlock(&con->lock);
- 
- 	return 0;
- }

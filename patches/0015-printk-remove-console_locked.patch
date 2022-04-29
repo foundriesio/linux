@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Wed, 20 Apr 2022 01:52:37 +0206
-Subject: [PATCH 15/15] printk: remove @console_locked
+Subject: [PATCH 15/18] printk: remove @console_locked
 
 The static global variable @console_locked is used to help debug
 VT code to make sure that certain code paths are running with
@@ -16,9 +16,10 @@ Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Reviewed-by: Petr Mladek <pmladek@suse.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20220419234637.357112-16-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- kernel/printk/printk.c |   31 ++++++++++++++-----------------
- 1 file changed, 14 insertions(+), 17 deletions(-)
+ kernel/printk/printk.c |   29 ++++++++++++++---------------
+ 1 file changed, 14 insertions(+), 15 deletions(-)
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
@@ -39,7 +40,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-16-john.ogness@linutronix.
  
  /*
   *	Array of consoles built from command line options (console=)
-@@ -2690,7 +2682,6 @@ void console_lock(void)
+@@ -2694,7 +2686,6 @@ void console_lock(void)
  	if (console_suspended)
  		return;
  	console_kthreads_block();
@@ -47,21 +48,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-16-john.ogness@linutronix.
  	console_may_schedule = 1;
  }
  EXPORT_SYMBOL(console_lock);
-@@ -2705,13 +2696,11 @@ static void console_lock_single_hold(str
- 	might_sleep();
- 	down_console_sem();
- 	mutex_lock(&con->lock);
--	console_locked = 1;
- 	console_may_schedule = 1;
- }
- 
- static void console_unlock_single_release(struct console *con)
- {
--	console_locked = 0;
- 	mutex_unlock(&con->lock);
- 	up_console_sem();
- }
-@@ -2736,15 +2725,26 @@ int console_trylock(void)
+@@ -2719,15 +2710,26 @@ int console_trylock(void)
  		up_console_sem();
  		return 0;
  	}
@@ -90,7 +77,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-16-john.ogness@linutronix.
  }
  EXPORT_SYMBOL(is_console_locked);
  
-@@ -2800,8 +2800,6 @@ static inline bool console_is_usable(str
+@@ -2783,8 +2785,6 @@ static inline bool console_is_usable(str
  
  static void __console_unlock(void)
  {
@@ -99,7 +86,7 @@ Link: https://lore.kernel.org/r/20220419234637.357112-16-john.ogness@linutronix.
  	/*
  	 * Depending on whether console_lock() or console_trylock() was used,
  	 * appropriately allow the kthread printers to continue.
-@@ -3118,7 +3116,6 @@ void console_unblank(void)
+@@ -3102,7 +3102,6 @@ void console_unblank(void)
  	} else
  		console_lock();
  

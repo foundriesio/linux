@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Wed, 20 Apr 2022 01:52:25 +0206
-Subject: [PATCH 03/15] printk: add missing memory barrier to wake_up_klogd()
+Subject: [PATCH 03/18] printk: add missing memory barrier to wake_up_klogd()
 
 It is important that any new records are visible to preparing
 waiters before the waker checks if the wait queue is empty.
@@ -19,6 +19,7 @@ includes the necessary full memory barrier.
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20220419234637.357112-4-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/printk/printk.c |   39 ++++++++++++++++++++++++++++++++++++---
  1 file changed, 36 insertions(+), 3 deletions(-)

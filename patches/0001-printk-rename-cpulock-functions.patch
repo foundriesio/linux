@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Wed, 20 Apr 2022 01:52:23 +0206
-Subject: [PATCH 01/15] printk: rename cpulock functions
+Subject: [PATCH 01/18] printk: rename cpulock functions
 
 Since the printk cpulock is CPU-reentrant and since it is used
 in all contexts, its usage must be carefully considered and
@@ -18,6 +18,7 @@ Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Reviewed-by: Petr Mladek <pmladek@suse.com>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20220419234637.357112-2-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/printk.h |   54 ++++++++++++++++++++++---------------
  kernel/printk/printk.c |   71 ++++++++++++++++++++++++-------------------------

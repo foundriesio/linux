@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Wed, 20 Apr 2022 01:52:31 +0206
-Subject: [PATCH 09/15] printk: refactor and rework printing logic
+Subject: [PATCH 09/18] printk: refactor and rework printing logic
 
 Refactor/rework printing logic in order to prepare for moving to
 threaded console printing.
@@ -28,6 +28,7 @@ newly added console is still replaying.
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20220419234637.357112-10-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/console.h |    2 
  kernel/printk/printk.c  |  441 ++++++++++++++++++++++++------------------------

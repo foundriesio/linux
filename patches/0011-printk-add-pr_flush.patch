@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Wed, 20 Apr 2022 01:52:33 +0206
-Subject: [PATCH 11/15] printk: add pr_flush()
+Subject: [PATCH 11/18] printk: add pr_flush()
 
 Provide a might-sleep function to allow waiting for console printers
 to catch up to the latest logged message.
@@ -12,6 +12,7 @@ console_stop(), console_start(), console_unblank().
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20220419234637.357112-12-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/printk.h |    7 ++++
  kernel/printk/printk.c |   83 +++++++++++++++++++++++++++++++++++++++++++++++++

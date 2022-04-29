@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Fri, 4 Feb 2022 16:01:17 +0106
-Subject: [PATCH 1/3] printk: add infrastucture for atomic consoles
+Subject: [PATCH 16/18] printk: add infrastucture for atomic consoles
 
 Many times it is not possible to see the console output on
 panic because printing threads cannot be scheduled and/or the
@@ -28,14 +28,14 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  include/linux/console.h |   16 ++
  init/Kconfig            |    4 
  kernel/panic.c          |    6 
- kernel/printk/printk.c  |  297 +++++++++++++++++++++++++++++++++++++++++++-----
- 4 files changed, 293 insertions(+), 30 deletions(-)
+ kernel/printk/printk.c  |  293 +++++++++++++++++++++++++++++++++++++++++++-----
+ 4 files changed, 290 insertions(+), 29 deletions(-)
 
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
-@@ -139,9 +139,19 @@ static inline int con_debug_leave(void)
+@@ -138,9 +138,19 @@ static inline int con_debug_leave(void)
+ #define CON_BRL		(32) /* Used for a braille device */
  #define CON_EXTENDED	(64) /* Use the extended output format a la /dev/kmsg */
- #define CON_THD_BLOCKED	(128) /* Thread blocked because console is locked */
  
 +#ifdef CONFIG_HAVE_ATOMIC_CONSOLE
 +struct console_atomic_data {
@@ -53,7 +53,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int	(*read)(struct console *, char *, unsigned);
  	struct tty_driver *(*device)(struct console *, int *);
  	void	(*unblank)(void);
-@@ -154,7 +164,10 @@ struct console {
+@@ -153,7 +163,10 @@ struct console {
  	uint	ispeed;
  	uint	ospeed;
  	u64	seq;
@@ -63,8 +63,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	struct console_atomic_data *atomic_data;
 +#endif
  	struct task_struct *thread;
+ 	bool	blocked;
  
- 	/*
 @@ -184,6 +197,7 @@ extern int console_set_on_cmdline;
  extern struct console *early_console;
  
@@ -250,9 +250,9 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  }
  static bool suppress_message_printing(int level) { return false; }
-@@ -2790,10 +2872,20 @@ static inline bool __console_is_usable(s
+@@ -2775,10 +2857,20 @@ static inline bool __console_is_usable(s
   *
-  * Requires holding the console_lock or con->lock.
+  * Requires holding the console_lock.
   */
 -static inline bool console_is_usable(struct console *con)
 +static inline bool console_is_usable(struct console *con, bool atomic_printing)
@@ -265,15 +265,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		if (!con->atomic_data)
 +			return false;
 +#else
- 		return false;
++		return false;
 +#endif
 +	} else if (!con->write) {
-+		return false;
+ 		return false;
 +	}
  
  	return __console_is_usable(con->flags);
  }
-@@ -2818,6 +2910,66 @@ static void __console_unlock(void)
+@@ -2803,6 +2895,66 @@ static void __console_unlock(void)
  	up_console_sem();
  }
  
@@ -340,7 +340,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Print one record for the given console. The record printed is whatever
   * record is the next available record for the given console.
-@@ -2830,6 +2982,8 @@ static void __console_unlock(void)
+@@ -2815,6 +2967,8 @@ static void __console_unlock(void)
   * If dropped messages should be printed, @dropped_text is a buffer of size
   * DROPPED_TEXT_MAX. Otherwise @dropped_text must be NULL.
   *
@@ -349,8 +349,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * @handover will be set to true if a printk waiter has taken over the
   * console_lock, in which case the caller is no longer holding the
   * console_lock. Otherwise it is set to false. A NULL pointer may be provided
-@@ -2841,7 +2995,8 @@ static void __console_unlock(void)
-  * Requires the console_lock if @handover is non-NULL.
+@@ -2827,7 +2981,8 @@ static void __console_unlock(void)
+  * Requires con->lock otherwise.
   */
  static bool __console_emit_next_record(struct console *con, char *text, char *ext_text,
 -				       char *dropped_text, bool *handover)
@@ -359,7 +359,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  {
  	static atomic_t panic_console_dropped = ATOMIC_INIT(0);
  	struct printk_info info;
-@@ -2849,18 +3004,22 @@ static bool __console_emit_next_record(s
+@@ -2835,18 +2990,22 @@ static bool __console_emit_next_record(s
  	unsigned long flags;
  	char *write_text;
  	size_t len;
@@ -386,7 +386,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (panic_in_progress() &&
  		    atomic_fetch_inc_relaxed(&panic_console_dropped) > 10) {
  			suppress_panic_printk = 1;
-@@ -2870,7 +3029,7 @@ static bool __console_emit_next_record(s
+@@ -2856,7 +3015,7 @@ static bool __console_emit_next_record(s
  
  	/* Skip record that has level above the console loglevel. */
  	if (suppress_message_printing(r.info->level)) {
@@ -395,7 +395,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		goto skip;
  	}
  
-@@ -2902,9 +3061,9 @@ static bool __console_emit_next_record(s
+@@ -2888,9 +3047,9 @@ static bool __console_emit_next_record(s
  		stop_critical_timings();
  	}
  
@@ -407,7 +407,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (handover) {
  		start_critical_timings();
-@@ -2936,7 +3095,7 @@ static bool console_emit_next_record_tra
+@@ -2922,7 +3081,7 @@ static bool console_emit_next_record_tra
  		handover = NULL;
  	}
  
@@ -416,7 +416,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  /*
-@@ -2984,7 +3143,7 @@ static bool console_flush_all(bool do_co
+@@ -2970,7 +3129,7 @@ static bool console_flush_all(bool do_co
  		for_each_console(con) {
  			bool progress;
  
@@ -425,17 +425,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				continue;
  			any_usable = true;
  
-@@ -3019,6 +3178,70 @@ static bool console_flush_all(bool do_co
+@@ -3005,6 +3164,68 @@ static bool console_flush_all(bool do_co
  	return any_usable;
  }
  
-+#ifdef CONFIG_HAVE_ATOMIC_CONSOLE
++#if defined(CONFIG_HAVE_ATOMIC_CONSOLE) && defined(CONFIG_PRINTK)
 +static bool console_emit_next_record(struct console *con, char *text, char *ext_text,
 +				     char *dropped_text, bool atomic_printing);
 +
 +static void atomic_console_flush_all(void)
 +{
-+	bool any_usable = false;
 +	unsigned long flags;
 +	struct console *con;
 +	bool any_progress;
@@ -459,7 +458,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +
 +			if (!console_is_usable(con, true))
 +				continue;
-+			any_usable = true;
 +
 +			if (con->flags & CON_EXTENDED) {
 +				/* Extended consoles do not print "dropped messages". */
@@ -489,14 +487,14 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +
 +	printk_cpu_sync_put_irqrestore(flags);
 +}
-+#else /* CONFIG_HAVE_ATOMIC_CONSOLE */
++#else /* CONFIG_HAVE_ATOMIC_CONSOLE && CONFIG_PRINTK */
 +#define atomic_console_flush_all()
 +#endif
 +
  /**
   * console_unlock - unlock the console system
   *
-@@ -3134,6 +3357,11 @@ void console_unblank(void)
+@@ -3120,6 +3341,11 @@ void console_unblank(void)
   */
  void console_flush_on_panic(enum con_flush_mode mode)
  {
@@ -508,7 +506,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * If someone else is holding the console lock, trylock will fail
  	 * and may_schedule may be set.  Ignore and proceed to unlock so
-@@ -3150,7 +3378,7 @@ void console_flush_on_panic(enum con_flu
+@@ -3136,7 +3362,7 @@ void console_flush_on_panic(enum con_flu
  
  		seq = prb_first_valid_seq(prb);
  		for_each_console(c)
@@ -517,14 +515,14 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	console_unlock();
  }
-@@ -3396,19 +3624,22 @@ void register_console(struct console *ne
+@@ -3379,19 +3605,22 @@ void register_console(struct console *ne
  	if (newcon->flags & CON_EXTENDED)
  		nr_ext_console_drivers++;
  
 -	newcon->dropped = 0;
 +	atomic_long_set(&newcon->dropped, 0);
  	newcon->thread = NULL;
- 	newcon->flags |= CON_THD_BLOCKED;
+ 	newcon->blocked = true;
  	mutex_init(&newcon->lock);
 +#ifdef CONFIG_HAVE_ATOMIC_CONSOLE
 +	newcon->atomic_data = NULL;
@@ -543,7 +541,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	if (printk_kthreads_available)
-@@ -3497,6 +3728,10 @@ int unregister_console(struct console *c
+@@ -3480,6 +3709,10 @@ int unregister_console(struct console *c
  
  	console_sysfs_notify();
  
@@ -554,7 +552,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (console->exit)
  		res = console->exit(console);
  
-@@ -3626,7 +3861,7 @@ static bool __pr_flush(struct console *c
+@@ -3609,7 +3842,7 @@ static bool __pr_flush(struct console *c
  		for_each_console(c) {
  			if (con && con != c)
  				continue;
@@ -563,7 +561,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				continue;
  			printk_seq = c->seq;
  			if (printk_seq < seq)
-@@ -3708,9 +3943,10 @@ static void printk_fallback_preferred_di
+@@ -3691,9 +3924,10 @@ static void printk_fallback_preferred_di
   * See __console_emit_next_record() for argument and return details.
   */
  static bool console_emit_next_record(struct console *con, char *text, char *ext_text,
@@ -576,7 +574,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  static bool printer_should_wake(struct console *con, u64 seq)
-@@ -3748,6 +3984,11 @@ static int printk_kthread_func(void *dat
+@@ -3731,6 +3965,11 @@ static int printk_kthread_func(void *dat
  	char *text;
  	int error;
  
@@ -588,16 +586,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	text = kmalloc(CONSOLE_LOG_MAX, GFP_KERNEL);
  	if (!text) {
  		con_printk(KERN_ERR, con, "failed to allocate text buffer\n");
-@@ -3797,7 +4038,7 @@ static int printk_kthread_func(void *dat
- 		if (error)
- 			continue;
- 
--		if (!console_is_usable(con)) {
-+		if (!console_is_usable(con, false)) {
- 			mutex_unlock(&con->lock);
- 			continue;
- 		}
-@@ -3817,7 +4058,7 @@ static int printk_kthread_func(void *dat
+@@ -3809,7 +4048,7 @@ static int printk_kthread_func(void *dat
  		 * which can conditionally invoke cond_resched().
  		 */
  		console_may_schedule = 0;

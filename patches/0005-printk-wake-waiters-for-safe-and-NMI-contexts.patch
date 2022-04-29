@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Wed, 20 Apr 2022 01:52:27 +0206
-Subject: [PATCH 05/15] printk: wake waiters for safe and NMI contexts
+Subject: [PATCH 05/18] printk: wake waiters for safe and NMI contexts
 
 When printk() is called from safe or NMI contexts, it will directly
 store the record (vprintk_store()) and then defer the console output.
@@ -14,6 +14,7 @@ Fixes: 03fc7f9c99c1 ("printk/nmi: Prevent deadlock when accessing the main log b
 Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/20220419234637.357112-6-john.ogness@linutronix.de
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  kernel/printk/printk.c |   28 ++++++++++++++++------------
  1 file changed, 16 insertions(+), 12 deletions(-)
