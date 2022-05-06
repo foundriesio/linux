@@ -23,7 +23,7 @@ Link: https://lore.kernel.org/r/20220413133024.249118058@linutronix.de
 
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -2364,4 +2364,6 @@ static inline void sched_core_free(struc
+@@ -2362,4 +2362,6 @@ static inline void sched_core_free(struc
  static inline void sched_core_fork(struct task_struct *p) { }
  #endif
  

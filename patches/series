@@ -28,7 +28,7 @@
 
 # in -tip or traveling to -tip.
 lib-irq_poll-Prevent-softirq-pending-leak-in-irq_pol.patch
-signal_x86__Delay_calling_signals_in_atomic.patch
+# signal_x86__Delay_calling_signals_in_atomic.patch
 
 # v5, fixed 3/3 of smp: Make softirq handling RT friendly
 0001-sched-Fix-missing-prototype-warnings.patch
@@ -38,34 +38,41 @@ signal_x86__Delay_calling_signals_in_atomic.patch
 ###########################################################################
 # Posted
 ###########################################################################
-ptrace-fix-ptrace-vs-tasklist_lock-race-on-PREEMPT_R.patch
 rcu-tasks-Use-rcuwait-for-the-rcu_tasks_kthread.patch
 rcu-tasks-Use-schedule_hrtimeout_range-while-waiting.patch
+blk-mq-Don-t-disable-preemption-around-__blk_mq_run_.patch
+mm-vmalloc-Use-raw_cpu_ptr-for-vmap_block_queue-acce.patch
+SUNRPC-Don-t-disable-preemption-while-calling-svc_po.patch
+0001-scsi-fcoe-Add-a-local_lock-to-fcoe_percpu.patch
+0002-scsi-fcoe-Use-per-CPU-API-to-update-per-CPU-statisti.patch
+0003-scsi-libfc-Remove-get_cpu-semantics-in-fc_exch_em_al.patch
+0004-scsi-bnx2fc-Avoid-using-get_cpu-in-bnx2fc_cmd_alloc.patch
+
+# Eric's ptrace, v4
+0001-signal-Rename-send_signal-send_signal_locked.patch
+0002-signal-Replace-__group_send_sig_info-with-send_signa.patch
+0003-ptrace-um-Replace-PT_DTRACE-with-TIF_SINGLESTEP.patch
+0004-ptrace-xtensa-Replace-PT_SINGLESTEP-with-TIF_SINGLES.patch
+0005-ptrace-Remove-arch_ptrace_attach.patch
+0006-signal-Use-lockdep_assert_held-instead-of-assert_spi.patch
+0007-ptrace-Reimplement-PTRACE_KILL-by-always-sending-SIG.patch
+0008-ptrace-Document-that-wait_task_inactive-can-t-fail.patch
+0009-ptrace-Admit-ptrace_stop-can-generate-spuriuos-SIGTR.patch
+0010-ptrace-Don-t-change-__state.patch
+0011-ptrace-Always-take-siglock-in-ptrace_resume.patch
+0012-sched-signal-ptrace-Rework-TASK_TRACED-TASK_STOPPED-.patch
+# Hacks to get it to work.
+signal__Revert_ptrace_preempt_magic.patch
+sched-Consider-task_struct-saved_state-in-wait_task_.patch
 
 ###########################################################################
 # Post
 ###########################################################################
 
 ###########################################################################
-# sched:
-###########################################################################
-# cpu-light
-kernel_sched__add_putget_cpu_light.patch
-block_mq__do_not_invoke_preempt_disable.patch
-scsi_fcoe__Make_RT_aware..patch
-mm_vmalloc__Another_preempt_disable_region_which_sucks.patch
-sunrpc__Make_svc_xprt_do_enqueue_use_get_cpu_light.patch
-crypto__cryptd_-_add_a_lock_instead_preempt_disable_local_bh_disable.patch
-
-###########################################################################
 # softirq:
 ###########################################################################
 softirq__Check_preemption_after_reenabling_interrupts.patch
-
-###########################################################################
-# ptrace: Revisit
-###########################################################################
-signal__Revert_ptrace_preempt_magic.patch
 
 ###########################################################################
 # fs: The namespace part needs a proper fix
@@ -87,6 +94,7 @@ tpm_tis__fix_stall_after_iowrites.patch
 drivers_block_zram__Replace_bit_spinlocks_with_rtmutex_for_-rt.patch
 generic-softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch
 softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch
+crypto-cryptd-Protect-per-CPU-resource-by-disabling-.patch
 
 ###########################################################################
 # DRM:
@@ -117,11 +125,10 @@ arch_arm64__Add_lazy_preempt_support.patch
 ###########################################################################
 jump-label__disable_if_stop_machine_is_used.patch
 ARM__enable_irq_in_translation_section_permission_fault_handlers.patch
-KVM__arm_arm64__downgrade_preempt_disabled_region_to_migrate_disable.patch
 arm64-mm-Make-arch_faults_on_old_pte-check-for-migra.patch
 arm64-sve-Delay-freeing-memory-in-fpsimd_flush_threa.patch
 arm64-sve-Make-kernel-FPU-protection-RT-friendly.patch
-arm64-signal-Use-ARCH_RT_DELAYS_SIGNAL_SEND.patch
+# arm64-signal-Use-ARCH_RT_DELAYS_SIGNAL_SEND.patch
 tty_serial_omap__Make_the_locking_RT_aware.patch
 tty_serial_pl011__Make_the_locking_work_on_RT.patch
 ARM__Allow_to_enable_RT.patch
