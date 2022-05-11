@@ -47,6 +47,8 @@ SUNRPC-Don-t-disable-preemption-while-calling-svc_po.patch
 0002-scsi-fcoe-Use-per-CPU-API-to-update-per-CPU-statisti.patch
 0003-scsi-libfc-Remove-get_cpu-semantics-in-fc_exch_em_al.patch
 0004-scsi-bnx2fc-Avoid-using-get_cpu-in-bnx2fc_cmd_alloc.patch
+genirq-irq_sim-Make-the-irq_work-always-run-in-hard-.patch
+genirq-Provide-generic_handle_domain_irq_safe.patch
 
 # Eric's ptrace, v4
 0001-signal-Rename-send_signal-send_signal_locked.patch
@@ -90,11 +92,15 @@ x86__Enable_RT_also_on_32bit.patch
 # For later, not essencial
 ###########################################################################
 softirq-Use-a-dedicated-thread-for-timer-wakeups.patch
+rcutorture-Also-force-sched-priority-to-timersd-on-b.patch
+tick-Fix-timer-storm-since-introduction-of-timersd.patch
 tpm_tis__fix_stall_after_iowrites.patch
 drivers_block_zram__Replace_bit_spinlocks_with_rtmutex_for_-rt.patch
 generic-softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch
 softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch
 crypto-cryptd-Protect-per-CPU-resource-by-disabling-.patch
+iio-adc-stm32-adc-Use-generic_handle_domain_irq.patch
+locking-lockdep-Remove-lockdep_init_map_crosslock.patch
 
 ###########################################################################
 # DRM:
