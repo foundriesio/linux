@@ -26,7 +26,7 @@ Link: https://lore.kernel.org/r/YnQHqx/5+54jd+U+@linutronix.de
 
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
-@@ -2046,14 +2046,14 @@ static void __blk_mq_delay_run_hw_queue(
+@@ -2083,14 +2083,14 @@ static void __blk_mq_delay_run_hw_queue(
  		return;
  
  	if (!async && !(hctx->flags & BLK_MQ_F_BLOCKING)) {

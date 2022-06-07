@@ -26,7 +26,7 @@ Reviewed-by: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
 
 --- a/drivers/gpu/drm/i915/gt/intel_breadcrumbs.c
 +++ b/drivers/gpu/drm/i915/gt/intel_breadcrumbs.c
-@@ -311,10 +311,9 @@ void __intel_breadcrumbs_park(struct int
+@@ -312,10 +312,9 @@ void __intel_breadcrumbs_park(struct int
  	/* Kick the work once more to drain the signalers, and disarm the irq */
  	irq_work_sync(&b->irq_work);
  	while (READ_ONCE(b->irq_armed) && !atomic_read(&b->active)) {

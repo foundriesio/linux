@@ -34,7 +34,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/interrupt.h
 +++ b/include/linux/interrupt.h
-@@ -624,6 +624,7 @@ extern void raise_softirq_irqoff(unsigne
+@@ -606,6 +606,7 @@ extern void raise_softirq_irqoff(unsigne
  extern void raise_softirq(unsigned int nr);
  
  #ifdef CONFIG_PREEMPT_RT
@@ -44,7 +44,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/rcu/rcutorture.c
 +++ b/kernel/rcu/rcutorture.c
-@@ -3294,6 +3294,12 @@ rcu_torture_init(void)
+@@ -3342,6 +3342,12 @@ rcu_torture_init(void)
  				WARN_ON_ONCE(!t);
  				sp.sched_priority = 2;
  				sched_setscheduler_nocheck(t, SCHED_FIFO, &sp);

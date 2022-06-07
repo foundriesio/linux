@@ -40,7 +40,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  int arch_show_interrupts(struct seq_file *p, int prec)
 --- a/arch/powerpc/kernel/irq.c
 +++ b/arch/powerpc/kernel/irq.c
-@@ -689,6 +689,7 @@ static inline void check_stack_overflow(
+@@ -611,6 +611,7 @@ static inline void check_stack_overflow(
  	}
  }
  
@@ -48,7 +48,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static __always_inline void call_do_softirq(const void *sp)
  {
  	/* Temporarily switch r1 to sp, call __do_softirq() then restore r1. */
-@@ -707,6 +708,7 @@ static __always_inline void call_do_soft
+@@ -629,6 +630,7 @@ static __always_inline void call_do_soft
  		   "r11", "r12"
  	);
  }
@@ -56,7 +56,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static __always_inline void call_do_irq(struct pt_regs *regs, void *sp)
  {
-@@ -820,10 +822,12 @@ void *mcheckirq_ctx[NR_CPUS] __read_most
+@@ -747,10 +749,12 @@ void *mcheckirq_ctx[NR_CPUS] __read_most
  void *softirq_ctx[NR_CPUS] __read_mostly;
  void *hardirq_ctx[NR_CPUS] __read_mostly;
  

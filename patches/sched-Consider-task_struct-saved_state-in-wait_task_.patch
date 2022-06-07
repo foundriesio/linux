@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3285,6 +3285,8 @@ unsigned long wait_task_inactive(struct
+@@ -3279,6 +3279,8 @@ unsigned long wait_task_inactive(struct
  	struct rq_flags rf;
  	unsigned long ncsw;
  	struct rq *rq;
@@ -26,7 +26,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	for (;;) {
  		/*
-@@ -3307,8 +3309,22 @@ unsigned long wait_task_inactive(struct
+@@ -3301,8 +3303,22 @@ unsigned long wait_task_inactive(struct
  		 * is actually now running somewhere else!
  		 */
  		while (task_running(rq, p)) {
@@ -51,7 +51,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			cpu_relax();
  		}
  
-@@ -3322,7 +3338,21 @@ unsigned long wait_task_inactive(struct
+@@ -3316,7 +3332,21 @@ unsigned long wait_task_inactive(struct
  		running = task_running(rq, p);
  		queued = task_on_rq_queued(p);
  		ncsw = 0;
@@ -74,7 +74,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  			ncsw = p->nvcsw | LONG_MIN; /* sets MSB */
  		task_rq_unlock(rq, p, &rf);
  
-@@ -3352,7 +3382,7 @@ unsigned long wait_task_inactive(struct
+@@ -3346,7 +3376,7 @@ unsigned long wait_task_inactive(struct
  		 * running right now), it's preempted, and we should
  		 * yield - it could be a while.
  		 */

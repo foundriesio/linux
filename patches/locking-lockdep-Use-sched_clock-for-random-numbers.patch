@@ -1,0 +1,35 @@
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Tue, 17 May 2022 11:16:14 +0200
+Subject: [PATCH] locking/lockdep: Use sched_clock() for random numbers.
+
+Since the rewrote of prandom_u32(), in the commit mentioned below, the
+function uses sleeping locks which extracing random numbers and filling
+the batch.
+This breaks lockdep on PREEMPT_RT because lock_pin_lock() disables
+interrupts while calling __lock_pin_lock(). This can't be moved earlier
+because the main user of the function (rq_pin_lock()) invokes that
+function after disabling interrupts in order to acquire the lock.
+
+The cookie does not require random numbers as its goal is to provide a
+random value in order to notice unexpected "unlock + lock" sites.
+
+Use sched_clock() to provide random numbers.
+
+Fixes: a0103f4d86f88 ("random32: use real rng for non-deterministic randomness")
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lore.kernel.org/r/YoNn3pTkm5+QzE5k@linutronix.de
+---
+ kernel/locking/lockdep.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/kernel/locking/lockdep.c
++++ b/kernel/locking/lockdep.c
+@@ -5432,7 +5432,7 @@ static struct pin_cookie __lock_pin_lock
+ 			 * be guessable and still allows some pin nesting in
+ 			 * our u32 pin_count.
+ 			 */
+-			cookie.val = 1 + (prandom_u32() >> 16);
++			cookie.val = 1 + (sched_clock() & 0xffff);
+ 			hlock->pin_count += cookie.val;
+ 			return cookie;
+ 		}
