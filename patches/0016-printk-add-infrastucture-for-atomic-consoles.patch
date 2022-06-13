@@ -75,7 +75,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  };
 --- a/init/Kconfig
 +++ b/init/Kconfig
-@@ -1565,6 +1565,10 @@ config PRINTK
+@@ -1574,6 +1574,10 @@ config PRINTK
  	  very difficult to diagnose system problems, saying N here is
  	  strongly discouraged.
  

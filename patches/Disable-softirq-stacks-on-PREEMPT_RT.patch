@@ -1,6 +1,6 @@
-From: Thomas Gleixner <tglx@linutronix.de>
-Date: Fri, 24 Sep 2021 17:05:48 +0200
-Subject: [PATCH] */softirq: Disable softirq stacks on PREEMPT_RT
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Mon, 13 Jun 2022 19:04:55 +0200
+Subject: [PATCH] *: Disable softirq stacks on PREEMPT_RT.
 
 PREEMPT_RT preempts softirqs and the current implementation avoids
 do_softirq_own_stack() and only uses __do_softirq().
@@ -8,36 +8,13 @@ do_softirq_own_stack() and only uses __do_softirq().
 Disable the unused softirqs stacks on PREEMPT_RT to safe some memory and
 ensure that do_softirq_own_stack() is not used which is not expected.
 
-[bigeasy: commit description.]
-
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- arch/arm/kernel/irq.c      |    3 ++-
  arch/powerpc/kernel/irq.c  |    4 ++++
  arch/sh/kernel/irq.c       |    2 ++
  arch/sparc/kernel/irq_64.c |    2 ++
- 4 files changed, 10 insertions(+), 1 deletion(-)
+ 3 files changed, 8 insertions(+)
 
---- a/arch/arm/kernel/irq.c
-+++ b/arch/arm/kernel/irq.c
-@@ -70,6 +70,7 @@ static void __init init_irq_stacks(void)
- 	}
- }
- 
-+#ifndef CONFIG_PREEMPT_RT
- static void ____do_softirq(void *arg)
- {
- 	__do_softirq();
-@@ -80,7 +81,7 @@ void do_softirq_own_stack(void)
- 	call_with_stack(____do_softirq, NULL,
- 			__this_cpu_read(irq_stack_ptr));
- }
--
-+#endif
- #endif
- 
- int arch_show_interrupts(struct seq_file *p, int prec)
 --- a/arch/powerpc/kernel/irq.c
 +++ b/arch/powerpc/kernel/irq.c
 @@ -611,6 +611,7 @@ static inline void check_stack_overflow(

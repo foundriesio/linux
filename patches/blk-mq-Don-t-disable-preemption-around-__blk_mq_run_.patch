@@ -20,6 +20,7 @@ __blk_mq_run_hw_queue().
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Link: https://lore.kernel.org/r/YnQHqx/5+54jd+U+@linutronix.de
+Link: https://lore.kernel.org/r/YqISXf6GAQeWqcR+@linutronix.de
 ---
  block/blk-mq.c |    8 ++++----
  1 file changed, 4 insertions(+), 4 deletions(-)

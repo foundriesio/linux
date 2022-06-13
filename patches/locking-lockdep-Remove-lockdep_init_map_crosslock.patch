@@ -10,6 +10,7 @@ Remove lockdep_init_map_crosslock.
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Reviewed-by: Waiman Long <longman@redhat.com>
 Link: https://lore.kernel.org/r/20220311164457.46461-1-bigeasy@linutronix.de
+Link: https://lore.kernel.org/r/YqITgY+2aPITu96z@linutronix.de
 ---
  include/linux/lockdep.h |    1 -
  1 file changed, 1 deletion(-)

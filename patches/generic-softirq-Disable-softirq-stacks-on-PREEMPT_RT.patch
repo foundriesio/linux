@@ -12,6 +12,7 @@ ensure that do_softirq_own_stack() is not used which is not expected.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lkml.kernel.org/r/20220613182746.114115-1-bigeasy@linutronix.de
 ---
  include/asm-generic/softirq_stack.h |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

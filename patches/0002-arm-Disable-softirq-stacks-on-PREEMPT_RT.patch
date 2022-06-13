@@ -1,0 +1,35 @@
+From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Date: Mon, 13 Jun 2022 19:04:55 +0200
+Subject: [PATCH 2/2] arm: Disable softirq stacks on PREEMPT_RT.
+
+PREEMPT_RT preempts softirqs and the current implementation avoids
+do_softirq_own_stack() and only uses __do_softirq().
+
+Disable the unused softirqs stacks on PREEMPT_RT to safe some memory and
+ensure that do_softirq_own_stack() is not used which is not expected.
+
+Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Link: https://lkml.kernel.org/r/20220613182447.112191-3-bigeasy@linutronix.de
+---
+ arch/arm/kernel/irq.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/arch/arm/kernel/irq.c
++++ b/arch/arm/kernel/irq.c
+@@ -70,6 +70,7 @@ static void __init init_irq_stacks(void)
+ 	}
+ }
+ 
++#ifndef CONFIG_PREEMPT_RT
+ static void ____do_softirq(void *arg)
+ {
+ 	__do_softirq();
+@@ -80,7 +81,7 @@ void do_softirq_own_stack(void)
+ 	call_with_stack(____do_softirq, NULL,
+ 			__this_cpu_read(irq_stack_ptr));
+ }
+-
++#endif
+ #endif
+ 
+ int arch_show_interrupts(struct seq_file *p, int prec)
