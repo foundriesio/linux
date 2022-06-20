@@ -18,7 +18,6 @@
 ###########################################################################
 blk-mq-Don-t-disable-preemption-around-__blk_mq_run_.patch
 genirq-Provide-generic_handle_domain_irq_safe.patch
-locking-lockdep-Use-sched_clock-for-random-numbers.patch
 mm-slub-Move-the-stackdepot-related-allocation-out-o.patch
 
 # Hacks to get ptrace to work.
