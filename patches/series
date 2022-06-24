@@ -1,4 +1,5 @@
 # Applied upstream
+mm-kfence-select-random-number-before-taking-raw-loc.patch
 
 ###########################################################################
 # John's printk queue
@@ -10,18 +11,19 @@
 ###########################################################################
 # Posted and applied
 ###########################################################################
+arch-Disable-softirq-stacks-on-PREEMPT_RT.patch
+blk-mq-Don-t-disable-preemption-around-__blk_mq_run_.patch
+mm-slub-Move-the-stackdepot-related-allocation-out-o.patch
 
 # signal_x86__Delay_calling_signals_in_atomic.patch
 
 ###########################################################################
 # Posted
 ###########################################################################
-blk-mq-Don-t-disable-preemption-around-__blk_mq_run_.patch
 genirq-Provide-generic_handle_domain_irq_safe.patch
-mm-slub-Move-the-stackdepot-related-allocation-out-o.patch
 
 # Hacks to get ptrace to work.
-signal__Revert_ptrace_preempt_magic.patch
+signal-Don-t-disable-preemption-in-ptrace_stop-on-PR.patch
 sched-Consider-task_struct-saved_state-in-wait_task_.patch
 
 ###########################################################################
@@ -50,8 +52,6 @@ rcutorture-Also-force-sched-priority-to-timersd-on-b.patch
 tick-Fix-timer-storm-since-introduction-of-timersd.patch
 tpm_tis__fix_stall_after_iowrites.patch
 drivers_block_zram__Replace_bit_spinlocks_with_rtmutex_for_-rt.patch
-generic-softirq-Disable-softirq-stacks-on-PREEMPT_RT.patch
-Disable-softirq-stacks-on-PREEMPT_RT.patch
 iio-adc-stm32-adc-Use-generic_handle_domain_irq.patch
 locking-lockdep-Remove-lockdep_init_map_crosslock.patch
 
@@ -83,7 +83,6 @@ arch_arm64__Add_lazy_preempt_support.patch
 # ARM/ARM64
 ###########################################################################
 0001-arm-Disable-jump-label-on-PREEMPT_RT.patch
-0002-arm-Disable-softirq-stacks-on-PREEMPT_RT.patch
 ARM__enable_irq_in_translation_section_permission_fault_handlers.patch
 # arm64-signal-Use-ARCH_RT_DELAYS_SIGNAL_SEND.patch
 tty_serial_omap__Make_the_locking_RT_aware.patch
