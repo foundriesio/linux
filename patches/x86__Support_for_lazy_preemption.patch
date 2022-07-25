@@ -25,8 +25,8 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	select HAVE_PERF_USER_STACK_DUMP
 +	select HAVE_PREEMPT_LAZY
  	select MMU_GATHER_RCU_TABLE_FREE	if PARAVIRT
+ 	select MMU_GATHER_MERGE_VMAS
  	select HAVE_POSIX_CPU_TIMERS_TASK_WORK
- 	select HAVE_REGS_AND_STACK_ACCESS_API
 --- a/arch/x86/include/asm/preempt.h
 +++ b/arch/x86/include/asm/preempt.h
 @@ -90,17 +90,48 @@ static __always_inline void __preempt_co
