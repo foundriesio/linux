@@ -21,7 +21,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 -	 * skipped and the output can be retrieved from the buffer.
 -	 */
 -	if (IS_ENABLED(CONFIG_PREEMPT_RT)) {
--		up_console_sem();
+-		__console_unlock();
 -		return;
 -	}
 -

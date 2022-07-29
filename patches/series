@@ -13,6 +13,8 @@ blk-mq-Don-t-disable-preemption-around-__blk_mq_run_.patch
 ###########################################################################
 genirq-Provide-generic_handle_domain_irq_safe.patch
 printk-Skip-console-drivers-on-PREEMPT_RT.patch
+0001-lib-vsprintf-Remove-static_branch_likely-from-__ptr_.patch
+0002-lib-vsprintf-Initialize-vsprintf-s-pointer-hash-once.patch
 
 # Hacks to get ptrace to work.
 signal-Don-t-disable-preemption-in-ptrace_stop-on-PR.patch
@@ -21,9 +23,9 @@ sched-Consider-task_struct-saved_state-in-wait_task_.patch
 ###########################################################################
 # fs:
 ###########################################################################
-0001-fs-dcache-Disable-preemption-on-i_dir_seq-write-side.patch
-0002-fs-dcache-Split-__d_lookup_done.patch
-0003-fs-dcache-Use-__d_lookup_unhash-in-__d_add-move.patch
+0001-fs-dcache-d_add_ci-needs-to-complete-parallel-lookup.patch
+0002-fs-dcache-Disable-preemption-on-i_dir_seq-write-side.patch
+0003-fs-dcache-Move-the-wakeup-from-__d_lookup_done-to-th.patch
 0004-fs-dcache-Move-wakeup-out-of-i_seq_dir-write-held-re.patch
 
 ###########################################################################
