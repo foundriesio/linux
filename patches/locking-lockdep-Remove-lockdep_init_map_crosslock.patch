@@ -17,7 +17,7 @@ Link: https://lore.kernel.org/r/YqITgY+2aPITu96z@linutronix.de
 
 --- a/include/linux/lockdep.h
 +++ b/include/linux/lockdep.h
-@@ -431,7 +431,6 @@ enum xhlock_context_t {
+@@ -435,7 +435,6 @@ enum xhlock_context_t {
  	XHLOCK_CTX_NR,
  };
  

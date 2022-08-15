@@ -17,7 +17,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/drivers/tty/serial/omap-serial.c
 +++ b/drivers/tty/serial/omap-serial.c
-@@ -1241,13 +1241,10 @@ serial_omap_console_write(struct console
+@@ -1240,13 +1240,10 @@ serial_omap_console_write(struct console
  	unsigned int ier;
  	int locked = 1;
  
@@ -34,7 +34,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	/*
  	 * First save the IER then disable the interrupts
-@@ -1274,8 +1271,7 @@ serial_omap_console_write(struct console
+@@ -1273,8 +1270,7 @@ serial_omap_console_write(struct console
  		check_modem_status(up);
  
  	if (locked)
