@@ -17,6 +17,20 @@ genirq-Provide-generic_handle_domain_irq_safe.patch
 signal-Don-t-disable-preemption-in-ptrace_stop-on-PR.patch
 sched-Consider-task_struct-saved_state-in-wait_task_.patch
 
+checkpatch-Print-an-error-if-rwlock.h-is-included-di.patch
+vduse-Remove-include-of-rwlock.h.patch
+
+# ifdef RT cleanups.
+0001-slub-Make-PREEMPT_RT-support-less-convoluted.patch
+0002-preempt-Provide-preempt_-dis-en-able_nested.patch
+0003-dentry-Use-preempt_-dis-en-able_nested.patch
+0004-mm-vmstat-Use-preempt_-dis-en-able_nested.patch
+0005-mm-debug-Provide-VM_WARN_ON_IRQS_ENABLED.patch
+0006-mm-memcontrol-Replace-the-PREEMPT_RT-conditionals.patch
+0007-mm-compaction-Get-rid-of-RT-ifdeffery.patch
+0008-u64_stats-Streamline-the-implementation.patch
+0009-u64_stat-Remove-the-obsolete-fetch_irq-variants.patch
+
 ###########################################################################
 # Post
 ###########################################################################
