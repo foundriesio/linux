@@ -618,7 +618,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  void
 --- a/kernel/trace/trace_events.c
 +++ b/kernel/trace/trace_events.c
-@@ -192,6 +192,7 @@ static int trace_define_common_fields(vo
+@@ -193,6 +193,7 @@ static int trace_define_common_fields(vo
  	/* Holds both preempt_count and migrate_disable */
  	__common_field(unsigned char, preempt_count);
  	__common_field(int, pid);

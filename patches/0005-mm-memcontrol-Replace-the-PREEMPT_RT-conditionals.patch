@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Wed, 17 Aug 2022 18:27:00 +0200
-Subject: [PATCH 6/9] mm/memcontrol: Replace the PREEMPT_RT conditionals
+Date: Thu, 25 Aug 2022 18:41:28 +0200
+Subject: [PATCH 5/8] mm/memcontrol: Replace the PREEMPT_RT conditionals
 
 Use VM_WARN_ON_IRQS_ENABLED() and preempt_disable/enable_nested() to
 replace the CONFIG_PREEMPT_RT #ifdeffery.
@@ -17,7 +17,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Acked-by: Johannes Weiner <hannes@cmpxchg.org>
 Reviewed-by: Muchun Song <songmuchun@bytedance.com>
 Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
-Link: https://lore.kernel.org/r/20220817162703.728679-7-bigeasy@linutronix.de
+Link: https://lore.kernel.org/r/20220825164131.402717-6-bigeasy@linutronix.de
 ---
  mm/memcontrol.c |   19 ++++++-------------
  1 file changed, 6 insertions(+), 13 deletions(-)

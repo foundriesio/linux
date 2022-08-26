@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Wed, 17 Aug 2022 18:27:01 +0200
-Subject: [PATCH 7/9] mm/compaction: Get rid of RT ifdeffery
+Date: Thu, 25 Aug 2022 18:41:29 +0200
+Subject: [PATCH 6/8] mm/compaction: Get rid of RT ifdeffery
 
 Move the RT dependency for the initial value of
 sysctl_compact_unevictable_allowed into Kconfig.
@@ -11,20 +11,21 @@ Cc: Nick Terrell <terrelln@fb.com>
 Cc: linux-mm@kvack.org
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
-Link: https://lore.kernel.org/r/20220817162703.728679-8-bigeasy@linutronix.de
+Link: https://lore.kernel.org/r/20220825164131.402717-7-bigeasy@linutronix.de
 ---
- mm/Kconfig      |    5 +++++
+ mm/Kconfig      |    6 ++++++
  mm/compaction.c |    6 +-----
- 2 files changed, 6 insertions(+), 5 deletions(-)
+ 2 files changed, 7 insertions(+), 5 deletions(-)
 
 --- a/mm/Kconfig
 +++ b/mm/Kconfig
-@@ -579,6 +579,11 @@ config COMPACTION
+@@ -579,6 +579,12 @@ config COMPACTION
  	  it and then we would be really interested to hear about that at
  	  linux-mm@kvack.org.
  
 +config COMPACT_UNEVICTABLE_DEFAULT
 +	int
++	depends on COMPACTION
 +	default 0 if PREEMPT_RT
 +	default 1
 +

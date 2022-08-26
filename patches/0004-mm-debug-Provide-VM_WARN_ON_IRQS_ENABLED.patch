@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Wed, 17 Aug 2022 18:26:59 +0200
-Subject: [PATCH 5/9] mm/debug: Provide VM_WARN_ON_IRQS_ENABLED()
+Date: Thu, 25 Aug 2022 18:41:27 +0200
+Subject: [PATCH 4/8] mm/debug: Provide VM_WARN_ON_IRQS_ENABLED()
 
 Some places in the VM code expect interrupts disabled, which is a valid
 expectation on non-PREEMPT_RT kernels, but does not hold on RT kernels in
@@ -16,7 +16,7 @@ Cc: Andrew Morton <akpm@linux-foundation.org>
 Cc: linux-mm@kvack.org
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
-Link: https://lore.kernel.org/r/20220817162703.728679-6-bigeasy@linutronix.de
+Link: https://lore.kernel.org/r/20220825164131.402717-5-bigeasy@linutronix.de
 ---
  include/linux/mmdebug.h |    6 ++++++
  lib/Kconfig.debug       |    3 +++

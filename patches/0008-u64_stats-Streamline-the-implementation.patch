@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
-Date: Wed, 17 Aug 2022 18:27:02 +0200
-Subject: [PATCH 8/9] u64_stats: Streamline the implementation
+Date: Thu, 25 Aug 2022 18:41:31 +0200
+Subject: [PATCH 8/8] u64_stats: Streamline the implementation
 
 The u64 stats code handles 3 different cases:
 
@@ -21,7 +21,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 Cc: netdev@vger.kernel.org
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
-Link: https://lore.kernel.org/r/20220817162703.728679-9-bigeasy@linutronix.de
+Link: https://lore.kernel.org/r/20220825164131.402717-9-bigeasy@linutronix.de
 ---
  include/linux/u64_stats_sync.h |  145 ++++++++++++++++++-----------------------
  1 file changed, 64 insertions(+), 81 deletions(-)

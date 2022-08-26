@@ -59,10 +59,10 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/* Don't allow time recalculation while creating a new task. */
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
-@@ -637,7 +637,7 @@ static inline void tick_irq_exit(void)
- #endif
+@@ -638,7 +638,7 @@ static inline void tick_irq_exit(void)
  }
  
+ #ifdef CONFIG_PREEMPT_RT
 -static DEFINE_PER_CPU(struct task_struct *, timersd);
 +DEFINE_PER_CPU(struct task_struct *, timersd);
  static DEFINE_PER_CPU(unsigned long, pending_timer_softirq);
