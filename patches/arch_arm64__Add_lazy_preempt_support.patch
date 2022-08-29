@@ -124,7 +124,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #endif
 --- a/arch/arm64/kernel/signal.c
 +++ b/arch/arm64/kernel/signal.c
-@@ -1093,7 +1093,7 @@ static void do_signal(struct pt_regs *re
+@@ -1103,7 +1103,7 @@ static void do_signal(struct pt_regs *re
  void do_notify_resume(struct pt_regs *regs, unsigned long thread_flags)
  {
  	do {

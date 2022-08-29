@@ -299,7 +299,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  			   i, (u64)conns, (u64)inpkts,
 --- a/net/netfilter/nf_tables_api.c
 +++ b/net/netfilter/nf_tables_api.c
-@@ -1535,10 +1535,10 @@ static int nft_dump_stats(struct sk_buff
+@@ -1534,10 +1534,10 @@ static int nft_dump_stats(struct sk_buff
  	for_each_possible_cpu(cpu) {
  		cpu_stats = per_cpu_ptr(stats, cpu);
  		do {

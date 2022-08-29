@@ -781,7 +781,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  	*data += size;
 --- a/drivers/net/ethernet/intel/ice/ice_main.c
 +++ b/drivers/net/ethernet/intel/ice/ice_main.c
-@@ -6280,10 +6280,10 @@ ice_fetch_u64_stats_per_ring(struct u64_
+@@ -6289,10 +6289,10 @@ ice_fetch_u64_stats_per_ring(struct u64_
  	unsigned int start;
  
  	do {
@@ -1169,7 +1169,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  
  	storage->tx_errors = dev->stats.tx_errors;
  	storage->rx_dropped = dev->stats.rx_dropped;
-@@ -3662,13 +3662,13 @@ static void mtk_get_ethtool_stats(struct
+@@ -3664,13 +3664,13 @@ static void mtk_get_ethtool_stats(struct
  
  	do {
  		data_dst = data;
@@ -1682,7 +1682,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  	}
 --- a/drivers/net/macsec.c
 +++ b/drivers/net/macsec.c
-@@ -2828,9 +2828,9 @@ static void get_rx_sc_stats(struct net_d
+@@ -2823,9 +2823,9 @@ static void get_rx_sc_stats(struct net_d
  
  		stats = per_cpu_ptr(rx_sc->stats, cpu);
  		do {
@@ -1694,7 +1694,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  
  		sum->InOctetsValidated += tmp.InOctetsValidated;
  		sum->InOctetsDecrypted += tmp.InOctetsDecrypted;
-@@ -2909,9 +2909,9 @@ static void get_tx_sc_stats(struct net_d
+@@ -2904,9 +2904,9 @@ static void get_tx_sc_stats(struct net_d
  
  		stats = per_cpu_ptr(macsec_priv(dev)->secy.tx_sc.stats, cpu);
  		do {
@@ -1706,7 +1706,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  
  		sum->OutPktsProtected   += tmp.OutPktsProtected;
  		sum->OutPktsEncrypted   += tmp.OutPktsEncrypted;
-@@ -2965,9 +2965,9 @@ static void get_secy_stats(struct net_de
+@@ -2960,9 +2960,9 @@ static void get_secy_stats(struct net_de
  
  		stats = per_cpu_ptr(macsec_priv(dev)->stats, cpu);
  		do {

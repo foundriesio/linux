@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3142,7 +3142,11 @@ struct softnet_data {
+@@ -3156,7 +3156,11 @@ struct softnet_data {
  	int			defer_count;
  	int			defer_ipi_scheduled;
  	struct sk_buff		*defer_list;
@@ -99,7 +99,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		init_gro_hash(&sd->backlog);
 --- a/net/core/skbuff.c
 +++ b/net/core/skbuff.c
-@@ -6552,6 +6552,11 @@ nodefer:	__kfree_skb(skb);
+@@ -6551,6 +6551,11 @@ nodefer:	__kfree_skb(skb);
  	/* Make sure to trigger NET_RX_SOFTIRQ on the remote CPU
  	 * if we are unlucky enough (this seems very unlikely).
  	 */
