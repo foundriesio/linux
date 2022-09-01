@@ -3579,7 +3579,6 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 	mtd->writesize = nor->params->writesize;
 	mtd->flags = MTD_CAP_NORFLASH;
 	mtd->size = nor->params->size;
-	mtd->_erase = spi_nor_erase;
 	mtd->_read = spi_nor_read;
 	nor->page_size = nor->params->page_size;
 #ifdef CONFIG_OF
@@ -3677,6 +3676,8 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 
 	if (info->flags & SPI_NOR_NO_ERASE)
 		mtd->flags |= MTD_NO_ERASE;
+	else
+		mtd->_erase = spi_nor_erase;
 
 	mtd->dev.parent = dev;
 	nor->jedec_id = info->id[0];
