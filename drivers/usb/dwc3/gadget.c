@@ -3414,9 +3414,6 @@ static bool dwc3_gadget_endpoint_trbs_complete(struct dwc3_ep *dep,
 	struct dwc3		*dwc = dep->dwc;
 	bool			no_started_trb = true;
 
-	if (!dep->endpoint.desc)
-		return no_started_trb;
-
 	dwc3_gadget_ep_cleanup_completed_requests(dep, event, status);
 
 	if (dep->stream_capable && !list_empty(&dep->started_list))
@@ -3424,6 +3421,9 @@ static bool dwc3_gadget_endpoint_trbs_complete(struct dwc3_ep *dep,
 
 	if (dep->flags & DWC3_EP_END_TRANSFER_PENDING)
 		goto out;
+
+	if (!dep->endpoint.desc)
+		return no_started_trb;
 
 	if (usb_endpoint_xfer_isoc(dep->endpoint.desc) &&
 	    list_empty(&dep->started_list)) {
