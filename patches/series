@@ -31,9 +31,6 @@ vduse-Remove-include-of-rwlock.h.patch
 0005-mm-slub-simplify-__cmpxchg_double_slab-and-slab_-un-.patch
 
 # ifdef RT cleanups.
-# staged for net
-0001-net-dsa-xrs700x-Use-irqsave-variant-for-u64-stats-up.patch
-0002-net-Use-u64_stats_fetch_begin_irq-for-stats-fetch.patch
 # staged to slub
 0003-slub-Make-PREEMPT_RT-support-less-convoluted.patch
 # pending
