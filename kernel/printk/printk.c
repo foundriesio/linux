@@ -2719,45 +2719,6 @@ static bool abandon_console_lock_in_panic(void)
 	return atomic_read(&panic_cpu) != raw_smp_processor_id();
 }
 
-/*
- * Check if the given console is currently capable and allowed to print
- * records. If the caller only works with certain types of consoles, the
- * caller is responsible for checking the console type before calling
- * this function.
- */
-static inline bool console_is_usable(struct console *con, short flags)
-{
-	if (!(flags & CON_ENABLED))
-		return false;
-
-	if ((flags & CON_SUSPENDED))
-		return false;
-
-	/*
-	 * The usability of a console varies depending on whether
-	 * it is a NOBKL console or not.
-	 */
-
-	if (flags & CON_NO_BKL) {
-		if (have_boot_console)
-			return false;
-
-	} else {
-		if (!con->write)
-			return false;
-		/*
-		 * Console drivers may assume that per-cpu resources have
-		 * been allocated. So unless they're explicitly marked as
-		 * being able to cope (CON_ANYTIME) don't call them until
-		 * this CPU is officially up.
-		 */
-		if (!cpu_online(raw_smp_processor_id()) && !(flags & CON_ANYTIME))
-			return false;
-	}
-
-	return true;
-}
-
 static void __console_unlock(void)
 {
 	console_locked = 0;
@@ -3578,9 +3539,13 @@ EXPORT_SYMBOL(register_console);
 /* Must be called under console_list_lock(). */
 static int unregister_console_locked(struct console *console)
 {
+	struct console *c;
+	bool is_boot_con;
 	int res;
 
 	lockdep_assert_console_list_lock_held();
+
+	is_boot_con = console->flags & CON_BOOT;
 
 	con_printk(KERN_INFO, console, "disabled\n");
 
@@ -3624,6 +3589,15 @@ static int unregister_console_locked(struct console *console)
 
 	if (console->exit)
 		res = console->exit(console);
+
+	/*
+	 * Each time a boot console unregisters, try to start up the printing
+	 * threads. They will only start if this was the last boot console.
+	 */
+	if (is_boot_con) {
+		for_each_console(c)
+			cons_kthread_create(c);
+	}
 
 	return res;
 }
