@@ -99,7 +99,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		init_gro_hash(&sd->backlog);
 --- a/net/core/skbuff.c
 +++ b/net/core/skbuff.c
-@@ -6551,6 +6551,11 @@ nodefer:	__kfree_skb(skb);
+@@ -6555,6 +6555,11 @@ nodefer:	__kfree_skb(skb);
  	/* Make sure to trigger NET_RX_SOFTIRQ on the remote CPU
  	 * if we are unlucky enough (this seems very unlikely).
  	 */
