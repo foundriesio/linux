@@ -8,7 +8,8 @@ should be included. Including it directly will break the RT build.
 Remove the rwlock.h include.
 
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Link: https://lkml.kernel.org/r/20220816074816.173227-1-bigeasy@linutronix.de
+Acked-by: Michael S. Tsirkin <mst@redhat.com>
+Link: https://lkml.kernel.org/r/20221026134407.711768-1-bigeasy@linutronix.de
 ---
  drivers/vdpa/vdpa_user/iova_domain.h |    1 -
  1 file changed, 1 deletion(-)

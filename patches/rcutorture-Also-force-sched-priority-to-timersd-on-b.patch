@@ -44,7 +44,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/rcu/rcutorture.c
 +++ b/kernel/rcu/rcutorture.c
-@@ -2157,6 +2157,12 @@ static int rcutorture_booster_init(unsig
+@@ -2363,6 +2363,12 @@ static int rcutorture_booster_init(unsig
  		WARN_ON_ONCE(!t);
  		sp.sched_priority = 2;
  		sched_setscheduler_nocheck(t, SCHED_FIFO, &sp);

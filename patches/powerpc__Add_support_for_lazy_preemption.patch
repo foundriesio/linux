@@ -17,7 +17,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/arch/powerpc/Kconfig
 +++ b/arch/powerpc/Kconfig
-@@ -241,6 +241,7 @@ config PPC
+@@ -242,6 +242,7 @@ config PPC
  	select HAVE_PERF_EVENTS_NMI		if PPC64
  	select HAVE_PERF_REGS
  	select HAVE_PERF_USER_STACK_DUMP

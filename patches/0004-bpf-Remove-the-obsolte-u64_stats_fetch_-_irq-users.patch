@@ -28,7 +28,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
 
 --- a/kernel/bpf/syscall.c
 +++ b/kernel/bpf/syscall.c
-@@ -2107,11 +2107,11 @@ static void bpf_prog_get_stats(const str
+@@ -2117,11 +2117,11 @@ static void bpf_prog_get_stats(const str
  
  		st = per_cpu_ptr(prog->stats, cpu);
  		do {

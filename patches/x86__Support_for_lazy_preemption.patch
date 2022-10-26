@@ -19,7 +19,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -244,6 +244,7 @@ config X86
+@@ -250,6 +250,7 @@ config X86
  	select HAVE_PCI
  	select HAVE_PERF_REGS
  	select HAVE_PERF_USER_STACK_DUMP
@@ -136,7 +136,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  /**
 --- a/kernel/entry/common.c
 +++ b/kernel/entry/common.c
-@@ -153,7 +153,7 @@ static unsigned long exit_to_user_mode_l
+@@ -155,7 +155,7 @@ static unsigned long exit_to_user_mode_l
  
  		local_irq_enable_exit_to_user(ti_work);
  
