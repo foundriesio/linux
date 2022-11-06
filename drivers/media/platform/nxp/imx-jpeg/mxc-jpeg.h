@@ -83,7 +83,6 @@ struct mxc_jpeg_q_data {
 	int				h;
 	int				h_adjusted;
 	unsigned int			sequence;
-	struct v4l2_rect		crop;
 };
 
 struct mxc_jpeg_ctx {
