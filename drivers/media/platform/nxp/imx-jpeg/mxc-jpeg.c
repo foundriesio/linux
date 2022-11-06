@@ -1433,6 +1433,11 @@ static int mxc_jpeg_parse(struct mxc_jpeg_ctx *ctx, struct vb2_buffer *vb)
 	}
 	q_data_out->w = header.frame.width;
 	q_data_out->h = header.frame.height;
+	if (header.frame.width % 8 != 0 || header.frame.height % 8 != 0) {
+		dev_err(dev, "JPEG width or height not multiple of 8: %dx%d\n",
+			header.frame.width, header.frame.height);
+		return -EINVAL;
+	}
 	if (header.frame.width > MXC_JPEG_MAX_WIDTH ||
 	    header.frame.height > MXC_JPEG_MAX_HEIGHT) {
 		dev_err(dev, "JPEG width or height should be <= 8192: %dx%d\n",
