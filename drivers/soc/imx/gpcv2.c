@@ -151,6 +151,8 @@ static int imx_gpc_pu_pgc_sw_pxx_req(struct generic_pm_domain *genpd,
 		}
 	}
 
+	reset_control_assert(domain->reset);
+
 	/* Enable reset clocks for all devices in the domain */
 	for (i = 0; i < domain->num_clks; i++)
 		clk_prepare_enable(domain->clk[i]);
