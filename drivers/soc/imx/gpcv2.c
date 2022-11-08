@@ -151,8 +151,6 @@ static int imx_gpc_pu_pgc_sw_pxx_req(struct generic_pm_domain *genpd,
 		}
 	}
 
-	reset_control_assert(domain->reset);
-
 	/* Enable reset clocks for all devices in the domain */
 	for (i = 0; i < domain->num_clks; i++)
 		clk_prepare_enable(domain->clk[i]);
@@ -520,8 +518,6 @@ static int imx_pgc_domain_probe(struct platform_device *pdev)
 
 out_genpd_remove:
 	pm_genpd_remove(&domain->genpd);
-out_domain_unmap:
-	pm_runtime_disable(domain->dev);
 
 	return ret;
 }
@@ -533,8 +529,6 @@ static int imx_pgc_domain_remove(struct platform_device *pdev)
 	of_genpd_del_provider(domain->dev->of_node);
 	pm_genpd_remove(&domain->genpd);
 	imx_pgc_put_clocks(domain);
-
-	pm_runtime_disable(domain->dev);
 
 	return 0;
 }
