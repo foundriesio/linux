@@ -514,6 +514,13 @@ static int imx_pgc_domain_probe(struct platform_device *pdev)
 		imx_pgc_put_clocks(domain);
 	}
 
+	return 0;
+
+out_genpd_remove:
+	pm_genpd_remove(&domain->genpd);
+out_domain_unmap:
+	pm_runtime_disable(domain->dev);
+
 	return ret;
 }
 
@@ -524,6 +531,8 @@ static int imx_pgc_domain_remove(struct platform_device *pdev)
 	of_genpd_del_provider(domain->dev->of_node);
 	pm_genpd_remove(&domain->genpd);
 	imx_pgc_put_clocks(domain);
+
+	pm_runtime_disable(domain->dev);
 
 	return 0;
 }
