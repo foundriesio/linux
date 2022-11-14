@@ -210,7 +210,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  		data[2] += rx_packets;
 --- a/net/ipv4/af_inet.c
 +++ b/net/ipv4/af_inet.c
-@@ -1706,9 +1706,9 @@ u64 snmp_get_cpu_field64(void __percpu *
+@@ -1708,9 +1708,9 @@ u64 snmp_get_cpu_field64(void __percpu *
  	bhptr = per_cpu_ptr(mib, cpu);
  	syncp = (struct u64_stats_sync *)(bhptr + syncp_offset);
  	do {
