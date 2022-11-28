@@ -570,7 +570,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  				.value = cpu_to_be64(priv->tx[idx].wake_queue),
 --- a/drivers/net/ethernet/hisilicon/hns3/hns3_enet.c
 +++ b/drivers/net/ethernet/hisilicon/hns3/hns3_enet.c
-@@ -2486,7 +2486,7 @@ static void hns3_fetch_stats(struct rtnl
+@@ -2488,7 +2488,7 @@ static void hns3_fetch_stats(struct rtnl
  	unsigned int start;
  
  	do {
@@ -579,7 +579,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  		if (is_tx) {
  			stats->tx_bytes += ring->stats.tx_bytes;
  			stats->tx_packets += ring->stats.tx_pkts;
-@@ -2520,7 +2520,7 @@ static void hns3_fetch_stats(struct rtnl
+@@ -2522,7 +2522,7 @@ static void hns3_fetch_stats(struct rtnl
  			stats->multicast += ring->stats.rx_multicast;
  			stats->rx_length_errors += ring->stats.err_pkt_len;
  		}
@@ -1171,7 +1171,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  
  	storage->tx_errors = dev->stats.tx_errors;
  	storage->rx_dropped = dev->stats.rx_dropped;
-@@ -3684,13 +3684,13 @@ static void mtk_get_ethtool_stats(struct
+@@ -3688,13 +3688,13 @@ static void mtk_get_ethtool_stats(struct
  
  	do {
  		data_dst = data;
@@ -1674,7 +1674,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  }
 --- a/drivers/net/ipvlan/ipvlan_main.c
 +++ b/drivers/net/ipvlan/ipvlan_main.c
-@@ -299,13 +299,13 @@ static void ipvlan_get_stats64(struct ne
+@@ -301,13 +301,13 @@ static void ipvlan_get_stats64(struct ne
  		for_each_possible_cpu(idx) {
  			pcptr = per_cpu_ptr(ipvlan->pcpu_stats, idx);
  			do {

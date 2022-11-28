@@ -64,7 +64,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  		mcast_stats_add_dir(tdst.igmp_v2queries, temp.igmp_v2queries);
 --- a/net/bridge/br_vlan.c
 +++ b/net/bridge/br_vlan.c
-@@ -1378,12 +1378,12 @@ void br_vlan_get_stats(const struct net_
+@@ -1389,12 +1389,12 @@ void br_vlan_get_stats(const struct net_
  
  		cpu_stats = per_cpu_ptr(v->stats, i);
  		do {
@@ -210,7 +210,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  		data[2] += rx_packets;
 --- a/net/ipv4/af_inet.c
 +++ b/net/ipv4/af_inet.c
-@@ -1708,9 +1708,9 @@ u64 snmp_get_cpu_field64(void __percpu *
+@@ -1699,9 +1699,9 @@ u64 snmp_get_cpu_field64(void __percpu *
  	bhptr = per_cpu_ptr(mib, cpu);
  	syncp = (struct u64_stats_sync *)(bhptr + syncp_offset);
  	do {
