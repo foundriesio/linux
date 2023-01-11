@@ -1462,6 +1462,8 @@ static int adv7511_remove(struct i2c_client *i2c)
 
 	i2c_unregister_device(adv7511->i2c_cec);
 	clk_disable_unprepare(adv7511->cec_clk);
+	if (adv7511->type == ADV7533 || adv7511->type == ADV7535)
+		adv7533_detach_dsi(adv7511);
 
 	adv7511_uninit_regulators(adv7511);
 
@@ -1470,6 +1472,8 @@ static int adv7511_remove(struct i2c_client *i2c)
 	adv7511_audio_exit(adv7511);
 
 	cec_unregister_adapter(adv7511->cec_adap);
+	i2c_unregister_device(adv7511->i2c_cec);
+	clk_disable_unprepare(adv7511->cec_clk);
 
 	i2c_unregister_device(adv7511->i2c_packet);
 	i2c_unregister_device(adv7511->i2c_edid);
