@@ -26,7 +26,7 @@ Link: https://lkml.kernel.org/r/Yt%2FpQAFQ1xKNK0RY@linutronix.de
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3245,6 +3245,76 @@ int migrate_swap(struct task_struct *cur
+@@ -3266,6 +3266,76 @@ int migrate_swap(struct task_struct *cur
  }
  #endif /* CONFIG_NUMA_BALANCING */
  
@@ -103,7 +103,7 @@ Link: https://lkml.kernel.org/r/Yt%2FpQAFQ1xKNK0RY@linutronix.de
  /*
   * wait_task_inactive - wait for a thread to unschedule.
   *
-@@ -3263,7 +3333,7 @@ int migrate_swap(struct task_struct *cur
+@@ -3284,7 +3354,7 @@ int migrate_swap(struct task_struct *cur
   */
  unsigned long wait_task_inactive(struct task_struct *p, unsigned int match_state)
  {
@@ -112,7 +112,7 @@ Link: https://lkml.kernel.org/r/Yt%2FpQAFQ1xKNK0RY@linutronix.de
  	struct rq_flags rf;
  	unsigned long ncsw;
  	struct rq *rq;
-@@ -3289,7 +3359,7 @@ unsigned long wait_task_inactive(struct
+@@ -3310,7 +3380,7 @@ unsigned long wait_task_inactive(struct
  		 * is actually now running somewhere else!
  		 */
  		while (task_on_cpu(rq, p)) {
@@ -121,7 +121,7 @@ Link: https://lkml.kernel.org/r/Yt%2FpQAFQ1xKNK0RY@linutronix.de
  				return 0;
  			cpu_relax();
  		}
-@@ -3302,9 +3372,10 @@ unsigned long wait_task_inactive(struct
+@@ -3323,9 +3393,10 @@ unsigned long wait_task_inactive(struct
  		rq = task_rq_lock(p, &rf);
  		trace_sched_wait_task(p);
  		running = task_on_cpu(rq, p);
@@ -134,7 +134,7 @@ Link: https://lkml.kernel.org/r/Yt%2FpQAFQ1xKNK0RY@linutronix.de
  			ncsw = p->nvcsw | LONG_MIN; /* sets MSB */
  		task_rq_unlock(rq, p, &rf);
  
-@@ -3334,7 +3405,7 @@ unsigned long wait_task_inactive(struct
+@@ -3355,7 +3426,7 @@ unsigned long wait_task_inactive(struct
  		 * running right now), it's preempted, and we should
  		 * yield - it could be a while.
  		 */

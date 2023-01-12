@@ -70,7 +70,7 @@ Link: https://lkml.kernel.org/r/YqIbMuHCPiQk+Ac2@linutronix.de
  
  static inline bool init_done(struct zram *zram)
  {
-@@ -1187,6 +1222,7 @@ static bool zram_meta_alloc(struct zram
+@@ -1313,6 +1348,7 @@ static bool zram_meta_alloc(struct zram
  
  	if (!huge_class_size)
  		huge_class_size = zs_huge_class_size(zram->mem_pool);
@@ -80,7 +80,7 @@ Link: https://lkml.kernel.org/r/YqIbMuHCPiQk+Ac2@linutronix.de
  
 --- a/drivers/block/zram/zram_drv.h
 +++ b/drivers/block/zram/zram_drv.h
-@@ -62,6 +62,9 @@ struct zram_table_entry {
+@@ -69,6 +69,9 @@ struct zram_table_entry {
  		unsigned long element;
  	};
  	unsigned long flags;
