@@ -81,7 +81,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  		u64_stats_add(&stats->rx_bytes, rxbytes);
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -10477,12 +10477,12 @@ void dev_fetch_sw_netstats(struct rtnl_l
+@@ -10469,12 +10469,12 @@ void dev_fetch_sw_netstats(struct rtnl_l
  
  		stats = per_cpu_ptr(netstats, cpu);
  		do {
@@ -98,7 +98,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  		s->rx_bytes   += rx_bytes;
 --- a/net/core/devlink.c
 +++ b/net/core/devlink.c
-@@ -8304,10 +8304,10 @@ static void devlink_trap_stats_read(stru
+@@ -8307,10 +8307,10 @@ static void devlink_trap_stats_read(stru
  
  		cpu_stats = per_cpu_ptr(trap_stats, i);
  		do {
@@ -210,7 +210,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  		data[2] += rx_packets;
 --- a/net/ipv4/af_inet.c
 +++ b/net/ipv4/af_inet.c
-@@ -1699,9 +1699,9 @@ u64 snmp_get_cpu_field64(void __percpu *
+@@ -1700,9 +1700,9 @@ u64 snmp_get_cpu_field64(void __percpu *
  	bhptr = per_cpu_ptr(mib, cpu);
  	syncp = (struct u64_stats_sync *)(bhptr + syncp_offset);
  	do {
@@ -288,11 +288,11 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  		do {
 -			start = u64_stats_fetch_begin_irq(&u->syncp);
 +			start = u64_stats_fetch_begin(&u->syncp);
- 			conns = u->cnt.conns;
- 			inpkts = u->cnt.inpkts;
- 			outpkts = u->cnt.outpkts;
- 			inbytes = u->cnt.inbytes;
- 			outbytes = u->cnt.outbytes;
+ 			conns = u64_stats_read(&u->cnt.conns);
+ 			inpkts = u64_stats_read(&u->cnt.inpkts);
+ 			outpkts = u64_stats_read(&u->cnt.outpkts);
+ 			inbytes = u64_stats_read(&u->cnt.inbytes);
+ 			outbytes = u64_stats_read(&u->cnt.outbytes);
 -		} while (u64_stats_fetch_retry_irq(&u->syncp, start));
 +		} while (u64_stats_fetch_retry(&u->syncp, start));
  
@@ -300,7 +300,7 @@ Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  			   i, (u64)conns, (u64)inpkts,
 --- a/net/netfilter/nf_tables_api.c
 +++ b/net/netfilter/nf_tables_api.c
-@@ -1534,10 +1534,10 @@ static int nft_dump_stats(struct sk_buff
+@@ -1546,10 +1546,10 @@ static int nft_dump_stats(struct sk_buff
  	for_each_possible_cpu(cpu) {
  		cpu_stats = per_cpu_ptr(stats, cpu);
  		do {
