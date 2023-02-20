@@ -30,7 +30,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -2075,6 +2075,7 @@ static int console_lock_spinning_disable
+@@ -2077,6 +2077,7 @@ static int console_lock_spinning_disable
  	return 1;
  }
  
@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /**
   * console_trylock_spinning - try to get console_lock by busy waiting
   *
-@@ -2148,6 +2149,7 @@ static int console_trylock_spinning(void
+@@ -2150,6 +2151,7 @@ static int console_trylock_spinning(void
  
  	return 1;
  }
@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /*
   * Call the specified console driver, asking it to write out the specified
-@@ -2487,6 +2489,18 @@ asmlinkage int vprintk_emit(int facility
+@@ -2489,6 +2491,18 @@ asmlinkage int vprintk_emit(int facility
  
  	/* If called from the scheduler, we can not call up(). */
  	if (!in_sched && allow_direct_printing()) {
@@ -65,7 +65,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		/*
  		 * The caller may be holding system-critical or
  		 * timing-sensitive locks. Disable preemption during direct
-@@ -2504,6 +2518,7 @@ asmlinkage int vprintk_emit(int facility
+@@ -2506,6 +2520,7 @@ asmlinkage int vprintk_emit(int facility
  		if (console_trylock_spinning())
  			console_unlock();
  		preempt_enable();
@@ -73,7 +73,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	wake_up_klogd();
-@@ -3191,8 +3206,12 @@ static bool console_emit_next_record_tra
+@@ -3205,8 +3220,12 @@ static bool console_emit_next_record_tra
  	/*
  	 * Handovers are only supported if threaded printers are atomically
  	 * blocked. The context taking over the console_lock may be atomic.

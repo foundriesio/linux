@@ -257,7 +257,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/drivers/tty/serial/8250/8250_exar.c
 +++ b/drivers/tty/serial/8250/8250_exar.c
-@@ -179,6 +179,8 @@ static void xr17v35x_set_divisor(struct
+@@ -185,6 +185,8 @@ static void xr17v35x_set_divisor(struct
  
  static int xr17v35x_startup(struct uart_port *port)
  {
@@ -266,7 +266,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * First enable access to IER [7:5], ISR [5:4], FCR [5:4],
  	 * MCR [7:5] and MSR [7:0]
-@@ -189,7 +191,7 @@ static int xr17v35x_startup(struct uart_
+@@ -195,7 +197,7 @@ static int xr17v35x_startup(struct uart_
  	 * Make sure all interrups are masked until initialization is
  	 * complete and the FIFOs are cleared
  	 */
