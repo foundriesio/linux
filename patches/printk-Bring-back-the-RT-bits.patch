@@ -15,18 +15,18 @@ which is needed for the atomic consoles which are used on PREEMPT_RT.
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  drivers/tty/sysrq.c         |    2 
- include/linux/console.h     |   17 +
+ include/linux/console.h     |   16 +
  include/linux/printk.h      |   15 +
- kernel/hung_task.c          |   11 
+ kernel/hung_task.c          |   10 
  kernel/panic.c              |    6 
  kernel/printk/internal.h    |    2 
- kernel/printk/printk.c      |  556 ++++++++++++++++++++++++++++++++++++++++----
+ kernel/printk/printk.c      |  508 ++++++++++++++++++++++++++++++++++++++++----
  kernel/printk/printk_safe.c |   32 ++
  kernel/rcu/tree_stall.h     |    2 
  kernel/reboot.c             |   16 +
  kernel/watchdog.c           |    4 
  kernel/watchdog_hld.c       |    4 
- 12 files changed, 619 insertions(+), 48 deletions(-)
+ 12 files changed, 569 insertions(+), 48 deletions(-)
 
 --- a/drivers/tty/sysrq.c
 +++ b/drivers/tty/sysrq.c
@@ -48,21 +48,20 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
-@@ -17,6 +17,7 @@
- #include <linux/atomic.h>
+@@ -18,6 +18,7 @@
+ #include <linux/bits.h>
  #include <linux/rculist.h>
  #include <linux/types.h>
 +#include <linux/mutex.h>
  
  struct vc_data;
  struct console_font_op;
-@@ -154,6 +155,22 @@ struct console {
- 	uint	ospeed;
- 	u64	seq;
- 	unsigned long dropped;
-+	struct task_struct *thread;
-+	bool    blocked;
-+
+@@ -201,6 +202,21 @@ struct console {
+ 	uint			ospeed;
+ 	u64			seq;
+ 	unsigned long		dropped;
++	struct task_struct	*thread;
++	bool blocked;
 +	/*
 +	 * The per-console lock is used by printing kthreads to synchronize
 +	 * this console with callers of console_lock(). This is necessary in
@@ -71,17 +70,17 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	 * against direct printing via console_lock/console_unlock.
 +	 *
 +	 * Note: For synchronizing against direct printing via
-+	 *       console_trylock/console_unlock, see the static global
-+	 *       variable @console_kthreads_active.
++	 *	console_trylock/console_unlock, see the static global
++	 *	variable @console_kthreads_active.
 +	 */
 +	struct mutex lock;
 +
- 	void	*data;
- 	struct hlist_node node;
+ 	void			*data;
+ 	struct hlist_node	node;
  };
 --- a/include/linux/printk.h
 +++ b/include/linux/printk.h
-@@ -168,6 +168,9 @@ extern void __printk_safe_exit(void);
+@@ -166,6 +166,9 @@ extern void __printk_safe_exit(void);
   */
  #define printk_deferred_enter __printk_safe_enter
  #define printk_deferred_exit __printk_safe_exit
@@ -91,7 +90,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /*
   * Please don't use printk_ratelimit(), because it shares ratelimiting state
-@@ -219,6 +222,18 @@ static inline void printk_deferred_exit(
+@@ -217,6 +220,18 @@ static inline void printk_deferred_exit(
  {
  }
  
@@ -121,16 +120,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		if (sysctl_hung_task_warnings > 0)
  			sysctl_hung_task_warnings--;
  		pr_err("INFO: task %s:%d blocked for more than %ld seconds.\n",
-@@ -142,6 +144,8 @@ static void check_hung_task(struct task_
- 
- 		if (sysctl_hung_task_all_cpu_backtrace)
+@@ -144,6 +146,7 @@ static void check_hung_task(struct task_
  			hung_task_show_all_bt = true;
-+
+ 		if (!sysctl_hung_task_warnings)
+ 			pr_info("Future hung task reports are suppressed, see sysctl kernel.hung_task_warnings\n");
 +		printk_prefer_direct_exit();
  	}
  
  	touch_nmi_watchdog();
-@@ -212,12 +216,17 @@ static void check_hung_uninterruptible_t
+@@ -214,12 +217,17 @@ static void check_hung_uninterruptible_t
  	}
   unlock:
  	rcu_read_unlock();
@@ -151,23 +149,23 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (hung_task_call_panic)
 --- a/kernel/panic.c
 +++ b/kernel/panic.c
-@@ -341,6 +341,7 @@ void panic(const char *fmt, ...)
- 		 * unfortunately means it may not be hardened to work in a
- 		 * panic situation.
- 		 */
-+		try_block_console_kthreads(10000);
+@@ -178,6 +178,7 @@ void __weak crash_smp_send_stop(void)
+ 	 * unfortunately means it may not be hardened to work in a panic
+ 	 * situation.
+ 	 */
++	try_block_console_kthreads(10000);
+ 	smp_send_stop();
+ 	cpus_stopped = 1;
+ }
+@@ -259,6 +260,7 @@ static void panic_other_cpus_shutdown(bo
+ 	 * bits in addition to stopping other CPUs, hence we rely on
+ 	 * crash_smp_send_stop() for that.
+ 	 */
++	try_block_console_kthreads(10000);
+ 	if (!crash_kexec)
  		smp_send_stop();
- 	} else {
- 		/*
-@@ -348,6 +349,7 @@ void panic(const char *fmt, ...)
- 		 * kmsg_dump, we will need architecture dependent extra
- 		 * works in addition to stopping other CPUs.
- 		 */
-+		try_block_console_kthreads(10000);
- 		crash_smp_send_stop();
- 	}
- 
-@@ -645,6 +647,8 @@ void __warn(const char *file, int line,
+ 	else
+@@ -654,6 +656,8 @@ void __warn(const char *file, int line,
  {
  	disable_trace_on_warning();
  
@@ -176,7 +174,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (file)
  		pr_warn("WARNING: CPU: %d PID: %d at %s:%d %pS\n",
  			raw_smp_processor_id(), current->pid, file, line,
-@@ -673,6 +677,8 @@ void __warn(const char *file, int line,
+@@ -682,6 +686,8 @@ void __warn(const char *file, int line,
  
  	/* Just a warning, don't kill lockdep. */
  	add_taint(taint, LOCKDEP_STILL_OK);
@@ -187,7 +185,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #ifndef __WARN_FLAGS
 --- a/kernel/printk/internal.h
 +++ b/kernel/printk/internal.h
-@@ -20,6 +20,8 @@ enum printk_info_flags {
+@@ -35,6 +35,8 @@ enum printk_info_flags {
  	LOG_CONT	= 8,	/* text is a fragment of a continuation line */
  };
  
@@ -248,7 +246,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 + * Tracks whether kthread printers are all blocked. A value of true implies
 + * that the console is locked via console_lock() or the console is suspended.
 + * Writing to this variable requires holding @console_sem.
-+ */
+  */
+-static int console_locked, console_suspended;
 +static bool console_kthreads_blocked;
 +
 +/*
@@ -276,8 +275,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 + * Unblock all kthread printers from a schedulable context.
 + *
 + * Requires holding @console_sem.
-  */
--static int console_locked, console_suspended;
++ */
 +static void console_kthreads_unblock(void)
 +{
 +	struct console *con;
@@ -373,7 +371,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  DECLARE_WAIT_QUEUE_HEAD(log_wait);
  /* All 3 protected by @syslog_lock. */
  /* the next printk record to read by syslog(READ) or /proc/kmsg */
-@@ -2340,10 +2478,10 @@ asmlinkage int vprintk_emit(int facility
+@@ -2297,10 +2435,10 @@ asmlinkage int vprintk_emit(int facility
  	printed_len = vprintk_store(facility, level, dev_info, fmt, args);
  
  	/* If called from the scheduler, we can not call up(). */
@@ -386,7 +384,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		 * printing of all remaining records to all consoles so that
  		 * this context can return as soon as possible. Hopefully
  		 * another printk() caller will take over the printing.
-@@ -2387,6 +2525,8 @@ EXPORT_SYMBOL(_printk);
+@@ -2344,6 +2482,8 @@ EXPORT_SYMBOL(_printk);
  static bool pr_flush(int timeout_ms, bool reset_on_progress);
  static bool __pr_flush(struct console *con, int timeout_ms, bool reset_on_progress);
  
@@ -394,8 +392,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +
  #else /* CONFIG_PRINTK */
  
- #define CONSOLE_LOG_MAX		0
-@@ -2421,6 +2561,8 @@ static void call_console_driver(struct c
+ #define printk_time		false
+@@ -2372,6 +2512,8 @@ static int console_lock_spinning_disable
  static bool suppress_message_printing(int level) { return false; }
  static bool pr_flush(int timeout_ms, bool reset_on_progress) { return true; }
  static bool __pr_flush(struct console *con, int timeout_ms, bool reset_on_progress) { return true; }
@@ -404,7 +402,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #endif /* CONFIG_PRINTK */
  
-@@ -2639,6 +2781,14 @@ static int console_cpu_notify(unsigned i
+@@ -2590,6 +2732,14 @@ static int console_cpu_notify(unsigned i
  		/* If trylock fails, someone else is doing the printing */
  		if (console_trylock())
  			console_unlock();
@@ -419,7 +417,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  	return 0;
  }
-@@ -2658,7 +2808,7 @@ void console_lock(void)
+@@ -2609,7 +2759,7 @@ void console_lock(void)
  	down_console_sem();
  	if (console_suspended)
  		return;
@@ -428,7 +426,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	console_may_schedule = 1;
  }
  EXPORT_SYMBOL(console_lock);
-@@ -2679,15 +2829,30 @@ int console_trylock(void)
+@@ -2630,15 +2780,30 @@ int console_trylock(void)
  		up_console_sem();
  		return 0;
  	}
@@ -461,7 +459,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  EXPORT_SYMBOL(is_console_locked);
  
-@@ -2737,9 +2902,35 @@ static inline bool console_is_usable(str
+@@ -2688,9 +2853,35 @@ static inline bool console_is_usable(str
  	return true;
  }
  
@@ -498,42 +496,49 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	up_console_sem();
  }
  
-@@ -2766,10 +2957,10 @@ static void __console_unlock(void)
-  *
-  * Requires the console_lock and the SRCU read lock.
-  */
--static bool console_emit_next_record(struct console *con, char *text, char *ext_text,
--				     char *dropped_text, bool *handover, int cookie)
-+static bool __console_emit_next_record(struct console *con, char *text, char *ext_text,
-+				       char *dropped_text, bool *handover, int cookie)
+@@ -2766,7 +2957,7 @@ static void console_prepend_dropped(stru
+ static bool printk_get_next_message(struct printk_message *pmsg, u64 seq,
+ 				    bool is_extended, bool may_suppress)
  {
 -	static int panic_console_dropped;
 +	static atomic_t panic_console_dropped = ATOMIC_INIT(0);
- 	struct printk_info info;
- 	struct printk_record r;
- 	unsigned long flags;
-@@ -2778,7 +2969,8 @@ static bool console_emit_next_record(str
  
- 	prb_rec_init_rd(&r, &info, text, CONSOLE_LOG_MAX);
+ 	struct printk_buffers *pbufs = pmsg->pbufs;
+ 	const size_t scratchbuf_sz = sizeof(pbufs->scratchbuf);
+@@ -2801,7 +2992,7 @@ static bool printk_get_next_message(stru
+ 	 */
+ 	if (pmsg->dropped &&
+ 	    panic_in_progress() &&
+-	    panic_console_dropped++ > 10) {
++	    atomic_fetch_inc_relaxed(&panic_console_dropped) > 10) {
+ 		suppress_panic_printk = 1;
+ 		pr_warn_once("Too many dropped messages. Suppress messages on non-panic CPUs to prevent livelock.\n");
+ 	}
+@@ -2837,18 +3028,19 @@ static bool printk_get_next_message(stru
+  *
+  * Requires the console_lock and the SRCU read lock.
+  */
+-static bool console_emit_next_record(struct console *con, bool *handover, int cookie)
++static bool __console_emit_next_record(struct console *con, bool *handover, int cookie)
+ {
+ 	static struct printk_buffers pbufs;
+ 
+-	bool is_extended = console_srcu_read_flags(con) & CON_EXTENDED;
++	bool is_extended = con->flags & CON_EXTENDED;
+ 	char *outbuf = &pbufs.outbuf[0];
+ 	struct printk_message pmsg = {
+ 		.pbufs = &pbufs,
+ 	};
+ 	unsigned long flags;
  
 -	*handover = false;
 +	if (handover)
 +		*handover = false;
  
- 	if (!prb_read_valid(prb, con->seq, &r))
+ 	if (!printk_get_next_message(&pmsg, con->seq, is_extended, true))
  		return false;
-@@ -2786,7 +2978,8 @@ static bool console_emit_next_record(str
- 	if (con->seq != r.info->seq) {
- 		con->dropped += r.info->seq - con->seq;
- 		con->seq = r.info->seq;
--		if (panic_in_progress() && panic_console_dropped++ > 10) {
-+		if (panic_in_progress() &&
-+		    atomic_fetch_inc_relaxed(&panic_console_dropped) > 10) {
- 			suppress_panic_printk = 1;
- 			pr_warn_once("Too many dropped messages. Suppress messages on non-panic CPUs to prevent livelock.\n");
- 		}
-@@ -2808,31 +3001,58 @@ static bool console_emit_next_record(str
- 		len = record_print_text(&r, console_msg_format & MSG_FORMAT_SYSLOG, printk_time);
+@@ -2866,36 +3058,63 @@ static bool console_emit_next_record(str
+ 		con->dropped = 0;
  	}
  
 -	/*
@@ -562,13 +567,18 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		printk_safe_enter_irqsave(flags);
 +		console_lock_spinning_enable();
  
--	stop_critical_timings();	/* don't trace print latency */
-+		stop_critical_timings();	/* don't trace print latency */
+-	/* Do not trace print latency. */
+-	stop_critical_timings();
++		/* Do not trace print latency. */
++		stop_critical_timings();
 +	}
- 	call_console_driver(con, write_text, len, dropped_text);
+ 
+ 	/* Write everything out to the hardware. */
+ 	con->write(con, outbuf, pmsg.outbuf_len);
+ 
 -	start_critical_timings();
 -
- 	con->seq++;
+ 	con->seq = pmsg.seq + 1;
 +	if (handover) {
 +		start_critical_timings();
  
@@ -581,7 +591,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	return true;
  }
  
-+ /*
+ /*
 + * Print a record for a given console, but allow another printk() caller to
 + * take over the console_lock and continue printing.
 + *
@@ -590,8 +600,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 + *
 + * See __console_emit_next_record() for argument and return details.
 + */
-+static bool console_emit_next_record_transferable(struct console *con, char *text, char *ext_text,
-+						  char *dropped_text, bool *handover, int cookie)
++static bool console_emit_next_record_transferable(struct console *con,
++						  bool *handover, int cookie)
 +{
 +	/*
 +	 * Handovers are only supported if threaded printers are atomically
@@ -602,13 +612,14 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		handover = NULL;
 +	}
 +
-+	return __console_emit_next_record(con, text, ext_text, dropped_text, handover, cookie);
++	return __console_emit_next_record(con, handover, cookie);
 +}
 +
- /*
++/*
   * Print out all remaining records to all consoles.
   *
-@@ -2851,8 +3071,8 @@ static bool console_emit_next_record(str
+  * @do_cond_resched is set by the caller. It can be true only in schedulable
+@@ -2913,8 +3132,8 @@ static bool console_emit_next_record(str
   * were flushed to all usable consoles. A returned false informs the caller
   * that everything was not flushed (either there were no usable consoles or
   * another context has taken over printing or it is a panic situation and this
@@ -619,7 +630,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   *
   * Requires the console_lock.
   */
-@@ -2870,6 +3090,10 @@ static bool console_flush_all(bool do_co
+@@ -2929,6 +3148,10 @@ static bool console_flush_all(bool do_co
  	*handover = false;
  
  	do {
@@ -630,21 +641,16 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		any_progress = false;
  
  		cookie = console_srcu_read_lock();
-@@ -2882,11 +3106,11 @@ static bool console_flush_all(bool do_co
+@@ -2939,7 +3162,7 @@ static bool console_flush_all(bool do_co
+ 				continue;
+ 			any_usable = true;
  
- 			if (console_srcu_read_flags(con) & CON_EXTENDED) {
- 				/* Extended consoles do not print "dropped messages". */
--				progress = console_emit_next_record(con, &text[0],
-+				progress = console_emit_next_record_transferable(con, &text[0],
- 								    &ext_text[0], NULL,
- 								    handover, cookie);
- 			} else {
--				progress = console_emit_next_record(con, &text[0],
-+				progress = console_emit_next_record_transferable(con, &text[0],
- 								    NULL, &dropped_text[0],
- 								    handover, cookie);
- 			}
-@@ -3017,10 +3241,13 @@ void console_unblank(void)
+-			progress = console_emit_next_record(con, handover, cookie);
++			progress = console_emit_next_record_transferable(con, handover, cookie);
+ 
+ 			/*
+ 			 * If a handover has occurred, the SRCU read lock
+@@ -3067,10 +3290,13 @@ void console_unblank(void)
  	if (oops_in_progress) {
  		if (down_trylock_console_sem() != 0)
  			return;
@@ -659,7 +665,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	console_may_schedule = 0;
  
  	cookie = console_srcu_read_lock();
-@@ -3379,6 +3606,10 @@ void register_console(struct console *ne
+@@ -3429,6 +3655,10 @@ void register_console(struct console *ne
  	}
  
  	newcon->dropped = 0;
@@ -670,7 +676,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	console_init_seq(newcon, bootcon_registered);
  
  	/*
-@@ -3399,6 +3630,9 @@ void register_console(struct console *ne
+@@ -3449,6 +3679,9 @@ void register_console(struct console *ne
  		hlist_add_behind_rcu(&newcon->node, console_list.first);
  	}
  
@@ -680,7 +686,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * No need to synchronize SRCU here! The caller does not rely
  	 * on all contexts being able to see the new console before
-@@ -3433,6 +3667,7 @@ EXPORT_SYMBOL(register_console);
+@@ -3483,6 +3716,7 @@ EXPORT_SYMBOL(register_console);
  /* Must be called under console_list_lock(). */
  static int unregister_console_locked(struct console *console)
  {
@@ -688,7 +694,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int res;
  
  	lockdep_assert_console_list_lock_held();
-@@ -3454,6 +3689,14 @@ static int unregister_console_locked(str
+@@ -3504,6 +3738,14 @@ static int unregister_console_locked(str
  	hlist_del_init_rcu(&console->node);
  
  	/*
@@ -703,7 +709,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	 * <HISTORICAL>
  	 * If this isn't the last console and it has CON_CONSDEV set, we
  	 * need to set it on the next preferred console.
-@@ -3474,6 +3717,9 @@ static int unregister_console_locked(str
+@@ -3524,6 +3766,9 @@ static int unregister_console_locked(str
  
  	console_sysfs_notify();
  
@@ -713,7 +719,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (console->exit)
  		res = console->exit(console);
  
-@@ -3617,6 +3863,22 @@ static int __init printk_late_init(void)
+@@ -3667,6 +3912,22 @@ static int __init printk_late_init(void)
  }
  late_initcall(printk_late_init);
  
@@ -736,7 +742,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #if defined CONFIG_PRINTK
  /* If @con is specified, only wait for that console. Otherwise wait for all. */
  static bool __pr_flush(struct console *con, int timeout_ms, bool reset_on_progress)
-@@ -3707,11 +3969,198 @@ static bool pr_flush(int timeout_ms, boo
+@@ -3757,11 +4018,151 @@ static bool pr_flush(int timeout_ms, boo
  	return __pr_flush(NULL, timeout_ms, reset_on_progress);
  }
  
@@ -748,31 +754,15 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +}
 +
 +/*
-+ * Enter preferred direct printing, but never exit. Mark console threads as
-+ * unavailable. The system is then forever in preferred direct printing and
-+ * any printing threads will exit.
-+ *
-+ * Must *not* be called under console_lock. Use
-+ * __printk_fallback_preferred_direct() if already holding console_lock.
-+ */
-+static void printk_fallback_preferred_direct(void)
-+{
-+	console_lock();
-+	__printk_fallback_preferred_direct();
-+	console_unlock();
-+}
-+
-+/*
 + * Print a record for a given console, not allowing another printk() caller
 + * to take over. This is appropriate for contexts that do not have the
 + * console_lock.
 + *
 + * See __console_emit_next_record() for argument and return details.
 + */
-+static bool console_emit_next_record(struct console *con, char *text, char *ext_text,
-+				     char *dropped_text)
++static bool console_emit_next_record(struct console *con)
 +{
-+	return __console_emit_next_record(con, text, ext_text, dropped_text, NULL, 0);
++	return __console_emit_next_record(con, NULL, 0);
 +}
 +
 +static bool printer_should_wake(struct console *con, u64 seq)
@@ -797,34 +787,8 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +static int printk_kthread_func(void *data)
 +{
 +	struct console *con = data;
-+	char *dropped_text = NULL;
-+	char *ext_text = NULL;
 +	u64 seq = 0;
-+	char *text;
 +	int error;
-+
-+	text = kmalloc(CONSOLE_LOG_MAX, GFP_KERNEL);
-+	if (!text) {
-+		con_printk(KERN_ERR, con, "failed to allocate text buffer\n");
-+		printk_fallback_preferred_direct();
-+		goto out;
-+	}
-+
-+	if (con->flags & CON_EXTENDED) {
-+		ext_text = kmalloc(CONSOLE_EXT_LOG_MAX, GFP_KERNEL);
-+		if (!ext_text) {
-+			con_printk(KERN_ERR, con, "failed to allocate ext_text buffer\n");
-+			printk_fallback_preferred_direct();
-+			goto out;
-+		}
-+	} else {
-+		dropped_text = kmalloc(DROPPED_TEXT_MAX, GFP_KERNEL);
-+		if (!dropped_text) {
-+			con_printk(KERN_ERR, con, "failed to allocate dropped_text buffer\n");
-+			printk_fallback_preferred_direct();
-+			goto out;
-+		}
-+	}
 +
 +	con_printk(KERN_INFO, con, "printing thread started\n");
 +	for (;;) {
@@ -880,7 +844,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +		 * which can conditionally invoke cond_resched().
 +		 */
 +		console_may_schedule = 0;
-+		console_emit_next_record(con, text, ext_text, dropped_text);
++		console_emit_next_record(con);
 +
 +		seq = con->seq;
 +
@@ -890,11 +854,6 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	}
 +
 +	con_printk(KERN_INFO, con, "printing thread stopped\n");
-+out:
-+	kfree(dropped_text);
-+	kfree(ext_text);
-+	kfree(text);
-+
 +	console_lock();
 +	/*
 +	 * If this kthread is being stopped by another task, con->thread will
@@ -937,7 +896,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  static DEFINE_PER_CPU(int, printk_pending);
  
-@@ -3719,10 +4168,14 @@ static void wake_up_klogd_work_func(stru
+@@ -3769,10 +4170,14 @@ static void wake_up_klogd_work_func(stru
  {
  	int pending = this_cpu_xchg(printk_pending, 0);
  
@@ -953,7 +912,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	if (pending & PRINTK_PENDING_WAKEUP)
-@@ -3747,10 +4200,11 @@ static void __wake_up_klogd(int val)
+@@ -3797,10 +4202,11 @@ static void __wake_up_klogd(int val)
  	 * prepare_to_wait_event(), which is called after ___wait_event() adds
  	 * the waiter but before it has checked the wait condition.
  	 *
@@ -967,7 +926,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		this_cpu_or(printk_pending, val);
  		irq_work_queue(this_cpu_ptr(&wake_up_klogd_work));
  	}
-@@ -3768,7 +4222,17 @@ void defer_console_output(void)
+@@ -3818,7 +4224,17 @@ void defer_console_output(void)
  	 * New messages may have been added directly to the ringbuffer
  	 * using vprintk_store(), so wake any waiters as well.
  	 */
@@ -1034,7 +993,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +}
 --- a/kernel/rcu/tree_stall.h
 +++ b/kernel/rcu/tree_stall.h
-@@ -642,6 +642,7 @@ static void print_cpu_stall(unsigned lon
+@@ -673,6 +673,7 @@ static void print_cpu_stall(unsigned lon
  	 * See Documentation/RCU/stallwarn.rst for info on how to debug
  	 * RCU CPU stall warnings.
  	 */
@@ -1042,7 +1001,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	trace_rcu_stall_warning(rcu_state.name, TPS("SelfDetected"));
  	pr_err("INFO: %s self-detected stall on CPU\n", rcu_state.name);
  	raw_spin_lock_irqsave_rcu_node(rdp->mynode, flags);
-@@ -676,6 +677,7 @@ static void print_cpu_stall(unsigned lon
+@@ -707,6 +708,7 @@ static void print_cpu_stall(unsigned lon
  	 */
  	set_tsk_need_resched(current);
  	set_preempt_need_resched();

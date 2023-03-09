@@ -9,14 +9,10 @@
 ###########################################################################
 # Posted
 ###########################################################################
-vduse-Remove-include-of-rwlock.h.patch
 
 # Hacks to get ptrace to work.
 signal-Don-t-disable-preemption-in-ptrace_stop-on-PR.patch
 sched-Consider-task_struct-saved_state-in-wait_task_.patch
-
-# ifdef RT cleanups.
-u64_stat-Remove-the-obsolete-fetch_irq-variants.patch
 
 ###########################################################################
 # Post
@@ -38,7 +34,7 @@ tick-Fix-timer-storm-since-introduction-of-timersd.patch
 softirq-Wake-ktimers-thread-also-in-softirq.patch
 tpm_tis__fix_stall_after_iowrites.patch
 drivers_block_zram__Replace_bit_spinlocks_with_rtmutex_for_-rt.patch
-locking-lockdep-Remove-lockdep_init_map_crosslock.patch
+preempt-Put-preempt_enable-within-an-instrumentation.patch
 
 ###########################################################################
 # John's printk queue
@@ -88,6 +84,8 @@ ARM64__Allow_to_enable_RT.patch
 ###########################################################################
 powerpc__traps__Use_PREEMPT_RT.patch
 powerpc_pseries_iommu__Use_a_locallock_instead_local_irq_save.patch
+powerpc-imc-pmu-Use-the-correct-spinlock-initializer.patch
+powerpc-pseries-Select-the-generic-memory-allocator.patch
 powerpc_kvm__Disable_in-kernel_MPIC_emulation_for_PREEMPT_RT.patch
 powerpc_stackprotector__work_around_stack-guard_init_from_atomic.patch
 POWERPC__Allow_to_enable_RT.patch
