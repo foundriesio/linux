@@ -13,6 +13,7 @@
 # Hacks to get ptrace to work.
 signal-Don-t-disable-preemption-in-ptrace_stop-on-PR.patch
 sched-Consider-task_struct-saved_state-in-wait_task_.patch
+io-mapping-Don-t-disable-preempt-on-RT-in-io_mapping.patch
 
 ###########################################################################
 # Post
@@ -39,10 +40,30 @@ preempt-Put-preempt_enable-within-an-instrumentation.patch
 ###########################################################################
 # John's printk queue
 ###########################################################################
-printk-Bring-back-the-RT-bits.patch
-0016-printk-add-infrastucture-for-atomic-consoles.patch
-0017-serial-8250-implement-write_atomic.patch
-0018-printk-avoid-preempt_disable-for-PREEMPT_RT.patch
+0001-kdb-do-not-assume-write-callback-available.patch
+0002-printk-Add-NMI-check-to-down_trylock_console_sem.patch
+0003-printk-Consolidate-console-deferred-printing.patch
+0004-printk-Add-per-console-suspended-state.patch
+0005-printk-Add-non-BKL-console-basic-infrastructure.patch
+0006-printk-nobkl-Add-acquire-release-logic.patch
+0007-printk-nobkl-Add-buffer-management.patch
+0008-printk-nobkl-Add-sequence-handling.patch
+0009-printk-nobkl-Add-print-state-functions.patch
+0010-printk-nobkl-Add-emit-function-and-callback-function.patch
+0011-printk-nobkl-Introduce-printer-threads.patch
+0012-printk-nobkl-Add-printer-thread-wakeups.patch
+0013-printk-nobkl-Add-write-context-storage-for-atomic-wr.patch
+0014-printk-nobkl-Provide-functions-for-atomic-write-enfo.patch
+0015-printk-nobkl-Stop-threads-on-shutdown-reboot.patch
+0016-tty-tty_io-Show-non-BKL-consoles-as-active.patch
+0017-proc-consoles-Add-support-for-non-BKL-consoles.patch
+0018-kernel-panic-Add-atomic-write-enforcement-to-warn-pa.patch
+0019-rcu-Add-atomic-write-enforcement-for-rcu-stalls.patch
+0020-printk-Perform-atomic-flush-in-console_flush_on_pani.patch
+0021-printk-only-disable-if-actually-unregistered.patch
+0022-printk-Add-threaded-printing-support-for-BKL-console.patch
+0023-serial-8250-implement-non-BKL-console.patch
+printk-Don-t-invoke-the-BLK-console-with-disabled-in.patch
 
 ###########################################################################
 # DRM:
