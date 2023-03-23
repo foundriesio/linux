@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Fri, 10 Mar 2023 13:36:01 +0000
-Subject: [PATCH 17/23] proc: consoles: Add support for non-BKL consoles
+Subject: [PATCH 17/24] proc: consoles: Add support for non-BKL consoles
 
 Show 'W' if a non-BKL console implements write_thread() or
 write_atomic().

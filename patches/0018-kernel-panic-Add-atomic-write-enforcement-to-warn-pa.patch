@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Sun, 11 Sep 2022 00:28:17 +0200
-Subject: [PATCH 18/23] kernel/panic: Add atomic write enforcement to
+Subject: [PATCH 18/24] kernel/panic: Add atomic write enforcement to
  warn/panic
 
 Invoke the atomic write enforcement functions for warn/panic to

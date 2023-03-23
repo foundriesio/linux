@@ -14,6 +14,8 @@
 signal-Don-t-disable-preemption-in-ptrace_stop-on-PR.patch
 sched-Consider-task_struct-saved_state-in-wait_task_.patch
 io-mapping-Don-t-disable-preempt-on-RT-in-io_mapping.patch
+locking-rwbase-Mitigate-indefinite-writer-starvation.patch
+locking-Flush-the-plug-before-the-slowpath.patch
 
 ###########################################################################
 # Post
@@ -33,15 +35,15 @@ softirq-Use-a-dedicated-thread-for-timer-wakeups.patch
 rcutorture-Also-force-sched-priority-to-timersd-on-b.patch
 tick-Fix-timer-storm-since-introduction-of-timersd.patch
 softirq-Wake-ktimers-thread-also-in-softirq.patch
-tpm_tis__fix_stall_after_iowrites.patch
-drivers_block_zram__Replace_bit_spinlocks_with_rtmutex_for_-rt.patch
+tpm_tis-fix-stall-after-iowrite-s.patch
+zram-Replace-bit-spinlocks-with-spinlock_t-for-PREEM.patch
 preempt-Put-preempt_enable-within-an-instrumentation.patch
 
 ###########################################################################
 # John's printk queue
 ###########################################################################
 0001-kdb-do-not-assume-write-callback-available.patch
-0002-printk-Add-NMI-check-to-down_trylock_console_sem.patch
+0002-printk-Add-NMI-check-to-console_flush_on_panic-and-c.patch
 0003-printk-Consolidate-console-deferred-printing.patch
 0004-printk-Add-per-console-suspended-state.patch
 0005-printk-Add-non-BKL-console-basic-infrastructure.patch
@@ -62,8 +64,8 @@ preempt-Put-preempt_enable-within-an-instrumentation.patch
 0020-printk-Perform-atomic-flush-in-console_flush_on_pani.patch
 0021-printk-only-disable-if-actually-unregistered.patch
 0022-printk-Add-threaded-printing-support-for-BKL-console.patch
-0023-serial-8250-implement-non-BKL-console.patch
-printk-Don-t-invoke-the-BLK-console-with-disabled-in.patch
+0023-printk-replace-local_irq_save-with-local_lock-for-sa.patch
+0024-serial-8250-implement-non-BKL-console.patch
 
 ###########################################################################
 # DRM:

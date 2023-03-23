@@ -1,25 +1,31 @@
-From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Date: Tue, 14 Mar 2023 16:32:14 +0100
-Subject: [PATCH] printk: Don't invoke the BLK-console with disabled
- interrupts.
+From: Sebastian Siewior <bigeasy@linutronix.de>
+Date: Tue, 14 Mar 2023 16:51:44 +0100
+Subject: [PATCH 23/24] printk: replace local_irq_save with local_lock for safe
+ mode
 
-On PREEMPT_RT the BKL-console is always invoked from the thread, never
-from the caller. Disabling interrupts before invoking the console is
-broken because the BLK-console is using sleeping locks which must not be
-acquired with disabled interrupts.
+Safe mode disables interrupts in order to minimize the window where
+printk calls use deferred printing. Currently local_irq_save() is
+used for this, however on PREEMPT_RT this can lead to large latencies
+because safe mode is enabled for the duration of printing a record.
 
-Replace the disabling of interrupts with a local_lock_t inside the
-structure which is used to defer parallel printks on the same CPU.
+Use a local_lock instead of local_irq_save(). For !PREEMPT_RT it
+has the same affect of disabling interrupts for that CPU. For
+PREEMPT_RT it will disable preemption, which is enough to prevent
+interruption from the irq threads.
 
-With this change the BKL-console provides output again without rising to
-deadlock. Without atomic consoles, any BUG()/ panic() remains silent.
+Note that disabling preemption for PREEMPT_RT is also very bad
+since it is still blocking RT tasks. The atomic/threaded (NOBKL)
+consoles were developed such that safe mode is not needed. So it
+is expected that a PREEMPT_RT machine does not run with any legacy
+consoles registered.
 
+Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
  include/linux/printk.h      |   10 ++++++----
- kernel/printk/internal.h    |    6 ++----
- kernel/printk/printk_safe.c |   33 +++++++++++++++++++++++++++------
- 3 files changed, 35 insertions(+), 14 deletions(-)
+ kernel/printk/internal.h    |   16 ++++++++++++----
+ kernel/printk/printk_safe.c |   35 +++++++++++++++++++++++++++++------
+ 3 files changed, 47 insertions(+), 14 deletions(-)
 
 --- a/include/linux/printk.h
 +++ b/include/linux/printk.h
@@ -47,8 +53,20 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Please don't use printk_ratelimit(), because it shares ratelimiting state
 --- a/kernel/printk/internal.h
 +++ b/kernel/printk/internal.h
-@@ -60,14 +60,12 @@ bool printk_percpu_data_ready(void);
+@@ -58,16 +58,24 @@ int vprintk_store(int facility, int leve
  
+ bool printk_percpu_data_ready(void);
+ 
++/*
++ * The printk_safe_enter()/_exit() macros mark code blocks using locks that
++ * would lead to deadlock if an interrupting context were to call printk()
++ * while the interrupted context was within such code blocks.
++ *
++ * When a CPU is in such a code block, an interrupting context calling
++ * printk() will only log the new message to the lockless ringbuffer and
++ * then trigger console printing using irqwork.
++ */
++
  #define printk_safe_enter_irqsave(flags)	\
  	do {					\
 -		local_irq_save(flags);		\
@@ -66,7 +84,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  void defer_console_output(void);
 --- a/kernel/printk/printk_safe.c
 +++ b/kernel/printk/printk_safe.c
-@@ -12,18 +12,39 @@
+@@ -12,18 +12,41 @@
  
  #include "internal.h"
  
@@ -85,6 +103,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +void __printk_safe_enter(unsigned long *flags)
  {
 -	this_cpu_inc(printk_context);
++	WARN_ON_ONCE(in_nmi());
 +	local_lock_irqsave(&printk_context.cpu, *flags);
 +	this_cpu_inc(printk_context.recursion);
  }
@@ -94,6 +113,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +void __printk_safe_exit(unsigned long *flags)
  {
 -	this_cpu_dec(printk_context);
++	WARN_ON_ONCE(in_nmi());
 +	this_cpu_dec(printk_context.recursion);
 +	local_unlock_irqrestore(&printk_context.cpu, *flags);
 +}
@@ -111,7 +131,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  asmlinkage int vprintk(const char *fmt, va_list args)
-@@ -38,7 +59,7 @@ asmlinkage int vprintk(const char *fmt,
+@@ -38,7 +61,7 @@ asmlinkage int vprintk(const char *fmt,
  	 * Use the main logbuf even in NMI. But avoid calling console
  	 * drivers that might have their own locks.
  	 */

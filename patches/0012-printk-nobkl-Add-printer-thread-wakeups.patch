@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Tue, 28 Feb 2023 10:01:59 +0000
-Subject: [PATCH 12/23] printk: nobkl: Add printer thread wakeups
+Subject: [PATCH 12/24] printk: nobkl: Add printer thread wakeups
 
 Add a function to wakeup the printer threads. Use the new function
 when:
@@ -61,7 +61,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * Check if the given console is currently capable and allowed to print
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -2345,6 +2345,7 @@ asmlinkage int vprintk_emit(int facility
+@@ -2341,6 +2341,7 @@ asmlinkage int vprintk_emit(int facility
  		preempt_enable();
  	}
  
@@ -69,7 +69,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (in_sched)
  		defer_console_output();
  	else
-@@ -2615,6 +2616,8 @@ void suspend_console(void)
+@@ -2611,6 +2612,8 @@ void suspend_console(void)
  void resume_console(void)
  {
  	struct console *con;
@@ -78,7 +78,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	if (!console_suspend_enabled)
  		return;
-@@ -2634,6 +2637,14 @@ void resume_console(void)
+@@ -2630,6 +2633,14 @@ void resume_console(void)
  	 */
  	synchronize_srcu(&console_srcu);
  
@@ -93,7 +93,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	pr_flush(1000, true);
  }
  
-@@ -3226,9 +3237,23 @@ EXPORT_SYMBOL(console_stop);
+@@ -3231,9 +3242,23 @@ EXPORT_SYMBOL(console_stop);
  
  void console_start(struct console *console)
  {
@@ -117,7 +117,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	__pr_flush(console, 1000, true);
  }
  EXPORT_SYMBOL(console_start);
-@@ -3918,6 +3943,7 @@ void defer_console_output(void)
+@@ -3923,6 +3948,7 @@ void defer_console_output(void)
  
  void printk_trigger_flush(void)
  {

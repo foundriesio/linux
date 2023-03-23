@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Sun, 11 Sep 2022 00:28:13 +0200
-Subject: [PATCH 13/23] printk: nobkl: Add write context storage for atomic
+Subject: [PATCH 13/24] printk: nobkl: Add write context storage for atomic
  writes
 
 The number of consoles is unknown at compile time and allocating

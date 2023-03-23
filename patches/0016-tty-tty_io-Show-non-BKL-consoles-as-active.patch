@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Fri, 10 Mar 2023 13:08:01 +0000
-Subject: [PATCH 16/23] tty: tty_io: Show non-BKL consoles as active
+Subject: [PATCH 16/24] tty: tty_io: Show non-BKL consoles as active
 
 /sys/class/tty/console/active shows the consoles that are currently
 registered and enabled and are able to print (i.e. have implemented

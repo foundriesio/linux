@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Sun, 11 Sep 2022 00:28:07 +0200
-Subject: [PATCH 09/23] printk: nobkl: Add print state functions
+Subject: [PATCH 09/24] printk: nobkl: Add print state functions
 
 Provide three functions which are related to the safe handover
 mechanism and allow console drivers to denote takeover unsafe
@@ -32,32 +32,28 @@ Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Thomas Gleixner (Intel) <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/console.h      |   11 +++
+ include/linux/console.h      |    6 +
  kernel/printk/printk_nobkl.c |  142 +++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 153 insertions(+)
+ 2 files changed, 148 insertions(+)
 
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
-@@ -465,8 +465,19 @@ static inline bool console_is_registered
- 	lockdep_assert_console_list_lock_held();			\
+@@ -466,9 +466,15 @@ static inline bool console_is_registered
  	hlist_for_each_entry(con, &console_list, node)
  
-+#ifdef CONFIG_PRINTK
+ #ifdef CONFIG_PRINTK
 +extern bool console_can_proceed(struct cons_write_context *wctxt);
 +extern bool console_enter_unsafe(struct cons_write_context *wctxt);
 +extern bool console_exit_unsafe(struct cons_write_context *wctxt);
  extern bool console_try_acquire(struct cons_write_context *wctxt);
  extern bool console_release(struct cons_write_context *wctxt);
-+#else
+ #else
 +static inline bool console_can_proceed(struct cons_write_context *wctxt) { return false; }
 +static inline bool console_enter_unsafe(struct cons_write_context *wctxt) { return false; }
 +static inline bool console_exit_unsafe(struct cons_write_context *wctxt) { return false; }
-+static inline bool console_try_acquire(struct cons_write_context *wctxt) { return false; }
-+static inline bool console_release(struct cons_write_context *wctxt) { return false; }
-+#endif
- 
- extern int console_set_on_cmdline;
- extern struct console *early_console;
+ static inline bool console_try_acquire(struct cons_write_context *wctxt) { return false; }
+ static inline bool console_release(struct cons_write_context *wctxt) { return false; }
+ #endif
 --- a/kernel/printk/printk_nobkl.c
 +++ b/kernel/printk/printk_nobkl.c
 @@ -948,6 +948,148 @@ static void cons_free_percpu_data(struct

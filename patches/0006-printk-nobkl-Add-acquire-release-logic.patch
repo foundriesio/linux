@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Sun, 11 Sep 2022 00:28:02 +0200
-Subject: [PATCH 06/23] printk: nobkl: Add acquire/release logic
+Subject: [PATCH 06/24] printk: nobkl: Add acquire/release logic
 
 Add per console acquire/release functionality. The console 'locked'
 state is a combination of several state fields:
@@ -74,9 +74,9 @@ Signed-off-by: John Ogness <john.ogness@linutronix.de>
 Signed-off-by: Thomas Gleixner (Intel) <tglx@linutronix.de>
 Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 ---
- include/linux/console.h      |   82 ++++++
+ include/linux/console.h      |   87 +++++++
  kernel/printk/printk_nobkl.c |  531 +++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 613 insertions(+)
+ 2 files changed, 618 insertions(+)
 
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
@@ -182,12 +182,17 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * struct console - The console descriptor structure
   * @name:		The name of the console driver
   * @write:		Write callback to output messages (Optional)
-@@ -365,6 +444,9 @@ static inline bool console_is_registered
+@@ -365,6 +444,14 @@ static inline bool console_is_registered
  	lockdep_assert_console_list_lock_held();			\
  	hlist_for_each_entry(con, &console_list, node)
  
++#ifdef CONFIG_PRINTK
 +extern bool console_try_acquire(struct cons_write_context *wctxt);
 +extern bool console_release(struct cons_write_context *wctxt);
++#else
++static inline bool console_try_acquire(struct cons_write_context *wctxt) { return false; }
++static inline bool console_release(struct cons_write_context *wctxt) { return false; }
++#endif
 +
  extern int console_set_on_cmdline;
  extern struct console *early_console;

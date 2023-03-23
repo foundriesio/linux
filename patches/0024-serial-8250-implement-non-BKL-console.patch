@@ -1,6 +1,6 @@
 From: John Ogness <john.ogness@linutronix.de>
 Date: Fri, 3 Mar 2023 12:27:31 +0000
-Subject: [PATCH 23/23] serial: 8250: implement non-BKL console
+Subject: [PATCH 24/24] serial: 8250: implement non-BKL console
 
 Implement the necessary callbacks to allow the 8250 console driver
 to perform as a non-BKL console. Remove the implementation for the

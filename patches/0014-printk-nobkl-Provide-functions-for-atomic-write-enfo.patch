@@ -1,6 +1,6 @@
 From: Thomas Gleixner <tglx@linutronix.de>
 Date: Sun, 11 Sep 2022 00:28:15 +0200
-Subject: [PATCH 14/23] printk: nobkl: Provide functions for atomic write
+Subject: [PATCH 14/24] printk: nobkl: Provide functions for atomic write
  enforcement
 
 Threaded printk is the preferred mechanism to tame the noisyness of
@@ -30,23 +30,23 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/console.h
 +++ b/include/linux/console.h
-@@ -495,12 +495,16 @@ extern bool console_enter_unsafe(struct
+@@ -490,12 +490,16 @@ static inline bool console_is_registered
+ 	hlist_for_each_entry(con, &console_list, node)
+ 
+ #ifdef CONFIG_PRINTK
++extern enum cons_prio cons_atomic_enter(enum cons_prio prio);
++extern void cons_atomic_exit(enum cons_prio prio, enum cons_prio prev_prio);
+ extern bool console_can_proceed(struct cons_write_context *wctxt);
+ extern bool console_enter_unsafe(struct cons_write_context *wctxt);
  extern bool console_exit_unsafe(struct cons_write_context *wctxt);
  extern bool console_try_acquire(struct cons_write_context *wctxt);
  extern bool console_release(struct cons_write_context *wctxt);
-+extern enum cons_prio cons_atomic_enter(enum cons_prio prio);
-+extern void cons_atomic_exit(enum cons_prio prio, enum cons_prio prev_prio);
  #else
++static inline enum cons_prio cons_atomic_enter(enum cons_prio prio) { return CONS_PRIO_NONE; }
++static inline void cons_atomic_exit(enum cons_prio prio, enum cons_prio prev_prio) { }
  static inline bool console_can_proceed(struct cons_write_context *wctxt) { return false; }
  static inline bool console_enter_unsafe(struct cons_write_context *wctxt) { return false; }
  static inline bool console_exit_unsafe(struct cons_write_context *wctxt) { return false; }
- static inline bool console_try_acquire(struct cons_write_context *wctxt) { return false; }
- static inline bool console_release(struct cons_write_context *wctxt) { return false; }
-+static inline enum cons_prio cons_atomic_enter(enum cons_prio prio) { return CONS_PRIO_NONE; }
-+static inline void cons_atomic_exit(enum cons_prio prio, enum cons_prio prev_prio) { }
- #endif
- 
- extern int console_set_on_cmdline;
 --- a/include/linux/printk.h
 +++ b/include/linux/printk.h
 @@ -139,6 +139,7 @@ void early_printk(const char *s, ...) {
@@ -81,7 +81,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #ifdef CONFIG_SMP
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -2304,6 +2304,7 @@ asmlinkage int vprintk_emit(int facility
+@@ -2300,6 +2300,7 @@ asmlinkage int vprintk_emit(int facility
  			    const struct dev_printk_info *dev_info,
  			    const char *fmt, va_list args)
  {
@@ -89,7 +89,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	int printed_len;
  	bool in_sched = false;
  
-@@ -2324,17 +2325,26 @@ asmlinkage int vprintk_emit(int facility
+@@ -2320,17 +2321,26 @@ asmlinkage int vprintk_emit(int facility
  
  	printed_len = vprintk_store(facility, level, dev_info, fmt, args);
  
@@ -124,7 +124,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		 * Try to acquire and then immediately release the console
  		 * semaphore. The release will print out buffers. With the
  		 * spinning variant, this context tries to take over the
-@@ -2342,9 +2352,10 @@ asmlinkage int vprintk_emit(int facility
+@@ -2338,9 +2348,10 @@ asmlinkage int vprintk_emit(int facility
  		 */
  		if (console_trylock_spinning())
  			console_unlock();
@@ -136,7 +136,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	cons_wake_threads();
  	if (in_sched)
  		defer_console_output();
-@@ -3943,6 +3954,12 @@ void defer_console_output(void)
+@@ -3948,6 +3959,12 @@ void defer_console_output(void)
  
  void printk_trigger_flush(void)
  {
