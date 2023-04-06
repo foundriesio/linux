@@ -26,7 +26,7 @@ Reviewed-by: Valentin Schneider <vschneid@redhat.com>
 
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
-@@ -3315,6 +3315,76 @@ int migrate_swap(struct task_struct *cur
+@@ -3318,6 +3318,76 @@ int migrate_swap(struct task_struct *cur
  }
  #endif /* CONFIG_NUMA_BALANCING */
  
@@ -103,7 +103,7 @@ Reviewed-by: Valentin Schneider <vschneid@redhat.com>
  /*
   * wait_task_inactive - wait for a thread to unschedule.
   *
-@@ -3333,7 +3403,7 @@ int migrate_swap(struct task_struct *cur
+@@ -3336,7 +3406,7 @@ int migrate_swap(struct task_struct *cur
   */
  unsigned long wait_task_inactive(struct task_struct *p, unsigned int match_state)
  {
@@ -112,7 +112,7 @@ Reviewed-by: Valentin Schneider <vschneid@redhat.com>
  	struct rq_flags rf;
  	unsigned long ncsw;
  	struct rq *rq;
-@@ -3359,7 +3429,7 @@ unsigned long wait_task_inactive(struct
+@@ -3362,7 +3432,7 @@ unsigned long wait_task_inactive(struct
  		 * is actually now running somewhere else!
  		 */
  		while (task_on_cpu(rq, p)) {
@@ -121,7 +121,7 @@ Reviewed-by: Valentin Schneider <vschneid@redhat.com>
  				return 0;
  			cpu_relax();
  		}
-@@ -3372,9 +3442,10 @@ unsigned long wait_task_inactive(struct
+@@ -3375,9 +3445,10 @@ unsigned long wait_task_inactive(struct
  		rq = task_rq_lock(p, &rf);
  		trace_sched_wait_task(p);
  		running = task_on_cpu(rq, p);
@@ -134,7 +134,7 @@ Reviewed-by: Valentin Schneider <vschneid@redhat.com>
  			ncsw = p->nvcsw | LONG_MIN; /* sets MSB */
  		task_rq_unlock(rq, p, &rf);
  
-@@ -3404,7 +3475,7 @@ unsigned long wait_task_inactive(struct
+@@ -3407,7 +3478,7 @@ unsigned long wait_task_inactive(struct
  		 * running right now), it's preempted, and we should
  		 * yield - it could be a while.
  		 */

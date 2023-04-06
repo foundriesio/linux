@@ -1,6 +1,6 @@
 From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 Date: Wed, 22 Mar 2023 11:59:53 +0100
-Subject: [PATCH] locking: Flush the plug before the slowpath.
+Subject: [PATCH] locking/rtmutex: Flush the plug before the slowpath.
 
 blk_flush_plug() is invoked on schedule() to flush out the IO progress
 that has been made so far so that it is globally visible. This is

@@ -11,11 +11,14 @@
 ###########################################################################
 
 # Hacks to get ptrace to work.
-signal-Don-t-disable-preemption-in-ptrace_stop-on-PR.patch
 sched-Consider-task_struct-saved_state-in-wait_task_.patch
 io-mapping-Don-t-disable-preempt-on-RT-in-io_mapping.patch
 locking-rwbase-Mitigate-indefinite-writer-starvation.patch
 locking-Flush-the-plug-before-the-slowpath.patch
+locking-rtmutex-Do-the-trylock-slowpath-with-DEBUG_R.patch
+signal-Let-tasks-cache-one-sigqueue-struct.patch
+0001-signal-Add-proper-comment-about-the-preempt-disable-.patch
+0002-signal-Don-t-disable-preemption-in-ptrace_stop-on-PR.patch
 
 ###########################################################################
 # Post
