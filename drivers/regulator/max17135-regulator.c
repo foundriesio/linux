@@ -745,13 +745,14 @@ static int max17135_regulator_probe(struct platform_device *pdev)
 		config.driver_data = max17135;
 		config.of_node = pdata->regulators[i].reg_node;
 
-		rdev[i] = regulator_register(&max17135_reg[id], &config);
+		rdev[i] = devm_regulator_register(&pdev->dev, &max17135_reg[id],
+						  &config);
 		if (IS_ERR(rdev[i])) {
 			ret = PTR_ERR(rdev[i]);
-			dev_err(&pdev->dev, "regulator init failed for %d\n",
-					id);
+			dev_err(&pdev->dev,
+				"regulator init failed for %d: %d\n", id, ret);
 			rdev[i] = NULL;
-			goto err;
+			return ret;
 		}
 	}
 
@@ -763,10 +764,6 @@ static int max17135_regulator_probe(struct platform_device *pdev)
 	max17135_setup_timings(max17135);
 
 	return 0;
-err:
-	while (--i >= 0)
-		regulator_unregister(rdev[i]);
-	return ret;
 }
 
 static int max17135_regulator_remove(struct platform_device *pdev)
