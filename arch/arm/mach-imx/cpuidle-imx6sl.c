@@ -201,20 +201,22 @@ static struct regulator_desc ldo2p5_dummy_desc = {
 
 static int ldo2p5_dummy_probe(struct platform_device *pdev)
 {
+	int ret = 0;
 	struct regulator_config config = { };
-	int ret;
 
 	config.dev = &pdev->dev;
 	config.init_data = &ldo2p5_dummy_initdata;
 	config.of_node = pdev->dev.of_node;
 
-	ldo2p5_dummy_regulator_rdev = regulator_register(&ldo2p5_dummy_desc, &config);
+	ldo2p5_dummy_regulator_rdev =
+		devm_regulator_register(&pdev->dev, &ldo2p5_dummy_desc,
+					&config);
 	if (IS_ERR(ldo2p5_dummy_regulator_rdev)) {
 		ret = PTR_ERR(ldo2p5_dummy_regulator_rdev);
-		dev_err(&pdev->dev, "Failed to register dummy ldo2p5 regulator: %d\n", ret);
-		return ret;
+		dev_err(&pdev->dev,
+			"Failed to register dummy ldo2p5 regulator: %d\n", ret);
 	}
-	return 0;
+	return ret;
 }
 
 static const struct of_device_id imx_ldo2p5_dummy_ids[] = {
