@@ -15,6 +15,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/usb/typec_mux.h>
+#include <linux/gpio/consumer.h>
 
 struct gpio_typec_switch {
 	struct typec_switch_dev *sw;
