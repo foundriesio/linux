@@ -14,11 +14,15 @@
 sched-Consider-task_struct-saved_state-in-wait_task_.patch
 io-mapping-Don-t-disable-preempt-on-RT-in-io_mapping.patch
 locking-rwbase-Mitigate-indefinite-writer-starvation.patch
-locking-Flush-the-plug-before-the-slowpath.patch
-locking-rtmutex-Do-the-trylock-slowpath-with-DEBUG_R.patch
+0001-sched-core-Provide-sched_rtmutex-and-expose-sched-wo.patch
+0002-locking-rtmutex-Submit-resume-work-explicitly-before.patch
+0003-locking-rtmutex-Avoid-pointless-blk_flush_plug-invoc.patch
+0004-locking-rtmutex-Add-a-lockdep-assert-to-catch-potent.patch
 signal-Let-tasks-cache-one-sigqueue-struct.patch
 0001-signal-Add-proper-comment-about-the-preempt-disable-.patch
 0002-signal-Don-t-disable-preemption-in-ptrace_stop-on-PR.patch
+tick-common-Align-tick-period-with-the-HZ-tick.patch
+tracing-timer-Add-missing-hrtimer-modes-to-decode_hr.patch
 
 ###########################################################################
 # Post

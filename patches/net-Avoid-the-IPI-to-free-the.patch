@@ -24,7 +24,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3201,7 +3201,11 @@ struct softnet_data {
+@@ -3202,7 +3202,11 @@ struct softnet_data {
  	int			defer_count;
  	int			defer_ipi_scheduled;
  	struct sk_buff		*defer_list;
@@ -38,7 +38,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static inline void input_queue_head_incr(struct softnet_data *sd)
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -4572,15 +4572,6 @@ static void rps_trigger_softirq(void *da
+@@ -4573,15 +4573,6 @@ static void rps_trigger_softirq(void *da
  
  #endif /* CONFIG_RPS */
  
@@ -54,7 +54,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  /*
   * Check if this softnet_data structure is another cpu one
   * If yes, queue it to our IPI list and return 1
-@@ -6631,6 +6622,30 @@ static void skb_defer_free_flush(struct
+@@ -6632,6 +6623,30 @@ static void skb_defer_free_flush(struct
  	}
  }
  
@@ -85,7 +85,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  static __latent_entropy void net_rx_action(struct softirq_action *h)
  {
  	struct softnet_data *sd = this_cpu_ptr(&softnet_data);
-@@ -11408,7 +11423,11 @@ static int __init net_dev_init(void)
+@@ -11409,7 +11424,11 @@ static int __init net_dev_init(void)
  		INIT_CSD(&sd->csd, rps_trigger_softirq, sd);
  		sd->cpu = i;
  #endif

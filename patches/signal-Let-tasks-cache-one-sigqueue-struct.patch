@@ -71,7 +71,7 @@ Link: https://lore.kernel.org/20230406204721.A6lSYL7A@linutronix.de
  
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -1661,6 +1661,7 @@ static int copy_sighand(unsigned long cl
+@@ -1665,6 +1665,7 @@ static int copy_sighand(unsigned long cl
  	RCU_INIT_POINTER(tsk->sighand, sig);
  	if (!sig)
  		return -ENOMEM;
@@ -79,7 +79,7 @@ Link: https://lore.kernel.org/20230406204721.A6lSYL7A@linutronix.de
  
  	refcount_set(&sig->count, 1);
  	spin_lock_irq(&current->sighand->siglock);
-@@ -1677,7 +1678,17 @@ static int copy_sighand(unsigned long cl
+@@ -1681,7 +1682,17 @@ static int copy_sighand(unsigned long cl
  void __cleanup_sighand(struct sighand_struct *sighand)
  {
  	if (refcount_dec_and_test(&sighand->count)) {

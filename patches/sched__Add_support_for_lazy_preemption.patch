@@ -177,7 +177,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -2059,6 +2059,43 @@ static inline int test_tsk_need_resched(
+@@ -2064,6 +2064,43 @@ static inline int test_tsk_need_resched(
  	return unlikely(test_tsk_thread_flag(tsk,TIF_NEED_RESCHED));
  }
  
@@ -441,7 +441,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	clear_preempt_need_resched();
  #ifdef CONFIG_SCHED_DEBUG
  	rq->last_seen_need_resched_ns = 0;
-@@ -6873,6 +6919,30 @@ static void __sched notrace preempt_sche
+@@ -6877,6 +6923,30 @@ static void __sched notrace preempt_sche
  	} while (need_resched());
  }
  
@@ -472,7 +472,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  #ifdef CONFIG_PREEMPTION
  /*
   * This is the entry point to schedule() from in-kernel preemption
-@@ -6886,6 +6956,8 @@ asmlinkage __visible void __sched notrac
+@@ -6890,6 +6960,8 @@ asmlinkage __visible void __sched notrac
  	 */
  	if (likely(!preemptible()))
  		return;
@@ -481,7 +481,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	preempt_schedule_common();
  }
  NOKPROBE_SYMBOL(preempt_schedule);
-@@ -6933,6 +7005,9 @@ asmlinkage __visible void __sched notrac
+@@ -6937,6 +7009,9 @@ asmlinkage __visible void __sched notrac
  	if (likely(!preemptible()))
  		return;
  
@@ -491,7 +491,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	do {
  		/*
  		 * Because the function tracer can trace preempt_count_sub()
-@@ -9238,7 +9313,9 @@ void __init init_idle(struct task_struct
+@@ -9242,7 +9317,9 @@ void __init init_idle(struct task_struct
  
  	/* Set the preempt count _outside_ the spinlocks! */
  	init_idle_preempt_count(idle, cpu);
@@ -558,7 +558,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	/*
  	 * Only set the backward buddy when the current task is still
  	 * on the rq. This can happen when a wakeup gets interleaved
-@@ -12026,7 +12026,7 @@ static void task_fork_fair(struct task_s
+@@ -12036,7 +12036,7 @@ static void task_fork_fair(struct task_s
  		 * 'current' within the tree based on its new key value.
  		 */
  		swap(curr->vruntime, se->vruntime);
@@ -567,7 +567,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  
  	se->vruntime -= cfs_rq->min_vruntime;
-@@ -12053,7 +12053,7 @@ prio_changed_fair(struct rq *rq, struct
+@@ -12063,7 +12063,7 @@ prio_changed_fair(struct rq *rq, struct
  	 */
  	if (task_current(rq, p)) {
  		if (p->prio > oldprio)
