@@ -16,10 +16,10 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -27,6 +27,7 @@ config X86_64
- 	# Options that are inherently 64-bit kernel only:
+@@ -28,6 +28,7 @@ config X86_64
  	select ARCH_HAS_GIGANTIC_PAGE
  	select ARCH_SUPPORTS_INT128 if CC_HAS_INT128
+ 	select ARCH_SUPPORTS_PER_VMA_LOCK
 +	select ARCH_SUPPORTS_RT
  	select ARCH_USE_CMPXCHG_LOCKREF
  	select HAVE_ARCH_SOFT_DIRTY

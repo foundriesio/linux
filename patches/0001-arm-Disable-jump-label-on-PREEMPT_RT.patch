@@ -25,7 +25,7 @@ Link: https://lkml.kernel.org/r/20220613182447.112191-2-bigeasy@linutronix.de
 --- a/arch/arm/Kconfig
 +++ b/arch/arm/Kconfig
 @@ -72,7 +72,7 @@ config ARM
- 	select HARDIRQS_SW_RESEND
+ 	select HAS_IOPORT
  	select HAVE_ARCH_AUDITSYSCALL if AEABI && !OABI_COMPAT
  	select HAVE_ARCH_BITREVERSE if (CPU_32v7M || CPU_32v7) && !CPU_32v6
 -	select HAVE_ARCH_JUMP_LABEL if !XIP_KERNEL && !CPU_ENDIAN_BE32 && MMU
