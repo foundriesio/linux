@@ -27,7 +27,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/time/posix-timers.c
 +++ b/kernel/time/posix-timers.c
-@@ -1033,27 +1033,59 @@ SYSCALL_DEFINE1(timer_delete, timer_t, t
+@@ -1037,27 +1037,59 @@ SYSCALL_DEFINE1(timer_delete, timer_t, t
  }
  
  /*
@@ -95,7 +95,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   */
  void exit_itimers(struct task_struct *tsk)
  {
-@@ -1063,10 +1095,12 @@ void exit_itimers(struct task_struct *ts
+@@ -1067,10 +1099,12 @@ void exit_itimers(struct task_struct *ts
  	if (list_empty(&tsk->signal->posix_timers))
  		return;
  
