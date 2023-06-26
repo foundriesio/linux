@@ -21,7 +21,7 @@ Link: https://lore.kernel.org/20230406205713.1843072-3-bigeasy@linutronix.de
 
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
-@@ -2351,11 +2351,16 @@ static int ptrace_stop(int exit_code, in
+@@ -2328,11 +2328,16 @@ static int ptrace_stop(int exit_code, in
  	 * The preempt-disable section ensures that there will be no preemption
  	 * between unlock and schedule() and so improving the performance since
  	 * the ptracer has no reason to sleep.

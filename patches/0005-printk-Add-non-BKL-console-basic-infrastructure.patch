@@ -156,7 +156,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
   * @outbuf:	After formatting, contains text to output.
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -442,6 +442,19 @@ static int console_msg_format = MSG_FORM
+@@ -444,6 +444,19 @@ static int console_msg_format = MSG_FORM
  /* syslog_lock protects syslog_* variables and write access to clear_seq. */
  static DEFINE_MUTEX(syslog_lock);
  
@@ -176,7 +176,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  #ifdef CONFIG_PRINTK
  DECLARE_WAIT_QUEUE_HEAD(log_wait);
  /* All 3 protected by @syslog_lock. */
-@@ -2297,7 +2310,7 @@ asmlinkage int vprintk_emit(int facility
+@@ -2288,7 +2301,7 @@ asmlinkage int vprintk_emit(int facility
  	printed_len = vprintk_store(facility, level, dev_info, fmt, args);
  
  	/* If called from the scheduler, we can not call up(). */
@@ -185,7 +185,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		/*
  		 * The caller may be holding system-critical or
  		 * timing-sensitive locks. Disable preemption during
-@@ -2620,7 +2633,7 @@ void resume_console(void)
+@@ -2611,7 +2624,7 @@ void resume_console(void)
   */
  static int console_cpu_notify(unsigned int cpu)
  {
@@ -194,7 +194,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  		/* If trylock fails, someone else is doing the printing */
  		if (console_trylock())
  			console_unlock();
-@@ -3094,6 +3107,9 @@ void console_unblank(void)
+@@ -3085,6 +3098,9 @@ void console_unblank(void)
  	struct console *c;
  	int cookie;
  
@@ -204,7 +204,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * Stop console printing because the unblank() callback may
  	 * assume the console is not within its write() callback.
-@@ -3135,6 +3151,9 @@ void console_unblank(void)
+@@ -3126,6 +3142,9 @@ void console_unblank(void)
   */
  void console_flush_on_panic(enum con_flush_mode mode)
  {
@@ -214,7 +214,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * If someone else is holding the console lock, trylock will fail
  	 * and may_schedule may be set.  Ignore and proceed to unlock so
-@@ -3315,9 +3334,10 @@ static void try_enable_default_console(s
+@@ -3306,9 +3325,10 @@ static void try_enable_default_console(s
  		newcon->flags |= CON_CONSDEV;
  }
  
@@ -228,7 +228,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	       con->name, con->index, ##__VA_ARGS__)
  
  static void console_init_seq(struct console *newcon, bool bootcon_registered)
-@@ -3477,6 +3497,14 @@ void register_console(struct console *ne
+@@ -3468,6 +3488,14 @@ void register_console(struct console *ne
  	newcon->dropped = 0;
  	console_init_seq(newcon, bootcon_registered);
  
@@ -243,7 +243,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	/*
  	 * Put this console in the list - keep the
  	 * preferred driver at the head of the list.
-@@ -3520,6 +3548,9 @@ void register_console(struct console *ne
+@@ -3511,6 +3539,9 @@ void register_console(struct console *ne
  			if (con->flags & CON_BOOT)
  				unregister_console_locked(con);
  		}
@@ -253,7 +253,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  unlock:
  	console_list_unlock();
-@@ -3568,6 +3599,9 @@ static int unregister_console_locked(str
+@@ -3559,6 +3590,9 @@ static int unregister_console_locked(str
  	 */
  	synchronize_srcu(&console_srcu);
  
@@ -263,7 +263,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	console_sysfs_notify();
  
  	if (console->exit)
-@@ -3871,11 +3905,15 @@ void wake_up_klogd(void)
+@@ -3862,11 +3896,15 @@ void wake_up_klogd(void)
   */
  void defer_console_output(void)
  {

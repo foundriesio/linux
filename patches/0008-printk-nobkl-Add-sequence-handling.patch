@@ -94,7 +94,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  bool cons_alloc_percpu_data(struct console *con);
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -507,7 +507,7 @@ static u32 log_buf_len = __LOG_BUF_LEN;
+@@ -509,7 +509,7 @@ static u32 log_buf_len = __LOG_BUF_LEN;
  
  static struct printk_ringbuffer printk_rb_dynamic;
  
@@ -103,7 +103,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  /*
   * We cannot access per-CPU data (e.g. per-CPU flush irq_work) before
-@@ -2724,30 +2724,39 @@ static bool abandon_console_lock_in_pani
+@@ -2715,30 +2715,39 @@ static bool abandon_console_lock_in_pani
  
  /*
   * Check if the given console is currently capable and allowed to print
@@ -157,7 +157,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	return true;
  }
-@@ -2997,9 +3006,14 @@ static bool console_flush_all(bool do_co
+@@ -2988,9 +2997,14 @@ static bool console_flush_all(bool do_co
  
  		cookie = console_srcu_read_lock();
  		for_each_console_srcu(con) {
@@ -173,7 +173,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  				continue;
  			any_usable = true;
  
-@@ -3780,10 +3794,23 @@ static bool __pr_flush(struct console *c
+@@ -3771,10 +3785,23 @@ static bool __pr_flush(struct console *c
  
  		cookie = console_srcu_read_lock();
  		for_each_console_srcu(c) {

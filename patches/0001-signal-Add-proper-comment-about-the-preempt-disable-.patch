@@ -18,7 +18,7 @@ Link: https://lore.kernel.org/20230406205713.1843072-2-bigeasy@linutronix.de
 
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
-@@ -2336,10 +2336,21 @@ static int ptrace_stop(int exit_code, in
+@@ -2313,10 +2313,21 @@ static int ptrace_stop(int exit_code, in
  		do_notify_parent_cldstop(current, false, why);
  
  	/*

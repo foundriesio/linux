@@ -39,7 +39,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
-@@ -3160,6 +3160,28 @@ void console_unblank(void)
+@@ -3151,6 +3151,28 @@ void console_unblank(void)
   */
  void console_flush_on_panic(enum con_flush_mode mode)
  {
@@ -68,7 +68,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	if (!have_bkl_console)
  		return;
  
-@@ -3178,12 +3200,6 @@ void console_flush_on_panic(enum con_flu
+@@ -3169,12 +3191,6 @@ void console_flush_on_panic(enum con_flu
  	console_may_schedule = 0;
  
  	if (mode == CONSOLE_REPLAY_ALL) {

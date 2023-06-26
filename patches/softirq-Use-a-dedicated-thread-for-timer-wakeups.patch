@@ -116,7 +116,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	tick_irq_exit();
  }
-@@ -958,12 +986,70 @@ static struct smp_hotplug_thread softirq
+@@ -963,12 +991,70 @@ static struct smp_hotplug_thread softirq
  	.thread_comm		= "ksoftirqd/%u",
  };
  

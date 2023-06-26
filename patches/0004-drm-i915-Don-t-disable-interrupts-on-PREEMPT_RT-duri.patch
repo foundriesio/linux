@@ -36,7 +36,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/drivers/gpu/drm/i915/display/intel_crtc.c
 +++ b/drivers/gpu/drm/i915/display/intel_crtc.c
-@@ -520,7 +520,8 @@ void intel_pipe_update_start(struct inte
+@@ -523,7 +523,8 @@ void intel_pipe_update_start(struct inte
  	 */
  	intel_psr_wait_for_idle_locked(new_crtc_state);
  
@@ -46,7 +46,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  	crtc->debug.min_vbl = min;
  	crtc->debug.max_vbl = max;
-@@ -545,11 +546,13 @@ void intel_pipe_update_start(struct inte
+@@ -548,11 +549,13 @@ void intel_pipe_update_start(struct inte
  			break;
  		}
  
@@ -62,7 +62,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  	}
  
  	finish_wait(wq, &wait);
-@@ -582,7 +585,8 @@ void intel_pipe_update_start(struct inte
+@@ -585,7 +588,8 @@ void intel_pipe_update_start(struct inte
  	return;
  
  irq_disable:
@@ -72,7 +72,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  }
  
  #if IS_ENABLED(CONFIG_DRM_I915_DEBUG_VBLANK_EVADE)
-@@ -691,7 +695,8 @@ void intel_pipe_update_end(struct intel_
+@@ -694,7 +698,8 @@ void intel_pipe_update_end(struct intel_
  	if (new_crtc_state->seamless_m_n && intel_crtc_needs_fastset(new_crtc_state))
  		intel_crtc_update_active_timings(new_crtc_state);
  
