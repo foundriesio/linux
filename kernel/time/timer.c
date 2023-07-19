@@ -198,7 +198,7 @@ EXPORT_SYMBOL(jiffies_64);
 struct timer_base {
 	raw_spinlock_t		lock;
 	struct timer_list	*running_timer;
-#ifdef CONFIG_PREEMPT_RT
+#ifdef CONFIG_PREEMPT_RT_FULL
 	spinlock_t		expiry_lock;
 	atomic_t		timer_waiters;
 #endif
@@ -1207,7 +1207,7 @@ int try_to_del_timer_sync(struct timer_list *timer)
 }
 EXPORT_SYMBOL(try_to_del_timer_sync);
 
-#ifdef CONFIG_PREEMPT_RT
+#ifdef CONFIG_PREEMPT_RT_FULL
 static __init void timer_base_init_expiry_lock(struct timer_base *base)
 {
 	spin_lock_init(&base->expiry_lock);
