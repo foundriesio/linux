@@ -1048,12 +1048,12 @@ static void itimer_delete(struct k_itimer *timer)
 {
 	unsigned long flags;
 
-retry_delete:
 	/*
 	 * irqsave is required to make timer_wait_running() work.
 	 */
 	spin_lock_irqsave(&timer->it_lock, flags);
 
+retry_delete:
 	/*
 	 * Even if the timer is not longer accessible from other tasks
 	 * it still might be armed and queued in the underlying timer
@@ -1065,19 +1065,12 @@ retry_delete:
 		 * Timer is expired concurrently, prevent livelocks
 		 * and pointless spinning on RT.
 		 *
-		 * The CONFIG_POSIX_CPU_TIMERS_TASK_WORK=y case is
-		 * irrelevant here because obviously the exiting task
-		 * cannot be expiring timer in task work concurrently.
-		 * Ditto for CONFIG_POSIX_CPU_TIMERS_TASK_WORK=n as the
-		 * tick interrupt cannot run on this CPU because the above
-		 * spin_lock disabled interrupts.
-		 *
 		 * timer_wait_running() drops timer::it_lock, which opens
 		 * the possibility for another task to delete the timer.
 		 *
 		 * That's not possible here because this is invoked from
 		 * do_exit() only for the last thread of the thread group.
-		 * So no other task can access that timer.
+		 * So no other task can access and delete that timer.
 		 */
 		if (WARN_ON_ONCE(timer_wait_running(timer, &flags) != timer))
 			return;
