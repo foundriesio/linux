@@ -92,7 +92,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  			schedule();
  		} else {
  			/*
-@@ -398,11 +398,15 @@ notrace unsigned long interrupt_exit_ker
+@@ -397,11 +397,15 @@ notrace unsigned long interrupt_exit_ker
  		/* Returning to a kernel context with local irqs enabled. */
  		WARN_ON_ONCE(!(regs->msr & MSR_EE));
  again:
