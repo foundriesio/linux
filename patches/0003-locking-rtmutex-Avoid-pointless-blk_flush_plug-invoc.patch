@@ -68,7 +68,7 @@ Link: https://lore.kernel.org/r/20230427111937.2745231-4-bigeasy@linutronix.de
  static __always_inline bool rt_mutex_cmpxchg_release(struct rt_mutex_base *lock,
  						     struct task_struct *old,
  						     struct task_struct *new)
-@@ -1704,7 +1727,7 @@ static int __sched rt_mutex_slowlock(str
+@@ -1762,7 +1785,7 @@ static int __sched rt_mutex_slowlock(str
  static __always_inline int __rt_mutex_lock(struct rt_mutex_base *lock,
  					   unsigned int state)
  {

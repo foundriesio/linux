@@ -50,7 +50,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -5808,19 +5808,17 @@ static void __build_all_zonelists(void *
+@@ -5139,19 +5139,17 @@ static void __build_all_zonelists(void *
  	unsigned long flags;
  
  	/*
@@ -75,7 +75,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  
  #ifdef CONFIG_NUMA
  	memset(node_load, 0, sizeof(node_load));
-@@ -5857,9 +5855,8 @@ static void __build_all_zonelists(void *
+@@ -5188,9 +5186,8 @@ static void __build_all_zonelists(void *
  #endif
  	}
  

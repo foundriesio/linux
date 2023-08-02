@@ -15,7 +15,7 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
 --- a/kernel/debug/kdb/kdb_io.c
 +++ b/kernel/debug/kdb/kdb_io.c
-@@ -576,6 +576,8 @@ static void kdb_msg_write(const char *ms
+@@ -590,6 +590,8 @@ static void kdb_msg_write(const char *ms
  			continue;
  		if (c == dbg_io_ops->cons)
  			continue;

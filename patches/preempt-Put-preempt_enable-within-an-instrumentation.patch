@@ -20,7 +20,7 @@ Link: https://lore.kernel.org/r/20230309072724.3F6zRkvw@linutronix.de
 
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -218,15 +218,21 @@ do { \
+@@ -219,15 +219,21 @@ do { \
  #define preempt_enable() \
  do { \
  	barrier(); \

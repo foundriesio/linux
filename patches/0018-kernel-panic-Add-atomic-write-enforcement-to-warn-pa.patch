@@ -105,4 +105,4 @@ Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 +	cons_atomic_exit(CONS_PRIO_EMERGENCY, prev_prio);
  }
  
- #ifndef __WARN_FLAGS
+ #ifdef CONFIG_BUG

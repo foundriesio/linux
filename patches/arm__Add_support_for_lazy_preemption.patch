@@ -19,7 +19,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
 ---
 --- a/arch/arm/Kconfig
 +++ b/arch/arm/Kconfig
-@@ -117,6 +117,7 @@ config ARM
+@@ -118,6 +118,7 @@ config ARM
  	select HAVE_PERF_EVENTS
  	select HAVE_PERF_REGS
  	select HAVE_PERF_USER_STACK_DUMP
@@ -114,7 +114,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  __und_fault:
 --- a/arch/arm/kernel/signal.c
 +++ b/arch/arm/kernel/signal.c
-@@ -607,7 +607,8 @@ do_work_pending(struct pt_regs *regs, un
+@@ -608,7 +608,8 @@ do_work_pending(struct pt_regs *regs, un
  	 */
  	trace_hardirqs_off();
  	do {

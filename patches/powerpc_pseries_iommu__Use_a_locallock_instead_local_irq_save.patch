@@ -81,7 +81,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  
  	if (unlikely(rc == H_NOT_ENOUGH_RESOURCES)) {
  		ret = (int)rc;
-@@ -460,16 +468,17 @@ static int tce_setrange_multi_pSeriesLP(
+@@ -461,16 +469,17 @@ static int tce_setrange_multi_pSeriesLP(
  				DMA_BIDIRECTIONAL, 0);
  	}
  
@@ -103,7 +103,7 @@ Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
  	}
  
  	proto_tce = TCE_PCI_READ | TCE_PCI_WRITE;
-@@ -512,7 +521,7 @@ static int tce_setrange_multi_pSeriesLP(
+@@ -513,7 +522,7 @@ static int tce_setrange_multi_pSeriesLP(
  
  	/* error cleanup: caller will clear whole range */
  

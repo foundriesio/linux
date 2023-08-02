@@ -3,11 +3,6 @@
 ###########################################################################
 # Posted and applied
 ###########################################################################
-0001-sched-Unconditionally-use-full-fat-wait_task_inactiv.patch
-0002-sched-Consider-task_struct-saved_state-in-wait_task_.patch
-revert-softirq-Let-ksoftirqd-do-its-job.patch
-bpf-Remove-in_atomic-from-bpf_link_put.patch
-
 0001-kernel-fork-beware-of-__put_task_struct-calling-cont.patch
 0002-sched-avoid-false-lockdep-splat-in-put_task_struct.patch
 
@@ -25,13 +20,11 @@ bpf-Remove-in_atomic-from-bpf_link_put.patch
 0001-signal-Add-proper-comment-about-the-preempt-disable-.patch
 0002-signal-Don-t-disable-preemption-in-ptrace_stop-on-PR.patch
 
-0002-posix-timers-Ensure-timer-ID-search-loop-limit-is-va.patch
 0003-ARM-vfp-Provide-vfp_lock-for-VFP-locking.patch
 0004-ARM-vfp-Use-vfp_lock-in-vfp_sync_hwstate.patch
 0005-ARM-vfp-Use-vfp_lock-in-vfp_entry.patch
 seqlock-Do-the-lockdep-annotation-before-locking-in-.patch
 mm-page_alloc-Use-write_seqlock_irqsave-instead-writ.patch
-locking-rtmutex-Fix-task-pi_waiters-integrity.patch
 
 ###########################################################################
 # Post

@@ -21,7 +21,7 @@ Link: https://lore.kernel.org/r/20230427111937.2745231-5-bigeasy@linutronix.de
 
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
-@@ -1727,6 +1727,8 @@ static int __sched rt_mutex_slowlock(str
+@@ -1785,6 +1785,8 @@ static int __sched rt_mutex_slowlock(str
  static __always_inline int __rt_mutex_lock(struct rt_mutex_base *lock,
  					   unsigned int state)
  {
