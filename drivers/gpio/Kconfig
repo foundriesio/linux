@@ -698,7 +698,7 @@ config GPIO_UNIPHIER
 
 config GPIO_VF610
 	tristate "Vybrid vf610 GPIO support"
-	default y
+	default y if SOC_VF610
 	depends on ARCH_MXC
 	select GPIOLIB_IRQCHIP
 	help
