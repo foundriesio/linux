@@ -1077,6 +1077,14 @@ int memac_initialization(struct mac_device *mac_dev,
 	struct fwnode_handle	*mac_fwnode = dev->fwnode;
 	struct fwnode_handle	*fixed;
 
+	/* The internal connection to the serdes is XGMII, but this isn't
+	 * really correct for the phy mode (which is the external connection).
+	 * However, this is how all older device trees say that they want
+	 * 10GBASE-R (aka XFI), so just convert it for them.
+	 */
+	if (mac_dev->phy_if == PHY_INTERFACE_MODE_XGMII)
+		mac_dev->phy_if = PHY_INTERFACE_MODE_10GBASER;
+
 	mac_dev->phylink_ops		= &memac_mac_ops;
 	mac_dev->set_promisc		= memac_set_promiscuous;
 	mac_dev->change_addr		= memac_modify_mac_address;
@@ -1130,7 +1138,7 @@ int memac_initialization(struct mac_device *mac_dev,
 	/* For compatibility, if pcs-handle-names is missing, we assume this
 	 * phy is the first one in pcsphy-handle
 	 */
-	if (mac_dev->phy_if == PHY_INTERFACE_MODE_XGMII && !memac->xfi_pcs) {
+	if (mac_dev->phy_if == PHY_INTERFACE_MODE_10GBASER && !memac->xfi_pcs) {
 		err = memac_get_default_pcs(mac_dev, mac_fwnode,
 					    &memac->xfi_pcs, serdes);
 		if (err)
@@ -1141,14 +1149,6 @@ int memac_initialization(struct mac_device *mac_dev,
 		if (err)
 			goto _return_fm_mac_free;
 	}
-
-	/* The internal connection to the serdes is XGMII, but this isn't
-	 * really correct for the phy mode (which is the external connection).
-	 * However, this is how all older device trees say that they want
-	 * 10GBASE-R (aka XFI), so just convert it for them.
-	 */
-	if (mac_dev->phy_if == PHY_INTERFACE_MODE_XGMII)
-		mac_dev->phy_if = PHY_INTERFACE_MODE_10GBASER;
 
 	supported = mac_dev->phylink_config.supported_interfaces;
 

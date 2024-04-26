@@ -701,6 +701,7 @@ struct intel_plane_state {
 #define PLANE_HAS_FENCE BIT(0)
 
 	struct intel_fb_view view;
+	u32 phys_dma_addr; /* for cursor_needs_physical */
 
 	/* Plane pxp decryption state */
 	bool decrypt;
@@ -1361,6 +1362,8 @@ struct intel_crtc_state {
 	/* HSW+ linetime watermarks */
 	u16 linetime;
 	u16 ips_linetime;
+
+	bool enhanced_framing;
 
 	/* Forward Error correction State */
 	bool fec_enable;
